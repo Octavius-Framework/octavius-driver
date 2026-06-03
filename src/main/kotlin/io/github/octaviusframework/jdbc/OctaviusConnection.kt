@@ -8,6 +8,33 @@ import java.util.concurrent.Executor
 
 class OctaviusConnection(private val stream: PgStream) : Connection {
     val queryExecutor = QueryExecutor(stream)
+    val typeRegistry = io.github.octaviusframework.types.TypeRegistry()
+
+    init {
+        loadTypeRegistry()
+    }
+
+    private fun loadTypeRegistry() {
+        val sql = "SELECT oid, typname, typrelid, typelem, typarray FROM pg_catalog.pg_type"
+        val result = queryExecutor.executeExtendedQuery(sql)
+        
+        for (row in result.rows) {
+            if (row.columns.size < 5) continue
+            val oidBytes = row.columns[0] ?: continue
+            val nameBytes = row.columns[1] ?: continue
+            val typrelidBytes = row.columns[2] ?: continue
+            val typelemBytes = row.columns[3] ?: continue
+            val typarrayBytes = row.columns[4] ?: continue
+            
+            val oid = io.github.octaviusframework.types.IntDecoder.decodeBinary(oidBytes)
+            val name = io.github.octaviusframework.types.StringDecoder.decodeBinary(nameBytes)
+            val typrelid = io.github.octaviusframework.types.IntDecoder.decodeBinary(typrelidBytes)
+            val typelem = io.github.octaviusframework.types.IntDecoder.decodeBinary(typelemBytes)
+            val typarray = io.github.octaviusframework.types.IntDecoder.decodeBinary(typarrayBytes)
+            
+            typeRegistry.types[oid] = io.github.octaviusframework.types.PgType(oid, name, typrelid, typelem, typarray)
+        }
+    }
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {

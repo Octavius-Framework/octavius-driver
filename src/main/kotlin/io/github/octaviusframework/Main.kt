@@ -14,6 +14,8 @@ fun main() {
     val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
     val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
     
+    println("Sukces! Załadowano ${octaviusConn.typeRegistry.types.size} typów z pg_catalog.pg_type do rejestru.")
+    
     println("Sukces, testujemy Extended Query (SELECT 12345)...")
     val result = octaviusConn.queryExecutor.executeExtendedQuery("SELECT 12345 AS my_number, 'hello' AS my_string")
     
