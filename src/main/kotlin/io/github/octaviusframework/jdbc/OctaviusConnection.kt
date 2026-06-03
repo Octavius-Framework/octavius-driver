@@ -16,6 +16,49 @@ class OctaviusConnection(private val stream: PgStream) : Connection {
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
 
+    fun executeExtendedQuery(sql: String, params: List<ByteArray?> = emptyList()): List<io.github.octaviusframework.network.messages.DataRowMessage> {
+        val statementName = "stmt1"
+        val portalName = "portal1"
+        
+        stream.sendMessage(io.github.octaviusframework.network.messages.ParseMessage(statementName, sql))
+        stream.sendMessage(io.github.octaviusframework.network.messages.BindMessage(
+            portalName, 
+            statementName, 
+            params, 
+            listOf(0), // zakładamy tekstowe wejście dla uproszczenia (ale docelowo binarne 1)
+            listOf(1)  // żądamy wyjścia binarnego 1
+        ))
+        stream.sendMessage(io.github.octaviusframework.network.messages.DescribeMessage('P', portalName))
+        stream.sendMessage(io.github.octaviusframework.network.messages.ExecuteMessage(portalName, 0))
+        stream.sendMessage(io.github.octaviusframework.network.messages.SyncMessage())
+        
+        // Pętla odczytu odpowiedzi
+        val rows = mutableListOf<io.github.octaviusframework.network.messages.DataRowMessage>()
+        var rowDescription: io.github.octaviusframework.network.messages.RowDescriptionMessage? = null
+        
+        while (true) {
+            val msg = stream.receiveMessage()
+            when (msg) {
+                is io.github.octaviusframework.network.messages.ParseCompleteMessage -> println("ParseComplete")
+                is io.github.octaviusframework.network.messages.BindCompleteMessage -> println("BindComplete")
+                is io.github.octaviusframework.network.messages.RowDescriptionMessage -> {
+                    rowDescription = msg
+                    println("RowDescription: ${msg.fields.size} fields")
+                }
+                is io.github.octaviusframework.network.messages.NoDataMessage -> println("NoData (np. od INSERT/UPDATE)")
+                is io.github.octaviusframework.network.messages.DataRowMessage -> rows.add(msg)
+                is io.github.octaviusframework.network.messages.CommandCompleteMessage -> println("CommandComplete: ${msg.tag}")
+                is io.github.octaviusframework.network.messages.ErrorResponseMessage -> throw java.sql.SQLException("Błąd bazy: ${msg.message}")
+                is io.github.octaviusframework.network.messages.ReadyForQueryMessage -> {
+                    println("ReadyForQuery, transakcja zakończona.")
+                    break // wychodzimy z pętli Sync
+                }
+                else -> println("Ignoruje niespodziewana wiadomosc w trakcie zapytania: $msg")
+            }
+        }
+        return rows
+    }
+
     override fun createStatement(): Statement = TODO("Not yet implemented")
     override fun prepareStatement(sql: String?): PreparedStatement = TODO("Not yet implemented")
     override fun prepareCall(sql: String?): CallableStatement = TODO("Not yet implemented")

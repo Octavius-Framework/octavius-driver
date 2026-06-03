@@ -72,6 +72,43 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                     val status = inputStream.readByte().toInt().toChar()
                     return io.github.octaviusframework.network.messages.ReadyForQueryMessage(status)
                 }
+                '1' -> return io.github.octaviusframework.network.messages.ParseCompleteMessage
+                '2' -> return io.github.octaviusframework.network.messages.BindCompleteMessage
+                'n' -> return io.github.octaviusframework.network.messages.NoDataMessage
+                'C' -> {
+                    val commandTag = inputStream.readCString()
+                    return io.github.octaviusframework.network.messages.CommandCompleteMessage(commandTag)
+                }
+                'T' -> {
+                    val numFields = inputStream.readShort().toInt()
+                    val fields = mutableListOf<io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription>()
+                    for (i in 0 until numFields) {
+                        val fieldName = inputStream.readCString()
+                        val tableOid = inputStream.readInt()
+                        val columnAttr = inputStream.readShort()
+                        val dataTypeOid = inputStream.readInt()
+                        val dataTypeSize = inputStream.readShort()
+                        val typeModifier = inputStream.readInt()
+                        val formatCode = inputStream.readShort()
+                        fields.add(io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription(
+                            fieldName, tableOid, columnAttr, dataTypeOid, dataTypeSize, typeModifier, formatCode
+                        ))
+                    }
+                    return io.github.octaviusframework.network.messages.RowDescriptionMessage(fields)
+                }
+                'D' -> {
+                    val numColumns = inputStream.readShort().toInt()
+                    val columns = mutableListOf<ByteArray?>()
+                    for (i in 0 until numColumns) {
+                        val colLength = inputStream.readInt()
+                        if (colLength == -1) {
+                            columns.add(null)
+                        } else {
+                            columns.add(inputStream.readBytes(colLength))
+                        }
+                    }
+                    return io.github.octaviusframework.network.messages.DataRowMessage(columns)
+                }
                 else -> {
                     val unparsed = inputStream.readBytes(payloadLength)
                     println("IGNORUJE: Nieobsługiwany typ wiadomości synchronicznej: $tag")
