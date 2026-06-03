@@ -22,8 +22,22 @@ class OctaviusDriver : Driver {
     override fun connect(url: String, info: Properties?): Connection? {
         if (!acceptsURL(url)) return null
         
-        // TODO: Parsonowanie URL jdbc:octavius://host:port/database i nawiązywanie fizycznego połączenia TCP
-        return OctaviusConnection()
+        println("Próba połączenia z $url ...")
+        val stream = io.github.octaviusframework.network.PgStream("localhost", 5432)
+        
+        val startupParams = mapOf(
+            "user" to "postgres",
+            "database" to "postgres",
+            "client_encoding" to "UTF8"
+        )
+        
+        println("Wysyłam StartupMessage...")
+        stream.sendMessage(io.github.octaviusframework.network.messages.StartupMessage(startupParams))
+        
+        val authenticator = io.github.octaviusframework.auth.Authenticator(stream)
+        authenticator.authenticate("postgres", "1234") // hasło podane przez usera w czacie (docelowo z Properties)
+        
+        return OctaviusConnection(stream)
     }
 
     override fun acceptsURL(url: String): Boolean {

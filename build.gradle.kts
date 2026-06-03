@@ -1,5 +1,10 @@
 plugins {
     kotlin("jvm") version "2.3.10"
+    application
+}
+
+application {
+    mainClass.set("io.github.octaviusframework.MainKt")
 }
 
 group = "io.github.octaviusframework"
@@ -10,6 +15,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     testImplementation(kotlin("test"))
 }
 

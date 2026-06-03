@@ -1,10 +1,11 @@
 package io.github.octaviusframework.jdbc
 
+import io.github.octaviusframework.network.PgStream
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
 
-class OctaviusConnection : Connection {
+class OctaviusConnection(private val stream: PgStream) : Connection {
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
         if (iface.isInstance(this)) {
