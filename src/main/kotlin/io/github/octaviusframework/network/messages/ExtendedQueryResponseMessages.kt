@@ -21,9 +21,9 @@ class RowDescriptionMessage(val fields: List<FieldDescription>) : BackendMessage
     
     class FieldDescription(
         val name: String,
-        val tableOid: Int,
+        val tableOid: UInt,
         val columnAttrNumber: Short,
-        val dataTypeOid: Int,
+        val dataTypeOid: UInt,
         val dataTypeSize: Short,
         val typeModifier: Int,
         val formatCode: Short

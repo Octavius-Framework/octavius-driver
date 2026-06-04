@@ -2,23 +2,20 @@ package io.github.octaviusframework.jdbc
 
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
-import io.github.octaviusframework.types.TypeRegistry
-import io.github.octaviusframework.types.TypeRegistryLoader
+import io.github.octaviusframework.types.GlobalTypeRegistry
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
 
 class OctaviusConnection(private val stream: PgStream) : Connection {
     val queryExecutor = QueryExecutor(stream)
-    val typeRegistry = TypeRegistry()
 
     init {
-        TypeRegistryLoader.load(typeRegistry, queryExecutor)
+        GlobalTypeRegistry.ensureLoaded(queryExecutor)
     }
 
     fun reloadTypes() {
-        typeRegistry.clearOidMappings()
-        TypeRegistryLoader.load(typeRegistry, queryExecutor)
+        GlobalTypeRegistry.reload(queryExecutor)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -33,8 +30,8 @@ class OctaviusConnection(private val stream: PgStream) : Connection {
 
     private fun unsupported(): Nothing = throw SQLFeatureNotSupportedException("This feature is not supported by Octavius JDBC Driver")
 
-    override fun createStatement(): Statement = TODO("Not yet implemented")
-    override fun prepareStatement(sql: String?): PreparedStatement = TODO("Not yet implemented")
+    override fun createStatement(): Statement = unsupported()
+    override fun prepareStatement(sql: String?): PreparedStatement = unsupported()
     override fun prepareCall(sql: String?): CallableStatement = unsupported()
     override fun nativeSQL(sql: String?): String = sql ?: ""
     
@@ -48,7 +45,7 @@ class OctaviusConnection(private val stream: PgStream) : Connection {
     override fun getMetaData(): DatabaseMetaData = TODO("Not yet implemented")
     override fun setReadOnly(readOnly: Boolean) = TODO("Not yet implemented")
     override fun isReadOnly(): Boolean = TODO("Not yet implemented")
-    override fun setCatalog(catalog: String?) = TODO("Not yet implemented")
+    override fun setCatalog(catalog: String?) {  /* no-op */ }
     override fun getCatalog(): String = TODO("Not yet implemented")
     override fun setTransactionIsolation(level: Int) = TODO("Not yet implemented")
     override fun getTransactionIsolation(): Int = TODO("Not yet implemented")

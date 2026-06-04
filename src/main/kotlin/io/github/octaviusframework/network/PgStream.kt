@@ -96,9 +96,9 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                     val fields = mutableListOf<RowDescriptionMessage.FieldDescription>()
                     for (i in 0 until numFields) {
                         val fieldName = inputStream.readCString()
-                        val tableOid = inputStream.readInt()
+                        val tableOid = inputStream.readInt().toUInt()
                         val columnAttr = inputStream.readShort()
-                        val dataTypeOid = inputStream.readInt()
+                        val dataTypeOid = inputStream.readInt().toUInt()
                         val dataTypeSize = inputStream.readShort()
                         val typeModifier = inputStream.readInt()
                         val formatCode = inputStream.readShort()

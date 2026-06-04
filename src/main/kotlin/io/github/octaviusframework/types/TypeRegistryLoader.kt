@@ -6,55 +6,98 @@ import java.nio.ByteBuffer
 object TypeRegistryLoader {
 
     fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor) {
-        // Krok 1: Pobranie podstawowych typów
+        // typtype is b for a base type, c for a composite type (e.g., a table's row type), d for a domain, e for an enum type, p for a pseudo-type, r for a range type, or m for a multirange type.
+        // TODO m, p - przynajmniej record i void
         val typesSql = """
-            SELECT t.oid, t.typname, t.typrelid, t.typelem, t.typarray, n.nspname 
+            SELECT 
+                t.oid, t.typname, t.typrelid, t.typelem, t.typarray, t.typtype, t.typbasetype, n.nspname,
+                e.enumlabel,
+                r.rngsubtype,
+                a.attname, a.atttypid
             FROM pg_catalog.pg_type t
             JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+            LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
+            LEFT JOIN pg_catalog.pg_range r ON t.oid = r.rngtypid
+            LEFT JOIN pg_catalog.pg_attribute a ON t.typrelid = a.attrelid AND a.attnum > 0 AND a.attisdropped = false
+            ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
         
-        val typesResult = queryExecutor.query(typesSql)
+        val result = queryExecutor.query(typesSql)
         
-        for (row in typesResult) {
-            if (row.fields.size < 6) continue
-            val oidBytes = row.fields[0].rawValue ?: continue
-            val nameBytes = row.fields[1].rawValue ?: continue
-            val typrelidBytes = row.fields[2].rawValue ?: continue
-            val typelemBytes = row.fields[3].rawValue ?: continue
-            val typarrayBytes = row.fields[4].rawValue ?: continue
-            val nspnameBytes = row.fields[5].rawValue ?: continue
+        val enumMap = mutableMapOf<UInt, MutableList<String>>()
+        val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()
+        val rangeMap = mutableMapOf<UInt, UInt>()
+        
+        class BaseTypeInfo(
+            val name: String, val typrelid: UInt, val typelem: UInt,
+            val typtype: Char, val typbasetype: UInt, val schema: String
+        )
+        
+        val parsedTypes = mutableMapOf<UInt, BaseTypeInfo>()
+        
+        for (row in result) {
+            val oidBytes = row.fields[0].rawValue!!
+            val oid = ByteBuffer.wrap(oidBytes).int.toUInt()
             
-            val oid = ByteBuffer.wrap(oidBytes).int
-            val name = String(nameBytes, Charsets.UTF_8)
-            val typrelid = ByteBuffer.wrap(typrelidBytes).int
-            val typelem = ByteBuffer.wrap(typelemBytes).int
-            val typarray = ByteBuffer.wrap(typarrayBytes).int
-            val schema = String(nspnameBytes, Charsets.UTF_8)
+            // Zbieramy główne informacje o typie tylko za pierwszym razem dla danego OID
+            if (oid !in parsedTypes) {
+                val name = String(row.fields[1].rawValue!!, Charsets.UTF_8)
+                val typrelid = ByteBuffer.wrap(row.fields[2].rawValue!!).int.toUInt()
+                val typelem = ByteBuffer.wrap(row.fields[3].rawValue!!).int.toUInt()
+                val typtype = String(row.fields[5].rawValue!!, Charsets.UTF_8).first()
+                val typbasetype = ByteBuffer.wrap(row.fields[6].rawValue!!).int.toUInt()
+                val schema = String(row.fields[7].rawValue!!, Charsets.UTF_8)
+                
+                parsedTypes[oid] = BaseTypeInfo(name, typrelid, typelem, typtype, typbasetype, schema)
+            }
             
-            typeRegistry.types[oid] = PgType(oid, name, typrelid, typelem, typarray)
+            // Enum
+            val enumLabelBytes = row.fields[8].rawValue
+            if (enumLabelBytes != null) {
+                val label = String(enumLabelBytes, Charsets.UTF_8)
+                val enumList = enumMap.getOrPut(oid) { mutableListOf() }
+                if (!enumList.contains(label)) {
+                    enumList.add(label)
+                }
+            }
             
-            // Mapujemy ten konkretny OID na handler zdefiniowany w rejestrze
-            typeRegistry.bindOidToHandler(oid, schema, name)
+            // Range
+            val rngSubtypeBytes = row.fields[9].rawValue
+            if (rngSubtypeBytes != null) {
+                val rngSubtype = ByteBuffer.wrap(rngSubtypeBytes).int.toUInt()
+                rangeMap[oid] = rngSubtype
+            }
+            
+            // Composite
+            val attNameBytes = row.fields[10].rawValue
+            val attTypidBytes = row.fields[11].rawValue
+            
+            if (attNameBytes != null && attTypidBytes != null) {
+                val attName = String(attNameBytes, Charsets.UTF_8)
+                val attTypid = ByteBuffer.wrap(attTypidBytes).int.toUInt()
+                
+                val attrList = attrMap.getOrPut(oid) { LinkedHashMap() }
+                if (!attrList.containsKey(attName)) {
+                    attrList[attName] = attTypid
+                }
+            }
         }
-
-        // Krok 2: Pobranie struktury kompozytów z pg_attribute
-        val attrSql = "SELECT attrelid, attnum, attname, atttypid FROM pg_catalog.pg_attribute WHERE attnum > 0 AND attisdropped = false ORDER BY attrelid, attnum"
-        val attrResult = queryExecutor.query(attrSql)
-
-        for (row in attrResult) {
-            if (row.fields.size < 4) continue
-            val attrelidBytes = row.fields[0].rawValue ?: continue
-            val attnumBytes = row.fields[1].rawValue ?: continue
-            val attnameBytes = row.fields[2].rawValue ?: continue
-            val atttypidBytes = row.fields[3].rawValue ?: continue
-
-            val attrelid = ByteBuffer.wrap(attrelidBytes).int
-            val attnum = ByteBuffer.wrap(attnumBytes).short.toInt()
-            val attname = String(attnameBytes, Charsets.UTF_8)
-            val atttypid = ByteBuffer.wrap(atttypidBytes).int
-
-            val attr = PgAttribute(attrelid, attnum, attname, atttypid)
-            typeRegistry.relationAttributes.getOrPut(attrelid) { mutableListOf() }.add(attr)
+        
+        // Finalne budowanie prawidłowych obiektów instancji dla każdego wykrytego typu
+        for ((oid, info) in parsedTypes) {
+            val pgType = when {
+                info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
+                info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
+                info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid]!!)
+                info.typtype == 'c' || info.typrelid != 0u -> {
+                    val attrs = attrMap[oid] ?: LinkedHashMap()
+                    PgType.Composite(oid, info.name, info.schema, attrs)
+                }
+                info.typelem != 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
+                else -> PgType.Base(oid, info.name, info.schema)
+            }
+            
+            typeRegistry.types[oid] = pgType
         }
     }
 }

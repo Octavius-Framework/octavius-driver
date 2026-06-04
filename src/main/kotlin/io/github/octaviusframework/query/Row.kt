@@ -1,6 +1,7 @@
 package io.github.octaviusframework.query
 
 import io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription
+import io.github.octaviusframework.types.GlobalTypeRegistry
 
 data class Field(
     val descriptor: FieldDescription,
@@ -56,8 +57,10 @@ class OctaviusRow(
     override fun getValue(index: Int): Any? {
         val field = fields.getOrNull(index) ?: return null
         val bytes = field.rawValue ?: return null
-        // TODO: Decode properly using TypeRegistry based on field.descriptor.dataTypeOid
-        // For now, defaulting to string decoding.
+        val handler = GlobalTypeRegistry.registry.getHandlerByOid<Any>(field.descriptor.dataTypeOid)
+        if (handler != null) {
+            return handler.fromBinary(bytes)
+        }
         return String(bytes)
     }
 }

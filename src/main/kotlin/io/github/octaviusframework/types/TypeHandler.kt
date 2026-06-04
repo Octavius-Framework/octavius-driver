@@ -6,6 +6,7 @@ import kotlin.reflect.KClass
 interface TypeHandler<T : Any> {
     val pgTypeName: String
     val pgSchema: String get() = "pg_catalog"
+    val oid: UInt? get() = null
     val kotlinClass: KClass<T>
     val isDefaultForKotlinType: Boolean get() = false
     
@@ -15,6 +16,7 @@ interface TypeHandler<T : Any> {
 
 object ShortHandler : TypeHandler<Short> {
     override val pgTypeName = "int2"
+    override val oid: UInt = 21u
     override val kotlinClass = Short::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray) -> Short = { ByteBuffer.wrap(it).short }
@@ -23,6 +25,7 @@ object ShortHandler : TypeHandler<Short> {
 
 object IntHandler : TypeHandler<Int> {
     override val pgTypeName = "int4"
+    override val oid: UInt = 23u
     override val kotlinClass = Int::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray) -> Int = { ByteBuffer.wrap(it).int }
@@ -31,6 +34,7 @@ object IntHandler : TypeHandler<Int> {
 
 object LongHandler : TypeHandler<Long> {
     override val pgTypeName = "int8"
+    override val oid: UInt = 20u
     override val kotlinClass = Long::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray) -> Long = { ByteBuffer.wrap(it).long }
@@ -39,6 +43,7 @@ object LongHandler : TypeHandler<Long> {
 
 object FloatHandler : TypeHandler<Float> {
     override val pgTypeName = "float4"
+    override val oid: UInt = 700u
     override val kotlinClass = Float::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray) -> Float = { ByteBuffer.wrap(it).float }
@@ -47,6 +52,7 @@ object FloatHandler : TypeHandler<Float> {
 
 object DoubleHandler : TypeHandler<Double> {
     override val pgTypeName = "float8"
+    override val oid: UInt = 701u
     override val kotlinClass = Double::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray) -> Double = { ByteBuffer.wrap(it).double }
@@ -55,6 +61,7 @@ object DoubleHandler : TypeHandler<Double> {
 
 object BooleanHandler : TypeHandler<Boolean> {
     override val pgTypeName = "bool"
+    override val oid: UInt = 16u
     override val kotlinClass = Boolean::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray) -> Boolean = { it[0].toInt() != 0 }
@@ -63,6 +70,7 @@ object BooleanHandler : TypeHandler<Boolean> {
 
 object StringHandler : TypeHandler<String> {
     override val pgTypeName = "text"
+    override val oid: UInt = 25u
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = true
     
@@ -72,6 +80,7 @@ object StringHandler : TypeHandler<String> {
 
 object ByteArrayHandler : TypeHandler<ByteArray> {
     override val pgTypeName = "bytea"
+    override val oid: UInt = 17u
     override val kotlinClass = ByteArray::class
     override val isDefaultForKotlinType = true
     
