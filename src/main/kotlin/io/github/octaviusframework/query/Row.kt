@@ -1,11 +1,16 @@
 package io.github.octaviusframework.query
 
-import io.github.octaviusframework.network.messages.DataRowMessage
-import io.github.octaviusframework.network.messages.RowDescriptionMessage
+import io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription
+
+data class Field(
+    val descriptor: FieldDescription,
+    val rawValue: ByteArray?
+)
 
 interface Row {
+    val fields: List<Field>
     val columnNames: List<String>
-    
+
     fun getValue(columnName: String): Any?
     fun getValue(index: Int): Any?
 }
@@ -29,15 +34,19 @@ inline fun <reified T> Row.get(index: Int): T {
 }
 
 class OctaviusRow(
-    private val dataRow: DataRowMessage,
-    private val rowDescription: RowDescriptionMessage?
+    columns: List<ByteArray?>,
+    descriptors: List<FieldDescription>
 ) : Row {
 
+    override val fields: List<Field> = descriptors.zip(columns) { desc, bytes ->
+        Field(desc, bytes)
+    }
+
     override val columnNames: List<String>
-        get() = rowDescription?.fields?.map { it.name } ?: emptyList()
+        get() = fields.map { it.descriptor.name }
 
     private fun getColumnIndex(columnName: String): Int {
-        val index = rowDescription?.fields?.indexOfFirst { it.name == columnName } ?: -1
+        val index = fields.indexOfFirst { it.descriptor.name == columnName }
         if (index == -1) throw IllegalArgumentException("Column not found: $columnName")
         return index
     }
@@ -45,8 +54,9 @@ class OctaviusRow(
     override fun getValue(columnName: String): Any? = getValue(getColumnIndex(columnName))
 
     override fun getValue(index: Int): Any? {
-        val bytes = dataRow.columns.getOrNull(index) ?: return null
-        // TODO: Decode properly using TypeRegistry based on OID from rowDescription.
+        val field = fields.getOrNull(index) ?: return null
+        val bytes = field.rawValue ?: return null
+        // TODO: Decode properly using TypeRegistry based on field.descriptor.dataTypeOid
         // For now, defaulting to string decoding.
         return String(bytes)
     }

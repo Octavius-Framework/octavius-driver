@@ -9,8 +9,8 @@ interface TypeHandler<T : Any> {
     val kotlinClass: KClass<T>
     val isDefaultForKotlinType: Boolean get() = false
     
-    val fromBinary: ((ByteArray) -> T)? get() = null
-    val toBinary: ((T) -> ByteArray)? get() = null
+    val fromBinary: (ByteArray) -> T
+    val toBinary: (T) -> ByteArray
     
     val fromPgString: (String) -> T
     val toPgString: (T) -> String

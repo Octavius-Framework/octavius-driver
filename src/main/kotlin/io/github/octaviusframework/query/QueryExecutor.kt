@@ -38,6 +38,13 @@ class QueryExecutor(private val stream: PgStream) {
             }
         }
         
-        return QueryResult(rowDescription, rows, commandTag)
+        val finalRows = if (rowDescription != null) {
+            val descriptors = rowDescription.fields
+            rows.map { OctaviusRow(it.columns, descriptors) }
+        } else {
+            emptyList()
+        }
+        
+        return QueryResult(finalRows, commandTag)
     }
 }
