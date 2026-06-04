@@ -8,8 +8,16 @@ data class PgType(
     val arrayId: Int // OID typu tablicowego dla tego typu
 )
 
+data class PgAttribute(
+    val relationId: Int,
+    val attnum: Int,
+    val name: String,
+    val typeOid: Int
+)
+
 class TypeRegistry {
     val types = mutableMapOf<Int, PgType>()
+    val relationAttributes = mutableMapOf<Int, MutableList<PgAttribute>>()
     val decoders = mutableMapOf<Int, PgDecoder<*>>()
 
     init {

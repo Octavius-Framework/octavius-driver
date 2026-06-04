@@ -15,10 +15,10 @@ class OctaviusConnection(private val stream: PgStream) : Connection {
     }
 
     private fun loadTypeRegistry() {
-        val sql = "SELECT oid, typname, typrelid, typelem, typarray FROM pg_catalog.pg_type"
-        val result = queryExecutor.executeExtendedQuery(sql)
+        val typesSql = "SELECT oid, typname, typrelid, typelem, typarray FROM pg_catalog.pg_type"
+        val typesResult = queryExecutor.executeExtendedQuery(typesSql)
         
-        for (row in result.rows) {
+        for (row in typesResult.rows) {
             if (row.columns.size < 5) continue
             val oidBytes = row.columns[0] ?: continue
             val nameBytes = row.columns[1] ?: continue
@@ -33,6 +33,27 @@ class OctaviusConnection(private val stream: PgStream) : Connection {
             val typarray = io.github.octaviusframework.types.IntDecoder.decodeBinary(typarrayBytes)
             
             typeRegistry.types[oid] = io.github.octaviusframework.types.PgType(oid, name, typrelid, typelem, typarray)
+        }
+
+        // Krok 2: Pobranie struktury kompozytów z pg_attribute
+        val attrSql = "SELECT attrelid, attnum, attname, atttypid FROM pg_catalog.pg_attribute WHERE attnum > 0 AND attisdropped = false ORDER BY attrelid, attnum"
+        val attrResult = queryExecutor.executeExtendedQuery(attrSql)
+
+        for (row in attrResult.rows) {
+            if (row.columns.size < 4) continue
+            val attrelidBytes = row.columns[0] ?: continue
+            val attnumBytes = row.columns[1] ?: continue // wewnętrznie int2 (smallint), zajmuje 2 bajty w binarce? Zobaczmy co przyjdzie.
+            val attnameBytes = row.columns[2] ?: continue
+            val atttypidBytes = row.columns[3] ?: continue
+
+            val attrelid = io.github.octaviusframework.types.IntDecoder.decodeBinary(attrelidBytes)
+            // attnum to int2, więc binarne 2 bajty, musimy zdekodować jako short:
+            val attnum = java.nio.ByteBuffer.wrap(attnumBytes).short.toInt()
+            val attname = io.github.octaviusframework.types.StringDecoder.decodeBinary(attnameBytes)
+            val atttypid = io.github.octaviusframework.types.IntDecoder.decodeBinary(atttypidBytes)
+
+            val attr = io.github.octaviusframework.types.PgAttribute(attrelid, attnum, attname, atttypid)
+            typeRegistry.relationAttributes.getOrPut(attrelid) { mutableListOf() }.add(attr)
         }
     }
 

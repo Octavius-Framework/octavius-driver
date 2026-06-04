@@ -12,17 +12,28 @@ fun main() {
     props.setProperty("password", "1234")
     
     val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-    val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+    val octaviusConn1 = connection.unwrap(OctaviusConnection::class.java)
     
-    println("Sukces! Załadowano ${octaviusConn.typeRegistry.types.size} typów z pg_catalog.pg_type do rejestru.")
+    println("Tworzę testowy kompozyt w bazie...")
+    octaviusConn1.queryExecutor.executeExtendedQuery("DROP TYPE IF EXISTS my_custom_composite CASCADE")
+    octaviusConn1.queryExecutor.executeExtendedQuery("CREATE TYPE my_custom_composite AS (id int, name text)")
     
-    println("Sukces, testujemy Extended Query (SELECT 12345)...")
-    val result = octaviusConn.queryExecutor.executeExtendedQuery("SELECT 12345 AS my_number, 'hello' AS my_string")
+    // Nawiązujemy nowe połączenie, aby TypeRegistry załadowało nowo utworzony typ z bazy
+    val connection2 = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+    val octaviusConn2 = connection2.unwrap(OctaviusConnection::class.java)
     
-    println("Odczytano wierszy: ${result.rows.size}")
-    for (row in result.rows) {
-        val col1Size = row.columns[0]?.size ?: 0
-        val col2Size = row.columns[1]?.size ?: 0
-        println("Wiersz -> kolumna 1 [binarnie, $col1Size bajtów], kolumna 2 [binarnie, $col2Size bajtów]")
-    }
+    println("Sukces, testujemy pobieranie kompozytu z bazy...")
+    val result = octaviusConn2.queryExecutor.executeExtendedQuery("SELECT ROW(42, 'Hello Octavius!')::my_custom_composite AS my_comp")
+    
+    val fieldMeta = result.rowDescription?.fields?.get(0)
+    val compositeOid = fieldMeta?.dataTypeOid ?: throw IllegalStateException("Brak opisu kolumny")
+    
+    println("Pobieramy kolumnę 'my_comp' o OID typu: $compositeOid")
+    
+    val compositeBytes = result.rows[0].columns[0]!!
+    val decoder = io.github.octaviusframework.types.CompositeDecoder(octaviusConn2.typeRegistry, compositeOid)
+    
+    val decodedMap = decoder.decodeBinary(compositeBytes)
+    println("ZDEKODOWANY KOMPOZYT KOTLINOWY:")
+    println(decodedMap)
 }
