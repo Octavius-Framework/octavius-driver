@@ -2,7 +2,6 @@ package io.github.octaviusframework.io
 
 import java.io.DataInputStream
 import java.io.InputStream
-import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 class PgInputStream(inputStream: InputStream) {

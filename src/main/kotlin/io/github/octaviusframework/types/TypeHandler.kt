@@ -1,6 +1,6 @@
 package io.github.octaviusframework.types
 
-import java.nio.ByteBuffer
+import io.github.octaviusframework.io.*
 import kotlin.reflect.KClass
 
 interface TypeHandler<T : Any> {
@@ -19,8 +19,8 @@ object ShortHandler : TypeHandler<Short> {
     override val oid: UInt = 21u
     override val kotlinClass = Short::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArray) -> Short = { ByteBuffer.wrap(it).short }
-    override val toBinary: (Short) -> ByteArray = { ByteBuffer.allocate(2).putShort(it).array() }
+    override val fromBinary: (ByteArray) -> Short = { it.getShortBE() }
+    override val toBinary: (Short) -> ByteArray = { it.toByteArrayBE() }
 }
 
 object IntHandler : TypeHandler<Int> {
@@ -28,8 +28,8 @@ object IntHandler : TypeHandler<Int> {
     override val oid: UInt = 23u
     override val kotlinClass = Int::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArray) -> Int = { ByteBuffer.wrap(it).int }
-    override val toBinary: (Int) -> ByteArray = { ByteBuffer.allocate(4).putInt(it).array() }
+    override val fromBinary: (ByteArray) -> Int = { it.getIntBE() }
+    override val toBinary: (Int) -> ByteArray = { it.toByteArrayBE() }
 }
 
 object LongHandler : TypeHandler<Long> {
@@ -37,8 +37,8 @@ object LongHandler : TypeHandler<Long> {
     override val oid: UInt = 20u
     override val kotlinClass = Long::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArray) -> Long = { ByteBuffer.wrap(it).long }
-    override val toBinary: (Long) -> ByteArray = { ByteBuffer.allocate(8).putLong(it).array() }
+    override val fromBinary: (ByteArray) -> Long = { it.getLongBE() }
+    override val toBinary: (Long) -> ByteArray = { it.toByteArrayBE() }
 }
 
 object FloatHandler : TypeHandler<Float> {
@@ -46,8 +46,8 @@ object FloatHandler : TypeHandler<Float> {
     override val oid: UInt = 700u
     override val kotlinClass = Float::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArray) -> Float = { ByteBuffer.wrap(it).float }
-    override val toBinary: (Float) -> ByteArray = { ByteBuffer.allocate(4).putFloat(it).array() }
+    override val fromBinary: (ByteArray) -> Float = { it.getFloatBE() }
+    override val toBinary: (Float) -> ByteArray = { it.toByteArrayBE() }
 }
 
 object DoubleHandler : TypeHandler<Double> {
@@ -55,8 +55,8 @@ object DoubleHandler : TypeHandler<Double> {
     override val oid: UInt = 701u
     override val kotlinClass = Double::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArray) -> Double = { ByteBuffer.wrap(it).double }
-    override val toBinary: (Double) -> ByteArray = { ByteBuffer.allocate(8).putDouble(it).array() }
+    override val fromBinary: (ByteArray) -> Double = { it.getDoubleBE() }
+    override val toBinary: (Double) -> ByteArray = { it.toByteArrayBE() }
 }
 
 object BooleanHandler : TypeHandler<Boolean> {

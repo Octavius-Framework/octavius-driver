@@ -1,7 +1,7 @@
 package io.github.octaviusframework.types
 
+import io.github.octaviusframework.io.getUIntBE
 import io.github.octaviusframework.query.QueryExecutor
-import java.nio.ByteBuffer
 
 object TypeRegistryLoader {
 
@@ -37,15 +37,15 @@ object TypeRegistryLoader {
         
         for (row in result) {
             val oidBytes = row.fields[0].rawValue!!
-            val oid = ByteBuffer.wrap(oidBytes).int.toUInt()
+            val oid = oidBytes.getUIntBE()
             
             // Zbieramy główne informacje o typie tylko za pierwszym razem dla danego OID
             if (oid !in parsedTypes) {
                 val name = String(row.fields[1].rawValue!!, Charsets.UTF_8)
-                val typrelid = ByteBuffer.wrap(row.fields[2].rawValue!!).int.toUInt()
-                val typelem = ByteBuffer.wrap(row.fields[3].rawValue!!).int.toUInt()
+                val typrelid = row.fields[2].rawValue!!.getUIntBE()
+                val typelem = row.fields[3].rawValue!!.getUIntBE()
                 val typtype = String(row.fields[5].rawValue!!, Charsets.UTF_8).first()
-                val typbasetype = ByteBuffer.wrap(row.fields[6].rawValue!!).int.toUInt()
+                val typbasetype = row.fields[6].rawValue!!.getUIntBE()
                 val schema = String(row.fields[7].rawValue!!, Charsets.UTF_8)
                 
                 parsedTypes[oid] = BaseTypeInfo(name, typrelid, typelem, typtype, typbasetype, schema)
@@ -64,7 +64,7 @@ object TypeRegistryLoader {
             // Range
             val rngSubtypeBytes = row.fields[9].rawValue
             if (rngSubtypeBytes != null) {
-                val rngSubtype = ByteBuffer.wrap(rngSubtypeBytes).int.toUInt()
+                val rngSubtype = rngSubtypeBytes.getUIntBE()
                 rangeMap[oid] = rngSubtype
             }
             
@@ -74,7 +74,7 @@ object TypeRegistryLoader {
             
             if (attNameBytes != null && attTypidBytes != null) {
                 val attName = String(attNameBytes, Charsets.UTF_8)
-                val attTypid = ByteBuffer.wrap(attTypidBytes).int.toUInt()
+                val attTypid = attTypidBytes.getUIntBE()
                 
                 val attrList = attrMap.getOrPut(oid) { LinkedHashMap() }
                 if (!attrList.containsKey(attName)) {
