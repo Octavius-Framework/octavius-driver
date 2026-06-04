@@ -1,10 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.4.0"
-    application
-}
-
-application {
-    mainClass.set("io.github.octaviusframework.MainKt")
+    alias(libs.plugins.kotlin.jvm)
 }
 
 group = "io.github.octaviusframework"
@@ -15,9 +10,10 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
-    implementation(kotlin("reflect"))
-    testImplementation(kotlin("test"))
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlin.reflect)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.jupiter)
 }
 
 kotlin {

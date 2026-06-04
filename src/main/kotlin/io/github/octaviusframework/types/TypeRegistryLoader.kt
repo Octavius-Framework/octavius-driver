@@ -1,6 +1,7 @@
 package io.github.octaviusframework.types
 
 import io.github.octaviusframework.query.QueryExecutor
+import java.nio.ByteBuffer
 
 object TypeRegistryLoader {
 
@@ -23,11 +24,11 @@ object TypeRegistryLoader {
             val typarrayBytes = row.columns[4] ?: continue
             val nspnameBytes = row.columns[5] ?: continue
             
-            val oid = java.nio.ByteBuffer.wrap(oidBytes).int
+            val oid = ByteBuffer.wrap(oidBytes).int
             val name = String(nameBytes, Charsets.UTF_8)
-            val typrelid = java.nio.ByteBuffer.wrap(typrelidBytes).int
-            val typelem = java.nio.ByteBuffer.wrap(typelemBytes).int
-            val typarray = java.nio.ByteBuffer.wrap(typarrayBytes).int
+            val typrelid = ByteBuffer.wrap(typrelidBytes).int
+            val typelem = ByteBuffer.wrap(typelemBytes).int
+            val typarray = ByteBuffer.wrap(typarrayBytes).int
             val schema = String(nspnameBytes, Charsets.UTF_8)
             
             typeRegistry.types[oid] = PgType(oid, name, typrelid, typelem, typarray)
@@ -47,10 +48,10 @@ object TypeRegistryLoader {
             val attnameBytes = row.columns[2] ?: continue
             val atttypidBytes = row.columns[3] ?: continue
 
-            val attrelid = java.nio.ByteBuffer.wrap(attrelidBytes).int
-            val attnum = java.nio.ByteBuffer.wrap(attnumBytes).short.toInt()
+            val attrelid = ByteBuffer.wrap(attrelidBytes).int
+            val attnum = ByteBuffer.wrap(attnumBytes).short.toInt()
             val attname = String(attnameBytes, Charsets.UTF_8)
-            val atttypid = java.nio.ByteBuffer.wrap(atttypidBytes).int
+            val atttypid = ByteBuffer.wrap(atttypidBytes).int
 
             val attr = PgAttribute(attrelid, attnum, attname, atttypid)
             typeRegistry.relationAttributes.getOrPut(attrelid) { mutableListOf() }.add(attr)
