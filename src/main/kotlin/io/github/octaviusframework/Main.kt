@@ -3,6 +3,7 @@ package io.github.octaviusframework
 import java.sql.DriverManager
 import java.util.Properties
 import io.github.octaviusframework.jdbc.OctaviusConnection
+import io.github.octaviusframework.query.get
 
 fun main() {
     println("Zaczynamy test!")
@@ -27,13 +28,17 @@ fun main() {
     
     val fieldMeta = result.rowDescription?.fields?.get(0)
     val compositeOid = fieldMeta?.dataTypeOid ?: throw IllegalStateException("Brak opisu kolumny")
-    
+
     println("Pobieramy kolumnę 'my_comp' o OID typu: $compositeOid")
     
-    val compositeBytes = result.rows[0].columns[0]!!
+    val compositeBytes = result.rawRows[0].columns[0]!!
     val decoder = io.github.octaviusframework.types.CompositeDecoder(octaviusConn2.typeRegistry, compositeOid)
     
     val decodedMap = decoder.decodeBinary(compositeBytes)
     println("ZDEKODOWANY KOMPOZYT KOTLINOWY:")
     println(decodedMap)
+
+    val result2 = octaviusConn2.queryExecutor.executeExtendedQuery("SELECT '123'::text AS txt")
+    println(result2.rows.first().get<String>("txt"))
+
 }
