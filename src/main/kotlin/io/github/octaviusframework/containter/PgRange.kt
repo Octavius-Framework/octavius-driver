@@ -9,8 +9,8 @@ import io.github.octaviusframework.types.TypeRegistry
 class PgRange internal constructor(
     val elementOid: UInt,
     val flags: Byte,
-    val rawLowerBound: Any?,
-    val rawUpperBound: Any?,
+    val lowerBoundField: ContainerField?,
+    val upperBoundField: ContainerField?,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) {
     val isEmpty: Boolean get() = (flags.toInt() and 0x01) != 0
@@ -27,7 +27,7 @@ class PgRange internal constructor(
      */
     inline fun <reified T> lowerBound(): T? {
         if (isEmpty || isLowerInfinite || isLowerNull) return null
-        return parseBound(rawLowerBound)
+        return parseBound(lowerBoundField)
     }
 
     /**
@@ -36,21 +36,20 @@ class PgRange internal constructor(
      */
     inline fun <reified T> upperBound(): T? {
         if (isEmpty || isUpperInfinite || isUpperNull) return null
-        return parseBound(rawUpperBound)
+        return parseBound(upperBoundField)
     }
 
     @PublishedApi
-    internal inline fun <reified T> parseBound(element: Any?): T? {
-        if (element == null) return null
-        if (element is T) return element
+    internal inline fun <reified T> parseBound(field: ContainerField?): T? {
+        if (field == null) return null
+        if (field.eagerContainer != null && field.eagerContainer is T) return field.eagerContainer as T
 
-        val bytes = element as? io.github.octaviusframework.io.ByteArrayWindow
-            ?: throw IllegalStateException("Oczekiwano PgBufferWindow, otrzymano ${element::class.simpleName}")
+        val window = field.rawValue ?: return null
 
         val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
             ?: throw IllegalStateException("Nie znaleziono handlera dla elementów zakresu o OID: $elementOid")
             
-        val parsed = handler.fromBinary(bytes)
+        val parsed = handler.fromBinary(window)
         if (parsed is T) {
             return parsed
         } else {

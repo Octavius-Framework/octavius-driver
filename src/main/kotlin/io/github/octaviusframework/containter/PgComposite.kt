@@ -1,7 +1,13 @@
 package io.github.octaviusframework.containter
 
+import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeRegistry
+
+data class ContainerField(
+    val rawValue: io.github.octaviusframework.io.ByteArrayWindow?,
+    val eagerContainer: Any? = null
+)
 
 /**
  * Reprezentuje strukturę kompozytu (np. wiersz konkretnego typu) załadowaną z bazy danych.
@@ -9,7 +15,7 @@ import io.github.octaviusframework.types.TypeRegistry
  */
 class PgComposite internal constructor(
     val type: PgType.Composite,
-    val rawAttributes: List<Any?>,
+    val fields: List<ContainerField>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) {
     /**
@@ -22,17 +28,16 @@ class PgComposite internal constructor(
      * Leniwie rzutuje i zwraca atrybut po indeksie.
      */
     inline fun <reified T> get(index: Int): T? {
-        val element = rawAttributes[index] ?: return null
-        if (element is T) return element
+        val field = fields[index]
+        if (field.eagerContainer != null && field.eagerContainer is T) return field.eagerContainer as T
 
-        val bytes = element as? io.github.octaviusframework.io.ByteArrayWindow
-            ?: throw IllegalStateException("Oczekiwano PgBufferWindow, otrzymano ${element::class.simpleName}")
+        val window = field.rawValue ?: return null
 
         val oid = type.attributes.values.elementAt(index)
         val handler = typeRegistry.getHandlerByOid<Any>(oid)
             ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $oid")
         
-        val parsed = handler.fromBinary(bytes)
+        val parsed = handler.fromBinary(window)
         if (parsed is T) {
             return parsed
         } else {

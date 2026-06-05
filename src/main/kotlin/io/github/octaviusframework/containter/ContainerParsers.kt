@@ -9,6 +9,11 @@ import io.github.octaviusframework.types.TypeRegistry
 
 object ContainerParsers {
 
+    fun isContainerType(oid: UInt, typeRegistry: TypeRegistry): Boolean {
+        val pgType = typeRegistry.types[oid] ?: return false
+        return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange
+    }
+
     fun parseEagerContainer(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): Any {
         val pgType = typeRegistry.types[oid]
         return when (pgType) {
@@ -36,20 +41,29 @@ object ContainerParsers {
         }
         
         val totalElements = dimensions.fold(1) { acc, dim -> acc * dim.size }
-        val rawElements = ArrayList<Any?>(if (ndims == 0) 0 else totalElements)
+        val count = if (ndims == 0) 0 else totalElements
         
-        for (i in 0 until (if (ndims == 0) 0 else totalElements)) {
+        val isContainer = isContainerType(elementOid, typeRegistry)
+        val windowsList = if (!isContainer) ArrayList<ByteArrayWindow?>(count) else null
+        val eagerList = if (isContainer) ArrayList<Any?>(count) else null
+        
+        for (i in 0 until count) {
             val len = window.getIntBE(offset); offset += 4
             if (len == -1) {
-                rawElements.add(null)
+                windowsList?.add(null)
+                eagerList?.add(null)
             } else {
                 val elementWindow = window.slice(offset, len)
-                rawElements.add(parseEagerContainer(elementWindow, elementOid, typeRegistry))
+                if (isContainer) {
+                    eagerList!!.add(parseEagerContainer(elementWindow, elementOid, typeRegistry))
+                } else {
+                    windowsList!!.add(elementWindow)
+                }
                 offset += len
             }
         }
         
-        return PgArray(elementOid, dimensions, hasNullsInt != 0, rawElements, typeRegistry)
+        return PgArray(elementOid, dimensions, hasNullsInt != 0, windowsList, eagerList, typeRegistry)
     }
 
     fun parsePgComposite(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgComposite {
@@ -59,20 +73,24 @@ object ContainerParsers {
         var offset = 0
         val numFields = window.getIntBE(offset); offset += 4
         
-        val rawAttributes = ArrayList<Any?>(numFields)
+        val fields = ArrayList<ContainerField>(numFields)
         for (i in 0 until numFields) {
             val fieldOid = window.getUIntBE(offset); offset += 4
             val len = window.getIntBE(offset); offset += 4
             if (len == -1) {
-                rawAttributes.add(null)
+                fields.add(ContainerField(null, null))
             } else {
                 val fieldWindow = window.slice(offset, len)
-                rawAttributes.add(parseEagerContainer(fieldWindow, fieldOid, typeRegistry))
+                if (isContainerType(fieldOid, typeRegistry)) {
+                    fields.add(ContainerField(fieldWindow, parseEagerContainer(fieldWindow, fieldOid, typeRegistry)))
+                } else {
+                    fields.add(ContainerField(fieldWindow, null))
+                }
                 offset += len
             }
         }
         
-        return PgComposite(pgType, rawAttributes, typeRegistry)
+        return PgComposite(pgType, fields, typeRegistry)
     }
 
     fun parsePgRange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgRange {
@@ -88,23 +106,33 @@ object ContainerParsers {
         val isUpperInfinite = (flags.toInt() and 0x10) != 0
         val isUpperNull = (flags.toInt() and 0x40) != 0
         
-        var rawLowerBound: Any? = null
+        val isSubtypeContainer = isContainerType(pgType.subtypeOid, typeRegistry)
+        
+        var lowerField: ContainerField? = null
         if (!isEmpty && !isLowerInfinite && !isLowerNull) {
             val len = window.getIntBE(offset); offset += 4
             val boundWindow = window.slice(offset, len)
-            rawLowerBound = parseEagerContainer(boundWindow, pgType.subtypeOid, typeRegistry)
+            lowerField = if (isSubtypeContainer) {
+                ContainerField(boundWindow, parseEagerContainer(boundWindow, pgType.subtypeOid, typeRegistry))
+            } else {
+                ContainerField(boundWindow, null)
+            }
             offset += len
         }
         
-        var rawUpperBound: Any? = null
+        var upperField: ContainerField? = null
         if (!isEmpty && !isUpperInfinite && !isUpperNull) {
             val len = window.getIntBE(offset); offset += 4
             val boundWindow = window.slice(offset, len)
-            rawUpperBound = parseEagerContainer(boundWindow, pgType.subtypeOid, typeRegistry)
+            upperField = if (isSubtypeContainer) {
+                ContainerField(boundWindow, parseEagerContainer(boundWindow, pgType.subtypeOid, typeRegistry))
+            } else {
+                ContainerField(boundWindow, null)
+            }
             offset += len
         }
         
-        return PgRange(pgType.subtypeOid, flags, rawLowerBound, rawUpperBound, typeRegistry)
+        return PgRange(pgType.subtypeOid, flags, lowerField, upperField, typeRegistry)
     }
 
     fun parsePgMultirange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgMultirange {
