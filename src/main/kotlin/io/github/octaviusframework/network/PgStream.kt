@@ -30,8 +30,8 @@ class PgStream(host: String, port: Int) : AutoCloseable {
 
     init {
         socket.connect(InetSocketAddress(host, port), 10000)
-        inputStream = PgInputStream(socket.getInputStream())
-        outputStream = PgOutputStream(socket.getOutputStream())
+        inputStream = PgInputStream(socket.getInputStream().buffered(8192))
+        outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
     }
 
     val parameters = mutableMapOf<String, String>()
