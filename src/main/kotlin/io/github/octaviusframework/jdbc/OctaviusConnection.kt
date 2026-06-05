@@ -226,6 +226,34 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 
+    //------------------------------------------SEARCH PATH-------------------------------------------------------------
+    private var savedSearchPath: List<String>? = null
+
+    fun getSearchPath(): List<String> {
+        checkClosed()
+        if (savedSearchPath == null) {
+            val result = queryExecutor.query("SELECT unnest(current_schemas(false))")
+            savedSearchPath = result.map { it.get<String>(0) }
+        }
+        return savedSearchPath!!
+    }
+
+    /**
+     * Search path powinien być aktualizowany za pomocą tej metody, ponieważ zapisana
+     * tutaj wartość będzie używana do rozwiązywania OID, jak nie poda się schematu jawnie.
+     */
+    fun setSearchPath(vararg schemas: String) {
+        checkClosed()
+        if (schemas.isEmpty()) {
+            queryExecutor.execute("SET search_path TO DEFAULT")
+            this.savedSearchPath = null
+        } else {
+            val pathStr = schemas.joinToString(", ")
+            queryExecutor.execute("SET search_path TO $pathStr")
+            this.savedSearchPath = schemas.toList()
+        }
+    }
+
     //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
     private var catalogName: String? = null
 
