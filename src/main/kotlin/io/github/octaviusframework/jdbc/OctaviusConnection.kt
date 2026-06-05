@@ -8,6 +8,11 @@ import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
 
+/**
+ * Represents a connection to a database within the Octavius Framework.
+ * It implements the standard JDBC [Connection] interface but overrides
+ * certain behaviors to fit the framework's architecture.
+ */
 class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
     val queryExecutor = QueryExecutor(stream, typeRegistry)
@@ -62,7 +67,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         
         val originalTimeout = stream.networkTimeout
         return try {
-            // W JDBC timeout dla isValid jest w sekundach (0 oznacza brak limitu)
+            // In JDBC, the timeout for isValid is in seconds (0 means no limit)
             stream.networkTimeout = timeout * 1000
             queryExecutor.execute("")
             true
@@ -229,6 +234,12 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     //------------------------------------------SEARCH PATH-------------------------------------------------------------
     private var savedSearchPath: List<String>? = null
 
+    /**
+     * Retrieves the current search path. If it hasn't been cached yet,
+     * it queries the database to fetch the currently active schemas.
+     *
+     * @return A list of schema names representing the current search path.
+     */
     fun getSearchPath(): List<String> {
         checkClosed()
         if (savedSearchPath == null) {
@@ -239,8 +250,14 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     }
 
     /**
-     * Search path powinien być aktualizowany za pomocą tej metody, ponieważ zapisana
-     * tutaj wartość będzie używana do rozwiązywania OID, jak nie poda się schematu jawnie.
+     * Sets the current search path for this connection.
+     *
+     * The search path should be updated using this method instead of executing a raw SQL query.
+     * The framework caches this value and uses it internally for resolving OIDs when a database
+     * schema is not explicitly provided.
+     *
+     * @param schemas An array of schema names to be set as the new search path.
+     *                If empty, the search path is reset to DEFAULT.
      */
     fun setSearchPath(vararg schemas: String) {
         checkClosed()
@@ -262,7 +279,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         // no-op
     }
 
-    override fun getSchema(): String? {
+    override fun getSchema(): String {
         checkClosed()
         val result = queryExecutor.query("SELECT current_schema()")
         val searchPath = result[0].get<String>(0)
@@ -282,16 +299,16 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing = throw SQLFeatureNotSupportedException("This feature is not supported by Octavius JDBC Driver")
-    // zastąpione za pomocą io.github.octaviusframework.container.ContainerFactory.kt
+    // Replaced by io.github.octaviusframework.container.ContainerFactory.kt
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()
     override fun createStruct(typeName: String?, attributes: Array<out Any>?): Struct = unsupported()
 
-    // Postgres nie posiada takich typów
+    // Postgres does not have these types
     override fun createClob(): Clob = unsupported()
     override fun createBlob(): Blob = unsupported()
     override fun createNClob(): NClob = unsupported()
 
-    // Brak wsparcia dla standardowych Statement, wymuszają one result set
+    // No support for standard Statements, as they force a result set
     override fun createStatement(): Statement = unsupported() // Used by hikari when connectionTestQuery is set
     override fun createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = unsupported()
     override fun createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = unsupported()
@@ -305,10 +322,10 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun prepareCall(sql: String?, resultSetType: Int, resultSetConcurrency: Int): CallableStatement = unsupported()
     override fun prepareCall(sql: String?, resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): CallableStatement = unsupported()
 
-    // Brak wsparcia dla ResultSet
+    // No support for ResultSet
     override fun setHoldability(holdability: Int) = unsupported()
     override fun getHoldability(): Int = unsupported()
-    // Oparte o TypeRegistry
+    // Based on TypeRegistry
     override fun getTypeMap(): MutableMap<String, Class<*>> = unsupported()
     override fun setTypeMap(map: MutableMap<String, Class<*>>?) = unsupported()
 }
