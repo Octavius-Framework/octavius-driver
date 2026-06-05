@@ -2,6 +2,7 @@ package io.github.octaviusframework.jdbc
 
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
+import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import java.sql.*
 import java.util.Properties
@@ -14,6 +15,79 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor)
     }
+
+    private var isClosedFlag: Boolean = false
+    private var readOnlyFlag: Boolean = false
+
+
+    private fun checkClosed() {
+        if (isClosedFlag) throw SQLException("Connection is closed")
+    }
+
+    fun reloadTypes() {
+        GlobalTypeRegistry.reload(url, queryExecutor)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> unwrap(iface: Class<T>): T {
+        if (iface.isInstance(this)) {
+            return this as T
+        }
+        throw SQLException("Cannot unwrap to ${iface.name}")
+    }
+
+    override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
+
+
+
+    override fun nativeSQL(sql: String?): String = sql ?: ""
+
+    override fun close() {
+        if (!isClosedFlag) {
+            isClosedFlag = true
+            stream.close()
+        }
+    }
+
+    override fun isClosed(): Boolean = isClosedFlag // required by Hikari
+    
+    override fun getMetaData(): DatabaseMetaData = unsupported()
+
+    override fun getWarnings(): SQLWarning? = TODO("Not yet implemented")
+    override fun clearWarnings() = TODO("Not yet implemented") // required by Hikari
+
+    override fun createSQLXML(): SQLXML = unsupported()
+    
+    override fun isValid(timeout: Int): Boolean = TODO("Not yet implemented") // required by Hikari
+    override fun setClientInfo(name: String?, value: String?) = unsupported()
+    override fun setClientInfo(properties: Properties?) = unsupported()
+    override fun getClientInfo(name: String?): String = unsupported()
+    override fun getClientInfo(): Properties = Properties()
+
+    
+    override fun abort(executor: Executor?) = unsupported()
+    override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = TODO("Not yet implemented") // required by Hikari
+    override fun getNetworkTimeout(): Int = TODO("Not yet implemented") // required by Hikari
+
+    //--------------------------------------------READ ONLY-------------------------------------------------------------
+
+    override fun setReadOnly(readOnly: Boolean) { // required by Hikari
+        checkClosed()
+        if (this.readOnlyFlag != readOnly) {
+            val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
+            queryExecutor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
+            this.readOnlyFlag = readOnly
+        }
+    }
+    override fun isReadOnly(): Boolean { // required by Hikari
+        checkClosed()
+        return readOnlyFlag
+    }
+
+    //-----------------------------------------TRANSACTIONS-------------------------------------------------------------
+    private var autoCommitFlag: Boolean = true
+
+    private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
 
     enum class TransactionState {
         IDLE,
@@ -34,33 +108,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     val transactionState: TransactionState
         get() = TransactionState.fromChar(queryExecutor.transactionStatus)
 
-    private var isClosedFlag: Boolean = false
-    private var autoCommitFlag: Boolean = true
-    private var readOnlyFlag: Boolean = false
-    private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
 
-    private fun checkClosed() {
-        if (isClosedFlag) throw SQLException("Connection is closed")
-    }
-
-    fun reloadTypes() {
-        GlobalTypeRegistry.reload(url, queryExecutor)
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    override fun <T> unwrap(iface: Class<T>): T {
-        if (iface.isInstance(this)) {
-            return this as T
-        }
-        throw SQLException("Cannot unwrap to ${iface.name}")
-    }
-
-    override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
-
-    private fun unsupported(): Nothing = throw SQLFeatureNotSupportedException("This feature is not supported by Octavius JDBC Driver")
-
-    override fun nativeSQL(sql: String?): String = sql ?: ""
-    
     override fun setAutoCommit(autoCommit: Boolean) { // required by Hikari
         checkClosed()
         if (this.autoCommitFlag != autoCommit) {
@@ -88,30 +136,6 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         queryExecutor.execute("ROLLBACK")
     }
 
-    override fun close() {
-        if (!isClosedFlag) {
-            isClosedFlag = true
-            stream.close()
-        }
-    }
-
-    override fun isClosed(): Boolean = isClosedFlag // required by Hikari
-    
-    override fun getMetaData(): DatabaseMetaData = unsupported()
-    override fun setReadOnly(readOnly: Boolean) { // required by Hikari
-        checkClosed()
-        if (this.readOnlyFlag != readOnly) {
-            val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
-            queryExecutor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
-            this.readOnlyFlag = readOnly
-        }
-    }
-    override fun isReadOnly(): Boolean { // required by Hikari
-        checkClosed()
-        return readOnlyFlag
-    }
-    override fun setCatalog(catalog: String?) {  /* no-op */ } // required by Hikari
-    override fun getCatalog(): String = TODO("Not yet implemented") // required by Hikari
     override fun setTransactionIsolation(level: Int) { // required by Hikari
         checkClosed()
         val levelStr = when (level) {
@@ -130,29 +154,68 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         return transactionIsolationLevel
     }
 
-    override fun getWarnings(): SQLWarning? = TODO("Not yet implemented")
-    override fun clearWarnings() = TODO("Not yet implemented") // required by Hikari
+    //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
+    private var savepointIdCounter: Int = 1
 
-    override fun setSavepoint(): Savepoint = unsupported()
-    override fun setSavepoint(name: String?): Savepoint = unsupported()
-    override fun rollback(savepoint: Savepoint?) = unsupported()
-    override fun releaseSavepoint(savepoint: Savepoint?) = unsupported()
+    override fun setSavepoint(): Savepoint {
+        checkClosed()
+        if (autoCommitFlag) throw SQLException("Cannot set a savepoint when auto-commit is enabled")
+        val sp = OctaviusSavepoint(savepointIdCounter++)
+        queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        return sp
+    }
 
-    override fun createSQLXML(): SQLXML = unsupported()
-    
-    override fun isValid(timeout: Int): Boolean = TODO("Not yet implemented") // required by Hikari
-    override fun setClientInfo(name: String?, value: String?) = unsupported()
-    override fun setClientInfo(properties: Properties?) = unsupported()
-    override fun getClientInfo(name: String?): String = unsupported()
-    override fun getClientInfo(): Properties = Properties()
-    
-    override fun setSchema(schema: String?) = TODO("Not yet implemented") // required by Hikari
-    override fun getSchema(): String = TODO("Not yet implemented") // required by Hikari
-    
-    override fun abort(executor: Executor?) = unsupported()
-    override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = TODO("Not yet implemented") // required by Hikari
-    override fun getNetworkTimeout(): Int = TODO("Not yet implemented") // required by Hikari
+    override fun setSavepoint(name: String?): Savepoint {
+        checkClosed()
+        if (autoCommitFlag) throw SQLException("Cannot set a savepoint when auto-commit is enabled")
+        if (name == null) throw SQLException("Savepoint name cannot be null")
+        val sp = OctaviusSavepoint(name)
+        queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        return sp
+    }
 
+    override fun rollback(savepoint: Savepoint?) {
+        checkClosed()
+        if (autoCommitFlag) throw SQLException("Cannot rollback to a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepoint) throw SQLException("Unsupported savepoint type")
+        queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
+    }
+
+    override fun releaseSavepoint(savepoint: Savepoint?) {
+        checkClosed()
+        if (autoCommitFlag) throw SQLException("Cannot release a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepoint) throw SQLException("Unsupported savepoint type")
+        queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
+    }
+
+    //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
+    private var catalogName: String? = null
+
+    override fun setSchema(schema: String?) {
+        checkClosed()
+        // no-op
+    }
+
+    override fun getSchema(): String? {
+        checkClosed()
+        val result = queryExecutor.query("SELECT current_schema()")
+        val searchPath = result[0].get<String>(0)
+        return searchPath
+    } // required by Hikari
+
+    override fun setCatalog(catalog: String?) {  /* no-op */ } // required by Hikari
+
+    override fun getCatalog(): String {
+        checkClosed()
+        if (catalogName == null) {
+            val result = queryExecutor.query("SELECT current_database()")
+            catalogName = result[0].get<String>("current_database")
+        }
+        return catalogName!!
+    } // required by Hikari
+
+    //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
+    private fun unsupported(): Nothing = throw SQLFeatureNotSupportedException("This feature is not supported by Octavius JDBC Driver")
     // zastąpione za pomocą io.github.octaviusframework.container.ContainerFactory.kt
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()
     override fun createStruct(typeName: String?, attributes: Array<out Any>?): Struct = unsupported()
