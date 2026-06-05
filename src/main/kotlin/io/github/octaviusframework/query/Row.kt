@@ -3,11 +3,12 @@ package io.github.octaviusframework.query
 import io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription
 import io.github.octaviusframework.types.TypeRegistry
 import io.github.octaviusframework.containter.*
+import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
 data class Field(
     val descriptor: FieldDescription,
-    val rawValue: ByteArray?,
+    val rawValue: ByteArrayWindow?,
     val eagerContainer: Any? = null
 )
 
@@ -30,12 +31,12 @@ inline fun <reified T> Row.get(index: Int): T? {
         return field.eagerContainer as T
     }
 
-    val bytes = field.rawValue ?: return null
+    val window = field.rawValue ?: return null
     val oid = field.descriptor.dataTypeOid
 
     val handler = typeRegistry.getHandlerByOid<Any>(oid)
     if (handler != null) {
-        val parsed = handler.fromBinary(bytes)
+        val parsed = handler.fromBinary(window)
         if (parsed is T) {
             return parsed
         } else {
@@ -43,31 +44,29 @@ inline fun <reified T> Row.get(index: Int): T? {
         }
     }
     
-    if (String::class == T::class) return String(bytes) as T
+    if (String::class == T::class) return String(window.data, window.offset, window.length, Charsets.UTF_8) as T
     throw IllegalStateException("Brak handlera dla OID: $oid oraz typu ${T::class.simpleName}")
 }
 
 class OctaviusRow(
-    columns: List<ByteArray?>,
+    columns: List<ByteArrayWindow?>,
     descriptors: List<FieldDescription>,
     override val typeRegistry: TypeRegistry
 ) : Row {
 
-    override val fields: List<Field> = descriptors.zip(columns) { desc, bytes ->
+    override val fields: List<Field> = descriptors.zip(columns) { desc, window ->
         var eagerContainer: Any? = null
-        if (bytes != null) {
+        if (window != null) {
             val pgType = typeRegistry.types[desc.dataTypeOid]
-            if (pgType != null) {
-                eagerContainer = when (pgType) {
-                    is PgType.Array -> ContainerParsers.parsePgArray(bytes, desc.dataTypeOid, typeRegistry)
-                    is PgType.Composite -> ContainerParsers.parsePgComposite(bytes, desc.dataTypeOid, typeRegistry)
-                    is PgType.Range -> ContainerParsers.parsePgRange(bytes, desc.dataTypeOid, typeRegistry)
-                    is PgType.Multirange -> ContainerParsers.parsePgMultirange(bytes, desc.dataTypeOid, typeRegistry)
-                    else -> null
-                }
+            if (pgType != null && (pgType is PgType.Array ||
+                pgType is PgType.Composite ||
+                pgType is PgType.Range ||
+                pgType is PgType.Multirange)) {
+                
+                eagerContainer = ContainerParsers.parseEagerContainer(window, desc.dataTypeOid, typeRegistry)
             }
         }
-        Field(desc, if (eagerContainer != null) null else bytes, eagerContainer)
+        Field(desc, window, eagerContainer)
     }
 
     override val columnNames: List<String>

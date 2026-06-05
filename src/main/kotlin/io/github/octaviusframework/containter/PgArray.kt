@@ -15,7 +15,7 @@ class PgArray internal constructor(
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
     val hasNulls: Boolean,
-    val rawElements: List<ByteArray?>,
+    val rawElements: List<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) {
 
@@ -33,16 +33,18 @@ class PgArray internal constructor(
         val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
             ?: throw IllegalStateException("Nie znaleziono handlera dla elementu tablicy o OID: $elementOid")
 
-        return rawElements.map { bytes ->
-            if (bytes == null) {
-                null
+        return rawElements.map { element ->
+            if (element == null) return@map null
+            if (element is T) return@map element
+
+            val bytes = element as? io.github.octaviusframework.io.ByteArrayWindow
+                ?: throw IllegalStateException("Oczekiwano PgBufferWindow, otrzymano ${element::class.simpleName}")
+
+            val parsedValue = handler.fromBinary(bytes)
+            if (parsedValue is T) {
+                parsedValue
             } else {
-                val parsedValue = handler.fromBinary(bytes)
-                if (parsedValue is T) {
-                    parsedValue
-                } else {
-                    throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
-                }
+                throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
             }
         }
     }
@@ -57,9 +59,16 @@ class PgArray internal constructor(
 
         val result = IntArray(rawElements.size)
         for (i in rawElements.indices) {
-            val bytes = rawElements[i]
+            val element = rawElements[i]
                 ?: throw NullPointerException("Znaleziono wartość NULL podczas rzutowania na IntArray")
-            result[i] = handler.fromBinary(bytes)
+            
+            if (element is Int) {
+                result[i] = element
+            } else if (element is io.github.octaviusframework.io.ByteArrayWindow) {
+                result[i] = handler.fromBinary(element)
+            } else {
+                throw IllegalStateException("Oczekiwano PgBufferWindow lub Int, otrzymano ${element::class.simpleName}")
+            }
         }
         return result
     }

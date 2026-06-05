@@ -1,5 +1,7 @@
 package io.github.octaviusframework.network.messages
 
+import io.github.octaviusframework.io.ByteArrayWindow
+
 object ParseCompleteMessage : BackendMessage {
     override fun toString(): String = "ParseComplete"
 }
@@ -30,6 +32,6 @@ class RowDescriptionMessage(val fields: List<FieldDescription>) : BackendMessage
     )
 }
 
-class DataRowMessage(val columns: List<ByteArray?>) : BackendMessage {
+class DataRowMessage(val columns: List<ByteArrayWindow?>) : BackendMessage {
     override fun toString(): String = "DataRow(columns=${columns.size})"
 }

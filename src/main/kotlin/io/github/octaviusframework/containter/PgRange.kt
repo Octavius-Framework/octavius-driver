@@ -9,8 +9,8 @@ import io.github.octaviusframework.types.TypeRegistry
 class PgRange internal constructor(
     val elementOid: UInt,
     val flags: Byte,
-    val rawLowerBound: ByteArray?,
-    val rawUpperBound: ByteArray?,
+    val rawLowerBound: Any?,
+    val rawUpperBound: Any?,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) {
     val isEmpty: Boolean get() = (flags.toInt() and 0x01) != 0
@@ -40,8 +40,13 @@ class PgRange internal constructor(
     }
 
     @PublishedApi
-    internal inline fun <reified T> parseBound(bytes: ByteArray?): T? {
-        if (bytes == null) return null
+    internal inline fun <reified T> parseBound(element: Any?): T? {
+        if (element == null) return null
+        if (element is T) return element
+
+        val bytes = element as? io.github.octaviusframework.io.ByteArrayWindow
+            ?: throw IllegalStateException("Oczekiwano PgBufferWindow, otrzymano ${element::class.simpleName}")
+
         val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
             ?: throw IllegalStateException("Nie znaleziono handlera dla elementów zakresu o OID: $elementOid")
             

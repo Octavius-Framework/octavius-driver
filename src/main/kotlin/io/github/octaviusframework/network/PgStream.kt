@@ -1,7 +1,9 @@
 package io.github.octaviusframework.network
 
+import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.io.PgInputStream
 import io.github.octaviusframework.io.PgOutputStream
+import io.github.octaviusframework.io.getIntBE
 import io.github.octaviusframework.network.messages.AuthenticationMessage
 import io.github.octaviusframework.network.messages.BackendKeyDataMessage
 import io.github.octaviusframework.network.messages.BackendMessage
@@ -111,13 +113,19 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 }
                 'D' -> {
                     val numColumns = inputStream.readShort().toInt()
-                    val columns = mutableListOf<ByteArray?>()
+                    val rawRowData = inputStream.readBytes(payloadLength - 2)
+                    val rowWindow = ByteArrayWindow(rawRowData, 0, rawRowData.size)
+                    
+                    val columns = mutableListOf<ByteArrayWindow?>()
+                    var offset = 0
                     for (i in 0 until numColumns) {
-                        val colLength = inputStream.readInt()
+                        val colLength = rowWindow.getIntBE(offset)
+                        offset += 4
                         if (colLength == -1) {
                             columns.add(null)
                         } else {
-                            columns.add(inputStream.readBytes(colLength))
+                            columns.add(rowWindow.slice(offset, colLength))
+                            offset += colLength
                         }
                     }
                     return DataRowMessage(columns)

@@ -43,20 +43,22 @@ object TypeRegistryLoader {
             
             // Zbieramy główne informacje o typie tylko za pierwszym razem dla danego OID
             if (oid !in parsedTypes) {
-                val name = String(row.fields[1].rawValue!!, Charsets.UTF_8)
+                val f1 = row.fields[1].rawValue!!
+                val name = String(f1.data, f1.offset, f1.length, Charsets.UTF_8)
                 val typrelid = row.fields[2].rawValue!!.getUIntBE()
                 val typelem = row.fields[3].rawValue!!.getUIntBE()
-                val typtype = String(row.fields[5].rawValue!!, Charsets.UTF_8).first()
+                val f5 = row.fields[5].rawValue!!
+                val typtype = String(f5.data, f5.offset, f5.length, Charsets.UTF_8).first()
                 val typbasetype = row.fields[6].rawValue!!.getUIntBE()
-                val schema = String(row.fields[7].rawValue!!, Charsets.UTF_8)
+                val f7 = row.fields[7].rawValue!!
+                val schema = String(f7.data, f7.offset, f7.length, Charsets.UTF_8)
                 
                 parsedTypes[oid] = BaseTypeInfo(name, typrelid, typelem, typtype, typbasetype, schema)
             }
             
-            // Enum
             val enumLabelBytes = row.fields[8].rawValue
             if (enumLabelBytes != null) {
-                val label = String(enumLabelBytes, Charsets.UTF_8)
+                val label = String(enumLabelBytes.data, enumLabelBytes.offset, enumLabelBytes.length, Charsets.UTF_8)
                 val enumList = enumMap.getOrPut(oid) { mutableListOf() }
                 if (!enumList.contains(label)) {
                     enumList.add(label)
@@ -83,7 +85,7 @@ object TypeRegistryLoader {
             val attTypidBytes = row.fields[11].rawValue
             
             if (attNameBytes != null && attTypidBytes != null) {
-                val attName = String(attNameBytes, Charsets.UTF_8)
+                val attName = String(attNameBytes.data, attNameBytes.offset, attNameBytes.length, Charsets.UTF_8)
                 val attTypid = attTypidBytes.getUIntBE()
                 
                 val attrList = attrMap.getOrPut(oid) { LinkedHashMap() }

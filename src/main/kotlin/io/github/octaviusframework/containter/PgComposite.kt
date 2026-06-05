@@ -9,7 +9,7 @@ import io.github.octaviusframework.types.TypeRegistry
  */
 class PgComposite internal constructor(
     val type: PgType.Composite,
-    val rawAttributes: List<ByteArray?>,
+    val rawAttributes: List<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) {
     /**
@@ -22,7 +22,12 @@ class PgComposite internal constructor(
      * Leniwie rzutuje i zwraca atrybut po indeksie.
      */
     inline fun <reified T> get(index: Int): T? {
-        val bytes = rawAttributes[index] ?: return null
+        val element = rawAttributes[index] ?: return null
+        if (element is T) return element
+
+        val bytes = element as? io.github.octaviusframework.io.ByteArrayWindow
+            ?: throw IllegalStateException("Oczekiwano PgBufferWindow, otrzymano ${element::class.simpleName}")
+
         val oid = type.attributes.values.elementAt(index)
         val handler = typeRegistry.getHandlerByOid<Any>(oid)
             ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $oid")
