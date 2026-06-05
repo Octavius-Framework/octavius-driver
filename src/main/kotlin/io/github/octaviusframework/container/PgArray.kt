@@ -41,6 +41,35 @@ class PgArray internal constructor(
         }
     }
 
+    fun setElement(indices: IntArray, newValue: Any?) {
+        require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
+        val flatIndex = indices.foldIndexed(0) { idx, acc, i -> 
+            acc * dimensions[idx].size + i 
+        }
+        set(flatIndex, newValue)
+    }
+
+    inline fun <reified T> getElement(indices: IntArray): T? {
+        require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
+        val flatIndex = indices.foldIndexed(0) { idx, acc, i -> 
+            acc * dimensions[idx].size + i 
+        }
+        return get<T>(flatIndex)
+    }
+
+    inline fun <reified T> get(index: Int): T? {
+        if (values != null && values!![index] != null) return values!![index] as T
+        if (containers != null) return containers[index] as? T
+
+        val window = windows!![index] ?: return null
+        val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
+            ?: throw IllegalStateException("Nie znaleziono handlera dla OID: $elementOid")
+            
+        val parsedValue = handler.fromBinary(window)
+        if (parsedValue is T) return parsedValue
+        throw IllegalStateException("Błąd rzutowania: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
+    }
+
     override fun detach() {
         windows?.forEach { it?.detach() }
         containers?.forEach { it?.detach() }

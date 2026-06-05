@@ -12,6 +12,9 @@ import java.sql.DriverManager
 import java.util.Properties
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNotNull
+import io.github.octaviusframework.container.createComposite
+import io.github.octaviusframework.container.createArray
+import io.github.octaviusframework.container.createArrayWithElements
 
 class SerializationTest {
 
@@ -45,9 +48,9 @@ class SerializationTest {
         // Musi być identyczne bajt w bajt!
         assertContentEquals(originalBytes, writer1.toByteArray(), "Serializacja nienaruszonego kompozytu musi dać te same bajty")
         
-        // TERAZ MODYFIKUJEMY WARSTWĘ 3
-        composite.fields[0].value = 99999
-        composite.fields[1].value = "changed_text"
+        // TERAZ MODYFIKUJEMY WARSTWĘ 3 Z POMOCĄ OPERATORA SET
+        composite["id"] = 99999
+        composite["name"] = "changed_text"
         
         // Serializujemy ponownie
         val writer2 = PgByteWriter()
@@ -83,11 +86,8 @@ class SerializationTest {
         ContainerSerializers.serializeContainer(array, writer1, row.typeRegistry)
         assertContentEquals(originalBytes, writer1.toByteArray())
         
-        // Modyfikacja warstwy 3 (np. podmieniamy drugi element)
-        if (array.values == null) {
-            array.values = MutableList(array.totalElements) { null }
-        }
-        array.values!![1] = 999
+        // Modyfikacja warstwy 3 przez operator
+        array[1] = 999
         
         val writer2 = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer2, row.typeRegistry)
@@ -96,5 +96,113 @@ class SerializationTest {
         val expectedBytes = expectedRow.fields[0].rawValue!!.toByteArray()
         
         assertContentEquals(expectedBytes, writer2.toByteArray())
+    }
+
+    @Test
+    fun testFactoryAndSerializationRoundtrip() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+
+        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+
+        octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
+        octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
+        octaviusConn.reloadTypes()
+
+        val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
+        val typeRegistry = dummyRow.typeRegistry
+
+        // 1. Zbudowanie kompozytu fabryką od zera
+        val composite = octaviusConn.createComposite("ser_test_composite")
+        composite["id"] = 777
+        composite["name"] = "factory_test"
+
+        val writer1 = PgByteWriter()
+        ContainerSerializers.serializeContainer(composite, writer1, typeRegistry)
+        val builtCompositeBytes = writer1.toByteArray()
+
+        // Porównanie z bazą
+        val expectedCompositeRow = octaviusConn.queryExecutor.query("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").first()
+        assertContentEquals(expectedCompositeRow.fields[0].rawValue!!.toByteArray(), builtCompositeBytes, "Zbudowany kompozyt musi zgadzać się z Postgresowym")
+
+        // 2. Zbudowanie tablicy fabryką od zera
+        val array = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+
+        val writer2 = PgByteWriter()
+        ContainerSerializers.serializeContainer(array, writer2, typeRegistry)
+        val builtArrayBytes = writer2.toByteArray()
+
+        val expectedArrayRow = octaviusConn.queryExecutor.query("SELECT ARRAY[10, 20, 30]::int[]").first()
+        assertContentEquals(expectedArrayRow.fields[0].rawValue!!.toByteArray(), builtArrayBytes, "Zbudowana tablica musi zgadzać się z Postgresową")
+    }
+
+    @Test
+    fun testQueryWithParameters() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+
+        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+
+        val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
+        val typeRegistry = dummyRow.typeRegistry
+        val array = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+
+        val writer = PgByteWriter()
+        ContainerSerializers.serializeContainer(array, writer, typeRegistry)
+        val serializedArray = writer.toByteArray()
+
+        val rows = octaviusConn.queryExecutor.query(
+            "SELECT $1::int[] as test_col",
+            paramTypes = listOf(0u),
+            paramValues = listOf(serializedArray)
+        )
+
+        val returnedArray = rows.first().get<PgArray>("test_col")
+        assertNotNull(returnedArray)
+        assertContentEquals(
+            byteArrayOf(0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 10, 0, 0, 0, 4, 0, 0, 0, 20, 0, 0, 0, 4, 0, 0, 0, 30),
+            rows.first().fields[0].rawValue!!.toByteArray()
+        )
+    }
+
+    @Test
+    fun testMultidimensionalArray() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+
+        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+
+        // Tablica 2x3 (2 wiersze, 3 kolumny)
+        val multiArray = octaviusConn.createArray(23u, 2, 3) 
+        
+        // Wypełniamy danymi:
+        // [ [1, 2, 3], [4, 5, 6] ]
+        multiArray.setElement(intArrayOf(0, 0), 1)
+        multiArray.setElement(intArrayOf(0, 1), 2)
+        multiArray.setElement(intArrayOf(0, 2), 3)
+        multiArray.setElement(intArrayOf(1, 0), 4)
+        multiArray.setElement(intArrayOf(1, 1), 5)
+        multiArray.setElement(intArrayOf(1, 2), 6)
+
+        val writer = PgByteWriter()
+        val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
+        ContainerSerializers.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
+        val serializedArray = writer.toByteArray()
+
+        val rows = octaviusConn.queryExecutor.query(
+            "SELECT ARRAY[[1, 2, 3], [4, 5, 6]]::int[] as test_col"
+        )
+
+        assertContentEquals(
+            rows.first().fields[0].rawValue!!.toByteArray(),
+            serializedArray,
+            "Zbudowana tablica wielowymiarowa musi zgadzać się z Postgresową"
+        )
     }
 }

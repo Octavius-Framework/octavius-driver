@@ -40,8 +40,19 @@ object ContainerSerializers {
     }
 
     fun serializePgArray(array: PgArray, writer: PgByteWriter, typeRegistry: TypeRegistry) {
+        val count = array.totalElements
+        var hasNulls = false
+        for (i in 0 until count) {
+            if (array.values?.getOrNull(i) == null &&
+                array.containers?.getOrNull(i) == null &&
+                array.windows?.getOrNull(i) == null) {
+                hasNulls = true
+                break
+            }
+        }
+
         writer.writeInt(array.dimensions.size)
-        writer.writeInt(if (array.hasNulls) 1 else 0)
+        writer.writeInt(if (hasNulls) 1 else 0)
         writer.writeUInt(array.elementOid)
         
         for (dim in array.dimensions) {
@@ -49,7 +60,6 @@ object ContainerSerializers {
             writer.writeInt(dim.lowerBound)
         }
         
-        val count = array.totalElements
         val handler = typeRegistry.getHandlerByOid<Any>(array.elementOid)
         
         for (i in 0 until count) {
