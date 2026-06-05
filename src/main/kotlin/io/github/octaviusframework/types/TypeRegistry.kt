@@ -57,6 +57,7 @@ class TypeRegistry {
         // Additional
         registerHandler(UuidHandler)
         registerHandler(NumericHandler)
+        registerHandler(UnitHandler)
     }
 
     fun clearOidMappings() {

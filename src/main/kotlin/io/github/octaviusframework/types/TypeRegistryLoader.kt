@@ -20,6 +20,7 @@ object TypeRegistryLoader {
             LEFT JOIN pg_catalog.pg_range r ON t.oid = r.rngtypid
             LEFT JOIN pg_catalog.pg_attribute a ON t.typrelid = a.attrelid AND a.attnum > 0 AND a.attisdropped = false
             WHERE NOT (t.typtype = 'c' AND n.nspname IN ('pg_catalog', 'information_schema'))
+            AND NOT (t.typtype = 'p' AND t.typname NOT IN ('void', 'record'))
             ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
         
@@ -105,6 +106,13 @@ object TypeRegistryLoader {
                 info.typtype == 'c' -> {
                     val attrs = attrMap[oid] ?: LinkedHashMap()
                     PgType.Composite(oid, info.name, info.schema, attrs)
+                }
+                info.typtype == 'p' -> {
+                    when (info.name) {
+                        "record" -> PgType.Record(oid, info.name, info.schema)
+                        "void" -> PgType.Void(oid, info.name, info.schema)
+                        else -> error("Unreachable code: unexpected pseudo-type ${info.name}")
+                    }
                 }
                 info.typelem != 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
                 else -> PgType.Base(oid, info.name, info.schema)

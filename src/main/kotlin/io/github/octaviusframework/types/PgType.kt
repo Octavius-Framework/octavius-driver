@@ -52,4 +52,16 @@ sealed class PgType(
         override val schema: String,
         val rangeOid: UInt
     ) : PgType(oid, name, schema)
+
+    data class Record(
+        override val oid: UInt,
+        override val name: String,
+        override val schema: String
+    ) : PgType(oid, name, schema)
+
+    data class Void(
+        override val oid: UInt,
+        override val name: String,
+        override val schema: String
+    ) : PgType(oid, name, schema)
 }

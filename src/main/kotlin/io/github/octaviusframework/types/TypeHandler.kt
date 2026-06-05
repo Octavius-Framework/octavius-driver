@@ -106,3 +106,13 @@ object ByteArrayHandler : TypeHandler<ByteArray> {
     override val fromBinary: (ByteArrayWindow) -> ByteArray = { it.toByteArray() }
     override val toBinary: (ByteArray) -> ByteArray = { it }
 }
+
+object UnitHandler : TypeHandler<Unit> {
+    override val pgTypeName = "void"
+    override val oid: UInt = 2278u
+    override val kotlinClass = Unit::class
+    override val isDefaultForKotlinType = true
+    
+    override val fromBinary: (ByteArrayWindow) -> Unit = { }
+    override val toBinary: (Unit) -> ByteArray = { throw UnsupportedOperationException("Cannot send Unit/void as parameter") }
+}
