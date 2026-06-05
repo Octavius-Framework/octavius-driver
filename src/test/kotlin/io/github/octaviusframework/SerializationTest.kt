@@ -1,8 +1,8 @@
 package io.github.octaviusframework
 
-import io.github.octaviusframework.containter.ContainerSerializers
-import io.github.octaviusframework.containter.PgComposite
-import io.github.octaviusframework.containter.PgArray
+import io.github.octaviusframework.container.ContainerSerializers
+import io.github.octaviusframework.container.PgComposite
+import io.github.octaviusframework.container.PgArray
 import io.github.octaviusframework.io.PgByteWriter
 import io.github.octaviusframework.io.toByteArray
 import io.github.octaviusframework.jdbc.OctaviusConnection
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test
 import java.sql.DriverManager
 import java.util.Properties
 import kotlin.test.assertContentEquals
-import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class SerializationTest {

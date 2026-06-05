@@ -2,11 +2,11 @@ package io.github.octaviusframework.query
 
 import io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription
 import io.github.octaviusframework.types.TypeRegistry
-import io.github.octaviusframework.containter.*
+import io.github.octaviusframework.container.*
 import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
-import io.github.octaviusframework.containter.PgContainer
+import io.github.octaviusframework.container.PgContainer
 
 data class Field(
     val descriptor: FieldDescription,

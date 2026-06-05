@@ -1,4 +1,4 @@
-package io.github.octaviusframework.containter
+package io.github.octaviusframework.container
 
 /**
  * Reprezentuje strukturę multirange z bazy danych.
