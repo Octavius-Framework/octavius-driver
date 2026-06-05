@@ -10,6 +10,7 @@ import io.github.octaviusframework.network.messages.BackendMessage
 import io.github.octaviusframework.network.messages.BindCompleteMessage
 import io.github.octaviusframework.network.messages.CommandCompleteMessage
 import io.github.octaviusframework.network.messages.DataRowMessage
+import io.github.octaviusframework.network.messages.EmptyQueryResponseMessage
 import io.github.octaviusframework.network.messages.ErrorResponseMessage
 import io.github.octaviusframework.network.messages.FrontendMessage
 import io.github.octaviusframework.network.messages.NoDataMessage
@@ -90,6 +91,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 '1' -> return ParseCompleteMessage
                 '2' -> return BindCompleteMessage
                 'n' -> return NoDataMessage
+                'I' -> return EmptyQueryResponseMessage
                 'C' -> {
                     val commandTag = inputStream.readCString()
                     return CommandCompleteMessage(commandTag)

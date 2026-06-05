@@ -27,8 +27,12 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
                     transactionStatus = msg.transactionStatus
                     break
                 }
-                // Ignorujemy inne wiadomości (RowDescription, DataRow, CommandComplete) 
-                // ponieważ ta metoda służy tylko do wykonywania kodu.
+                is RowDescriptionMessage, is DataRowMessage -> {
+                    if (errorMessage == null) {
+                        errorMessage = "Metoda execute() otrzymała wiersze z wynikami. Użyj query() dla zapytań DQL."
+                    }
+                }
+                is CommandCompleteMessage, is EmptyQueryResponseMessage -> { /* Ignore - expected */ }
                 else -> { /* Ignore */ }
             }
         }

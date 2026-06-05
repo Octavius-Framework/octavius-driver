@@ -6,6 +6,10 @@ object ParseCompleteMessage : BackendMessage {
     override fun toString(): String = "ParseComplete"
 }
 
+object EmptyQueryResponseMessage : BackendMessage {
+    override fun toString(): String = "EmptyQueryResponse"
+}
+
 object BindCompleteMessage : BackendMessage {
     override fun toString(): String = "BindComplete"
 }

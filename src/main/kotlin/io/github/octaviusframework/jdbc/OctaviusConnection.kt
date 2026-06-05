@@ -58,7 +58,16 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     override fun createSQLXML(): SQLXML = unsupported()
     
-    override fun isValid(timeout: Int): Boolean = TODO("Not yet implemented") // required by Hikari
+    override fun isValid(timeout: Int): Boolean { // required by Hikari
+        if (timeout < 0) throw SQLException("Timeout cannot be less than 0")
+        if (isClosedFlag) return false
+        return try {
+            queryExecutor.execute("")
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
     override fun setClientInfo(name: String?, value: String?) = unsupported()
     override fun setClientInfo(properties: Properties?) = unsupported()
     override fun getClientInfo(name: String?): String = unsupported()
@@ -115,6 +124,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
             this.autoCommitFlag = autoCommit
             if (autoCommit) {
                 queryExecutor.execute("COMMIT")
+            } else {
+                queryExecutor.execute("BEGIN")
             }
         }
     }
@@ -127,13 +138,13 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun commit() {
         checkClosed()
         if (autoCommitFlag) throw SQLException("Connection is in auto-commit mode")
-        queryExecutor.execute("COMMIT")
+        queryExecutor.execute("COMMIT; BEGIN")
     }
 
     override fun rollback() { // required by Hikari
         checkClosed()
         if (autoCommitFlag) throw SQLException("Connection is in auto-commit mode")
-        queryExecutor.execute("ROLLBACK")
+        queryExecutor.execute("ROLLBACK; BEGIN")
     }
 
     override fun setTransactionIsolation(level: Int) { // required by Hikari
