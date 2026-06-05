@@ -3,8 +3,9 @@ package io.github.octaviusframework.query
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.network.messages.*
 import java.sql.SQLException
+import io.github.octaviusframework.types.TypeRegistry
 
-class QueryExecutor(private val stream: PgStream) {
+class QueryExecutor(private val stream: PgStream, private val typeRegistry: TypeRegistry) {
 
     /**
      * Używa Simple Query Protocol (Q). 
@@ -126,6 +127,6 @@ class QueryExecutor(private val stream: PgStream) {
         }
 
         val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.columns, descriptors) }
+        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry) }
     }
 }

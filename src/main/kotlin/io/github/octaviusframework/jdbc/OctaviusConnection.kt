@@ -7,15 +7,16 @@ import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
 
-class OctaviusConnection(private val stream: PgStream) : Connection {
-    val queryExecutor = QueryExecutor(stream)
+class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
+    val typeRegistry = GlobalTypeRegistry.getRegistry(url)
+    val queryExecutor = QueryExecutor(stream, typeRegistry)
 
     init {
-        GlobalTypeRegistry.ensureLoaded(queryExecutor)
+        GlobalTypeRegistry.ensureLoaded(url, queryExecutor)
     }
 
     fun reloadTypes() {
-        GlobalTypeRegistry.reload(queryExecutor)
+        GlobalTypeRegistry.reload(url, queryExecutor)
     }
 
     @Suppress("UNCHECKED_CAST")

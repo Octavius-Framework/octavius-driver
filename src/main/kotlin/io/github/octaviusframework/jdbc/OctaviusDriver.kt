@@ -52,7 +52,7 @@ class OctaviusDriver : Driver {
         val authenticator = io.github.octaviusframework.auth.Authenticator(stream)
         authenticator.authenticate(user, password)
         
-        return OctaviusConnection(stream)
+        return OctaviusConnection(stream, url)
     }
 
     override fun acceptsURL(url: String): Boolean {

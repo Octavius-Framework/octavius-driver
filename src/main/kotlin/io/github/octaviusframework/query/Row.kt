@@ -1,7 +1,7 @@
 package io.github.octaviusframework.query
 
 import io.github.octaviusframework.network.messages.RowDescriptionMessage.FieldDescription
-import io.github.octaviusframework.types.GlobalTypeRegistry
+import io.github.octaviusframework.types.TypeRegistry
 
 data class Field(
     val descriptor: FieldDescription,
@@ -36,7 +36,8 @@ inline fun <reified T> Row.get(index: Int): T {
 
 class OctaviusRow(
     columns: List<ByteArray?>,
-    descriptors: List<FieldDescription>
+    descriptors: List<FieldDescription>,
+    private val typeRegistry: TypeRegistry
 ) : Row {
 
     override val fields: List<Field> = descriptors.zip(columns) { desc, bytes ->
@@ -57,7 +58,7 @@ class OctaviusRow(
     override fun getValue(index: Int): Any? {
         val field = fields.getOrNull(index) ?: return null
         val bytes = field.rawValue ?: return null
-        val handler = GlobalTypeRegistry.registry.getHandlerByOid<Any>(field.descriptor.dataTypeOid)
+        val handler = typeRegistry.getHandlerByOid<Any>(field.descriptor.dataTypeOid)
         if (handler != null) {
             return handler.fromBinary(bytes)
         }

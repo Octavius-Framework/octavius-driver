@@ -89,7 +89,7 @@ object TypeRegistryLoader {
                 info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
                 info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
                 info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid]!!)
-                info.typtype == 'c' || info.typrelid != 0u -> {
+                info.typtype == 'c' -> {
                     val attrs = attrMap[oid] ?: LinkedHashMap()
                     PgType.Composite(oid, info.name, info.schema, attrs)
                 }

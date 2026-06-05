@@ -1,31 +1,27 @@
 package io.github.octaviusframework.types
 
 import io.github.octaviusframework.query.QueryExecutor
+import java.util.concurrent.ConcurrentHashMap
 
 object GlobalTypeRegistry {
-    // Rejestr, do którego będą miały dostęp wszystkie połączenia
-    val registry = TypeRegistry()
+    // Rejestry na URL bazy
+    private val registries = ConcurrentHashMap<String, TypeRegistry>()
+    private val loadedFlags = ConcurrentHashMap<String, Boolean>()
 
-    // Flaga @Volatile gwarantuje, że zmiana wartości będzie od razu widoczna dla innych wątków w CPU
-    @Volatile
-    private var isLoaded = false
+    fun getRegistry(url: String): TypeRegistry {
+        return registries.computeIfAbsent(url) { TypeRegistry() }
+    }
 
-    fun ensureLoaded(executor: QueryExecutor) {
-        // Fast-path: jeśli już załadowane, zwracamy natychmiast (zero narzutu na blokowanie)
-        if (isLoaded) return
+    fun ensureLoaded(url: String, executor: QueryExecutor) {
+        if (loadedFlags[url] == true) return
 
-        // Tylko jeden wątek na raz może wejść do tego bloku
-        synchronized(this) {
-            // Wątki 2-10, które czekały przed kłódką, wejdą tu gdy wątek 1 skończy.
-            // Muszą sprawdzić drugi raz, żeby nie załadować znowu.
-            if (!isLoaded) {
-                println("Wątek ${Thread.currentThread().name} ładuje typy z bazy...")
-
-                // Ładujemy typy!
+        val registry = getRegistry(url)
+        // Tylko jeden wątek na raz może wejść do tego bloku dla danego rejestru
+        synchronized(registry) {
+            if (loadedFlags[url] != true) {
+                println("Wątek ${Thread.currentThread().name} ładuje typy z bazy dla URL: $url...")
                 TypeRegistryLoader.load(registry, executor)
-
-                // Zapisujemy flagę
-                isLoaded = true
+                loadedFlags[url] = true
             }
         }
     }
@@ -33,12 +29,13 @@ object GlobalTypeRegistry {
     /**
      * Jawny reload do wywołania przez użytkownika (np. connection.reloadTypes())
      */
-    fun reload(executor: QueryExecutor) {
-        synchronized(this) {
-            println("Jawne przeładowanie słownika typów...")
+    fun reload(url: String, executor: QueryExecutor) {
+        val registry = getRegistry(url)
+        synchronized(registry) {
+            println("Jawne przeładowanie słownika typów dla URL: $url...")
             registry.clearOidMappings()
             TypeRegistryLoader.load(registry, executor)
-            isLoaded = true
+            loadedFlags[url] = true
         }
     }
 }
