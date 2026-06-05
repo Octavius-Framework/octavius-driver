@@ -1,5 +1,7 @@
 package io.github.octaviusframework.network.messages
 
+import io.github.octaviusframework.io.PgOutputStream
+
 /**
  * Informacja o parametrze połączenia (Tag 'S').
  */
@@ -34,4 +36,14 @@ class NoticeResponseMessage(val fields: Map<Char, String>) : BackendMessage {
  */
 class NotificationResponseMessage(val processId: Int, val channel: String, val payload: String) : BackendMessage {
     override fun toString(): String = "NotificationResponse(pid=$processId, channel=$channel, payload=$payload)"
+}
+
+/**
+ * Wiadomość zakończenia połączenia (Tag 'X').
+ */
+class TerminateMessage : FrontendMessage {
+    override fun encode(out: PgOutputStream) {
+        out.writeByte('X'.code.toByte())
+        out.writeInt(4)
+    }
 }

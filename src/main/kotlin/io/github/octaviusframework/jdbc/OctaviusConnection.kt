@@ -15,6 +15,33 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor)
     }
 
+    enum class TransactionState {
+        IDLE,
+        IN_TRANSACTION,
+        FAILED,
+        UNKNOWN;
+
+        companion object {
+            fun fromChar(c: Char): TransactionState = when (c) {
+                'I' -> IDLE
+                'T' -> IN_TRANSACTION
+                'E' -> FAILED
+                else -> UNKNOWN
+            }
+        }
+    }
+
+    val transactionState: TransactionState
+        get() = TransactionState.fromChar(queryExecutor.transactionStatus)
+
+    private var isClosedFlag: Boolean = false
+    private var autoCommitFlag: Boolean = true
+    private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
+
+    private fun checkClosed() {
+        if (isClosedFlag) throw SQLException("Connection is closed")
+    }
+
     fun reloadTypes() {
         GlobalTypeRegistry.reload(url, queryExecutor)
     }
@@ -36,20 +63,64 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun prepareCall(sql: String?): CallableStatement = unsupported()
     override fun nativeSQL(sql: String?): String = sql ?: ""
     
-    override fun setAutoCommit(autoCommit: Boolean) = TODO("Not yet implemented")
-    override fun getAutoCommit(): Boolean = TODO("Not yet implemented")
-    override fun commit() = TODO("Not yet implemented")
-    override fun rollback() = TODO("Not yet implemented")
-    override fun close() = TODO("Not yet implemented")
-    override fun isClosed(): Boolean = TODO("Not yet implemented")
+    override fun setAutoCommit(autoCommit: Boolean) {
+        checkClosed()
+        if (this.autoCommitFlag != autoCommit) {
+            this.autoCommitFlag = autoCommit
+            if (autoCommit) {
+                queryExecutor.execute("COMMIT")
+            }
+        }
+    }
+
+    override fun getAutoCommit(): Boolean {
+        checkClosed()
+        return autoCommitFlag
+    }
+
+    override fun commit() {
+        checkClosed()
+        if (autoCommitFlag) throw SQLException("Connection is in auto-commit mode")
+        queryExecutor.execute("COMMIT")
+    }
+
+    override fun rollback() {
+        checkClosed()
+        if (autoCommitFlag) throw SQLException("Connection is in auto-commit mode")
+        queryExecutor.execute("ROLLBACK")
+    }
+
+    override fun close() {
+        if (!isClosedFlag) {
+            isClosedFlag = true
+            stream.close()
+        }
+    }
+
+    override fun isClosed(): Boolean = isClosedFlag
     
     override fun getMetaData(): DatabaseMetaData = TODO("Not yet implemented")
     override fun setReadOnly(readOnly: Boolean) = TODO("Not yet implemented")
     override fun isReadOnly(): Boolean = TODO("Not yet implemented")
     override fun setCatalog(catalog: String?) {  /* no-op */ }
     override fun getCatalog(): String = TODO("Not yet implemented")
-    override fun setTransactionIsolation(level: Int) = TODO("Not yet implemented")
-    override fun getTransactionIsolation(): Int = TODO("Not yet implemented")
+    override fun setTransactionIsolation(level: Int) {
+        checkClosed()
+        val levelStr = when (level) {
+            Connection.TRANSACTION_READ_UNCOMMITTED -> "READ UNCOMMITTED"
+            Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
+            Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
+            Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
+            else -> throw SQLException("Unsupported transaction isolation level")
+        }
+        queryExecutor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
+        this.transactionIsolationLevel = level
+    }
+
+    override fun getTransactionIsolation(): Int {
+        checkClosed()
+        return transactionIsolationLevel
+    }
     override fun getWarnings(): SQLWarning? = TODO("Not yet implemented")
     override fun clearWarnings() = TODO("Not yet implemented")
     

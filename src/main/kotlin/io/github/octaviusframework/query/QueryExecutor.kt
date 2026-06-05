@@ -7,6 +7,9 @@ import io.github.octaviusframework.types.TypeRegistry
 
 class QueryExecutor(private val stream: PgStream, private val typeRegistry: TypeRegistry) {
 
+    var transactionStatus: Char = 'I'
+        private set
+
     /**
      * Używa Simple Query Protocol (Q). 
      * Przeznaczone do wywołań, które nie zwracają wyników lub ignorujemy ich wyniki (np. SET TIME ZONE, BEGIN).
@@ -20,7 +23,10 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
             val msg = stream.receiveMessage()
             when (msg) {
                 is ErrorResponseMessage -> errorMessage = msg.message
-                is ReadyForQueryMessage -> break
+                is ReadyForQueryMessage -> {
+                    transactionStatus = msg.transactionStatus
+                    break
+                }
                 // Ignorujemy inne wiadomości (RowDescription, DataRow, CommandComplete) 
                 // ponieważ ta metoda służy tylko do wykonywania kodu.
                 else -> { /* Ignore */ }
@@ -69,7 +75,10 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
                 is ErrorResponseMessage -> {
                     if (errorMessage == null) errorMessage = "Błąd bazy danych podczas wykonywania zapytania (update): ${msg.message}"
                 }
-                is ReadyForQueryMessage -> break
+                is ReadyForQueryMessage -> {
+                    transactionStatus = msg.transactionStatus
+                    break
+                }
                 else -> { /* Ignore */ }
             }
         }
@@ -113,7 +122,10 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
                 is ErrorResponseMessage -> {
                     if (errorMessage == null) errorMessage = "Błąd bazy danych podczas wykonywania zapytania (query): ${msg.message}"
                 }
-                is ReadyForQueryMessage -> break
+                is ReadyForQueryMessage -> {
+                    transactionStatus = msg.transactionStatus
+                    break
+                }
                 else -> { /* Ignore */ }
             }
         }

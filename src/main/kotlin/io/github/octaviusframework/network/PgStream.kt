@@ -18,6 +18,7 @@ import io.github.octaviusframework.network.messages.NotificationResponseMessage
 import io.github.octaviusframework.network.messages.ParseCompleteMessage
 import io.github.octaviusframework.network.messages.ReadyForQueryMessage
 import io.github.octaviusframework.network.messages.RowDescriptionMessage
+import io.github.octaviusframework.network.messages.TerminateMessage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.net.InetSocketAddress
@@ -180,6 +181,12 @@ class PgStream(host: String, port: Int) : AutoCloseable {
 
     override fun close() {
         if (!socket.isClosed) {
+            try {
+                sendMessage(TerminateMessage())
+                flush()
+            } catch (e: Exception) {
+                // Ignorujemy błędy podczas zamykania
+            }
             socket.close()
         }
     }
