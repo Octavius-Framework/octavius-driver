@@ -5,7 +5,7 @@ import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeRegistry
 
 data class ContainerField(
-    var rawValue: io.github.octaviusframework.io.ByteArrayWindow?,
+    var rawValue: ByteArrayWindow?,
     var container: PgContainer? = null,
     var value: Any? = null
 ) {
