@@ -27,39 +27,51 @@ interface Row {
 
     fun getColumnIndex(columnName: String): Int
     fun detach()
-    operator fun set(index: Int, newValue: Any?)
-    operator fun set(columnName: String, newValue: Any?)
 }
 
-inline fun <reified T> Row.get(columnName: String): T? {
+inline fun <reified T> Row.get(columnName: String): T {
     val index = getColumnIndex(columnName)
     return get<T>(index)
 }
 
-inline fun <reified T> Row.get(index: Int): T? {
-    val field = fields.getOrNull(index) ?: return null
-    if (field.value != null && field.value is T) {
-        return field.value as T
-    }
-    if (field.container != null && field.container is T) {
-        return field.container as T
-    }
+inline fun <reified T> Row.get(index: Int): T {
+    val field = fields.getOrNull(index) ?: throw IllegalArgumentException("Column index out of bounds: $index")
 
-    val window = field.rawValue ?: return null
-    val oid = field.descriptor.dataTypeOid
+    val fieldValue = field.value
+    val fieldContainer = field.container
+    val fieldWindow = field.rawValue
 
-    val handler = typeRegistry.getHandlerByOid<Any>(oid)
-    if (handler != null) {
-        val parsed = handler.fromBinary(window)
-        if (parsed is T) {
-            return parsed
+    val parsedValue: Any? = if (fieldValue != null) {
+        fieldValue
+    } else if (fieldContainer != null) {
+        fieldContainer
+    } else if (fieldWindow != null) {
+        val oid = field.descriptor.dataTypeOid
+        val handler = typeRegistry.getHandlerByOid<Any>(oid)
+        if (handler != null) {
+            handler.fromBinary(fieldWindow)
+        } else if (String::class == T::class) {
+            String(fieldWindow.data, fieldWindow.offset, fieldWindow.length, Charsets.UTF_8)
         } else {
-            throw IllegalStateException("Błąd rzutowania na indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsed::class.simpleName}")
+            throw IllegalStateException("Brak handlera dla OID: $oid oraz typu ${T::class.simpleName}")
+        }
+    } else {
+        null
+    }
+
+    if (parsedValue == null) {
+        if (null is T) {
+            return null as T
+        } else {
+            throw NullPointerException("Wartość dla kolumny o indeksie $index wynosi null, ale oczekiwano nienullowalnego typu ${T::class.simpleName}")
         }
     }
-    
-    if (String::class == T::class) return String(window.data, window.offset, window.length, Charsets.UTF_8) as T
-    throw IllegalStateException("Brak handlera dla OID: $oid oraz typu ${T::class.simpleName}")
+
+    if (parsedValue is T) {
+        return parsedValue
+    } else {
+        throw IllegalStateException("Błąd rzutowania na indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
+    }
 }
 
 class OctaviusRow(
@@ -86,27 +98,16 @@ class OctaviusRow(
     override val columnNames: List<String>
         get() = fields.map { it.descriptor.name }
 
-    override fun getColumnIndex(columnName: String): Int {
-        val index = fields.indexOfFirst { it.descriptor.name == columnName }
-        if (index == -1) throw IllegalArgumentException("Column not found: $columnName")
-        return index
-    }
-
-    override fun set(index: Int, newValue: Any?) {
-        val field = fields[index]
-        if (newValue is PgContainer) {
-            field.container = newValue
-            field.value = null
-            field.rawValue = null
-        } else {
-            field.value = newValue
-            field.container = null
-            field.rawValue = null
+    private val nameToIndexCache: Map<String, Int> by lazy {
+        val map = HashMap<String, Int>()
+        fields.forEachIndexed { index, field ->
+            map.putIfAbsent(field.descriptor.name, index)
         }
+        map
     }
 
-    override fun set(columnName: String, newValue: Any?) {
-        set(getColumnIndex(columnName), newValue)
+    override fun getColumnIndex(columnName: String): Int {
+        return nameToIndexCache[columnName] ?: throw IllegalArgumentException("Column not found: $columnName")
     }
 
     override fun detach() {
