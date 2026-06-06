@@ -2,12 +2,14 @@ package io.github.octaviusframework.jdbc
 
 import io.github.octaviusframework.auth.Authenticator
 import io.github.octaviusframework.network.PgStream
+import io.github.octaviusframework.network.messages.SSLRequestMessage
 import io.github.octaviusframework.network.messages.StartupMessage
 
 import java.sql.Connection
 import java.sql.Driver
 import java.sql.DriverManager
 import java.sql.DriverPropertyInfo
+import java.sql.SQLException
 import java.sql.SQLFeatureNotSupportedException
 import java.util.Properties
 import java.util.logging.Logger
@@ -33,16 +35,44 @@ class OctaviusDriver : Driver {
         val slashIndex = withoutPrefix.indexOf('/')
         
         val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
-        val database = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1).substringBefore('?') else "postgres"
+        val dbPart = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1) else "postgres"
+        val database = dbPart.substringBefore('?')
+        
+        val mergedInfo = Properties()
+        info?.let { mergedInfo.putAll(it) }
+        
+        val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
+        if (query.isNotEmpty()) {
+            query.split("&").forEach {
+                val parts = it.split("=")
+                if (parts.size == 2) {
+                    mergedInfo.setProperty(parts[0], parts[1])
+                }
+            }
+        }
         
         val colonIndex = hostPort.indexOf(':')
         val host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
         val port = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() ?: 5432 else 5432
 
-        val user = info?.getProperty("user") ?: "postgres"
-        val password = info?.getProperty("password")
+        val user = mergedInfo.getProperty("user") ?: "postgres"
+        val password = mergedInfo.getProperty("password")
+        val ssl = mergedInfo.getProperty("ssl")?.toBoolean() ?: false
 
         val stream = PgStream(host, port)
+        
+        if (ssl) {
+            stream.sendMessage(SSLRequestMessage())
+            stream.flush()
+            val response = stream.inputStream.readByte().toInt().toChar()
+            if (response == 'S') {
+                stream.upgradeToSSL(host, port)
+            } else if (response == 'N') {
+                throw SQLException("Server does not support SSL, but ssl=true was specified.")
+            } else {
+                throw SQLException("Unexpected SSL negotiation response: $response")
+            }
+        }
         
         val startupParams = mapOf(
             "user" to user,

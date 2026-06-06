@@ -24,17 +24,28 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.net.InetSocketAddress
 import java.net.Socket
+import javax.net.ssl.SSLSocketFactory
 
 class PgStream(host: String, port: Int) : AutoCloseable {
-    private val socket: Socket = Socket()
-    val inputStream: PgInputStream
-    val outputStream: PgOutputStream
+    private var socket: Socket = Socket()
+    var inputStream: PgInputStream
+    var outputStream: PgOutputStream
 
     init {
         socket.connect(InetSocketAddress(host, port), 10000)
         inputStream = PgInputStream(socket.getInputStream().buffered(8192))
         outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
     }
+
+    fun upgradeToSSL(host: String, port: Int) {
+        val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+        val sslSocket = factory.createSocket(socket, host, port, true) as javax.net.ssl.SSLSocket
+        sslSocket.startHandshake()
+        socket = sslSocket
+        inputStream = PgInputStream(socket.getInputStream().buffered(8192))
+        outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
+    }
+
 
     val parameters = mutableMapOf<String, String>()
     
