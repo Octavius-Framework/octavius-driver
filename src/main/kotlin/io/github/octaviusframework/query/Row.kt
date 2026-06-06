@@ -47,13 +47,13 @@ inline fun <reified T> Row.get(index: Int): T {
         fieldContainer
     } else if (fieldWindow != null) {
         val oid = field.descriptor.dataTypeOid
-        val handler = typeRegistry.getHandlerByOid<Any>(oid)
-        if (handler != null) {
-            handler.fromBinary(fieldWindow)
+        val serializer = typeRegistry.getSerializerByOid<Any>(oid)
+        if (serializer != null) {
+            serializer.fromBinary(fieldWindow)
         } else if (String::class == T::class) {
             String(fieldWindow.data, fieldWindow.offset, fieldWindow.length, Charsets.UTF_8)
         } else {
-            throw IllegalStateException("Brak handlera dla OID: $oid oraz typu ${T::class.simpleName}")
+            throw IllegalStateException("Brak serializatora dla OID: $oid oraz typu ${T::class.simpleName}")
         }
     } else {
         null

@@ -64,10 +64,10 @@ class PgArray internal constructor(
         if (containers != null) return containers[index] as? T
 
         val window = windows!![index] ?: return null
-        val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "Pobieranie elementu tablicy")
+        val serializer = typeRegistry.getSerializerByOid<Any>(elementOid)
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Pobieranie elementu tablicy")
             
-        val parsedValue = handler.fromBinary(window)
+        val parsedValue = serializer.fromBinary(window)
         if (parsedValue is T) return parsedValue
         throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue::class.simpleName}")
     }
@@ -85,9 +85,9 @@ class PgArray internal constructor(
         val count = totalElements
         val result = ArrayList<T?>(count)
         
-        val handler = if (containers == null) typeRegistry.getHandlerByOid<Any>(elementOid) else null
-        if (containers == null && handler == null) {
-            throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "Element tablicy")
+        val serializer = if (containers == null) typeRegistry.getSerializerByOid<Any>(elementOid) else null
+        if (containers == null && serializer == null) {
+            throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Element tablicy")
         }
 
         for (i in 0 until count) {
@@ -106,7 +106,7 @@ class PgArray internal constructor(
                 result.add(null)
                 continue
             }
-            val parsedValue = handler!!.fromBinary(window)
+            val parsedValue = serializer!!.fromBinary(window)
             if (parsedValue is T) {
                 result.add(parsedValue)
             } else {
@@ -123,8 +123,8 @@ class PgArray internal constructor(
     fun toIntArray(): IntArray {
         if (containers != null) throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, details = "Tablica zawiera eager kontener, nie można rzutować na IntArray")
 
-        val handler = typeRegistry.getHandlerByOid<Int>(elementOid)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "toIntArray")
+        val serializer = typeRegistry.getSerializerByOid<Int>(elementOid)
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "toIntArray")
 
         val count = totalElements
         val result = IntArray(count)
@@ -136,7 +136,7 @@ class PgArray internal constructor(
             val window = windows!![i]
                 ?: throw NullPointerException("Znaleziono wartość NULL podczas rzutowania na IntArray")
             
-            result[i] = handler.fromBinary(window)
+            result[i] = serializer.fromBinary(window)
         }
         return result
     }

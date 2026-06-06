@@ -3,6 +3,7 @@ package io.github.octaviusframework.jdbc
 import io.github.octaviusframework.auth.Authenticator
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.network.messages.StartupMessage
+
 import java.sql.Connection
 import java.sql.Driver
 import java.sql.DriverManager

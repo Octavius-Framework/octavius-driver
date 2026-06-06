@@ -46,10 +46,10 @@ class PgComposite internal constructor(
         val window = field.rawValue ?: return null
 
         val attributeOid = type.attributes.values.toList()[index]
-        val handler = typeRegistry.getHandlerByOid<Any>(attributeOid)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = attributeOid.toInt(), details = "Pobieranie atrybutu kompozytu")
+        val serializer = typeRegistry.getSerializerByOid<Any>(attributeOid)
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = attributeOid.toInt(), details = "Pobieranie atrybutu kompozytu")
 
-        val parsedValue = handler.fromBinary(window)
+        val parsedValue = serializer.fromBinary(window)
         if (parsedValue is T) {
             return parsedValue
         } else {

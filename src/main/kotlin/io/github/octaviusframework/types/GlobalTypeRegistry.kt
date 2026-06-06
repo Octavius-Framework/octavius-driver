@@ -33,7 +33,6 @@ object GlobalTypeRegistry {
         val registry = getRegistry(url)
         synchronized(registry) {
             println("Jawne przeładowanie słownika typów dla URL: $url...")
-            registry.clearOidMappings()
             TypeRegistryLoader.load(registry, executor)
             loadedFlags[url] = true
         }

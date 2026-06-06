@@ -1,70 +1,131 @@
 package io.github.octaviusframework.types
 
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import kotlin.reflect.KClass
 
 
 
 class TypeRegistry {
-    val types = mutableMapOf<UInt, PgType>()
+    @Volatile
+    var types: Map<UInt, PgType> = emptyMap()
 
-    private val handlersByOid = mutableMapOf<UInt, TypeHandler<*>>()
-    private val handlersByClass = mutableMapOf<KClass<*>, TypeHandler<*>>()
+    @Volatile
+    private var serializersByOid: Map<UInt, TypeSerializer<*>> = emptyMap()
+
+    @Volatile
+    private var serializersByName: Map<QualifiedName, TypeSerializer<*>> = emptyMap()
+    
+    @Volatile
+    private var serializersByClass: Map<KClass<*>, TypeSerializer<*>> = emptyMap()
 
     init {
-        // Rejestrujemy wbudowane typy
-        registerBuiltins()
+        val newOidMap = mutableMapOf<UInt, TypeSerializer<*>>()
+        val newClassMap = mutableMapOf<KClass<*>, TypeSerializer<*>>()
+        registerBuiltins(newOidMap, newClassMap)
+        serializersByOid = newOidMap
+        serializersByClass = newClassMap
     }
 
-    fun registerHandler(handler: TypeHandler<*>) {
-        if (handler.isDefaultForKotlinType) {
-            handlersByClass[handler.kotlinClass] = handler
+    private fun registerBuiltins(
+        oidMap: MutableMap<UInt, TypeSerializer<*>>,
+        classMap: MutableMap<KClass<*>, TypeSerializer<*>>
+    ) {
+        fun register(serializer: TypeSerializer<*>) {
+            if (serializer.isDefaultForKotlinType) {
+                classMap[serializer.kotlinClass] = serializer
+            }
+            if (serializer.oid != null) {
+                oidMap[serializer.oid!!] = serializer
+            }
         }
-        handler.oid.let { handlersByOid[it] = handler }
-    }
 
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getHandlerByOid(oid: UInt): TypeHandler<T>? {
-        return handlersByOid[oid] as TypeHandler<T>?
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getHandlerByClass(kClass: KClass<T>): TypeHandler<T>? {
-        return handlersByClass[kClass] as TypeHandler<T>?
-    }
-
-    private fun registerBuiltins() {
-        registerHandler(ShortHandler)
-        registerHandler(IntHandler)
-        registerHandler(LongHandler)
-        registerHandler(FloatHandler)
-        registerHandler(DoubleHandler)
-        registerHandler(BooleanHandler)
-        registerHandler(StringHandler)
-        registerHandler(VarcharHandler)
-        registerHandler(BpcharHandler)
-        registerHandler(ByteArrayHandler)
+        register(ShortSerializer)
+        register(IntSerializer)
+        register(LongSerializer)
+        register(FloatSerializer)
+        register(DoubleSerializer)
+        register(BooleanSerializer)
+        register(StringSerializer)
+        register(VarcharSerializer)
+        register(BpcharSerializer)
+        register(ByteArraySerializer)
         
         // DateTime
-        registerHandler(InstantHandler)
-        registerHandler(LocalDateTimeHandler)
-        registerHandler(LocalDateHandler)
-        registerHandler(LocalTimeHandler)
+        register(InstantSerializer)
+        register(LocalDateTimeSerializer)
+        register(LocalDateSerializer)
+        register(LocalTimeSerializer)
         
         // Json
-        registerHandler(JsonbElementHandler)
-        registerHandler(JsonElementHandler)
+        register(JsonbElementSerializer)
+        register(JsonElementSerializer)
         
         // Additional
-        registerHandler(UuidHandler)
-        registerHandler(NumericHandler)
-        registerHandler(UnitHandler)
+        register(UuidSerializer)
+        register(NumericSerializer)
+        register(UnitSerializer)
     }
 
-    fun clearOidMappings() {
-        types.clear()
-        handlersByOid.clear()
-        registerBuiltins()
+    /**
+     * Rejestruje własny serializator. Jeżeli OID jest nieznane (typ dynamiczny),
+     * zostanie dopasowane po nazwie natychmiast, a także zapamiętane przy
+     * kolejnych przeładowaniach słownika (reloadTypes).
+     */
+    fun registerSerializer(serializer: TypeSerializer<*>) {
+        val newOidMap = serializersByOid.toMutableMap()
+        val newClassMap = serializersByClass.toMutableMap()
+        val newNameMap = serializersByName.toMutableMap()
+        
+        if (serializer.isDefaultForKotlinType) {
+            newClassMap[serializer.kotlinClass] = serializer
+        }
+        
+        val qName = QualifiedName(serializer.pgSchema, serializer.pgTypeName)
+        newNameMap[qName] = serializer
+
+        if (serializer.oid != null) {
+            newOidMap[serializer.oid!!] = serializer
+        } else {
+            val pgType = types.values.firstOrNull { it.name == serializer.pgTypeName && it.schema == serializer.pgSchema } // TODO fixme
+            if (pgType != null) {
+                newOidMap[pgType.oid] = serializer
+            }
+        }
+        
+        serializersByOid = newOidMap
+        serializersByClass = newClassMap
+        serializersByName = newNameMap
     }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> getSerializerByOid(oid: UInt): TypeSerializer<T>? {
+        return serializersByOid[oid] as TypeSerializer<T>?
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> getSerializerByClass(kClass: KClass<T>): TypeSerializer<T>? {
+        return serializersByClass[kClass] as TypeSerializer<T>?
+    }
+
+    /**
+     * Zastępuje całą mapę typów nową instancją, gwarantując thread-safety.
+     * Dodatkowo aplikuje customowe serializatory oczekujące na OID.
+     */
+    fun updateTypes(newTypes: Map<UInt, PgType>) {
+        val newOidMap = serializersByOid.toMutableMap()
+        for ((name, serializer) in serializersByName) {
+            if (serializer.oid == null) {
+                val pgType = newTypes.values.firstOrNull { it.name == name.name && it.schema == name.schema }
+                if (pgType != null) {
+                    newOidMap[pgType.oid] = serializer
+                }
+            }
+        }
+        types = newTypes
+        serializersByOid = newOidMap
+    }
+
 
     fun resolveOid(
         typeName: String,
@@ -79,8 +140,8 @@ class TypeRegistry {
             .mapValues { it.value.first().oid }
 
         if (schemasForName.isEmpty()) {
-            throw io.github.octaviusframework.exceptions.OctaviusTypeException(
-                messageEnum = io.github.octaviusframework.exceptions.TypeExceptionMessage.TYPE_NOT_FOUND,
+            throw OctaviusTypeException(
+                messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                 typeName = typeName,
                 details = "Type '$typeName' not found in any scanned schemas"
             )
@@ -92,8 +153,8 @@ class TypeRegistry {
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotBlank()) {
             resolvedOid = schemasForName[requestedSchema]
-                ?: throw io.github.octaviusframework.exceptions.OctaviusTypeException(
-                    messageEnum = io.github.octaviusframework.exceptions.TypeExceptionMessage.TYPE_NOT_FOUND,
+                ?: throw OctaviusTypeException(
+                    messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                     typeName = typeName,
                     details = "Type '$typeName' not found in requested schema '$requestedSchema'"
                 )
@@ -116,8 +177,8 @@ class TypeRegistry {
                     resolvedSchema = entry.key
                     resolvedOid = entry.value
                 } else {
-                    throw io.github.octaviusframework.exceptions.OctaviusTypeException(
-                        messageEnum = io.github.octaviusframework.exceptions.TypeExceptionMessage.TYPE_NOT_FOUND,
+                    throw OctaviusTypeException(
+                        messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                         typeName = typeName,
                         details = "Type '$typeName' is ambiguous. Found in schemas: ${schemasForName.keys.joinToString()}. Please specify schema."
                     )
@@ -127,8 +188,8 @@ class TypeRegistry {
 
         if (isArray) {
             val arrayType = types.values.firstOrNull { it is PgType.Array && it.elementOid == resolvedOid }
-                ?: throw io.github.octaviusframework.exceptions.OctaviusTypeException(
-                    messageEnum = io.github.octaviusframework.exceptions.TypeExceptionMessage.TYPE_NOT_FOUND,
+                ?: throw OctaviusTypeException(
+                    messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                     typeName = typeName,
                     details = "Array type for '$typeName' not found in registry"
                 )

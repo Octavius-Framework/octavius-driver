@@ -53,10 +53,10 @@ class PgRange internal constructor(
 
         val window = field.rawValue ?: return null
 
-        val handler = typeRegistry.getHandlerByOid<Any>(elementOid)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = elementOid.toInt(), details = "Pobieranie krawędzi zakresu")
+        val serializer = typeRegistry.getSerializerByOid<Any>(elementOid)
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Pobieranie krawędzi zakresu")
             
-        val parsed = handler.fromBinary(window)
+        val parsed = serializer.fromBinary(window)
         if (parsed is T) {
             return parsed
         } else {

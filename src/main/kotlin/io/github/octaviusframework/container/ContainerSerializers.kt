@@ -24,9 +24,9 @@ object ContainerSerializers {
         }
 
         if (field.value != null) {
-            val handler = typeRegistry.getHandlerByOid<Any>(expectedOid)
-                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = expectedOid.toInt(), details = "Serializacja wartości: ${field.value}")
-            val bytes = handler.toBinary(field.value!!)
+            val serializer = typeRegistry.getSerializerByOid<Any>(expectedOid)
+                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = expectedOid.toInt(), details = "Serializacja wartości: ${field.value}")
+            val bytes = serializer.toBinary(field.value!!)
             writer.writeInt(bytes.size)
             writer.writeBytes(bytes)
         } else if (field.container != null) {
@@ -62,13 +62,13 @@ object ContainerSerializers {
             writer.writeInt(dim.lowerBound)
         }
         
-        val handler = typeRegistry.getHandlerByOid<Any>(array.elementOid)
+        val serializer = typeRegistry.getSerializerByOid<Any>(array.elementOid)
         
         for (i in 0 until count) {
             val value = array.values?.getOrNull(i)
             if (value != null) {
-                if (handler == null) throw OctaviusTypeException(TypeExceptionMessage.MISSING_HANDLER, oid = array.elementOid.toInt(), details = "Element tablicy")
-                val bytes = handler.toBinary(value)
+                if (serializer == null) throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = array.elementOid.toInt(), details = "Element tablicy")
+                val bytes = serializer.toBinary(value)
                 writer.writeInt(bytes.size)
                 writer.writeBytes(bytes)
                 continue

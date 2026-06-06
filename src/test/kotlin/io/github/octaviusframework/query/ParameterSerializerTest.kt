@@ -22,7 +22,7 @@ class ParameterSerializerTest {
         val intVal = 12345
         val intBytes = serializer.serialize(intVal)
         assertNotNull(intBytes)
-        val intHandler = registry.getHandlerByClass(Int::class)!!
+        val intHandler = registry.getSerializerByClass(Int::class)!!
         val parsedInt = intHandler.fromBinary(ByteArrayWindow(intBytes, 0, intBytes.size))
         assertEquals(intVal, parsedInt, "Integer roundtrip should match original value")
 
@@ -30,7 +30,7 @@ class ParameterSerializerTest {
         val stringVal = "test_string_123"
         val stringBytes = serializer.serialize(stringVal)
         assertNotNull(stringBytes)
-        val stringHandler = registry.getHandlerByClass(String::class)!!
+        val stringHandler = registry.getSerializerByClass(String::class)!!
         val parsedString = stringHandler.fromBinary(ByteArrayWindow(stringBytes, 0, stringBytes.size))
         assertEquals(stringVal, parsedString, "String roundtrip should match original value")
 
@@ -38,7 +38,7 @@ class ParameterSerializerTest {
         val boolVal = true
         val boolBytes = serializer.serialize(boolVal)
         assertNotNull(boolBytes)
-        val boolHandler = registry.getHandlerByClass(Boolean::class)!!
+        val boolHandler = registry.getSerializerByClass(Boolean::class)!!
         val parsedBool = boolHandler.fromBinary(ByteArrayWindow(boolBytes, 0, boolBytes.size))
         assertEquals(boolVal, parsedBool, "Boolean roundtrip should match original value")
 
@@ -46,7 +46,7 @@ class ParameterSerializerTest {
         val doubleVal = 3.14159
         val doubleBytes = serializer.serialize(doubleVal)
         assertNotNull(doubleBytes)
-        val doubleHandler = registry.getHandlerByClass(Double::class)!!
+        val doubleHandler = registry.getSerializerByClass(Double::class)!!
         val parsedDouble = doubleHandler.fromBinary(ByteArrayWindow(doubleBytes, 0, doubleBytes.size))
         assertEquals(doubleVal, parsedDouble, "Double roundtrip should match original value")
     }
@@ -59,7 +59,7 @@ class ParameterSerializerTest {
         val byteArrayVal = byteArrayOf(0x01, 0x02, 0x03, 0xFF.toByte())
         val bytes = serializer.serialize(byteArrayVal)
         assertNotNull(bytes)
-        val handler = registry.getHandlerByClass(ByteArray::class)!!
+        val handler = registry.getSerializerByClass(ByteArray::class)!!
         val parsedByteArray = handler.fromBinary(ByteArrayWindow(bytes, 0, bytes.size))
         
         assertEquals(byteArrayVal.toList(), parsedByteArray.toList(), "ByteArray roundtrip should match original value")

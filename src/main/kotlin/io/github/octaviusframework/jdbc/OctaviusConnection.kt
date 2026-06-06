@@ -7,6 +7,7 @@ import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusJdbcException
 import io.github.octaviusframework.exceptions.JdbcExceptionMessage
+import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.quoteAsPgIdentifier
 import java.sql.*
 import java.util.Properties
@@ -37,9 +38,6 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         GlobalTypeRegistry.reload(url, queryExecutor)
     }
 
-    /**
-     * Tworzy nowy obiekt zapytania z podanym kodem SQL.
-     */
     fun createQuery(sql: String): OctaviusQuery {
         checkClosed()
         return OctaviusQuery(sql, queryExecutor, typeRegistry)
@@ -309,6 +307,32 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         return catalogName!!
     } // required by Hikari
 
+    //---------------------------------------------------TYPES----------------------------------------------------------
+
+    fun registerGlobalSerializer(serializer: TypeSerializer<*>) {
+        typeRegistry.registerSerializer(serializer)
+    }
+
+    fun registerGlobalConverter() {
+        
+    }
+
+
+    //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
+    // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)
+    override fun createStatement(): Statement {
+        checkClosed()
+        return OctaviusStatement(this)
+    }
+    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement {
+        checkClosed()
+        return OctaviusStatement(this)
+    }
+    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement {
+        checkClosed()
+        return OctaviusStatement(this)
+    }
+
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing = throw SQLFeatureNotSupportedException("This feature is not supported by Octavius JDBC Driver")
     // Replaced by io.github.octaviusframework.container.ContainerFactory.kt
@@ -320,10 +344,6 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun createBlob(): Blob = unsupported()
     override fun createNClob(): NClob = unsupported()
 
-    // No support for standard Statements, as they force a result set
-    override fun createStatement(): Statement = unsupported() // Used by hikari when connectionTestQuery is set
-    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int): Statement = unsupported()
-    override fun createStatement(resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): Statement = unsupported()
     override fun prepareStatement(sql: String?): PreparedStatement = unsupported()
     override fun prepareStatement(sql: String?, resultSetType: Int, resultSetConcurrency: Int): PreparedStatement = unsupported()
     override fun prepareStatement(sql: String?, resultSetType: Int, resultSetConcurrency: Int, resultSetHoldability: Int): PreparedStatement = unsupported()

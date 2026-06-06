@@ -5,7 +5,7 @@ import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import io.github.octaviusframework.io.PgByteWriter
 import io.github.octaviusframework.types.PgType
-import io.github.octaviusframework.types.TypeHandler
+import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.TypeRegistry
 
 data class SerializedParameter(val oid: UInt, val value: ByteArray?)
@@ -23,15 +23,15 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             return writer.toByteArray()
         }
 
-        val handler = typeRegistry.getHandlerByClass(parameter::class)
+        val serializer = typeRegistry.getSerializerByClass(parameter::class)
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_HANDLER,
-                details = "Nie znaleziono handlera dla typu: ${parameter::class.qualifiedName}"
+                TypeExceptionMessage.MISSING_SERIALIZER,
+                details = "Nie znaleziono serializatora dla typu: ${parameter::class.qualifiedName}"
             )
 
         @Suppress("UNCHECKED_CAST")
-        val anyHandler = handler as TypeHandler<Any>
-        return anyHandler.toBinary(parameter)
+        val anySerializer = serializer as TypeSerializer<Any>
+        return anySerializer.toBinary(parameter)
     }
 
     fun getOid(parameter: Any?): UInt {
@@ -65,13 +65,13 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             }
         }
 
-        val handler = typeRegistry.getHandlerByClass(parameter::class)
+        val serializer = typeRegistry.getSerializerByClass(parameter::class)
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_HANDLER,
+                TypeExceptionMessage.MISSING_SERIALIZER,
                 details = "Nie znaleziono handlera dla typu: ${parameter::class.qualifiedName}"
             )
 
-        return handler.oid
+        return serializer.oid!!
     }
 
     /**

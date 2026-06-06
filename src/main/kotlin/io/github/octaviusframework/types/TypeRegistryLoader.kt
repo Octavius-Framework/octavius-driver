@@ -96,6 +96,8 @@ object TypeRegistryLoader {
             }
         }
         
+        val newTypes = mutableMapOf<UInt, PgType>()
+
         // Finalne budowanie prawidłowych obiektów instancji dla każdego wykrytego typu
         for ((oid, info) in parsedTypes) {
             val pgType = when {
@@ -118,7 +120,9 @@ object TypeRegistryLoader {
                 else -> PgType.Base(oid, info.name, info.schema)
             }
             
-            typeRegistry.types[oid] = pgType
+            newTypes[oid] = pgType
         }
+        
+        typeRegistry.updateTypes(newTypes)
     }
 }
