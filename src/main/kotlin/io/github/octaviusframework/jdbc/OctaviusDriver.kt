@@ -86,6 +86,15 @@ class OctaviusDriver : Driver {
         val authenticator = Authenticator(stream)
         authenticator.authenticate(user, password)
         
+        val serverVersion = stream.parameters["server_version"]
+        if (serverVersion != null) {
+            val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
+            if (majorVersion < 18) {
+                stream.close()
+                throw SQLException("Octavius JDBC wymaga bazy PostgreSQL w wersji co najmniej 18. Otrzymano wersję: $serverVersion")
+            }
+        }
+        
         return OctaviusConnection(stream, url)
     }
 

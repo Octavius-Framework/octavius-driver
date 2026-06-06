@@ -242,11 +242,10 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     }
 
     //------------------------------------------SEARCH PATH-------------------------------------------------------------
-    private var savedSearchPath: List<String>? = null
 
     /**
-     * Retrieves the current search path. If it hasn't been cached yet,
-     * it queries the database to fetch the currently active schemas.
+     * Retrieves the current search path. Since we enforce PostgreSQL 18+, this value
+     * is always kept up-to-date automatically via ParameterStatus messages from the server.
      *
      * @return A list of schema names representing the current search path.
      */
@@ -254,22 +253,17 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         checkClosed()
         val paramSearchPath = stream.parameters["search_path"]
         if (paramSearchPath != null) {
-            return paramSearchPath.split(",").map { it.trim() }
+            return paramSearchPath.split(",").map { it.trim().removeSurrounding("\"") }
         }
-        
-        if (savedSearchPath == null) {
-            val result = queryExecutor.query("SELECT unnest(current_schemas(false))")
-            savedSearchPath = result.map { it.get<String>(0) }
-        }
-        return savedSearchPath!!
+        // Fallback w rzadkim przypadku (np. mockowany serwer testowy)
+        return listOf("public")
     }
 
     /**
      * Sets the current search path for this connection.
      *
-     * The search path should be updated using this method instead of executing a raw SQL query.
-     * The framework caches this value and uses it internally for resolving OIDs when a database
-     * schema is not explicitly provided.
+     * The framework relies on PostgreSQL 18+ ParameterStatus to automatically track the search path,
+     * so executing SET search_path will implicitly update the driver's state. This method is a convenient helper.
      *
      * @param schemas An array of schema names to be set as the new search path.
      *                If empty, the search path is reset to DEFAULT.
@@ -278,11 +272,9 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         checkClosed()
         if (schemas.isEmpty()) {
             queryExecutor.execute("SET search_path TO DEFAULT")
-            this.savedSearchPath = null
         } else {
             val pathStr = schemas.joinToString(", ") { it.quoteAsPgIdentifier() }
             queryExecutor.execute("SET search_path TO $pathStr")
-            this.savedSearchPath = schemas.toList()
         }
     }
 
