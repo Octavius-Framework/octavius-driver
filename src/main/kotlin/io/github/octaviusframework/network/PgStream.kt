@@ -18,6 +18,7 @@ import io.github.octaviusframework.network.messages.NoticeResponseMessage
 import io.github.octaviusframework.network.messages.NotificationResponseMessage
 import io.github.octaviusframework.network.messages.ParseCompleteMessage
 import io.github.octaviusframework.network.messages.ReadyForQueryMessage
+import io.github.octaviusframework.network.messages.ParameterStatusMessage
 import io.github.octaviusframework.network.messages.RowDescriptionMessage
 import io.github.octaviusframework.network.messages.TerminateMessage
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -76,6 +77,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                     val name = inputStream.readCString()
                     val value = inputStream.readCString()
                     parameters[name] = value
+                    return ParameterStatusMessage(name, value)
                 }
                 'N' -> {
                     val fields = mutableMapOf<Char, String>()

@@ -13,12 +13,14 @@ import io.github.octaviusframework.exceptions.TypeExceptionMessage
 /**
  * Tworzy całkowicie nowy, pusty kompozyt na podstawie jego nazwy typu (oraz opcjonalnie schematu).
  */
-fun OctaviusConnection.createComposite(typeName: String, schema: String? = null): PgComposite {
+fun OctaviusConnection.createComposite(typeName: String, schema: String = ""): PgComposite {
     val typeRegistry = this.typeRegistry
-    val pgType = typeRegistry.types.values.firstOrNull { 
-        it is PgType.Composite && it.name == typeName && (schema == null || it.schema == schema) 
-    } as? PgType.Composite
-        ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Schemat: ${schema ?: "dowolny"}")
+    val searchPath = this.getSearchPath()
+    
+    val (resolvedOid, _) = typeRegistry.resolveOid(typeName, schema, searchPath)
+    
+    val pgType = typeRegistry.types[resolvedOid] as? PgType.Composite
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = resolvedOid.toInt(), details = "Typ $typeName nie jest kompozytem")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 

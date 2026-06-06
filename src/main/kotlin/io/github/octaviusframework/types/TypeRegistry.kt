@@ -151,7 +151,7 @@ class TypeRegistry {
         }
 
         var resolvedOid: UInt? = null
-        var resolvedSchema: String = ""
+        var resolvedSchema = ""
 
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotBlank()) {

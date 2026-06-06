@@ -252,6 +252,11 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
      */
     fun getSearchPath(): List<String> {
         checkClosed()
+        val paramSearchPath = stream.parameters["search_path"]
+        if (paramSearchPath != null) {
+            return paramSearchPath.split(",").map { it.trim() }
+        }
+        
         if (savedSearchPath == null) {
             val result = queryExecutor.query("SELECT unnest(current_schemas(false))")
             savedSearchPath = result.map { it.get<String>(0) }

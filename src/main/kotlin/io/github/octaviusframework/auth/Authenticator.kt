@@ -90,6 +90,9 @@ class Authenticator(private val stream: PgStream) {
                     println("Zalogowano pomyślnie! Serwer gotowy do zapytań.")
                     return // Koniec fazy logowania
                 }
+                is ParameterStatusMessage -> {
+                    println("Otrzymano parametr sesji: ${msg.name} = ${msg.value}")
+                }
                 else -> {
                     println("Ignoruję niespodziewaną wiadomość: $msg")
                 }
