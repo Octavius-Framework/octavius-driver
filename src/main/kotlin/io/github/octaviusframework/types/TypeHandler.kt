@@ -6,7 +6,7 @@ import kotlin.reflect.KClass
 interface TypeHandler<T : Any> {
     val pgTypeName: String
     val pgSchema: String get() = "pg_catalog"
-    val oid: UInt? get() = null
+    val oid: UInt
     val kotlinClass: KClass<T>
     val isDefaultForKotlinType: Boolean get() = false
     
