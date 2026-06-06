@@ -15,6 +15,8 @@ import kotlin.test.assertNotNull
 import io.github.octaviusframework.container.createComposite
 import io.github.octaviusframework.container.createArray
 import io.github.octaviusframework.container.createArrayWithElements
+import io.github.octaviusframework.query.ParameterSerializer
+import org.junit.jupiter.api.Assertions.assertEquals
 
 class SerializationTest {
 
@@ -204,5 +206,68 @@ class SerializationTest {
             serializedArray,
             "Zbudowana tablica wielowymiarowa musi zgadzać się z Postgresową"
         )
+    }
+
+    @Test
+    fun testParameterSerializerDatabaseRoundTrip() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+
+        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+
+        val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
+        val typeRegistry = dummyRow.typeRegistry
+        val serializer = ParameterSerializer(typeRegistry)
+
+        // 1. Integer Round Trip
+        val intVal = 424242
+        val rowsInt = octaviusConn.queryExecutor.query(
+            "SELECT $1::int4 as res",
+            paramTypes = listOf(0u),
+            paramValues = listOf(serializer.serialize(intVal))
+        )
+        assertEquals(intVal, rowsInt.first().get<Int>("res"))
+
+        // 2. String Round Trip
+        val strVal = "Zażółć gęślą jaźń"
+        val rowsStr = octaviusConn.queryExecutor.query(
+            "SELECT $1::text as res",
+            paramTypes = listOf(0u),
+            paramValues = listOf(serializer.serialize(strVal))
+        )
+        assertEquals(strVal, rowsStr.first().get<String>("res"))
+
+        // 3. Boolean Round Trip
+        val boolVal = true
+        val rowsBool = octaviusConn.queryExecutor.query(
+            "SELECT $1::bool as res",
+            paramTypes = listOf(0u),
+            paramValues = listOf(serializer.serialize(boolVal))
+        )
+        assertEquals(boolVal, rowsBool.first().get<Boolean>("res"))
+
+        // 4. Double Round Trip
+        val doubleVal = 3.14159
+        val rowsDouble = octaviusConn.queryExecutor.query(
+            "SELECT $1::float8 as res",
+            paramTypes = listOf(0u),
+            paramValues = listOf(serializer.serialize(doubleVal))
+        )
+        assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
+
+        // 5. Container (PgArray) Round Trip
+        val arrayVal = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val rowsArray = octaviusConn.queryExecutor.query(
+            "SELECT $1::int4[] as res",
+            paramTypes = listOf(0u),
+            paramValues = listOf(serializer.serialize(arrayVal))
+        )
+        val returnedArray = rowsArray.first().get<PgArray>("res")
+        assertNotNull(returnedArray)
+        assertEquals(10, returnedArray.get<Int>(0))
+        assertEquals(20, returnedArray.get<Int>(1))
+        assertEquals(30, returnedArray.get<Int>(2))
     }
 }
