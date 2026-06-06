@@ -72,7 +72,7 @@ class TypeRegistry {
      * zostanie dopasowane po nazwie natychmiast, a także zapamiętane przy
      * kolejnych przeładowaniach słownika (reloadTypes).
      */
-    fun registerSerializer(serializer: TypeSerializer<*>) {
+    fun registerSerializer(serializer: TypeSerializer<*>, searchPath: List<String> = emptyList()) {
         val newOidMap = serializersByOid.toMutableMap()
         val newClassMap = serializersByClass.toMutableMap()
         val newNameMap = serializersByName.toMutableMap()
@@ -87,9 +87,10 @@ class TypeRegistry {
         if (serializer.oid != null) {
             newOidMap[serializer.oid!!] = serializer
         } else {
-            val pgType = types.values.firstOrNull { it.name == serializer.pgTypeName && it.schema == serializer.pgSchema } // TODO fixme
-            if (pgType != null) {
-                newOidMap[pgType.oid] = serializer
+            if (types.isNotEmpty()) {
+                val (resolvedOid, resolvedQName) = resolveOid(serializer.pgTypeName, serializer.pgSchema, searchPath)
+                newOidMap[resolvedOid] = serializer
+                newNameMap[resolvedQName] = serializer
             }
         }
         
@@ -112,18 +113,19 @@ class TypeRegistry {
      * Zastępuje całą mapę typów nową instancją, gwarantując thread-safety.
      * Dodatkowo aplikuje customowe serializatory oczekujące na OID.
      */
-    fun updateTypes(newTypes: Map<UInt, PgType>) {
+    fun updateTypes(newTypes: Map<UInt, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = serializersByOid.toMutableMap()
+        val newNameMap = serializersByName.toMutableMap()
         for ((name, serializer) in serializersByName) {
             if (serializer.oid == null) {
-                val pgType = newTypes.values.firstOrNull { it.name == name.name && it.schema == name.schema }
-                if (pgType != null) {
-                    newOidMap[pgType.oid] = serializer
-                }
+                val (resolvedOid, resolvedQName) = resolveOid(name.name, name.schema, searchPath, sourceTypes = newTypes)
+                newOidMap[resolvedOid] = serializer
+                newNameMap[resolvedQName] = serializer
             }
         }
         types = newTypes
         serializersByOid = newOidMap
+        serializersByName = newNameMap
     }
 
 
@@ -131,10 +133,11 @@ class TypeRegistry {
         typeName: String,
         requestedSchema: String,
         searchPath: List<String>,
-        isArray: Boolean = false
+        isArray: Boolean = false,
+        sourceTypes: Map<UInt, PgType> = types
     ): Pair<UInt, QualifiedName> {
         // Find matching types by name
-        val schemasForName = types.values
+        val schemasForName = sourceTypes.values
             .filter { it.name == typeName }
             .groupBy { it.schema }
             .mapValues { it.value.first().oid }

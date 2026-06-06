@@ -2,6 +2,7 @@ package io.github.octaviusframework.types
 
 import io.github.octaviusframework.io.getUIntBE
 import io.github.octaviusframework.query.QueryExecutor
+import io.github.octaviusframework.query.get
 
 object TypeRegistryLoader {
 
@@ -25,6 +26,9 @@ object TypeRegistryLoader {
         """.trimIndent()
         
         val result = queryExecutor.query(typesSql)
+        
+        val searchPathResult = queryExecutor.query("SELECT unnest(current_schemas(false))")
+        val searchPath = searchPathResult.map { it.get<String>(0) }
         
         val enumMap = mutableMapOf<UInt, MutableList<String>>()
         val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()
@@ -123,6 +127,6 @@ object TypeRegistryLoader {
             newTypes[oid] = pgType
         }
         
-        typeRegistry.updateTypes(newTypes)
+        typeRegistry.updateTypes(newTypes, searchPath)
     }
 }

@@ -310,7 +310,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     //---------------------------------------------------TYPES----------------------------------------------------------
 
     fun registerGlobalSerializer(serializer: TypeSerializer<*>) {
-        typeRegistry.registerSerializer(serializer)
+        typeRegistry.registerSerializer(serializer, getSearchPath())
     }
 
     fun registerGlobalConverter() {
