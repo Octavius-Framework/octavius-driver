@@ -17,6 +17,18 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             return null
         }
 
+        if (parameter is PgTypedParameter) {
+            if (parameter.value == null) return null
+            
+            val serializer = typeRegistry.getSerializerByOid<Any>(parameter.oid)
+            if (serializer != null) {
+                return serializer.toBinary(parameter.value)
+            }
+            
+            // Fallback for containers or missing OID serializers
+            return serialize(parameter.value)
+        }
+
         if (parameter is PgContainer) {
             val writer = PgByteWriter()
             ContainerSerializers.serializeContainer(parameter, writer, typeRegistry)
@@ -36,6 +48,10 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
 
     fun getOid(parameter: Any?): UInt {
         if (parameter == null) return 0u // Unspecified type
+
+        if (parameter is PgTypedParameter) {
+            return parameter.oid
+        }
 
         if (parameter is PgContainer) {
             return when (parameter) {
