@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.SharedFlow
 import io.github.octaviusframework.network.messages.NotificationResponseMessage
+import kotlinx.coroutines.runInterruptible
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.SocketException
@@ -125,7 +126,12 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     val notifications: SharedFlow<NotificationResponseMessage>
         get() = stream.notifications
 
-    suspend fun startBlockingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
+    /**
+     * Starts a listener loop using active polling with a socket timeout.
+     * When the coroutine is cancelled, the loop exits gracefully without closing
+     * the underlying database connection, allowing it to be reused.
+     */
+    suspend fun startPollingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
         if (isClosedFlag) return
 
         withContext(dispatcher ?: virtualDispatcher) {
@@ -150,6 +156,34 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
                 try {
                     if (!isClosedFlag) stream.networkTimeout = originalTimeout
                 } catch (ignore: Exception) {}
+            }
+        }
+    }
+
+    /**
+     * Starts a fully blocking listener loop using Virtual Threads.
+     * The loop blocks without consuming CPU. Cancelling the coroutine will trigger
+     * a system-level Thread.interrupt() and immediately wake up the thread.
+     * 
+     * WARNING: According to the Java specification, waking up a blocked virtual thread
+     * from a system socket read will irreversibly close the underlying socket!
+     */
+    suspend fun startInterruptibleListenerLoop() {
+        if (isClosedFlag) return
+
+        use {
+            // Force interrupt propagation on the virtual thread
+            runInterruptible(virtualDispatcher) {
+                while (!isClosedFlag) {
+                    try {
+                        stream.receiveMessage()
+                    } catch (e: SocketException) {
+                        // Thread was interrupted by cancel(), socket is now closed
+                        break
+                    } catch (e: IOException) {
+                        break
+                    }
+                }
             }
         }
     }
