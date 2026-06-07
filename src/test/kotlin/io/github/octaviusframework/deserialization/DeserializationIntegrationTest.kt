@@ -45,20 +45,14 @@ class DeserializationIntegrationTest {
 
             val result = octaviusConn.queryExecutor.query("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").first()
             
-            // Oczekujemy, że z bazy przyjdzie już gotowy PgComposite skonstruowany z ByteArrayWindow
-            val compositeUser = result.get<PgComposite>("usr")
-
-            val registry = ConverterRegistry()
-            registry.addConverter(ReflectionCompositeConverter())
-            val deserializer = ObjectDeserializer(registry)
-
-            val parsedUser: IntegrationUser? = deserializer.deserialize(compositeUser, typeOf<IntegrationUser>())
+            // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
+            val parsedUser = result.get<IntegrationUser>("usr")
 
             assertNotNull(parsedUser)
-            assertEquals(10, parsedUser?.id)
-            assertEquals("Jan Kowalski", parsedUser?.name)
-            assertEquals("Marszałkowska", parsedUser?.address?.street)
-            assertEquals("Warszawa", parsedUser?.address?.city)
+            assertEquals(10, parsedUser.id)
+            assertEquals("Jan Kowalski", parsedUser.name)
+            assertEquals("Marszałkowska", parsedUser.address.street)
+            assertEquals("Warszawa", parsedUser.address.city)
             
         } finally {
             try {
@@ -83,20 +77,13 @@ class DeserializationIntegrationTest {
 
             val result = octaviusConn.queryExecutor.query("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").first()
 
-            // Oczekujemy, że z bazy przyjdzie gotowa PgArray zbudowana z czystych bajtów (ByteArrayWindow)
-            val arrayAddresses = result.get<PgArray>("addresses")
-
-            val registry = ConverterRegistry()
-            registry.addConverter(ReflectionCompositeConverter())
-            registry.addConverter(CollectionArrayConverter())
-            val deserializer = ObjectDeserializer(registry)
-
-            val parsedList: List<IntegrationAddress>? = deserializer.deserialize(arrayAddresses, typeOf<List<IntegrationAddress>>())
+            // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
+            val parsedList = result.get<List<IntegrationAddress>>("addresses")
 
             assertNotNull(parsedList)
-            assertEquals(2, parsedList?.size)
-            assertEquals("M1", parsedList?.get(0)?.street)
-            assertEquals("W2", parsedList?.get(1)?.city)
+            assertEquals(2, parsedList.size)
+            assertEquals("M1", parsedList[0].street)
+            assertEquals("W2", parsedList[1].city)
             
         } finally {
             try {

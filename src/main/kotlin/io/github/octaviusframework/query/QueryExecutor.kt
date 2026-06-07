@@ -5,7 +5,11 @@ import io.github.octaviusframework.network.messages.*
 import java.sql.SQLException
 import io.github.octaviusframework.types.TypeRegistry
 
-class QueryExecutor(private val stream: PgStream, private val typeRegistry: TypeRegistry) {
+class QueryExecutor(
+    private val stream: PgStream,
+    private val typeRegistry: TypeRegistry,
+    val objectDeserializer: io.github.octaviusframework.deserialization.ObjectDeserializer
+) {
 
     var transactionStatus: Char = 'I'
         private set
@@ -143,6 +147,6 @@ class QueryExecutor(private val stream: PgStream, private val typeRegistry: Type
         }
 
         val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry) }
+        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, objectDeserializer) }
     }
 }

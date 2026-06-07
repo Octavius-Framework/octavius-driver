@@ -24,6 +24,7 @@ interface Row {
     val fields: List<Field>
     val columnNames: List<String>
     val typeRegistry: TypeRegistry
+    val objectDeserializer: io.github.octaviusframework.deserialization.ObjectDeserializer
 
     fun getColumnIndex(columnName: String): Int
     fun detach()
@@ -69,15 +70,21 @@ inline fun <reified T> Row.get(index: Int): T {
 
     if (parsedValue is T) {
         return parsedValue
-    } else {
-        throw IllegalStateException("Błąd rzutowania na indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
+    } else if (parsedValue is PgContainer) {
+        val mapped = objectDeserializer.deserialize<T>(parsedValue, kotlin.reflect.typeOf<T>())
+        if (mapped != null) {
+            return mapped
+        }
     }
+    
+    throw IllegalStateException("Błąd rzutowania na indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
 }
 
 class OctaviusRow(
     columns: List<ByteArrayWindow?>,
     descriptors: List<FieldDescription>,
-    override val typeRegistry: TypeRegistry
+    override val typeRegistry: TypeRegistry,
+    override val objectDeserializer: io.github.octaviusframework.deserialization.ObjectDeserializer
 ) : Row {
 
     override val fields: List<Field> = descriptors.zip(columns) { desc, window ->

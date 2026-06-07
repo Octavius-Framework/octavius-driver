@@ -20,7 +20,9 @@ import java.util.concurrent.Executor
  */
 class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
-    val queryExecutor = QueryExecutor(stream, typeRegistry)
+    val converterRegistry = io.github.octaviusframework.deserialization.GlobalConverterRegistry.getRegistry(url)
+    val objectDeserializer = io.github.octaviusframework.deserialization.ObjectDeserializer(converterRegistry)
+    val queryExecutor = QueryExecutor(stream, typeRegistry, objectDeserializer)
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
@@ -349,8 +351,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         typeRegistry.registerSerializer(serializer, getSearchPath())
     }
 
-    fun registerGlobalConverter() {
-        
+    fun registerGlobalConverter(converter: io.github.octaviusframework.deserialization.PgConverter<*>) {
+        converterRegistry.addConverter(converter)
     }
 
 
