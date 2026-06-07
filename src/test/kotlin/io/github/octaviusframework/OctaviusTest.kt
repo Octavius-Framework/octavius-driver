@@ -19,7 +19,7 @@ class OctaviusTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
         
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
         val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
 
         val result = octaviusConn.queryExecutor.query("SELECT 1, 'abc', 4.5::float8")

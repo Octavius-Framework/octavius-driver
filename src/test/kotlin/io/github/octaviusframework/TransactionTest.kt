@@ -21,7 +21,7 @@ class TransactionTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val conn = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val conn = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
         connection = conn.unwrap(OctaviusConnection::class.java)
 
         connection.queryExecutor.execute("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)")

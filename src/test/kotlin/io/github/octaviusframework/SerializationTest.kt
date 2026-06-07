@@ -26,7 +26,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
+        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
         val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
 
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
