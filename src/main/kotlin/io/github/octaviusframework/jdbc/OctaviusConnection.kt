@@ -7,11 +7,21 @@ import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusJdbcException
 import io.github.octaviusframework.exceptions.JdbcExceptionMessage
+import io.github.octaviusframework.io.virtualDispatcher
 import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.quoteAsPgIdentifier
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.SharedFlow
+import io.github.octaviusframework.network.messages.NotificationResponseMessage
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.SocketException
 
 /**
  * Represents a connection to a database within the Octavius Framework.
@@ -109,6 +119,39 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun getNetworkTimeout(): Int { // required by Hikari
         checkClosed()
         return stream.networkTimeout
+    }
+
+    //------------------------------------------LISTEN/NOTIFY-----------------------------------------------------------
+    val notifications: SharedFlow<NotificationResponseMessage>
+        get() = stream.notifications
+
+    suspend fun startBlockingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
+        if (isClosedFlag) return
+
+        withContext(dispatcher ?: virtualDispatcher) {
+            val originalTimeout = stream.networkTimeout
+            try {
+                stream.networkTimeout = pollTimeoutMs
+
+                while (currentCoroutineContext().isActive && !isClosedFlag) {
+                    try {
+                        stream.receiveMessage()
+                    } catch (e: SocketTimeoutException) {
+                        // Timeout is expected, loop continues and checks isActive
+                    } catch (e: SocketException) {
+                        // Socket was closed from the outside
+                        break
+                    } catch (e: IOException) {
+                        // Connection dropped by network, server, or closed explicitly
+                        break
+                    }
+                }
+            } finally {
+                try {
+                    if (!isClosedFlag) stream.networkTimeout = originalTimeout
+                } catch (ignore: Exception) {}
+            }
+        }
     }
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------
@@ -252,7 +295,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
      */
     private fun parseSearchPath(param: String): List<String> {
         val result = mutableListOf<String>()
-        var current = StringBuilder()
+        val current = StringBuilder()
         var inQuotes = false
         var i = 0
         while (i < param.length) {
@@ -396,4 +439,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     // Based on TypeRegistry
     override fun getTypeMap(): MutableMap<String, Class<*>> = unsupported()
     override fun setTypeMap(map: MutableMap<String, Class<*>>?) = unsupported()
+}
+
+inline fun <reified T: Any> Connection.unwrap(): T {
+    return this.unwrap(T::class.java)
 }
