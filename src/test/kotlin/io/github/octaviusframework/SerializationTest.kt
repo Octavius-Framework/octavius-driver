@@ -14,7 +14,6 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertNotNull
 import io.github.octaviusframework.container.createComposite
 import io.github.octaviusframework.container.createArray
-import io.github.octaviusframework.container.createArrayWithElements
 import io.github.octaviusframework.query.ParameterSerializer
 import org.junit.jupiter.api.Assertions.assertEquals
 
@@ -130,7 +129,10 @@ class SerializationTest {
         assertContentEquals(expectedCompositeRow.fields[0].rawValue!!.toByteArray(), builtCompositeBytes, "Zbudowany kompozyt musi zgadzać się z Postgresowym")
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val array = octaviusConn.createArray(23u, 1) // 23 = int4
+        array[0] = 10
+        array[1] = 20
+        array[2] = 30
 
         val writer2 = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer2, typeRegistry)
@@ -151,7 +153,10 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val array = octaviusConn.createArray(23u, 1) // 23 = int4
+        array[0] = 10
+        array[1] = 20
+        array[2] = 30
 
         val writer = PgByteWriter()
         ContainerSerializers.serializeContainer(array, writer, typeRegistry)
@@ -262,7 +267,11 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.createArrayWithElements(23u, 10, 20, 30) // 23 = int4
+        val arrayVal = octaviusConn.createArray(23u, 1) // 23 = int4
+        arrayVal[0] = 10
+        arrayVal[1] = 20
+        arrayVal[2] = 30
+
         val arrayParam = serializer.serializeWithOid(arrayVal)
         val rowsArray = octaviusConn.queryExecutor.query(
             "SELECT $1 as res",

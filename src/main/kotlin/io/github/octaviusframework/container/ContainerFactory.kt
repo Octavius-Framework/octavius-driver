@@ -6,12 +6,12 @@ import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
 
 /**
- * Fabryka pozwalająca na ręczne tworzenie pustych (lub pre-inicjalizowanych) kontenerów 
- * od zera, co pozwala na zamianę obiektów dziedzinowych w struktury Postgresa przed wysłaniem do bazy.
+ * A factory for manually creating empty (or pre-initialized) containers
+ * from scratch, allowing the conversion of domain objects into Postgres structures before sending them to the database.
  */
 
 /**
- * Tworzy całkowicie nowy, pusty kompozyt na podstawie jego nazwy typu (oraz opcjonalnie schematu).
+ * Creates a completely new, empty composite based on its type name (and optionally schema).
  */
 fun OctaviusConnection.createComposite(typeName: String, schema: String = ""): PgComposite {
     val typeRegistry = this.typeRegistry
@@ -20,7 +20,7 @@ fun OctaviusConnection.createComposite(typeName: String, schema: String = ""): P
     val (resolvedOid, _) = typeRegistry.resolveOid(typeName, schema, searchPath)
     
     val pgType = typeRegistry.types[resolvedOid] as? PgType.Composite
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = resolvedOid.toInt(), details = "Typ $typeName nie jest kompozytem")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = resolvedOid.toInt(), details = "Type $typeName is not a composite")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 
@@ -29,12 +29,12 @@ fun OctaviusConnection.createComposite(typeName: String, schema: String = ""): P
 }
 
 /**
- * Tworzy całkowicie nowy, pusty kompozyt na podstawie jego OID.
+ * Creates a completely new, empty composite based on its OID.
  */
 fun OctaviusConnection.createComposite(oid: UInt): PgComposite {
     val typeRegistry = this.typeRegistry
     val pgType = typeRegistry.types[oid] as? PgType.Composite
-        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Typ nie jest kompozytem lub nie istnieje w TypeRegistry")
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not a composite or does not exist in TypeRegistry")
     
     val fields = pgType.attributes.map { 
         ContainerField(rawValue = null, container = null, value = null) 
@@ -43,57 +43,67 @@ fun OctaviusConnection.createComposite(oid: UInt): PgComposite {
 }
 
 /**
- * Tworzy nową tablicę o podanych rozmiarach wielowymiarowych (wymiary w postaci kolejnych intów, min. 1).
+ * Creates a new array based on the array type name (and optionally schema).
  */
-fun OctaviusConnection.createArray(elementOid: UInt, vararg dimensionSizes: Int): PgArray {
-    require(dimensionSizes.isNotEmpty()) { "Tablica musi mieć co najmniej 1 wymiar" }
+fun OctaviusConnection.createArray(typeName: String, schema: String = "", vararg dimensionSizes: Int): PgArray {
+    val (resolvedOid, _) = this.typeRegistry.resolveOid(typeName, schema, this.getSearchPath())
+    return createArray(resolvedOid, *dimensionSizes)
+}
+
+/**
+ * Creates a new array based on its OID.
+ */
+fun OctaviusConnection.createArray(oid: UInt, vararg dimensionSizes: Int): PgArray {
+    require(dimensionSizes.isNotEmpty()) { "Array must have at least 1 dimension" }
     
     val typeRegistry = this.typeRegistry
+    val arrayType = typeRegistry.types[oid] as? PgType.Array
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not an array or does not exist in TypeRegistry")
+        
     val dimensions = dimensionSizes.map { ArrayDimension(it, 1) }
-    
     val totalSize = dimensionSizes.fold(1) { acc, size -> acc * size }
     val values = MutableList<Any?>(totalSize) { null }
-    
-    val elementType = typeRegistry.types[elementOid]
-        ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, details = "Nie znaleziono elementOid = $elementOid w rejestrze")
-        
-    val arrayOid = elementType.arrayOid 
-    if (arrayOid == 0u) {
-        throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, details = "Typ $elementOid nie ma zarejestrowanej tablicy (arrayOid=0)")
-    }
-    
-    return PgArray(arrayOid, elementOid, dimensions, true, null, null, values, typeRegistry)
+
+    return PgArray(arrayType.oid, arrayType.elementOid, dimensions, true, null, null, values, typeRegistry)
 }
 
 /**
- * Tworzy nową jednowymiarową tablicę z dostarczonymi elementami.
+ * Creates a new range based on the range type name.
  */
-fun OctaviusConnection.createArrayWithElements(elementOid: UInt, vararg elements: Any?): PgArray {
-    val array = createArray(elementOid, elements.size)
-    for (i in elements.indices) {
-        array[i] = elements[i]
-    }
-    return array
+fun OctaviusConnection.createRange(typeName: String, schema: String = "", lower: Any?, upper: Any?, flags: Byte): PgRange {
+    val (resolvedOid, _) = this.typeRegistry.resolveOid(typeName, schema, this.getSearchPath())
+    return createRange(resolvedOid, lower, upper, flags)
 }
 
 /**
- * Tworzy nowy zakres (Range) dla zadanych granic.
+ * Creates a new range based on its OID.
  */
-fun OctaviusConnection.createRange(elementOid: UInt, lower: Any?, upper: Any?, flags: Byte): PgRange {
+fun OctaviusConnection.createRange(oid: UInt, lower: Any?, upper: Any?, flags: Byte): PgRange {
     val typeRegistry = this.typeRegistry
+    val rangeType = typeRegistry.types[oid] as? PgType.Range
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not a range or does not exist in TypeRegistry")
+        
     val lowerField = lower?.let { ContainerField(null, if (it is PgContainer) it else null, if (it !is PgContainer) it else null) }
     val upperField = upper?.let { ContainerField(null, if (it is PgContainer) it else null, if (it !is PgContainer) it else null) }
     
-    val rangeType = typeRegistry.types.values.firstOrNull { 
-        it is PgType.Range && it.subtypeOid == elementOid
-    } ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, details = "Nie znaleziono typu range dla subtypeOid = $elementOid")
-    
-    return PgRange(rangeType.oid, elementOid, flags, lowerField, upperField, typeRegistry)
+    return PgRange(rangeType.oid, rangeType.subtypeOid, flags, lowerField, upperField, typeRegistry)
 }
 
 /**
- * Tworzy nowy zbiór zakresów (Multirange).
+ * Creates a new multirange based on the multirange type name.
  */
-fun OctaviusConnection.createMultirange(multirangeOid: UInt, rangeOid: UInt, vararg ranges: PgRange): PgMultirange {
-    return PgMultirange(multirangeOid, rangeOid, ranges.toList())
+fun OctaviusConnection.createMultirange(typeName: String, schema: String = "", vararg ranges: PgRange): PgMultirange {
+    val (resolvedOid, _) = this.typeRegistry.resolveOid(typeName, schema, this.getSearchPath())
+    return createMultirange(resolvedOid, *ranges)
+}
+
+/**
+ * Creates a new multirange based on its OID.
+ */
+fun OctaviusConnection.createMultirange(oid: UInt, vararg ranges: PgRange): PgMultirange {
+    val typeRegistry = this.typeRegistry
+    val multirangeType = typeRegistry.types[oid] as? PgType.Multirange
+        ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid.toInt(), details = "Type is not a multirange or does not exist in TypeRegistry")
+
+    return PgMultirange(multirangeType.oid, multirangeType.rangeOid, ranges.toList())
 }

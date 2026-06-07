@@ -7,6 +7,7 @@ import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
 import io.github.octaviusframework.container.PgContainer
+import kotlin.reflect.typeOf
 
 data class Field(
     val descriptor: FieldDescription,
@@ -41,7 +42,7 @@ inline fun <reified T> Row.getConverted(index: Int): T? {
     }
     
     if (raw is T) return raw
-    return objectDeserializer.deserialize(raw, kotlin.reflect.typeOf<T>())
+    return objectDeserializer.deserialize(raw, typeOf<T>())
 }
 
 inline fun <reified T> Row.getConverted(columnName: String): T? {
@@ -49,12 +50,12 @@ inline fun <reified T> Row.getConverted(columnName: String): T? {
 }
 
 inline fun <reified T> Row.asClass(): T {
-    val mapped = objectDeserializer.deserialize<T>(this, kotlin.reflect.typeOf<T>())
+    val mapped = objectDeserializer.deserialize<T>(this, typeOf<T>())
     return mapped ?: throw IllegalStateException("Nie udało się zmapować wiersza na klasę ${T::class.simpleName}")
 }
 
 fun Row.asMap(): Map<String, Any?> {
-    val mapped = objectDeserializer.deserialize<Map<String, Any?>>(this, kotlin.reflect.typeOf<Map<String, Any?>>())
+    val mapped = objectDeserializer.deserialize<Map<String, Any?>>(this, typeOf<Map<String, Any?>>())
     return mapped ?: emptyMap()
 }
 

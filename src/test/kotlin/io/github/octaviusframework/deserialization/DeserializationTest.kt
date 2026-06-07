@@ -15,7 +15,7 @@ class DeserializationTest {
     private val dummyRegistry = TypeRegistry()
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
-        val type = PgType.Composite(1u, "dummy", "public", 0u, LinkedHashMap(attributes.keys.associateWith { 1u }))
+        val type = PgType.Composite(1u, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1u }))
         val fields = attributes.values.map { 
             if (it is io.github.octaviusframework.container.PgContainer) {
                 ContainerField(rawValue = null, container = it, value = null)

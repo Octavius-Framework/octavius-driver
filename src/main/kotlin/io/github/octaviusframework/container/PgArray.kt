@@ -4,6 +4,7 @@ import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.TypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
+import io.github.octaviusframework.types.TypeSerializer
 
 /**
  * Reprezentuje pojedynczy wymiar tablicy w Postgresie.
@@ -30,7 +31,11 @@ class PgArray internal constructor(
 
     operator fun set(index: Int, newValue: Any?) {
         if (newValue is PgContainer) {
-            if (containers == null) throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = elementOid.toInt(), details = "Tablica typu OID $elementOid nie przechowuje kontenerów")
+            if (containers == null) throw OctaviusTypeException(
+                TypeExceptionMessage.NOT_A_CONTAINER,
+                oid = elementOid.toInt(),
+                details = "Tablica typu OID $elementOid nie przechowuje kontenerów"
+            )
             containers[index] = newValue
             windows?.set(index, null)
             values?.let { it[index] = null }
@@ -46,22 +51,23 @@ class PgArray internal constructor(
 
     fun setElement(indices: IntArray, newValue: Any?) {
         require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
-        val flatIndex = indices.foldIndexed(0) { idx, acc, i -> 
-            acc * dimensions[idx].size + i 
+        val flatIndex = indices.foldIndexed(0) { idx, acc, i ->
+            acc * dimensions[idx].size + i
         }
         set(flatIndex, newValue)
     }
 
     inline fun <reified T> getElement(indices: IntArray): T? {
         require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
-        val flatIndex = indices.foldIndexed(0) { idx, acc, i -> 
-            acc * dimensions[idx].size + i 
+        val flatIndex = indices.foldIndexed(0) { idx, acc, i ->
+            acc * dimensions[idx].size + i
         }
         return get<T>(flatIndex)
     }
 
-    @PublishedApi internal val elementSerializer: io.github.octaviusframework.types.TypeSerializer<Any>? by lazy {
-        typeRegistry.getSerializerByOid<Any>(elementOid)
+    @PublishedApi
+    internal val elementSerializer: TypeSerializer<Any>? by lazy {
+        typeRegistry.getSerializerByOid(elementOid)
     }
 
     inline fun <reified T> get(index: Int): T? {
@@ -70,11 +76,19 @@ class PgArray internal constructor(
 
         val window = windows!![index] ?: return null
         val serializer = elementSerializer
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Pobieranie elementu tablicy")
-            
+            ?: throw OctaviusTypeException(
+                TypeExceptionMessage.MISSING_SERIALIZER,
+                oid = elementOid.toInt(),
+                details = "Pobieranie elementu tablicy"
+            )
+
         val parsedValue = serializer.fromBinary(window)
         if (parsedValue is T) return parsedValue
-        throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue::class.simpleName}")
+        throw OctaviusTypeException(
+            TypeExceptionMessage.CASTING_ERROR,
+            typeName = T::class.simpleName,
+            details = "Otrzymano ${parsedValue::class.simpleName}"
+        )
     }
 
     override fun detach() {
@@ -89,10 +103,14 @@ class PgArray internal constructor(
     inline fun <reified T> toList(): List<T?> {
         val count = totalElements
         val result = ArrayList<T?>(count)
-        
+
         val serializer = if (containers == null) elementSerializer else null
         if (containers == null && serializer == null) {
-            throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Element tablicy")
+            throw OctaviusTypeException(
+                TypeExceptionMessage.MISSING_SERIALIZER,
+                oid = elementOid.toInt(),
+                details = "Element tablicy"
+            )
         }
 
         for (i in 0 until count) {
@@ -115,33 +133,12 @@ class PgArray internal constructor(
             if (parsedValue is T) {
                 result.add(parsedValue)
             } else {
-                throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Otrzymano ${parsedValue::class.simpleName}")
+                throw OctaviusTypeException(
+                    TypeExceptionMessage.CASTING_ERROR,
+                    typeName = T::class.simpleName,
+                    details = "Otrzymano ${parsedValue::class.simpleName}"
+                )
             }
-        }
-        return result
-    }
-
-    /**
-     * Opcjonalnie: metody zoptymalizowane pod JVM do konwersji na prymitywne tablice bez boxingu (autoboxing w Javie psuje wydajność dla dużych kolekcji intów).
-     * Zakłada, że elementy nie są nullami (lub można to jakoś inaczej obsłużyć).
-     */
-    fun toIntArray(): IntArray {
-        if (containers != null) throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, details = "Tablica zawiera eager kontener, nie można rzutować na IntArray")
-
-        val serializer = elementSerializer
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "toIntArray")
-
-        val count = totalElements
-        val result = IntArray(count)
-        for (i in 0 until count) {
-            if (values != null && values!![i] != null) {
-                result[i] = values!![i] as Int
-                continue
-            }
-            val window = windows!![i]
-                ?: throw NullPointerException("Znaleziono wartość NULL podczas rzutowania na IntArray")
-            
-            result[i] = serializer.fromBinary(window) as Int
         }
         return result
     }
