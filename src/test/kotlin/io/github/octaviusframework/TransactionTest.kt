@@ -23,7 +23,7 @@ class TransactionTest {
         props.setProperty("password", "1234")
 
         val conn = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-        connection = connection.unwrap<OctaviusConnection>()
+        connection = conn.unwrap<OctaviusConnection>()
 
         connection.queryExecutor.execute("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)")
         connection.queryExecutor.execute("TRUNCATE TABLE test_trx")
@@ -38,7 +38,7 @@ class TransactionTest {
 
     private fun countRows(): Long {
         val rows = connection.queryExecutor.query("SELECT COUNT(*) FROM test_trx")
-        return rows[0].get<Long>(0) ?: 0L
+        return rows[0].get<Long>(0)
     }
 
     @Test

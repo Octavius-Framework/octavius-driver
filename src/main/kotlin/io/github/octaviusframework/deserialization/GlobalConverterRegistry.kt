@@ -13,6 +13,8 @@ object GlobalConverterRegistry {
             registry.addConverter(MapCompositeConverter())
             registry.addConverter(CollectionArrayConverter())
             registry.addConverter(ReflectionCompositeConverter())
+            registry.addConverter(ReflectionRowConverter())
+            registry.addConverter(MapRowConverter())
             registry
         }
     }

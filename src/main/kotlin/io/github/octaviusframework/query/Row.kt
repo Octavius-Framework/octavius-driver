@@ -28,57 +28,46 @@ interface Row {
 
     fun getColumnIndex(columnName: String): Int
     fun detach()
+
+    fun getRaw(index: Int): Any?
+    fun getRaw(columnName: String): Any?
 }
 
-inline fun <reified T> Row.get(columnName: String): T {
-    val index = getColumnIndex(columnName)
-    return get<T>(index)
-}
-
-inline fun <reified T> Row.get(index: Int): T {
-    val field = fields.getOrNull(index) ?: throw IllegalArgumentException("Column index out of bounds: $index")
-
-    val fieldValue = field.value
-    val fieldContainer = field.container
-    val fieldWindow = field.rawValue
-
-    val parsedValue: Any? = if (fieldValue != null) {
-        fieldValue
-    } else if (fieldContainer != null) {
-        fieldContainer
-    } else if (fieldWindow != null) {
-        val oid = field.descriptor.dataTypeOid
-        val serializer = typeRegistry.getSerializerByOid<Any>(oid)
-        if (serializer != null) {
-            serializer.fromBinary(fieldWindow)
-        } else if (String::class == T::class) {
-            String(fieldWindow.data, fieldWindow.offset, fieldWindow.length, Charsets.UTF_8)
-        } else {
-            throw IllegalStateException("Brak serializatora dla OID: $oid oraz typu ${T::class.simpleName}")
-        }
-    } else {
-        null
-    }
-
-    if (parsedValue == null) {
-        if (null is T) {
-            return null as T
-        } else {
-            throw NullPointerException("Wartość dla kolumny o indeksie $index wynosi null, ale oczekiwano nienullowalnego typu ${T::class.simpleName}")
-        }
-    }
-
-    if (parsedValue is T) {
-        return parsedValue
-    } else if (parsedValue is PgContainer) {
-        val mapped = objectDeserializer.deserialize<T>(parsedValue, kotlin.reflect.typeOf<T>())
-        if (mapped != null) {
-            return mapped
-        }
+inline fun <reified T> Row.getConverted(index: Int): T? {
+    val raw = getRaw(index)
+    if (raw == null) {
+        if (null is T) return null as T
+        throw NullPointerException("Wartość dla kolumny o indeksie $index wynosi null, ale oczekiwano nienullowalnego typu ${T::class.simpleName}")
     }
     
-    throw IllegalStateException("Błąd rzutowania na indeksie $index: Oczekiwano ${T::class.simpleName}, a otrzymano ${parsedValue::class.simpleName}")
+    if (raw is T) return raw
+    return objectDeserializer.deserialize(raw, kotlin.reflect.typeOf<T>())
 }
+
+inline fun <reified T> Row.getConverted(columnName: String): T? {
+    return getConverted<T>(getColumnIndex(columnName))
+}
+
+inline fun <reified T> Row.asClass(): T {
+    val mapped = objectDeserializer.deserialize<T>(this, kotlin.reflect.typeOf<T>())
+    return mapped ?: throw IllegalStateException("Nie udało się zmapować wiersza na klasę ${T::class.simpleName}")
+}
+
+fun Row.asMap(): Map<String, Any?> {
+    val mapped = objectDeserializer.deserialize<Map<String, Any?>>(this, kotlin.reflect.typeOf<Map<String, Any?>>())
+    return mapped ?: emptyMap()
+}
+
+@Deprecated("Użyj getConverted() lub getRaw() aby uniknąć niejednoznaczności", ReplaceWith("getConverted<T>(columnName)"))
+inline fun <reified T> Row.get(columnName: String): T {
+    return getConverted<T>(columnName) ?: throw NullPointerException()
+}
+
+@Deprecated("Użyj getConverted() lub getRaw() aby uniknąć niejednoznaczności", ReplaceWith("getConverted<T>(index)"))
+inline fun <reified T> Row.get(index: Int): T {
+    return getConverted<T>(index) ?: throw NullPointerException()
+}
+
 
 class OctaviusRow(
     columns: List<ByteArrayWindow?>,
@@ -119,5 +108,30 @@ class OctaviusRow(
 
     override fun detach() {
         fields.forEach { it.detach() }
+    }
+
+    override fun getRaw(index: Int): Any? {
+        val field = fields.getOrNull(index) ?: throw IllegalArgumentException("Column index out of bounds: $index")
+
+        val fieldValue = field.value
+        if (fieldValue != null) return fieldValue
+
+        val fieldContainer = field.container
+        if (fieldContainer != null) return fieldContainer
+
+        val fieldWindow = field.rawValue ?: return null
+
+        val oid = field.descriptor.dataTypeOid
+        val serializer = typeRegistry.getSerializerByOid<Any>(oid)
+        
+        if (serializer != null) {
+            return serializer.fromBinary(fieldWindow)
+        }
+        
+        return String(fieldWindow.data, fieldWindow.offset, fieldWindow.length, Charsets.UTF_8)
+    }
+
+    override fun getRaw(columnName: String): Any? {
+        return getRaw(getColumnIndex(columnName))
     }
 }
