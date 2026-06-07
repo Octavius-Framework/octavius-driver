@@ -56,27 +56,9 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
         if (parameter is PgContainer) {
             return when (parameter) {
                 is PgComposite -> parameter.type.oid
-                is PgArray -> {
-                    val arrayType = typeRegistry.types.values.firstOrNull { 
-                        it is PgType.Array && it.elementOid == parameter.elementOid
-                    } ?: throw OctaviusTypeException(
-                        TypeExceptionMessage.TYPE_NOT_FOUND,
-                        details = "Nie znaleziono typu tablicowego dla elementOid = ${parameter.elementOid}"
-                    )
-                    arrayType.oid
-                }
-                is PgRange -> {
-                    val rangeType = typeRegistry.types.values.firstOrNull { 
-                        it is PgType.Range && it.subtypeOid == parameter.elementOid
-                    } ?: throw OctaviusTypeException(
-                        TypeExceptionMessage.TYPE_NOT_FOUND,
-                        details = "Nie znaleziono typu range dla subtypeOid = ${parameter.elementOid}"
-                    )
-                    rangeType.oid
-                }
-                is PgMultirange -> {
-                    0u //TODO
-                }
+                is PgArray -> parameter.arrayOid
+                is PgRange -> parameter.rangeOid
+                is PgMultirange -> parameter.multirangeOid
                 else -> 0u
             }
         }

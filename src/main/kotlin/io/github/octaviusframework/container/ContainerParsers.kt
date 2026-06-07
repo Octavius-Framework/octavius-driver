@@ -65,7 +65,7 @@ object ContainerParsers {
             }
         }
         
-        return PgArray(elementOid, dimensions, hasNullsInt != 0, windowsList, eagerList, null, typeRegistry)
+        return PgArray(oid, elementOid, dimensions, hasNullsInt != 0, windowsList, eagerList, null, typeRegistry)
     }
 
     fun parsePgComposite(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgComposite {
@@ -134,7 +134,7 @@ object ContainerParsers {
             offset += len
         }
         
-        return PgRange(pgType.subtypeOid, flags, lowerField, upperField, typeRegistry)
+        return PgRange(oid, pgType.subtypeOid, flags, lowerField, upperField, typeRegistry)
     }
 
     fun parsePgMultirange(window: ByteArrayWindow, oid: UInt, typeRegistry: TypeRegistry): PgMultirange {
@@ -152,6 +152,6 @@ object ContainerParsers {
             offset += len
         }
         
-        return PgMultirange(ranges)
+        return PgMultirange(pgType.oid, pgType.rangeOid, ranges)
     }
 }

@@ -54,7 +54,15 @@ fun OctaviusConnection.createArray(elementOid: UInt, vararg dimensionSizes: Int)
     val totalSize = dimensionSizes.fold(1) { acc, size -> acc * size }
     val values = MutableList<Any?>(totalSize) { null }
     
-    return PgArray(elementOid, dimensions, true, null, null, values, typeRegistry)
+    val elementType = typeRegistry.types[elementOid]
+        ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, details = "Nie znaleziono elementOid = $elementOid w rejestrze")
+        
+    val arrayOid = elementType.arrayOid 
+    if (arrayOid == 0u) {
+        throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, details = "Typ $elementOid nie ma zarejestrowanej tablicy (arrayOid=0)")
+    }
+    
+    return PgArray(arrayOid, elementOid, dimensions, true, null, null, values, typeRegistry)
 }
 
 /**
@@ -75,12 +83,17 @@ fun OctaviusConnection.createRange(elementOid: UInt, lower: Any?, upper: Any?, f
     val typeRegistry = this.typeRegistry
     val lowerField = lower?.let { ContainerField(null, if (it is PgContainer) it else null, if (it !is PgContainer) it else null) }
     val upperField = upper?.let { ContainerField(null, if (it is PgContainer) it else null, if (it !is PgContainer) it else null) }
-    return PgRange(elementOid, flags, lowerField, upperField, typeRegistry)
+    
+    val rangeType = typeRegistry.types.values.firstOrNull { 
+        it is PgType.Range && it.subtypeOid == elementOid
+    } ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, details = "Nie znaleziono typu range dla subtypeOid = $elementOid")
+    
+    return PgRange(rangeType.oid, elementOid, flags, lowerField, upperField, typeRegistry)
 }
 
 /**
  * Tworzy nowy zbiór zakresów (Multirange).
  */
-fun OctaviusConnection.createMultirange(vararg ranges: PgRange): PgMultirange {
-    return PgMultirange(ranges.toList())
+fun OctaviusConnection.createMultirange(multirangeOid: UInt, rangeOid: UInt, vararg ranges: PgRange): PgMultirange {
+    return PgMultirange(multirangeOid, rangeOid, ranges.toList())
 }

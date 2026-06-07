@@ -9,6 +9,7 @@ import io.github.octaviusframework.exceptions.TypeExceptionMessage
  * Wartości brzegowe przechowywane są natywnie, parsowanie zlecane jest leniwie.
  */
 class PgRange internal constructor(
+    val rangeOid: UInt,
     val elementOid: UInt,
     val flags: Byte,
     val lowerBoundField: ContainerField?,

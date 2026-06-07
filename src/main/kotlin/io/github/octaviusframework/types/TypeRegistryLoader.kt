@@ -101,24 +101,25 @@ object TypeRegistryLoader {
 
         // Finalne budowanie prawidłowych obiektów instancji dla każdego wykrytego typu
         for ((oid, info) in parsedTypes) {
+            val arrayOid = info.typarray
             val pgType = when {
-                info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
-                info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
-                info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid]!!)
-                info.typtype == 'm' -> PgType.Multirange(oid, info.name, info.schema, multirangeMap[oid]!!)
+                info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, arrayOid, enumMap[oid] ?: emptyList())
+                info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, arrayOid, info.typbasetype)
+                info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, arrayOid, rangeMap[oid]!!)
+                info.typtype == 'm' -> PgType.Multirange(oid, info.name, info.schema, arrayOid, multirangeMap[oid]!!)
                 info.typtype == 'c' -> {
                     val attrs = attrMap[oid] ?: LinkedHashMap()
-                    PgType.Composite(oid, info.name, info.schema, attrs)
+                    PgType.Composite(oid, info.name, info.schema, arrayOid, attrs)
                 }
                 info.typtype == 'p' -> {
                     when (info.name) {
-                        "record" -> PgType.Record(oid, info.name, info.schema)
-                        "void" -> PgType.Void(oid, info.name, info.schema)
+                        "record" -> PgType.Record(oid, info.name, info.schema, arrayOid)
+                        "void" -> PgType.Void(oid, info.name, info.schema, arrayOid)
                         else -> error("Unreachable code: unexpected pseudo-type ${info.name}")
                     }
                 }
                 info.typelem != 0u && info.typarray == 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
-                else -> PgType.Base(oid, info.name, info.schema)
+                else -> PgType.Base(oid, info.name, info.schema, arrayOid)
             }
             
             newTypes[oid] = pgType

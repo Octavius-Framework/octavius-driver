@@ -15,6 +15,7 @@ data class ArrayDimension(
 
 
 class PgArray internal constructor(
+    val arrayOid: UInt,
     val elementOid: UInt,
     val dimensions: List<ArrayDimension>,
     val hasNulls: Boolean,
@@ -59,12 +60,16 @@ class PgArray internal constructor(
         return get<T>(flatIndex)
     }
 
+    @PublishedApi internal val elementSerializer: io.github.octaviusframework.types.TypeSerializer<Any>? by lazy {
+        typeRegistry.getSerializerByOid<Any>(elementOid)
+    }
+
     inline fun <reified T> get(index: Int): T? {
         if (values != null && values!![index] != null) return values!![index] as T
         if (containers != null) return containers[index] as? T
 
         val window = windows!![index] ?: return null
-        val serializer = typeRegistry.getSerializerByOid<Any>(elementOid)
+        val serializer = elementSerializer
             ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Pobieranie elementu tablicy")
             
         val parsedValue = serializer.fromBinary(window)
@@ -85,7 +90,7 @@ class PgArray internal constructor(
         val count = totalElements
         val result = ArrayList<T?>(count)
         
-        val serializer = if (containers == null) typeRegistry.getSerializerByOid<Any>(elementOid) else null
+        val serializer = if (containers == null) elementSerializer else null
         if (containers == null && serializer == null) {
             throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "Element tablicy")
         }
@@ -123,7 +128,7 @@ class PgArray internal constructor(
     fun toIntArray(): IntArray {
         if (containers != null) throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, details = "Tablica zawiera eager kontener, nie można rzutować na IntArray")
 
-        val serializer = typeRegistry.getSerializerByOid<Int>(elementOid)
+        val serializer = elementSerializer
             ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = elementOid.toInt(), details = "toIntArray")
 
         val count = totalElements
@@ -136,7 +141,7 @@ class PgArray internal constructor(
             val window = windows!![i]
                 ?: throw NullPointerException("Znaleziono wartość NULL podczas rzutowania na IntArray")
             
-            result[i] = serializer.fromBinary(window)
+            result[i] = serializer.fromBinary(window) as Int
         }
         return result
     }
