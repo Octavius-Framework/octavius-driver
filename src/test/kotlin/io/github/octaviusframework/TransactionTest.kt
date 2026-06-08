@@ -1,12 +1,11 @@
 package io.github.octaviusframework
 
 import io.github.octaviusframework.jdbc.OctaviusConnection
-import io.github.octaviusframework.jdbc.unwrap
+import io.github.octaviusframework.jdbc.getOctaviusConnection
 import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.sql.DriverManager
 import java.sql.SQLException
 import java.util.*
 import kotlin.test.assertEquals
@@ -22,8 +21,7 @@ class TransactionTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val conn = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-        connection = conn.unwrap<OctaviusConnection>()
+        connection = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         connection.queryExecutor.execute("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)")
         connection.queryExecutor.execute("TRUNCATE TABLE test_trx")

@@ -1,6 +1,7 @@
 package io.github.octaviusframework.deserialization
 
 import io.github.octaviusframework.jdbc.OctaviusConnection
+import io.github.octaviusframework.jdbc.getOctaviusConnection
 import io.github.octaviusframework.jdbc.unwrap
 import io.github.octaviusframework.query.get
 import kotlinx.serialization.json.JsonElement
@@ -15,23 +16,9 @@ class DeserializationIntegrationTest {
     data class IntegrationAddress(val street: String, val city: String)
     data class IntegrationUser(val id: Int, val name: String, val address: IntegrationAddress)
 
-    private fun getConnection(): java.sql.Connection? {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
-
-        return try {
-            DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-        } catch (e: Exception) {
-            println("Brak dostępu do bazy, ignorowanie testu: ${e.message}")
-            null
-        }
-    }
-
     @Test
     fun testRealDatabaseDeserialization() {
-        val connection = getConnection() ?: return
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
             octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
@@ -59,14 +46,13 @@ class DeserializationIntegrationTest {
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
             } catch (e: Exception) {
             }
-            connection.close()
+            octaviusConn.close()
         }
     }
 
     @Test
     fun testRealDatabaseArrayDeserialization() {
-        val connection = getConnection() ?: return
-        val octaviusConn = connection.unwrap<OctaviusConnection>()
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
             octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
@@ -89,14 +75,13 @@ class DeserializationIntegrationTest {
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
             } catch (e: Exception) {
             }
-            connection.close()
+            octaviusConn.close()
         }
     }
 
     @Test
     fun testJsonDeserialization() {
-        val connection = getConnection() ?: return
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
             val result = octaviusConn.queryExecutor.query("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").first()
@@ -130,7 +115,7 @@ class DeserializationIntegrationTest {
             }
 
         } finally {
-            connection.close()
+            octaviusConn.close()
         }
     }
 }

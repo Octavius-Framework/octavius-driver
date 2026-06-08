@@ -1,8 +1,8 @@
 package io.github.octaviusframework
 
-import java.sql.DriverManager
+
 import java.util.Properties
-import io.github.octaviusframework.jdbc.OctaviusConnection
+import io.github.octaviusframework.jdbc.getOctaviusConnection
 import org.junit.jupiter.api.Test
 
 class CompositeTest {
@@ -15,8 +15,7 @@ class CompositeTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         println("Tworzę testowy kompozyt w bazie...")
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS my_custom_composite CASCADE")

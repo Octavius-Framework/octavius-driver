@@ -3,15 +3,26 @@ package io.github.octaviusframework.jdbc
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
 import io.github.octaviusframework.query.OctaviusQuery
+import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusJdbcException
 import io.github.octaviusframework.exceptions.JdbcExceptionMessage
-import io.github.octaviusframework.query.get
+import io.github.octaviusframework.io.virtualDispatcher
 import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.quoteAsPgIdentifier
 import java.sql.*
 import java.util.Properties
 import java.util.concurrent.Executor
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.SharedFlow
+import io.github.octaviusframework.network.messages.NotificationResponseMessage
+import kotlinx.coroutines.runInterruptible
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.SocketException
 
 /**
  * Represents a connection to a database within the Octavius Framework.
@@ -111,6 +122,72 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
     override fun getNetworkTimeout(): Int { // required by Hikari
         checkClosed()
         return stream.networkTimeout
+    }
+
+    //------------------------------------------LISTEN/NOTIFY-----------------------------------------------------------
+    val notifications: SharedFlow<NotificationResponseMessage>
+        get() = stream.notifications
+
+    /**
+     * Starts a listener loop using active polling with a socket timeout.
+     * When the coroutine is cancelled, the loop exits gracefully without closing
+     * the underlying database connection, allowing it to be reused.
+     */
+    suspend fun startPollingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
+        if (isClosedFlag) return
+
+        withContext(dispatcher ?: virtualDispatcher) {
+            val originalTimeout = stream.networkTimeout
+            try {
+                stream.networkTimeout = pollTimeoutMs
+
+                while (currentCoroutineContext().isActive && !isClosedFlag) {
+                    try {
+                        stream.receiveMessage()
+                    } catch (e: SocketTimeoutException) {
+                        // Timeout is expected, loop continues and checks isActive
+                    } catch (e: SocketException) {
+                        // Socket was closed from the outside
+                        break
+                    } catch (e: IOException) {
+                        // Connection dropped by network, server, or closed explicitly
+                        break
+                    }
+                }
+            } finally {
+                try {
+                    if (!isClosedFlag) stream.networkTimeout = originalTimeout
+                } catch (ignore: Exception) {}
+            }
+        }
+    }
+
+    /**
+     * Starts a fully blocking listener loop using Virtual Threads.
+     * The loop blocks without consuming CPU. Cancelling the coroutine will trigger
+     * a system-level Thread.interrupt() and immediately wake up the thread.
+     *
+     * WARNING: According to the Java specification, waking up a blocked virtual thread
+     * from a system socket read will irreversibly close the underlying socket!
+     */
+    suspend fun startInterruptibleListenerLoop() {
+        if (isClosedFlag) return
+
+        use {
+            // Force interrupt propagation on the virtual thread
+            runInterruptible(virtualDispatcher) {
+                while (!isClosedFlag) {
+                    try {
+                        stream.receiveMessage()
+                    } catch (e: SocketException) {
+                        // Thread was interrupted by cancel(), socket is now closed
+                        break
+                    } catch (e: IOException) {
+                        break
+                    }
+                }
+            }
+        }
     }
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------
@@ -254,7 +331,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
      */
     private fun parseSearchPath(param: String): List<String> {
         val result = mutableListOf<String>()
-        var current = StringBuilder()
+        val current = StringBuilder()
         var inQuotes = false
         var i = 0
         while (i < param.length) {
@@ -402,4 +479,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
 inline fun <reified T: Any> Connection.unwrap(): T {
     return this.unwrap(T::class.java)
+}
+
+fun Connection.unwrapToOctavius(): OctaviusConnection {
+    return this.unwrap(OctaviusConnection::class.java)
 }

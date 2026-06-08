@@ -23,6 +23,7 @@ import io.github.octaviusframework.network.messages.RowDescriptionMessage
 import io.github.octaviusframework.network.messages.TerminateMessage
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.channels.BufferOverflow
 import java.net.InetSocketAddress
 import java.net.Socket
 import javax.net.ssl.SSLSocketFactory
@@ -55,7 +56,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
         set(value) {
             socket.soTimeout = value
         }
-    private val _notifications = MutableSharedFlow<NotificationResponseMessage>(extraBufferCapacity = 64)
+    private val _notifications = MutableSharedFlow<NotificationResponseMessage>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val notifications: SharedFlow<NotificationResponseMessage> = _notifications
 
     fun sendMessage(msg: FrontendMessage) {
