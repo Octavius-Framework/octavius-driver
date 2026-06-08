@@ -1,12 +1,9 @@
 package io.github.octaviusframework
 
-import io.github.octaviusframework.io.toByteArrayBE
 import java.sql.DriverManager
 import java.util.Properties
 import io.github.octaviusframework.jdbc.OctaviusConnection
-import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
 
 class CompositeTest {
 

@@ -58,8 +58,8 @@ class TypeRegistry {
         register(LocalTimeSerializer)
         
         // Json
-        register(JsonbElementSerializer)
-        register(JsonElementSerializer)
+        register(JsonbSerializer)
+        register(JsonSerializer)
         
         // Additional
         register(UuidSerializer)

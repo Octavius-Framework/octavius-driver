@@ -6,7 +6,6 @@ import java.util.Properties
 import io.github.octaviusframework.jdbc.OctaviusConnection
 import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.assertNotNull
 import kotlin.test.assertEquals
 
 class OctaviusTest {

@@ -151,10 +151,10 @@ class DeserializationTest {
         
         // Define a custom converter for Address
         val localConverter = object : PgConverter<Address> {
-            override fun canConvert(source: Any, expectedType: kotlin.reflect.KType) = 
+            override fun canConvert(source: Any, expectedType: kotlin.reflect.KType, sourceType: io.github.octaviusframework.types.PgType?) = 
                 expectedType.classifier == Address::class
             
-            override fun convert(source: Any, expectedType: kotlin.reflect.KType, context: DeserializationContext): Address {
+            override fun convert(source: Any, expectedType: kotlin.reflect.KType, context: DeserializationContext, sourceType: io.github.octaviusframework.types.PgType?): Address {
                 return Address("LocalOverride", "LocalCity")
             }
         }

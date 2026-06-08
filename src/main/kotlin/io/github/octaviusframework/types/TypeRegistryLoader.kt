@@ -2,7 +2,6 @@ package io.github.octaviusframework.types
 
 import io.github.octaviusframework.io.getUIntBE
 import io.github.octaviusframework.query.QueryExecutor
-import io.github.octaviusframework.query.get
 
 object TypeRegistryLoader {
 

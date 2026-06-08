@@ -400,7 +400,7 @@ object LocalTimeSerializer : TypeSerializer<LocalTime> {
     }
 }
 
-object JsonbElementSerializer : TypeSerializer<String> {
+object JsonbSerializer : TypeSerializer<String> {
     override val pgTypeName = "jsonb"
     override val oid: UInt = 3802u
     override val kotlinClass = String::class
@@ -424,7 +424,7 @@ object JsonbElementSerializer : TypeSerializer<String> {
     }
 }
 
-object JsonElementSerializer : TypeSerializer<String> {
+object JsonSerializer : TypeSerializer<String> {
     override val pgTypeName = "json"
     override val oid: UInt = 114u
     override val kotlinClass = String::class

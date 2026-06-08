@@ -4,17 +4,18 @@ import io.github.octaviusframework.container.PgArray
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
+import io.github.octaviusframework.types.PgType
 
 class CollectionArrayConverter : PgConverter<Collection<*>> {
-    override fun canConvert(source: Any, expectedType: KType): Boolean {
+    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType?): Boolean {
         if (source !is PgArray) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext): Collection<*> {
+    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType?): Collection<*> {
         source as PgArray
-        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0)
+        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, sourceType)
     }
 
     private fun buildMultiDimensionalCollection(
@@ -22,14 +23,16 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
         context: DeserializationContext,
         expectedType: KType,
         dimensionIndex: Int,
-        flatIndexOffset: Int
+        flatIndexOffset: Int,
+        sourceType: PgType?
     ): Collection<*> {
         if (source.dimensions.isEmpty()) {
             val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
             val kClass = expectedType.classifier as? KClass<*> ?: List::class
             val mappedElements = (0 until source.totalElements).map { i ->
                 val value = source.get<Any>(i)
-                if (value == null) null else context.convert<Any>(value, elementType)
+                val type = source.typeRegistry.types[source.elementOid]
+                if (value == null) null else context.convert<Any>(value, elementType, type)
             }
             return if (kClass == Set::class) mappedElements.toSet() else mappedElements
         }
@@ -42,7 +45,8 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
             (0 until currentDimSize).map { i ->
                 val flatIndex = flatIndexOffset + i
                 val value = source.get<Any>(flatIndex)
-                if (value == null) null else context.convert<Any>(value, elementType)
+                val type = source.typeRegistry.types[source.elementOid]
+                if (value == null) null else context.convert<Any>(value, elementType, type)
             }
         } else {
             var multiplier = 1
@@ -55,7 +59,8 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
                     context,
                     elementType,
                     dimensionIndex + 1,
-                    flatIndexOffset + i * multiplier
+                    flatIndexOffset + i * multiplier,
+                    sourceType
                 )
             }
         }

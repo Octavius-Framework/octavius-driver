@@ -1,15 +1,14 @@
 package io.github.octaviusframework.deserialization
 
-import io.github.octaviusframework.container.PgArray
-import io.github.octaviusframework.container.PgComposite
 import io.github.octaviusframework.jdbc.OctaviusConnection
 import io.github.octaviusframework.jdbc.unwrap
 import io.github.octaviusframework.query.get
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.sql.DriverManager
-import java.util.Properties
-import kotlin.reflect.typeOf
+import java.util.*
 
 class DeserializationIntegrationTest {
 
@@ -90,6 +89,47 @@ class DeserializationIntegrationTest {
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
             } catch (e: Exception) {
             }
+            connection.close()
+        }
+    }
+
+    @Test
+    fun testJsonDeserialization() {
+        val connection = getConnection() ?: return
+        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+
+        try {
+            val result = octaviusConn.queryExecutor.query("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").first()
+
+            val js = result.get<JsonElement>("js")
+            val jsb = result.get<JsonElement>("jsb")
+            val jsAny = result.get<Any>("js")
+            val jsbAny = result.get<Any>("jsb")
+
+            assertNotNull(js)
+            assertNotNull(jsb)
+
+            println("jsAny type is: \${jsAny?.javaClass?.name}")
+            println("jsbAny type is: \${jsbAny?.javaClass?.name}")
+
+            val jsonObjectJs = js as kotlinx.serialization.json.JsonObject
+            val jsonObjectJsb = jsb as kotlinx.serialization.json.JsonObject
+
+            assertEquals("value1", jsonObjectJs["key"]?.let { (it as JsonPrimitive).content })
+            assertEquals("value2", jsonObjectJsb["key2"]?.let { (it as JsonPrimitive).content })
+            
+            if (jsAny is kotlinx.serialization.json.JsonObject) {
+                assertEquals("value1", jsAny["key"]?.let { (it as JsonPrimitive).content })
+            } else {
+                fail("jsAny is not a JsonObject, it is \${jsAny?.javaClass?.name}")
+            }
+            if (jsbAny is kotlinx.serialization.json.JsonObject) {
+                assertEquals("value2", jsbAny["key2"]?.let { (it as JsonPrimitive).content })
+            } else {
+                fail("jsbAny is not a JsonObject, it is \${jsbAny?.javaClass?.name}")
+            }
+
+        } finally {
             connection.close()
         }
     }

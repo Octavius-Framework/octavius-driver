@@ -15,6 +15,7 @@ object GlobalConverterRegistry {
             registry.addConverter(ReflectionCompositeConverter())
             registry.addConverter(ReflectionRowConverter())
             registry.addConverter(MapRowConverter())
+            registry.addConverter(JsonElementConverter())
             
             // Primitive array converters
             registry.addConverter(IntArrayConverter())

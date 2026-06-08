@@ -3,11 +3,10 @@ package io.github.octaviusframework.jdbc
 import io.github.octaviusframework.network.PgStream
 import io.github.octaviusframework.query.QueryExecutor
 import io.github.octaviusframework.query.OctaviusQuery
-import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.GlobalTypeRegistry
 import io.github.octaviusframework.exceptions.OctaviusJdbcException
 import io.github.octaviusframework.exceptions.JdbcExceptionMessage
-import io.github.octaviusframework.query.getConverted
+import io.github.octaviusframework.query.get
 import io.github.octaviusframework.types.TypeSerializer
 import io.github.octaviusframework.types.quoteAsPgIdentifier
 import java.sql.*
@@ -341,7 +340,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         checkClosed()
         if (catalogName == null) {
             val result = queryExecutor.query("SELECT current_database()")
-            catalogName = result[0].getConverted<String>("current_database")
+            catalogName = result[0].get<String>("current_database")
         }
         return catalogName!!
     } // required by Hikari

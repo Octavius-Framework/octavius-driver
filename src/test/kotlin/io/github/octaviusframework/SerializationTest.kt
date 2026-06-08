@@ -6,7 +6,6 @@ import io.github.octaviusframework.container.PgArray
 import io.github.octaviusframework.io.PgByteWriter
 import io.github.octaviusframework.io.toByteArray
 import io.github.octaviusframework.jdbc.OctaviusConnection
-import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.Test
 import java.sql.DriverManager
 import java.util.Properties
@@ -15,6 +14,7 @@ import kotlin.test.assertNotNull
 import io.github.octaviusframework.container.createComposite
 import io.github.octaviusframework.container.createArray
 import io.github.octaviusframework.query.ParameterSerializer
+import io.github.octaviusframework.query.get
 import org.junit.jupiter.api.Assertions.assertEquals
 
 class SerializationTest {

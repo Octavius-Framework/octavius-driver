@@ -7,6 +7,7 @@ import io.github.octaviusframework.io.ByteArrayWindow
 import io.github.octaviusframework.types.PgType
 
 import io.github.octaviusframework.container.PgContainer
+import io.github.octaviusframework.deserialization.ObjectDeserializer
 import io.github.octaviusframework.exceptions.OctaviusTypeException
 import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import kotlin.reflect.typeOf
@@ -27,56 +28,38 @@ interface Row {
     val fields: List<Field>
     val columnNames: List<String>
     val typeRegistry: TypeRegistry
-    val objectDeserializer: io.github.octaviusframework.deserialization.ObjectDeserializer
+    val objectDeserializer: ObjectDeserializer
 
     fun getColumnIndex(columnName: String): Int
     fun detach()
 
     fun getRaw(index: Int): Any?
-    fun getRaw(columnName: String): Any?
 }
 
-inline fun <reified T> Row.getConverted(index: Int): T? {
+inline fun <reified T> Row.get(index: Int): T {
     val raw = getRaw(index)
-    if (raw == null) {
-        if (null is T) return null as T
-        throw NullPointerException("Wartość dla kolumny o indeksie $index wynosi null, ale oczekiwano nienullowalnego typu ${T::class.simpleName}")
-    }
-    
-    if (raw is T) return raw
-    return objectDeserializer.deserialize(raw, typeOf<T>())
+    val oid = fields[index].descriptor.dataTypeOid
+    val type = typeRegistry.types[oid]
+    return objectDeserializer.deserialize(raw, typeOf<T>(), sourceType = type)
 }
 
-inline fun <reified T> Row.getConverted(columnName: String): T? {
-    return getConverted<T>(getColumnIndex(columnName))
+inline fun <reified T> Row.get(columnName: String): T {
+    return get<T>(getColumnIndex(columnName))
 }
 
 inline fun <reified T> Row.asClass(): T {
-    val mapped = objectDeserializer.deserialize<T>(this, typeOf<T>())
-    return mapped ?: throw IllegalStateException("Nie udało się zmapować wiersza na klasę ${T::class.simpleName}")
+    return objectDeserializer.deserialize(this, typeOf<T>())
 }
 
 fun Row.asMap(): Map<String, Any?> {
-    val mapped = objectDeserializer.deserialize<Map<String, Any?>>(this, typeOf<Map<String, Any?>>())
-    return mapped ?: emptyMap()
+    return objectDeserializer.deserialize(this, typeOf<Map<String, Any?>>())
 }
-
-@Deprecated("Użyj getConverted() lub getRaw() aby uniknąć niejednoznaczności", ReplaceWith("getConverted<T>(columnName)"))
-inline fun <reified T> Row.get(columnName: String): T {
-    return getConverted<T>(columnName) ?: throw NullPointerException()
-}
-
-@Deprecated("Użyj getConverted() lub getRaw() aby uniknąć niejednoznaczności", ReplaceWith("getConverted<T>(index)"))
-inline fun <reified T> Row.get(index: Int): T {
-    return getConverted<T>(index) ?: throw NullPointerException()
-}
-
 
 class OctaviusRow(
     columns: List<ByteArrayWindow?>,
     descriptors: List<FieldDescription>,
     override val typeRegistry: TypeRegistry,
-    override val objectDeserializer: io.github.octaviusframework.deserialization.ObjectDeserializer
+    override val objectDeserializer: ObjectDeserializer
 ) : Row {
 
     override val fields: List<Field> = descriptors.zip(columns) { desc, window ->
@@ -135,9 +118,5 @@ class OctaviusRow(
         }
         
         throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = oid, details = "Row")
-    }
-
-    override fun getRaw(columnName: String): Any? {
-        return getRaw(getColumnIndex(columnName))
     }
 }
