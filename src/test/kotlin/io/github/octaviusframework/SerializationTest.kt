@@ -15,6 +15,7 @@ import kotlin.test.assertNotNull
 import io.github.octaviusframework.container.createComposite
 import io.github.octaviusframework.container.createArray
 import io.github.octaviusframework.container.createArrayWithElements
+import io.github.octaviusframework.jdbc.getOctaviusConnection
 import io.github.octaviusframework.query.ParameterSerializer
 import org.junit.jupiter.api.Assertions.assertEquals
 
@@ -26,8 +27,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
 
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
@@ -72,8 +72,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
 
         val row = octaviusConn.queryExecutor.query("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").first()
         
@@ -106,8 +105,8 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
+
         octaviusConn.setSearchPath("te\"st.schemy")
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
@@ -146,8 +145,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry
@@ -177,8 +175,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
         val multiArray = octaviusConn.createArray(23u, 2, 3) 
@@ -214,8 +211,7 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val connection = DriverManager.getConnection("jdbc:octavius://localhost:5432/postgres", props)
-        val octaviusConn = connection.unwrap(OctaviusConnection::class.java)
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/postgres", props)
 
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         val typeRegistry = dummyRow.typeRegistry

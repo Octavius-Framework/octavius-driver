@@ -478,3 +478,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 inline fun <reified T: Any> Connection.unwrap(): T {
     return this.unwrap(T::class.java)
 }
+
+fun Connection.unwrapToOctavius(): OctaviusConnection {
+    return this.unwrap(OctaviusConnection::class.java)
+}
