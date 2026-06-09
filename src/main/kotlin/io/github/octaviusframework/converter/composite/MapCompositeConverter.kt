@@ -1,10 +1,12 @@
-package io.github.octaviusframework.deserialization
+package io.github.octaviusframework.converter.composite
 
 import io.github.octaviusframework.container.PgComposite
+import io.github.octaviusframework.deserialization.DeserializationContext
+import io.github.octaviusframework.deserialization.PgConverter
+import io.github.octaviusframework.types.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
-import io.github.octaviusframework.types.PgType
 
 class MapCompositeConverter : PgConverter<Map<String, Any?>> {
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType?): Boolean {
@@ -16,7 +18,7 @@ class MapCompositeConverter : PgConverter<Map<String, Any?>> {
     override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType?): Map<String, Any?> {
         source as PgComposite
         val valueType = expectedType.arguments.getOrNull(1)?.type ?: typeOf<Any?>()
-        
+
         val result = mutableMapOf<String, Any?>()
         for ((index, attributeName) in source.attributeNames.withIndex()) {
             val rawValue = source.get<Any>(index)

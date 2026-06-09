@@ -1,5 +1,7 @@
 package io.github.octaviusframework.deserialization
 
+import io.github.octaviusframework.converter.row.MapRowConverter
+import io.github.octaviusframework.converter.row.ReflectionRowConverter
 import java.util.concurrent.ConcurrentHashMap
 
 object GlobalConverterRegistry {

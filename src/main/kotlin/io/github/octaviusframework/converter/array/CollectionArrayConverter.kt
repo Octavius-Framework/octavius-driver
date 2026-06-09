@@ -1,10 +1,12 @@
-package io.github.octaviusframework.deserialization
+package io.github.octaviusframework.converter.array
 
 import io.github.octaviusframework.container.PgArray
+import io.github.octaviusframework.deserialization.DeserializationContext
+import io.github.octaviusframework.deserialization.PgConverter
+import io.github.octaviusframework.types.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
-import io.github.octaviusframework.types.PgType
 
 class CollectionArrayConverter : PgConverter<Collection<*>> {
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType?): Boolean {
@@ -40,7 +42,7 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
         val currentDimSize = source.dimensions[dimensionIndex].size
         val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
         val kClass = expectedType.classifier as? KClass<*> ?: List::class
-        
+
         val mappedElements = if (dimensionIndex == source.dimensions.size - 1) {
             (0 until currentDimSize).map { i ->
                 val flatIndex = flatIndexOffset + i
@@ -64,7 +66,7 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
                 )
             }
         }
-        
+
         return if (kClass == Set::class) {
             mappedElements.toSet()
         } else {
