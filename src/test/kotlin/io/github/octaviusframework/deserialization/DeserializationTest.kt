@@ -4,6 +4,10 @@ import io.github.octaviusframework.container.ArrayDimension
 import io.github.octaviusframework.container.ContainerField
 import io.github.octaviusframework.container.PgArray
 import io.github.octaviusframework.container.PgComposite
+import io.github.octaviusframework.converter.AnyConverter
+import io.github.octaviusframework.converter.array.CollectionArrayConverter
+import io.github.octaviusframework.converter.composite.MapCompositeConverter
+import io.github.octaviusframework.converter.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeRegistry
 import org.junit.jupiter.api.Assertions.*
@@ -151,7 +155,7 @@ class DeserializationTest {
         
         // Define a custom converter for Address
         val localConverter = object : PgConverter<Address> {
-            override fun canConvert(source: Any, expectedType: kotlin.reflect.KType, sourceType: io.github.octaviusframework.types.PgType?) = 
+            override fun canConvert(source: Any, expectedType: kotlin.reflect.KType, sourceType: PgType?) =
                 expectedType.classifier == Address::class
             
             override fun convert(source: Any, expectedType: kotlin.reflect.KType, context: DeserializationContext, sourceType: io.github.octaviusframework.types.PgType?): Address {
@@ -163,7 +167,7 @@ class DeserializationTest {
         localRegistry.addConverter(localConverter)
 
         // Using local registry
-        val address: Address? = deserializer.deserialize(composite, typeOf<Address>(), localRegistry)
+        val address: Address? = deserializer.deserialize(composite, typeOf<Address>(), null)
         assertEquals("LocalOverride", address?.street)
 
         // Using global only

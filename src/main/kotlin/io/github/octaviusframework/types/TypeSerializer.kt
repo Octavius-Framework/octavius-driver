@@ -438,3 +438,20 @@ object JsonSerializer : TypeSerializer<String> {
         it.toByteArray(Charsets.UTF_8)
     }
 }
+
+class DynamicEnumSerializer(
+    override val oid: UInt,
+    override val pgTypeName: String,
+    override val pgSchema: String
+) : TypeSerializer<String> {
+    override val kotlinClass = String::class
+    override val isDefaultForKotlinType = false
+
+    override val fromBinary: (ByteArrayWindow) -> String = {
+        String(it.data, it.offset, it.length, Charsets.UTF_8)
+    }
+
+    override val toBinary: (String) -> ByteArray = {
+        it.toByteArray(Charsets.UTF_8)
+    }
+}

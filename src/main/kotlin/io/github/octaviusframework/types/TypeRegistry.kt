@@ -141,6 +141,15 @@ class TypeRegistry {
                 newNameMap[resolvedQName] = serializer
             }
         }
+
+        for ((oid, type) in newTypes) {
+            if (type is PgType.Enum && !newOidMap.containsKey(oid)) {
+                val enumSerializer = DynamicEnumSerializer(oid, type.name, type.schema)
+                newOidMap[oid] = enumSerializer
+                newNameMap[QualifiedName(type.schema, type.name, false)] = enumSerializer
+            }
+        }
+
         types = newTypes
         serializersByOid = newOidMap
         serializersByName = newNameMap
