@@ -9,13 +9,13 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class CollectionArrayConverter : PgConverter<Collection<*>> {
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType?): Boolean {
+    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgArray) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType?): Collection<*> {
+    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
         source as PgArray
         return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, sourceType)
     }
@@ -26,14 +26,14 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
         expectedType: KType,
         dimensionIndex: Int,
         flatIndexOffset: Int,
-        sourceType: PgType?
+        sourceType: PgType
     ): Collection<*> {
         if (source.dimensions.isEmpty()) {
             val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
             val kClass = expectedType.classifier as? KClass<*> ?: List::class
             val mappedElements = (0 until source.totalElements).map { i ->
                 val value = source.get<Any>(i)
-                val type = source.typeRegistry.types[source.elementOid]
+                val type = source.typeRegistry.types[source.elementOid]!!
                 if (value == null) null else context.convert<Any>(value, elementType, type)
             }
             return if (kClass == Set::class) mappedElements.toSet() else mappedElements
@@ -47,7 +47,7 @@ class CollectionArrayConverter : PgConverter<Collection<*>> {
             (0 until currentDimSize).map { i ->
                 val flatIndex = flatIndexOffset + i
                 val value = source.get<Any>(flatIndex)
-                val type = source.typeRegistry.types[source.elementOid]
+                val type = source.typeRegistry.types[source.elementOid]!!
                 if (value == null) null else context.convert<Any>(value, elementType, type)
             }
         } else {

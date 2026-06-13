@@ -1,15 +1,16 @@
 package io.github.octaviusframework.deserialization
 
-import io.github.octaviusframework.jdbc.OctaviusConnection
 import io.github.octaviusframework.jdbc.getOctaviusConnection
-import io.github.octaviusframework.jdbc.unwrap
 import io.github.octaviusframework.query.get
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import java.sql.DriverManager
-import java.util.*
+import kotlin.reflect.KType
+import io.github.octaviusframework.types.PgType
+import io.github.octaviusframework.container.PgComposite
+import io.github.octaviusframework.deserialization.PgConverter
+import io.github.octaviusframework.deserialization.DeserializationContext
 
 class DeserializationIntegrationTest {
 
@@ -115,6 +116,86 @@ class DeserializationIntegrationTest {
             }
 
         } finally {
+            octaviusConn.close()
+        }
+    }
+
+    enum class TestStatus { ACTIVE, INACTIVE, UNKNOWN }
+    data class TestUserData(val code: String, val status: TestStatus)
+
+    @Test
+    fun testExplicitEnumAndCompositeConverters() {
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+
+        try {
+            // Rejestracja własnych, jawnych konwerterów
+            octaviusConn.registerGlobalConverter(object : PgConverter<TestStatus> {
+                override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+                    return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
+                }
+                override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestStatus {
+                    val str = source.toString()
+                    return TestStatus.entries.find { it.name.equals(str, ignoreCase = true) } ?: TestStatus.UNKNOWN
+                }
+            })
+
+            octaviusConn.registerGlobalConverter(object : PgConverter<TestUserData> {
+                override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+                    return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
+                }
+                override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
+                    require(source is PgComposite)
+                    val code = source.get<String>("code") ?: ""
+                    val statusRaw = source.get<Any>("status")
+                    val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
+                    val status = if (statusRaw != null) {
+                        context.convert<TestStatus>(statusRaw, kotlin.reflect.typeOf<TestStatus>(), statusType)
+                    } else {
+                        TestStatus.UNKNOWN
+                    }
+                    return TestUserData(code, status)
+                }
+            })
+
+            // Utworzenie typów w bazie
+            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")
+            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_user_data CASCADE")
+            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_status_enum CASCADE")
+
+            octaviusConn.queryExecutor.execute("CREATE TYPE test_status_enum AS ENUM ('ACTIVE', 'INACTIVE', 'UNKNOWN')")
+            octaviusConn.queryExecutor.execute("CREATE TYPE test_user_data AS (code text, status test_status_enum)")
+            octaviusConn.queryExecutor.execute("CREATE TYPE test_root_composite AS (main_status test_status_enum, user_data test_user_data)")
+
+            // Odświeżenie rejestru typów, aby OID wczytały się do pamięci
+            octaviusConn.reloadTypes()
+
+            // Zbudowanie zapytania, w którym tworzymy nasz kompozyt testowy
+            val result = octaviusConn.queryExecutor.query(
+                "SELECT ROW('ACTIVE'::test_status_enum, ROW('CD123', 'INACTIVE')::test_user_data)::test_root_composite AS my_map"
+            ).first()
+
+            // Odbieramy kolumnę 'my_map' jako Map<String, Any?>
+            val mappedResult = result.get<Map<String, Any?>>("my_map")
+
+            assertNotNull(mappedResult)
+            assertEquals(2, mappedResult.size)
+
+            val mainStatusVal = mappedResult.get("main_status")
+            assertTrue(mainStatusVal is TestStatus)
+            assertEquals(TestStatus.ACTIVE, mainStatusVal)
+
+            val userDataVal = mappedResult.get("user_data")
+            assertTrue(userDataVal is TestUserData)
+            val userData = userDataVal as TestUserData
+            assertEquals("CD123", userData.code)
+            assertEquals(TestStatus.INACTIVE, userData.status)
+
+        } finally {
+            try {
+                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")
+                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_user_data CASCADE")
+                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_status_enum CASCADE")
+            } catch (e: Exception) {}
             octaviusConn.close()
         }
     }

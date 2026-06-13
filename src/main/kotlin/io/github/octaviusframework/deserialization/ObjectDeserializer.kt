@@ -9,7 +9,7 @@ import kotlin.reflect.KClass
 class ObjectDeserializer(
     private val registry: ConverterRegistry
 ) {
-    fun <T> deserialize(source: Any?, expectedType: KType, sourceType: PgType? = null): T {
+    fun <T> deserialize(source: Any?, expectedType: KType, sourceType: PgType): T {
         val context = DefaultDeserializationContext(registry)
         return context.convert(source, expectedType, sourceType)
     }
@@ -18,7 +18,7 @@ class ObjectDeserializer(
 internal class DefaultDeserializationContext(
     private val registry: ConverterRegistry
 ) : DeserializationContext {
-    override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType?): T {
+    override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType): T {
         if (source == null) {
             if (!expectedType.isMarkedNullable) {
                 throw IllegalArgumentException("Cannot deserialize null to non-nullable type $expectedType")

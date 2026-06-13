@@ -12,15 +12,15 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.primaryConstructor
 
 class ReflectionCompositeConverter : PgConverter<Any> {
-    private val constructorCache = ConcurrentHashMap<KClass<*>, KFunction<Any>?>()
+    private val constructorCache = ConcurrentHashMap<KClass<*>, KFunction<Any>>()
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType?): Boolean {
+    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgComposite) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass.isData
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType?): Any {
+    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
         val composite = source as PgComposite
         val kClass = expectedType.classifier as KClass<*>
 
@@ -37,8 +37,8 @@ class ReflectionCompositeConverter : PgConverter<Any> {
             if (index != -1) {
                 // Pobieramy wartość wprost (bez rzutowania na tym etapie)
                 val rawValue = composite.get<Any>(index)
-                val oid = composite.type.attributes.values.toList().getOrNull(index)
-                val type = if (oid != null) composite.typeRegistry.types[oid] else null
+                val oid = composite.type.attributes.values.toList()[index]
+                val type = composite.typeRegistry.types[oid]!!
 
                 if (rawValue == null) {
                     if (!param.type.isMarkedNullable && !param.isOptional) {

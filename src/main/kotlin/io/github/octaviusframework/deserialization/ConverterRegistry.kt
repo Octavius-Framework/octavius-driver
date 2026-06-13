@@ -14,7 +14,7 @@ class ConverterRegistry(
         converters.add(0, converter)
     }
 
-    fun findConverter(source: Any, expectedType: KType, sourceType: PgType? = null): PgConverter<*>? {
+    fun findConverter(source: Any, expectedType: KType, sourceType: PgType): PgConverter<*>? {
         val converter = converters.find { it.canConvert(source, expectedType, sourceType) }
         return converter ?: parent?.findConverter(source, expectedType, sourceType)
     }

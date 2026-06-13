@@ -39,7 +39,7 @@ interface Row {
 inline fun <reified T> Row.get(index: Int): T {
     val raw = getRaw(index)
     val oid = fields[index].descriptor.dataTypeOid
-    val type = typeRegistry.types[oid]
+    val type = typeRegistry.types[oid]!!
     return objectDeserializer.deserialize(raw, typeOf<T>(), sourceType = type)
 }
 
@@ -48,7 +48,8 @@ inline fun <reified T> Row.get(columnName: String): T {
 }
 
 inline fun <reified T> Row.getEntireRowAs(): T {
-    return objectDeserializer.deserialize(this, typeOf<T>())
+    return objectDeserializer.deserialize(this, typeOf<T>(),
+        typeRegistry.types.entries.first { it.value is PgType.Record }.value)
 }
 
 class OctaviusRow(

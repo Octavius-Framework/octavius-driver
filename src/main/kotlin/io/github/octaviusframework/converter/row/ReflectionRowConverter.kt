@@ -12,15 +12,15 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.primaryConstructor
 
 class ReflectionRowConverter : PgConverter<Any> {
-    private val constructorCache = ConcurrentHashMap<KClass<*>, KFunction<Any>?>()
+    private val constructorCache = ConcurrentHashMap<KClass<*>, KFunction<Any>>()
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType?): Boolean {
+    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is Row) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass.isData
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType?): Any {
+    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
         val row = source as Row
         val kClass = expectedType.classifier as KClass<*>
 
@@ -36,8 +36,8 @@ class ReflectionRowConverter : PgConverter<Any> {
 
             if (index != -1) {
                 val rawValue = row.getRaw(index)
-                val oid = try { row.fields.getOrNull(index)?.descriptor?.dataTypeOid } catch (e: Exception) { null }
-                val type = if (oid != null) row.typeRegistry.types[oid] else null
+                val oid = row.fields[index].descriptor.dataTypeOid
+                val type = row.typeRegistry.types[oid]!!
 
                 if (rawValue == null) {
                     if (!param.type.isMarkedNullable && !param.isOptional) {

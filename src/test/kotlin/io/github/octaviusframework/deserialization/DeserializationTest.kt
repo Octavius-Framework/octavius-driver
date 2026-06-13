@@ -16,7 +16,12 @@ import kotlin.reflect.typeOf
 
 class DeserializationTest {
 
-    private val dummyRegistry = TypeRegistry()
+    private val dummyRegistry = TypeRegistry().apply {
+        types = mapOf(
+            1u to PgType.Base(1u, "dummy", "public"),
+            2u to PgType.Array(2u, "dummy_array", "public", 1u)
+        )
+    }
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
         val type = PgType.Composite(1u, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1u }))
@@ -55,7 +60,7 @@ class DeserializationTest {
 
         val composite = createComposite(mapOf("street" to "Baker St", "city" to "London"))
         
-        val address: Address? = deserializer.deserialize(composite, typeOf<Address>())
+        val address: Address? = deserializer.deserialize(composite, typeOf<Address>(), composite.type)
         assertNotNull(address)
         assertEquals("Baker St", address?.street)
         assertEquals("London", address?.city)
@@ -70,7 +75,7 @@ class DeserializationTest {
         val addressComposite = createComposite(mapOf("street" to "Wall St", "city" to "NY"))
         val personComposite = createComposite(mapOf("name" to "John", "age" to 30, "address" to addressComposite))
 
-        val person: Person? = deserializer.deserialize(personComposite, typeOf<Person>())
+        val person: Person? = deserializer.deserialize(personComposite, typeOf<Person>(), personComposite.type)
         assertNotNull(person)
         assertEquals("John", person?.name)
         assertEquals(30, person?.age)
@@ -91,7 +96,7 @@ class DeserializationTest {
         val array = createArray(listOf(p1, p2))
         val companyComposite = createComposite(mapOf("name" to "Corp", "employees" to array))
 
-        val company: Company? = deserializer.deserialize(companyComposite, typeOf<Company>())
+        val company: Company? = deserializer.deserialize(companyComposite, typeOf<Company>(), companyComposite.type)
         assertNotNull(company)
         assertEquals("Corp", company?.name)
         assertEquals(2, company?.employees?.size)
@@ -109,7 +114,7 @@ class DeserializationTest {
 
         val composite = createComposite(mapOf("key1" to "value1", "key2" to 42))
         
-        val result: Any? = deserializer.deserialize(composite, typeOf<Any>())
+        val result: Any? = deserializer.deserialize(composite, typeOf<Any>(), composite.type)
         assertTrue(result is Map<*, *>)
         val map = result as Map<*, *>
         assertEquals("value1", map["key1"])
@@ -125,7 +130,7 @@ class DeserializationTest {
         val composite = createComposite(mapOf("street" to "Baker St")) // Missing 'city'
 
         val ex = assertThrows(IllegalArgumentException::class.java) {
-            deserializer.deserialize<Address>(composite, typeOf<Address>())
+            deserializer.deserialize<Address>(composite, typeOf<Address>(), composite.type)
         }
         assertTrue(ex.message!!.contains("Missing non-nullable attribute"))
     }
@@ -138,7 +143,7 @@ class DeserializationTest {
 
         val composite = createComposite(mapOf("id" to 10)) // missing name (has default), missing desc (nullable)
 
-        val result: OptionalFields? = deserializer.deserialize(composite, typeOf<OptionalFields>())
+        val result: OptionalFields? = deserializer.deserialize(composite, typeOf<OptionalFields>(), composite.type)
         assertNotNull(result)
         assertEquals(10, result?.id)
         assertEquals("Unknown", result?.name)
@@ -155,10 +160,10 @@ class DeserializationTest {
         
         // Define a custom converter for Address
         val localConverter = object : PgConverter<Address> {
-            override fun canConvert(source: Any, expectedType: kotlin.reflect.KType, sourceType: PgType?) =
+            override fun canConvert(source: Any, expectedType: kotlin.reflect.KType, sourceType: PgType) =
                 expectedType.classifier == Address::class
             
-            override fun convert(source: Any, expectedType: kotlin.reflect.KType, context: DeserializationContext, sourceType: io.github.octaviusframework.types.PgType?): Address {
+            override fun convert(source: Any, expectedType: kotlin.reflect.KType, context: DeserializationContext, sourceType: PgType): Address {
                 return Address("LocalOverride", "LocalCity")
             }
         }
@@ -169,11 +174,11 @@ class DeserializationTest {
         val localDeserializer = ObjectDeserializer(localRegistry)
 
         // Using local registry
-        val address: Address? = localDeserializer.deserialize(composite, typeOf<Address>())
+        val address: Address? = localDeserializer.deserialize(composite, typeOf<Address>(), composite.type)
         assertEquals("LocalOverride", address?.street)
 
         // Using global only
-        val globalAddress: Address? = deserializer.deserialize(composite, typeOf<Address>())
+        val globalAddress: Address? = deserializer.deserialize(composite, typeOf<Address>(), composite.type)
         assertEquals("Global", globalAddress?.street)
     }
 }
