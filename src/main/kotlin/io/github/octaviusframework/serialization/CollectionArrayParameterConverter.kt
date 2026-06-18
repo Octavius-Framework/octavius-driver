@@ -2,6 +2,8 @@ package io.github.octaviusframework.serialization
 
 import io.github.octaviusframework.container.PgArray
 import io.github.octaviusframework.container.ArrayDimension
+import io.github.octaviusframework.exceptions.OctaviusTypeException
+import io.github.octaviusframework.exceptions.TypeExceptionMessage
 import io.github.octaviusframework.types.PgType
 import io.github.octaviusframework.types.TypeRegistry
 
@@ -31,8 +33,10 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         }
 
         if (arrayType == null) {
-            // Cannot determine array type, return as is (might fail later or use fallback)
-            return source
+            throw OctaviusTypeException(
+                TypeExceptionMessage.TYPE_NOT_FOUND,
+                details = "Nie można wywnioskować typu tablicy dla kolekcji. Kolekcja jest pusta lub zawiera same nulle, lub typ elementu jest nieznany. Użyj jawnego typowania (np. .withPgType(...))."
+            )
         }
 
         val elementOid = arrayType.elementOid

@@ -16,16 +16,6 @@ class AnyConverter : PgConverter<Any> {
     }
 
     override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
-        return when (source) {
-            is PgComposite -> {
-                val mapType = typeOf<Map<String, Any?>>()
-                context.convert<Map<String, Any?>>(source, mapType, sourceType)
-            }
-            is PgArray -> {
-                val listType = typeOf<List<Any?>>()
-                context.convert<List<Any?>>(source, listType, sourceType)
-            }
-            else -> source
-        }
+        return source
     }
 }

@@ -434,6 +434,10 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         converterRegistry.addConverter(converter)
     }
 
+    inline fun <reified T : Any> registerCompositeType(name: String, schema: String = "") {
+        typeRegistry.registerCompositeType(T::class, name, schema)
+    }
+
 
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)

@@ -45,6 +45,15 @@ class TypeRegistry {
     @Volatile
     private var serializersByClass: Map<KClass<*>, TypeSerializer<*>> = emptyMap()
 
+    @Volatile
+    var registeredComposites: Map<KClass<*>, QualifiedName> = emptyMap()
+
+    fun registerCompositeType(kClass: KClass<*>, name: String, schema: String = "") {
+        val newMap = registeredComposites.toMutableMap()
+        newMap[kClass] = QualifiedName(schema, name)
+        registeredComposites = newMap
+    }
+
     init {
         val newOidMap = mutableMapOf<UInt, TypeSerializer<*>>()
         val newClassMap = mutableMapOf<KClass<*>, TypeSerializer<*>>()

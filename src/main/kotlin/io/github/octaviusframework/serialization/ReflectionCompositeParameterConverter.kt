@@ -15,26 +15,24 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Boolean {
         if (!source::class.isData) return false
         
-        val type = if (expectedOid != null) {
-            typeRegistry.types[expectedOid]
-        } else {
-            val name = source::class.simpleName ?: return false
-            val lower = name.lowercase()
-            val snake = name.toSnakeCase()
-            typeRegistry.types.values.firstOrNull { it is PgType.Composite && (it.name == lower || it.name == snake) }
+        val qName = typeRegistry.registeredComposites[source::class]
+        if (qName != null) return true
+
+        if (expectedOid != null) {
+            return typeRegistry.types[expectedOid] is PgType.Composite
         }
-        
-        return type is PgType.Composite
+
+        return false
     }
 
     override fun convert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Any? {
         val type = if (expectedOid != null) {
             typeRegistry.types[expectedOid] as PgType.Composite
         } else {
-            val name = source::class.simpleName ?: return null
-            val lower = name.lowercase()
-            val snake = name.toSnakeCase()
-            typeRegistry.types.values.first { it is PgType.Composite && (it.name == lower || it.name == snake) } as PgType.Composite
+            val qName = typeRegistry.registeredComposites[source::class] ?: return null
+            typeRegistry.types.values.first { 
+                it is PgType.Composite && it.name == qName.name && (qName.schema.isEmpty() || it.schema == qName.schema)
+            } as PgType.Composite
         }
 
         val properties = source::class.memberProperties.associateBy { it.name.lowercase() }
