@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test
 import java.util.*
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNotNull
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
 
 class SerializationTest {
 

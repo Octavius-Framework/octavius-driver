@@ -11,11 +11,11 @@ class ParameterConverterRegistry(
         converters.add(0, converter)
     }
 
-    fun convert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Any? {
+    fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any? {
         val converter = converters.firstOrNull { it.canConvert(source, expectedOid, typeRegistry) }
-        val result = converter?.convert(source, expectedOid, typeRegistry)
+        val result = converter?.convert(source, expectedOid, context, typeRegistry)
         if (result != null) return result
         
-        return parent?.convert(source, expectedOid, typeRegistry) ?: source
+        return parent?.convert(source, expectedOid, context, typeRegistry) ?: source
     }
 }

@@ -26,7 +26,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         return false
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Any? {
+    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any? {
         val type = if (expectedOid != null) {
             typeRegistry.types[expectedOid] as PgType.Composite
         } else {
@@ -48,7 +48,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
             } else null
 
             if (value != null) {
-                value = typeRegistry.parameterConverterRegistry.convert(value, attributeOid, typeRegistry)
+                value = context.convert(value, attributeOid)
             }
 
             if (value is PgContainer) {

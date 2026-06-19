@@ -13,7 +13,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return source is Collection<*> || source is Array<*>
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Any? {
+    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any? {
         val list = when (source) {
             is Collection<*> -> source.toList()
             is Array<*> -> source.toList()
@@ -46,7 +46,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         // Convert elements recursively
         val convertedElements = list.map { element ->
             if (element != null) {
-                typeRegistry.parameterConverterRegistry.convert(element, elementOid, typeRegistry)
+                context.convert(element, elementOid)
             } else null
         }
 
