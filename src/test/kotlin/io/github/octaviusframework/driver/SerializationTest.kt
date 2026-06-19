@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver
 
-import io.github.octaviusframework.driver.codec.ContainerCodec
+import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.container.createArray
 import io.github.octaviusframework.driver.container.createComposite

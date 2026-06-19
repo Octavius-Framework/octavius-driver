@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.codec.ContainerCodec
+import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
