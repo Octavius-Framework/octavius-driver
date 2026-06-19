@@ -139,7 +139,7 @@ class PgArray(
     inline fun <reified T> get(index: Int): T? {
         if (values != null && values!![index] != null) {
             val v = values!![index]
-            if (v is T) return v as T
+            if (v is T) return v
             throw OctaviusTypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,

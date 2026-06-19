@@ -35,6 +35,8 @@ class DeserializationIntegrationTest {
             octaviusConn.queryExecutor.execute("CREATE TYPE integ_user AS (id int, name text, address integ_address)")
 
             octaviusConn.reloadTypes()
+            octaviusConn.typeRegistry.registerCompositeType<IntegrationAddress>("integ_address")
+            octaviusConn.typeRegistry.registerCompositeType<IntegrationUser>("integ_user")
 
             val result = octaviusConn.queryExecutor.query("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").first()
             
@@ -66,6 +68,7 @@ class DeserializationIntegrationTest {
             octaviusConn.queryExecutor.execute("CREATE TYPE integ_address AS (street text, city text)")
 
             octaviusConn.reloadTypes()
+            octaviusConn.typeRegistry.registerCompositeType<IntegrationAddress>("integ_address")
 
             val result = octaviusConn.queryExecutor.query("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").first()
 
@@ -101,8 +104,8 @@ class DeserializationIntegrationTest {
             assertNotNull(js)
             assertNotNull(jsb)
 
-            println("jsAny type is: ${jsAny?.javaClass?.name}")
-            println("jsbAny type is: ${jsbAny?.javaClass?.name}")
+            println("jsAny type is: ${jsAny.javaClass.name}")
+            println("jsbAny type is: ${jsbAny.javaClass.name}")
 
             val jsonObjectJs = js as JsonObject
             val jsonObjectJsb = jsb as JsonObject
@@ -118,7 +121,7 @@ class DeserializationIntegrationTest {
             if (jsbAny is JsonObject) {
                 assertEquals("value2", jsbAny["key2"]?.let { (it as JsonPrimitive).content })
             } else {
-                fail("jsbAny is not a JsonObject, it is ${jsbAny?.javaClass?.name}")
+                fail("jsbAny is not a JsonObject, it is ${jsbAny.javaClass.name}")
             }
 
         } finally {
@@ -135,7 +138,7 @@ class DeserializationIntegrationTest {
 
         try {
             // Rejestracja własnych, jawnych konwerterów
-            octaviusConn.registerGlobalConverter(object : ResultConverter<TestStatus> {
+            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<TestStatus> {
                 override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
                 }
@@ -145,23 +148,26 @@ class DeserializationIntegrationTest {
                 }
             })
 
-            octaviusConn.registerGlobalConverter(object : ResultConverter<TestUserData> {
-                override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-                    return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
-                }
-                override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
-                    require(source is PgComposite)
-                    val code = source.get<String>("code") ?: ""
-                    val statusRaw = source.get<Any>("status")
-                    val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
-                    val status = if (statusRaw != null) {
-                        context.convert(statusRaw, typeOf<TestStatus>(), statusType)
-                    } else {
-                        TestStatus.UNKNOWN
+            octaviusConn.typeRegistry.registerCompositeType<TestUserData>(
+                name = "test_user_data",
+                resultConverter = object : ResultConverter<TestUserData> {
+                    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+                        return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
                     }
-                    return TestUserData(code, status)
+                    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
+                        require(source is PgComposite)
+                        val code = source.get<String>("code")
+                        val statusRaw = source.get<Any?>("status")
+                        val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
+                        val status = if (statusRaw != null) {
+                            context.convert(statusRaw, typeOf<TestStatus>(), statusType)
+                        } else {
+                            TestStatus.UNKNOWN
+                        }
+                        return TestUserData(code, status)
+                    }
                 }
-            })
+            )
 
             // Utworzenie typów w bazie
             octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")

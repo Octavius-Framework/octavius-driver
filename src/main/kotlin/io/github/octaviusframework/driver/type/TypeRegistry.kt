@@ -33,8 +33,9 @@ import io.github.octaviusframework.driver.mapping.parameter.CollectionArrayParam
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
 import io.github.octaviusframework.driver.mapping.parameter.ReflectionCompositeParameterConverter
 import io.github.octaviusframework.driver.mapping.result.ResultConverterRegistry
+import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
+import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import kotlin.reflect.KClass
-
 
 class TypeRegistry {
     val converterRegistry = ResultConverterRegistry().apply {
@@ -49,6 +50,14 @@ class TypeRegistry {
     val parameterConverterRegistry = ParameterConverterRegistry().apply {
         addConverter(CollectionArrayParameterConverter())
         addConverter(ReflectionCompositeParameterConverter())
+    }
+
+    fun registerResultConverter(converter: ResultConverter<*>) {
+        converterRegistry.addConverter(converter)
+    }
+
+    fun registerParameterConverter(converter: ParameterConverter<*>) {
+        parameterConverterRegistry.addConverter(converter)
     }
 
     @Volatile
@@ -66,10 +75,22 @@ class TypeRegistry {
     @Volatile
     var registeredComposites: Map<KClass<*>, QualifiedName> = emptyMap()
 
-    fun registerCompositeType(kClass: KClass<*>, name: String, schema: String = "") {
+    inline fun <reified T : Any> registerCompositeType(
+        name: String,
+        schema: String = "",
+        resultConverter: ResultConverter<T>? = null,
+        parameterConverter: ParameterConverter<T>? = null
+    ) {
         val newMap = registeredComposites.toMutableMap()
-        newMap[kClass] = QualifiedName(schema, name)
+        newMap[T::class] = QualifiedName(schema, name)
         registeredComposites = newMap
+
+        if (resultConverter != null) {
+            converterRegistry.addConverter(resultConverter)
+        }
+        if (parameterConverter != null) {
+            parameterConverterRegistry.addConverter(parameterConverter)
+        }
     }
 
     init {

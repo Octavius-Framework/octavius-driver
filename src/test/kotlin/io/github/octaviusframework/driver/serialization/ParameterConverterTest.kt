@@ -35,6 +35,8 @@ class ParameterConverterTest {
         octaviusConn.queryExecutor.execute("CREATE TYPE complex_user AS (id int, name text, address simple_address, tags text[])")
         
         octaviusConn.reloadTypes()
+        octaviusConn.typeRegistry.registerCompositeType<SimpleAddress>("simple_address")
+        octaviusConn.typeRegistry.registerCompositeType<ComplexUser>("complex_user")
         
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
         parameterSerializer = ParameterSerializer(dummyRow.typeRegistry)

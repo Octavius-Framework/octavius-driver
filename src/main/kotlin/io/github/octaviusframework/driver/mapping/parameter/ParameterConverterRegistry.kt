@@ -6,7 +6,7 @@ class ParameterConverterRegistry {
     private val converters = mutableListOf<ParameterConverter<*>>()
 
     fun addConverter(converter: ParameterConverter<*>) {
-        converters.add(converter)
+        converters.add(0, converter)
     }
 
     fun convert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Any? {

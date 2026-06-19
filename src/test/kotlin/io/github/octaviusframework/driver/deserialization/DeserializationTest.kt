@@ -31,6 +31,10 @@ class DeserializationTest {
             1u to PgType.Base(1u, "dummy", "public"),
             2u to PgType.Array(2u, "dummy_array", "public", 1u)
         )
+        registerCompositeType<Address>("address")
+        registerCompositeType<Person>("person")
+        registerCompositeType<Company>("company")
+        registerCompositeType<OptionalFields>("optional_fields")
     }
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
@@ -128,7 +132,7 @@ class DeserializationTest {
     }
 
     @Test
-    fun `test fallback to map for composite when Any is requested`() {
+    fun `test fallback to PgComposite for composite when Any is requested and explicit map conversion`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         registry.addConverter(MapCompositeConverter())
@@ -136,11 +140,13 @@ class DeserializationTest {
 
         val composite = createComposite(mapOf("key1" to "value1", "key2" to 42))
 
-        val result: Any? = deserializer.deserialize(composite, typeOf<Any>(), composite.type)
-        assertTrue(result is Map<*, *>)
-        val map = result as Map<*, *>
-        assertEquals("value1", map["key1"])
-        assertEquals(42, map["key2"])
+        val resultAny: Any? = deserializer.deserialize(composite, typeOf<Any>(), composite.type)
+        assertTrue(resultAny is PgComposite)
+
+        val resultMap: Map<String, Any?>? = deserializer.deserialize(composite, typeOf<Map<String, Any?>>(), composite.type)
+        assertNotNull(resultMap)
+        assertEquals("value1", resultMap!!["key1"])
+        assertEquals(42, resultMap["key2"])
     }
 
     @Test

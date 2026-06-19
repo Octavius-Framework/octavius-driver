@@ -37,7 +37,7 @@ class ReflectionCompositeConverter : ResultConverter<Any> {
 
             if (index != -1) {
                 // Pobieramy wartość wprost (bez rzutowania na tym etapie)
-                val rawValue = composite.get<Any>(index)
+                val rawValue = composite.get<Any?>(index)
                 val oid = composite.type.attributes.values.toList()[index]
                 val type = composite.typeRegistry.types[oid]!!
 

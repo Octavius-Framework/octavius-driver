@@ -86,7 +86,7 @@ class PgComposite(
             throw OctaviusTypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
-                details = "Otrzymano ${parsedValue?.let { it::class.simpleName }}"
+                details = "Otrzymano ${parsedValue::class.simpleName}"
             )
         }
     }
