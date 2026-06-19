@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver
 
-import io.github.octaviusframework.driver.codec.ContainerSerializers
+import io.github.octaviusframework.driver.codec.ContainerCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.container.createArray
 import io.github.octaviusframework.driver.container.createComposite
@@ -43,7 +43,7 @@ class SerializationTest {
 
         // Serializujemy bez modyfikacji
         val writer1 = PgByteWriter()
-        ContainerSerializers.serializeContainer(composite, writer1, row.typeRegistry)
+        ContainerCodec.serializeContainer(composite, writer1, row.typeRegistry)
 
         // Musi być identyczne bajt w bajt!
         assertContentEquals(
@@ -58,7 +58,7 @@ class SerializationTest {
 
         // Serializujemy ponownie
         val writer2 = PgByteWriter()
-        ContainerSerializers.serializeContainer(composite, writer2, row.typeRegistry)
+        ContainerCodec.serializeContainer(composite, writer2, row.typeRegistry)
         val modifiedBytes = writer2.toByteArray()
 
         // Pobieramy wzorzec z bazy dla zmienionych wartości by porównać
@@ -91,14 +91,14 @@ class SerializationTest {
 
         // Serializacja zerocopy
         val writer1 = PgByteWriter()
-        ContainerSerializers.serializeContainer(array, writer1, row.typeRegistry)
+        ContainerCodec.serializeContainer(array, writer1, row.typeRegistry)
         assertContentEquals(originalBytes, writer1.toByteArray())
 
         // Modyfikacja warstwy 3 przez operator
         array[1] = 999
 
         val writer2 = PgByteWriter()
-        ContainerSerializers.serializeContainer(array, writer2, row.typeRegistry)
+        ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
         val expectedRow = octaviusConn.queryExecutor.query("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").first()
         val expectedBytes = expectedRow.fields[0].rawValue!!.toByteArray()
@@ -128,7 +128,7 @@ class SerializationTest {
         composite["name"] = "factory_test"
 
         val writer1 = PgByteWriter()
-        ContainerSerializers.serializeContainer(composite, writer1, typeRegistry)
+        ContainerCodec.serializeContainer(composite, writer1, typeRegistry)
         val builtCompositeBytes = writer1.toByteArray()
 
         // Porównanie z bazą
@@ -145,7 +145,7 @@ class SerializationTest {
         array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
-        ContainerSerializers.serializeContainer(array, writer2, typeRegistry)
+        ContainerCodec.serializeContainer(array, writer2, typeRegistry)
         val builtArrayBytes = writer2.toByteArray()
 
         val expectedArrayRow = octaviusConn.queryExecutor.query("SELECT ARRAY[10, 20, 30]::int[]").first()
@@ -170,7 +170,7 @@ class SerializationTest {
         array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
-        ContainerSerializers.serializeContainer(array, writer, typeRegistry)
+        ContainerCodec.serializeContainer(array, writer, typeRegistry)
         val serializedArray = writer.toByteArray()
 
         val rows = octaviusConn.queryExecutor.query(
@@ -250,7 +250,7 @@ class SerializationTest {
 
         val writer = PgByteWriter()
         val dummyRow = octaviusConn.queryExecutor.query("SELECT 1").first()
-        ContainerSerializers.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
+        ContainerCodec.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
         val serializedArray = writer.toByteArray()
 
         val rows = octaviusConn.queryExecutor.query(

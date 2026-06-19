@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.codec.ContainerParsers
+import io.github.octaviusframework.driver.codec.ContainerCodec
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
@@ -68,8 +68,7 @@ class OctaviusRow(
                         pgType is PgType.Range ||
                         pgType is PgType.Multirange)
             ) {
-
-                container = ContainerParsers.parseContainer(window, desc.dataTypeOid, typeRegistry)
+                container = ContainerCodec.parseContainer(window, desc.dataTypeOid, typeRegistry)
             }
         }
         Field(desc, window, container)

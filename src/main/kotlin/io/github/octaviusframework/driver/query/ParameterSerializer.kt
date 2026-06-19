@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
-import io.github.octaviusframework.driver.codec.ContainerSerializers
+import io.github.octaviusframework.driver.codec.ContainerCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgTyped
@@ -46,7 +46,7 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
 
         if (convertedParameter is PgContainer) {
             val writer = PgByteWriter()
-            ContainerSerializers.serializeContainer(convertedParameter, writer, typeRegistry)
+            ContainerCodec.serializeContainer(convertedParameter, writer, typeRegistry)
             return writer.toByteArray()
         }
 

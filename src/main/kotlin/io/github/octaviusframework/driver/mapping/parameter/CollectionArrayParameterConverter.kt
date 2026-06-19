@@ -50,7 +50,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             } else null
         }
 
-        // We can't easily build PgArray with internal raw arrays in ContainerSerializers, but we can construct it.
+        // We can't easily build PgArray with internal raw arrays in ContainerCodec, but we can construct it.
         // Actually, PgArray has values, containers, windows.
         // Let's populate values and containers.
         val values = mutableListOf<Any?>()
