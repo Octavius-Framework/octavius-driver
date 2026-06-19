@@ -12,6 +12,7 @@ import io.github.octaviusframework.driver.query.OctaviusQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.GlobalTypeRegistry
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
 import kotlinx.coroutines.*
@@ -28,24 +29,20 @@ import java.util.concurrent.Executor
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-class OctaviusConnection(private val stream: PgStream, private val url: String) : Connection {
+class OctaviusConnection(internal val stream: PgStream, private val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
     val converterRegistry = typeRegistry.converterRegistry
     val queryExecutor = QueryExecutor(stream, typeRegistry)
 
-    fun registerResultConverter(converter: ResultConverter<*>) {
-        typeRegistry.registerResultConverter(converter)
-    }
-
-    fun registerParameterConverter(converter: ParameterConverter<*>) {
-        typeRegistry.registerParameterConverter(converter)
-    }
+    val types: TypeManager by lazy { TypeManager(this) }
+    val transactions: TransactionManager by lazy { TransactionManager(this) }
+    val notifications: NotificationManager by lazy { NotificationManager(this) }
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
     }
 
-    private var isClosedFlag: Boolean = false
+    internal var isClosedFlag: Boolean = false
     private var readOnlyFlag: Boolean = false
 
     private var lastSearchPathString: String? = null
@@ -135,76 +132,7 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
         return stream.networkTimeout
     }
 
-    //------------------------------------------LISTEN/NOTIFY-----------------------------------------------------------
-    val notifications: SharedFlow<NotificationResponseMessage>
-        get() = stream.notifications
 
-    /**
-     * Starts a listener loop using active polling with a socket timeout.
-     * When the coroutine is cancelled, the loop exits gracefully without closing
-     * the underlying database connection, allowing it to be reused.
-     */
-    suspend fun startPollingListenerLoop(pollTimeoutMs: Int = 500, dispatcher: CoroutineDispatcher? = null) {
-        if (isClosedFlag) return
-
-        withContext(dispatcher ?: virtualDispatcher) {
-            val originalTimeout = stream.networkTimeout
-            try {
-                stream.networkTimeout = pollTimeoutMs
-
-                while (currentCoroutineContext().isActive && !isClosedFlag) {
-                    try {
-                        stream.receiveMessage()
-                    } catch (e: SocketTimeoutException) {
-                        // Timeout is expected, loop continues and checks isActive
-                    } catch (e: SocketException) {
-                        // Socket was closed from the outside
-                        break
-                    } catch (e: IOException) {
-                        // Connection dropped by network, server, or closed explicitly
-                        break
-                    }
-                }
-            } finally {
-                try {
-                    if (!isClosedFlag) stream.networkTimeout = originalTimeout
-                } catch (ignore: Exception) {
-                }
-            }
-        }
-    }
-
-    /**
-     * Starts a listener loop that blocks indefinitely.
-     * When the coroutine is cancelled, it simply closes the socket.
-     */
-    suspend fun startInterruptibleListenerLoop(dispatcher: CoroutineDispatcher? = null) {
-        if (isClosedFlag) return
-
-        withContext(dispatcher ?: virtualDispatcher) {
-            val job = currentCoroutineContext()[Job]
-            val completionHandle = job?.invokeOnCompletion {
-                close()
-            }
-
-            try {
-                stream.networkTimeout = 0
-
-                while (currentCoroutineContext().isActive && !isClosedFlag) {
-                    try {
-                        stream.receiveMessage()
-                    } catch (e: SocketException) {
-                        break
-                    } catch (e: IOException) {
-                        break
-                    }
-                }
-            } finally {
-                completionHandle?.dispose()
-                close()
-            }
-        }
-    }
 
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------

@@ -2,8 +2,8 @@ package io.github.octaviusframework.driver
 
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
-import io.github.octaviusframework.driver.container.createArray
-import io.github.octaviusframework.driver.container.createComposite
+import io.github.octaviusframework.driver.mapping.result.ResultConverter
+import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.io.toByteArray
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.query.ParameterSerializer
@@ -124,7 +124,7 @@ class SerializationTest {
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
-        val composite = octaviusConn.createComposite("ser_test_composite")
+        val composite = octaviusConn.types.createComposite("ser_test_composite")
         composite["id"] = 777
         composite["name"] = "factory_test"
 
@@ -142,7 +142,7 @@ class SerializationTest {
         )
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.createArray(1007u, 3) // 1007u = _int4
+        val array = octaviusConn.types.createArray(1007u, 3) // 1007u = _int4
         array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
@@ -167,7 +167,7 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.createArray(1007u, 3) // 1007u = _int4
+        val array = octaviusConn.types.createArray(1007u, 3) // 1007u = _int4
         array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
@@ -243,7 +243,7 @@ class SerializationTest {
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
-        val multiArray = octaviusConn.createArray(1007u, 2, 3)
+        val multiArray = octaviusConn.types.createArray(1007u, 2, 3)
 
         // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
@@ -323,7 +323,7 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.createArray(1007u, 3) // 23 = int4
+        val arrayVal = octaviusConn.types.createArray(1007u, 3) // 23 = int4
         arrayVal.setAll(10, 20, 30)
 
         val arrayParam = serializer.serializeWithOid(arrayVal)
