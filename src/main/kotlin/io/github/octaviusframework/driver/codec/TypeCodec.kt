@@ -18,13 +18,11 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import java.math.BigDecimal
 import java.math.BigInteger
-import kotlin.collections.get
 import kotlin.reflect.KClass
-import kotlin.text.get
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-interface TypeSerializer<T : Any> {
+interface TypeCodec<T : Any> {
     val pgTypeName: String
     val pgSchema: String get() = "pg_catalog"
     val oid: UInt? get() = null
@@ -35,7 +33,7 @@ interface TypeSerializer<T : Any> {
     val toBinary: (T) -> ByteArray
 }
 
-object ShortSerializer : TypeSerializer<Short> {
+object ShortCodec : TypeCodec<Short> {
     override val pgTypeName = "int2"
     override val oid: UInt = 21u
     override val kotlinClass = Short::class
@@ -44,7 +42,7 @@ object ShortSerializer : TypeSerializer<Short> {
     override val toBinary: (Short) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object IntSerializer : TypeSerializer<Int> {
+object IntCodec : TypeCodec<Int> {
     override val pgTypeName = "int4"
     override val oid: UInt = 23u
     override val kotlinClass = Int::class
@@ -53,7 +51,7 @@ object IntSerializer : TypeSerializer<Int> {
     override val toBinary: (Int) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object LongSerializer : TypeSerializer<Long> {
+object LongCodec : TypeCodec<Long> {
     override val pgTypeName = "int8"
     override val oid: UInt = 20u
     override val kotlinClass = Long::class
@@ -62,7 +60,7 @@ object LongSerializer : TypeSerializer<Long> {
     override val toBinary: (Long) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object FloatSerializer : TypeSerializer<Float> {
+object FloatCodec : TypeCodec<Float> {
     override val pgTypeName = "float4"
     override val oid: UInt = 700u
     override val kotlinClass = Float::class
@@ -71,7 +69,7 @@ object FloatSerializer : TypeSerializer<Float> {
     override val toBinary: (Float) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object DoubleSerializer : TypeSerializer<Double> {
+object DoubleCodec : TypeCodec<Double> {
     override val pgTypeName = "float8"
     override val oid: UInt = 701u
     override val kotlinClass = Double::class
@@ -80,7 +78,7 @@ object DoubleSerializer : TypeSerializer<Double> {
     override val toBinary: (Double) -> ByteArray = { it.toByteArrayBE() }
 }
 
-object BooleanSerializer : TypeSerializer<Boolean> {
+object BooleanCodec : TypeCodec<Boolean> {
     override val pgTypeName = "bool"
     override val oid: UInt = 16u
     override val kotlinClass = Boolean::class
@@ -89,7 +87,7 @@ object BooleanSerializer : TypeSerializer<Boolean> {
     override val toBinary: (Boolean) -> ByteArray = { byteArrayOf(if (it) 1 else 0) }
 }
 
-object StringSerializer : TypeSerializer<String> {
+object StringCodec : TypeCodec<String> {
     override val pgTypeName = "text"
     override val oid: UInt = 25u
     override val kotlinClass = String::class
@@ -99,26 +97,26 @@ object StringSerializer : TypeSerializer<String> {
     override val toBinary: (String) -> ByteArray = { it.toByteArray(Charsets.UTF_8) }
 }
 
-object VarcharSerializer : TypeSerializer<String> {
+object VarcharCodec : TypeCodec<String> {
     override val pgTypeName = "varchar"
     override val oid: UInt = 1043u
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = false
-    override val fromBinary = StringSerializer.fromBinary
-    override val toBinary = StringSerializer.toBinary
+    override val fromBinary = StringCodec.fromBinary
+    override val toBinary = StringCodec.toBinary
 }
 
-object BpcharSerializer : TypeSerializer<String> {
+object BpcharCodec : TypeCodec<String> {
     override val pgTypeName = "bpchar"
     override val oid: UInt = 1042u
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = false
-    override val fromBinary = StringSerializer.fromBinary
-    override val toBinary = StringSerializer.toBinary
+    override val fromBinary = StringCodec.fromBinary
+    override val toBinary = StringCodec.toBinary
 }
 
 
-object ByteArraySerializer : TypeSerializer<ByteArray> {
+object ByteArrayCodec : TypeCodec<ByteArray> {
     override val pgTypeName = "bytea"
     override val oid: UInt = 17u
     override val kotlinClass = ByteArray::class
@@ -128,7 +126,7 @@ object ByteArraySerializer : TypeSerializer<ByteArray> {
     override val toBinary: (ByteArray) -> ByteArray = { it }
 }
 
-object UnitSerializer : TypeSerializer<Unit> {
+object UnitCodec : TypeCodec<Unit> {
     override val pgTypeName = "void"
     override val oid: UInt = 2278u
     override val kotlinClass = Unit::class
@@ -139,7 +137,7 @@ object UnitSerializer : TypeSerializer<Unit> {
         { throw UnsupportedOperationException("Cannot send Unit/void as parameter") }
 }
 
-object UuidSerializer : TypeSerializer<Uuid> {
+object UuidCodec : TypeCodec<Uuid> {
     override val pgTypeName = "uuid"
     override val oid: UInt = 2950u
     override val kotlinClass = Uuid::class
@@ -154,7 +152,7 @@ object UuidSerializer : TypeSerializer<Uuid> {
     }
 }
 
-object NumericSerializer : TypeSerializer<BigDecimal> {
+object NumericCodec : TypeCodec<BigDecimal> {
     override val pgTypeName = "numeric"
     override val oid: UInt = 1700u
     override val kotlinClass = BigDecimal::class
@@ -345,7 +343,7 @@ private fun instantToPgMicros(instant: Instant): Long {
     return totalMicros - PG_EPOCH_MICROS
 }
 
-object InstantSerializer : TypeSerializer<Instant> {
+object InstantCodec : TypeCodec<Instant> {
     override val pgTypeName = "timestamptz"
     override val oid: UInt = 1184u
     override val kotlinClass = Instant::class
@@ -360,7 +358,7 @@ object InstantSerializer : TypeSerializer<Instant> {
     }
 }
 
-object LocalDateTimeSerializer : TypeSerializer<LocalDateTime> {
+object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
     override val pgTypeName = "timestamp"
     override val oid: UInt = 1114u
     override val kotlinClass = LocalDateTime::class
@@ -375,7 +373,7 @@ object LocalDateTimeSerializer : TypeSerializer<LocalDateTime> {
     }
 }
 
-object LocalDateSerializer : TypeSerializer<LocalDate> {
+object LocalDateCodec : TypeCodec<LocalDate> {
     override val pgTypeName = "date"
     override val oid: UInt = 1082u
     override val kotlinClass = LocalDate::class
@@ -390,7 +388,7 @@ object LocalDateSerializer : TypeSerializer<LocalDate> {
     }
 }
 
-object LocalTimeSerializer : TypeSerializer<LocalTime> {
+object LocalTimeCodec : TypeCodec<LocalTime> {
     override val pgTypeName = "time"
     override val oid: UInt = 1083u
     override val kotlinClass = LocalTime::class
@@ -412,7 +410,7 @@ object LocalTimeSerializer : TypeSerializer<LocalTime> {
     }
 }
 
-object JsonbSerializer : TypeSerializer<String> {
+object JsonbCodec : TypeCodec<String> {
     override val pgTypeName = "jsonb"
     override val oid: UInt = 3802u
     override val kotlinClass = String::class
@@ -436,7 +434,7 @@ object JsonbSerializer : TypeSerializer<String> {
     }
 }
 
-object JsonSerializer : TypeSerializer<String> {
+object JsonCodec : TypeCodec<String> {
     override val pgTypeName = "json"
     override val oid: UInt = 114u
     override val kotlinClass = String::class
@@ -451,11 +449,11 @@ object JsonSerializer : TypeSerializer<String> {
     }
 }
 
-class DynamicEnumSerializer(
+class DynamicEnumCodec(
     override val oid: UInt,
     override val pgTypeName: String,
     override val pgSchema: String
-) : TypeSerializer<String> {
+) : TypeCodec<String> {
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = false
 

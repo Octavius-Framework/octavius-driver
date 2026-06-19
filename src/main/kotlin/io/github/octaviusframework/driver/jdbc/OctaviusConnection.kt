@@ -10,7 +10,7 @@ import io.github.octaviusframework.driver.message.backend.NotificationResponseMe
 import io.github.octaviusframework.driver.query.OctaviusQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.GlobalTypeRegistry
-import io.github.octaviusframework.driver.codec.TypeSerializer
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
 import kotlinx.coroutines.*
@@ -456,8 +456,8 @@ class OctaviusConnection(private val stream: PgStream, private val url: String) 
 
     //---------------------------------------------------TYPES----------------------------------------------------------
 
-    fun registerGlobalSerializer(serializer: TypeSerializer<*>) {
-        typeRegistry.registerSerializer(serializer, getSearchPath())
+    fun registerGlobalCodec(codec: TypeCodec<*>) {
+        typeRegistry.registerCodec(codec, getSearchPath())
     }
 
     fun registerGlobalConverter(converter: ResultConverter<*>) {

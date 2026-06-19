@@ -7,7 +7,7 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.PgTypedParameter
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.codec.TypeSerializer
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.type.containter.PgArray
 import io.github.octaviusframework.driver.type.containter.PgComposite
 import io.github.octaviusframework.driver.type.containter.PgContainer
@@ -33,7 +33,7 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             
             val convertedValue = typeRegistry.parameterConverterRegistry.convert(paramValue, parameter.oid, typeRegistry) ?: return null
             
-            val serializer = typeRegistry.getSerializerByOid<Any>(parameter.oid)
+            val serializer = typeRegistry.getCodecByOid<Any>(parameter.oid)
             if (serializer != null) {
                 return serializer.toBinary(convertedValue)
             }
@@ -50,14 +50,14 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             return writer.toByteArray()
         }
 
-        val serializer = typeRegistry.getSerializerByClass(convertedParameter::class)
+        val serializer = typeRegistry.getCodecByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
                 details = "Nie znaleziono serializatora dla typu: ${convertedParameter::class.qualifiedName}"
             )
 
         @Suppress("UNCHECKED_CAST")
-        val anySerializer = serializer as TypeSerializer<Any>
+        val anySerializer = serializer as TypeCodec<Any>
         return anySerializer.toBinary(convertedParameter)
     }
 
@@ -85,7 +85,7 @@ class ParameterSerializer(private val typeRegistry: TypeRegistry) {
             }
         }
 
-        val serializer = typeRegistry.getSerializerByClass(convertedParameter::class)
+        val serializer = typeRegistry.getCodecByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
                 details = "Nie znaleziono handlera dla typu: ${convertedParameter::class.qualifiedName}"

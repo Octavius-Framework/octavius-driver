@@ -1,26 +1,26 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.codec.BooleanSerializer
-import io.github.octaviusframework.driver.codec.BpcharSerializer
-import io.github.octaviusframework.driver.codec.ByteArraySerializer
-import io.github.octaviusframework.driver.codec.DoubleSerializer
-import io.github.octaviusframework.driver.codec.DynamicEnumSerializer
-import io.github.octaviusframework.driver.codec.FloatSerializer
-import io.github.octaviusframework.driver.codec.InstantSerializer
-import io.github.octaviusframework.driver.codec.IntSerializer
-import io.github.octaviusframework.driver.codec.JsonSerializer
-import io.github.octaviusframework.driver.codec.JsonbSerializer
-import io.github.octaviusframework.driver.codec.LocalDateSerializer
-import io.github.octaviusframework.driver.codec.LocalDateTimeSerializer
-import io.github.octaviusframework.driver.codec.LocalTimeSerializer
-import io.github.octaviusframework.driver.codec.LongSerializer
-import io.github.octaviusframework.driver.codec.NumericSerializer
-import io.github.octaviusframework.driver.codec.ShortSerializer
-import io.github.octaviusframework.driver.codec.StringSerializer
-import io.github.octaviusframework.driver.codec.TypeSerializer
-import io.github.octaviusframework.driver.codec.UnitSerializer
-import io.github.octaviusframework.driver.codec.UuidSerializer
-import io.github.octaviusframework.driver.codec.VarcharSerializer
+import io.github.octaviusframework.driver.codec.BooleanCodec
+import io.github.octaviusframework.driver.codec.BpcharCodec
+import io.github.octaviusframework.driver.codec.ByteArrayCodec
+import io.github.octaviusframework.driver.codec.DoubleCodec
+import io.github.octaviusframework.driver.codec.DynamicEnumCodec
+import io.github.octaviusframework.driver.codec.FloatCodec
+import io.github.octaviusframework.driver.codec.InstantCodec
+import io.github.octaviusframework.driver.codec.IntCodec
+import io.github.octaviusframework.driver.codec.JsonCodec
+import io.github.octaviusframework.driver.codec.JsonbCodec
+import io.github.octaviusframework.driver.codec.LocalDateCodec
+import io.github.octaviusframework.driver.codec.LocalDateTimeCodec
+import io.github.octaviusframework.driver.codec.LocalTimeCodec
+import io.github.octaviusframework.driver.codec.LongCodec
+import io.github.octaviusframework.driver.codec.NumericCodec
+import io.github.octaviusframework.driver.codec.ShortCodec
+import io.github.octaviusframework.driver.codec.StringCodec
+import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.UnitCodec
+import io.github.octaviusframework.driver.codec.UuidCodec
+import io.github.octaviusframework.driver.codec.VarcharCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.mapping.result.JsonElementConverter
@@ -55,13 +55,13 @@ class TypeRegistry {
     var types: Map<UInt, PgType> = emptyMap()
 
     @Volatile
-    private var serializersByOid: Map<UInt, TypeSerializer<*>> = emptyMap()
+    private var codecsByOid: Map<UInt, TypeCodec<*>> = emptyMap()
 
     @Volatile
-    private var serializersByName: Map<QualifiedName, TypeSerializer<*>> = emptyMap()
+    private var codecsByName: Map<QualifiedName, TypeCodec<*>> = emptyMap()
 
     @Volatile
-    private var serializersByClass: Map<KClass<*>, TypeSerializer<*>> = emptyMap()
+    private var codecsByClass: Map<KClass<*>, TypeCodec<*>> = emptyMap()
 
     @Volatile
     var registeredComposites: Map<KClass<*>, QualifiedName> = emptyMap()
@@ -73,18 +73,18 @@ class TypeRegistry {
     }
 
     init {
-        val newOidMap = mutableMapOf<UInt, TypeSerializer<*>>()
-        val newClassMap = mutableMapOf<KClass<*>, TypeSerializer<*>>()
+        val newOidMap = mutableMapOf<UInt, TypeCodec<*>>()
+        val newClassMap = mutableMapOf<KClass<*>, TypeCodec<*>>()
         registerBuiltins(newOidMap, newClassMap)
-        serializersByOid = newOidMap
-        serializersByClass = newClassMap
+        codecsByOid = newOidMap
+        codecsByClass = newClassMap
     }
 
     private fun registerBuiltins(
-        oidMap: MutableMap<UInt, TypeSerializer<*>>,
-        classMap: MutableMap<KClass<*>, TypeSerializer<*>>
+        oidMap: MutableMap<UInt, TypeCodec<*>>,
+        classMap: MutableMap<KClass<*>, TypeCodec<*>>
     ) {
-        fun register(serializer: TypeSerializer<*>) {
+        fun register(serializer: TypeCodec<*>) {
             if (serializer.isDefaultForKotlinType) {
                 classMap[serializer.kotlinClass] = serializer
             }
@@ -93,31 +93,31 @@ class TypeRegistry {
             }
         }
 
-        register(ShortSerializer)
-        register(IntSerializer)
-        register(LongSerializer)
-        register(FloatSerializer)
-        register(DoubleSerializer)
-        register(BooleanSerializer)
-        register(StringSerializer)
-        register(VarcharSerializer)
-        register(BpcharSerializer)
-        register(ByteArraySerializer)
+        register(ShortCodec)
+        register(IntCodec)
+        register(LongCodec)
+        register(FloatCodec)
+        register(DoubleCodec)
+        register(BooleanCodec)
+        register(StringCodec)
+        register(VarcharCodec)
+        register(BpcharCodec)
+        register(ByteArrayCodec)
 
         // DateTime
-        register(InstantSerializer)
-        register(LocalDateTimeSerializer)
-        register(LocalDateSerializer)
-        register(LocalTimeSerializer)
+        register(InstantCodec)
+        register(LocalDateTimeCodec)
+        register(LocalDateCodec)
+        register(LocalTimeCodec)
 
         // Json
-        register(JsonbSerializer)
-        register(JsonSerializer)
+        register(JsonbCodec)
+        register(JsonCodec)
 
         // Additional
-        register(UuidSerializer)
-        register(NumericSerializer)
-        register(UnitSerializer)
+        register(UuidCodec)
+        register(NumericCodec)
+        register(UnitCodec)
     }
 
     /**
@@ -125,41 +125,41 @@ class TypeRegistry {
      * zostanie dopasowane po nazwie natychmiast, a także zapamiętane przy
      * kolejnych przeładowaniach słownika (reloadTypes).
      */
-    fun registerSerializer(serializer: TypeSerializer<*>, searchPath: List<String> = emptyList()) {
-        val newOidMap = serializersByOid.toMutableMap()
-        val newClassMap = serializersByClass.toMutableMap()
-        val newNameMap = serializersByName.toMutableMap()
+    fun registerCodec(codec: TypeCodec<*>, searchPath: List<String> = emptyList()) {
+        val newOidMap = codecsByOid.toMutableMap()
+        val newClassMap = codecsByClass.toMutableMap()
+        val newNameMap = codecsByName.toMutableMap()
 
-        if (serializer.isDefaultForKotlinType) {
-            newClassMap[serializer.kotlinClass] = serializer
+        if (codec.isDefaultForKotlinType) {
+            newClassMap[codec.kotlinClass] = codec
         }
 
-        val qName = QualifiedName(serializer.pgSchema, serializer.pgTypeName)
-        newNameMap[qName] = serializer
+        val qName = QualifiedName(codec.pgSchema, codec.pgTypeName)
+        newNameMap[qName] = codec
 
-        if (serializer.oid != null) {
-            newOidMap[serializer.oid!!] = serializer
+        if (codec.oid != null) {
+            newOidMap[codec.oid!!] = codec
         } else {
             if (types.isNotEmpty()) {
-                val (resolvedOid, resolvedQName) = resolveOid(serializer.pgTypeName, serializer.pgSchema, searchPath)
-                newOidMap[resolvedOid] = serializer
-                newNameMap[resolvedQName] = serializer
+                val (resolvedOid, resolvedQName) = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath)
+                newOidMap[resolvedOid] = codec
+                newNameMap[resolvedQName] = codec
             }
         }
 
-        serializersByOid = newOidMap
-        serializersByClass = newClassMap
-        serializersByName = newNameMap
+        codecsByOid = newOidMap
+        codecsByClass = newClassMap
+        codecsByName = newNameMap
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getSerializerByOid(oid: UInt): TypeSerializer<T>? {
-        return serializersByOid[oid] as TypeSerializer<T>?
+    fun <T : Any> getCodecByOid(oid: UInt): TypeCodec<T>? {
+        return codecsByOid[oid] as TypeCodec<T>?
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getSerializerByClass(kClass: KClass<T>): TypeSerializer<T>? {
-        return serializersByClass[kClass] as TypeSerializer<T>?
+    fun <T : Any> getCodecByClass(kClass: KClass<T>): TypeCodec<T>? {
+        return codecsByClass[kClass] as TypeCodec<T>?
     }
 
     /**
@@ -167,32 +167,32 @@ class TypeRegistry {
      * Dodatkowo aplikuje customowe serializatory oczekujące na OID.
      */
     fun updateTypes(newTypes: Map<UInt, PgType>, searchPath: List<String> = emptyList()) {
-        val newOidMap = serializersByOid.toMutableMap()
-        val newNameMap = serializersByName.toMutableMap()
-        for ((name, serializer) in serializersByName) {
-            if (serializer.oid == null) {
+        val newOidMap = codecsByOid.toMutableMap()
+        val newNameMap = codecsByName.toMutableMap()
+        for ((name, codec) in codecsByName) {
+            if (codec.oid == null) {
                 val (resolvedOid, resolvedQName) = resolveOid(
                     name.name,
                     name.schema,
                     searchPath,
                     sourceTypes = newTypes
                 )
-                newOidMap[resolvedOid] = serializer
-                newNameMap[resolvedQName] = serializer
+                newOidMap[resolvedOid] = codec
+                newNameMap[resolvedQName] = codec
             }
         }
 
         for ((oid, type) in newTypes) {
             if (type is PgType.Enum && !newOidMap.containsKey(oid)) {
-                val enumSerializer = DynamicEnumSerializer(oid, type.name, type.schema)
-                newOidMap[oid] = enumSerializer
-                newNameMap[QualifiedName(type.schema, type.name, false)] = enumSerializer
+                val enumCodec = DynamicEnumCodec(oid, type.name, type.schema)
+                newOidMap[oid] = enumCodec
+                newNameMap[QualifiedName(type.schema, type.name, false)] = enumCodec
             }
         }
 
         types = newTypes
-        serializersByOid = newOidMap
-        serializersByName = newNameMap
+        codecsByOid = newOidMap
+        codecsByName = newNameMap
     }
 
 

@@ -72,7 +72,7 @@ class PgComposite(
         }
 
         val attributeOid = type.attributes.values.toList()[index]
-        val serializer = typeRegistry.getSerializerByOid<Any>(attributeOid)
+        val serializer = typeRegistry.getCodecByOid<Any>(attributeOid)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
                 oid = attributeOid,

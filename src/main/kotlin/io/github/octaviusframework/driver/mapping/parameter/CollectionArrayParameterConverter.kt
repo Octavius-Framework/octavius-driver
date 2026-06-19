@@ -26,7 +26,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             // Try to infer from first non-null element
             val firstNonNull = list.firstOrNull { it != null }
             if (firstNonNull != null) {
-                val elementOid = typeRegistry.getSerializerByClass(firstNonNull::class)?.oid
+                val elementOid = typeRegistry.getCodecByClass(firstNonNull::class)?.oid
                 if (elementOid != null) {
                     typeRegistry.types.values.firstOrNull { it is PgType.Array && it.elementOid == elementOid } as? PgType.Array
                 } else null

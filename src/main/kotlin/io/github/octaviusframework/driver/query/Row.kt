@@ -106,7 +106,7 @@ class OctaviusRow(
         val fieldWindow = field.rawValue ?: return null
 
         val oid = field.descriptor.dataTypeOid
-        val serializer = typeRegistry.getSerializerByOid<Any>(oid)
+        val serializer = typeRegistry.getCodecByOid<Any>(oid)
 
         if (serializer != null) {
             val value = serializer.fromBinary(fieldWindow)

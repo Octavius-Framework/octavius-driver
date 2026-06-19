@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.codec.TypeSerializer
+import io.github.octaviusframework.driver.codec.TypeCodec
 
 /**
  * Reprezentuje pojedynczy wymiar tablicy w Postgresie.
@@ -132,8 +132,8 @@ class PgArray(
     }
 
     @PublishedApi
-    internal val elementSerializer: TypeSerializer<Any>? by lazy {
-        typeRegistry.getSerializerByOid(elementOid)
+    internal val elementSerializer: TypeCodec<Any>? by lazy {
+        typeRegistry.getCodecByOid(elementOid)
     }
 
     inline fun <reified T> get(index: Int): T? {
