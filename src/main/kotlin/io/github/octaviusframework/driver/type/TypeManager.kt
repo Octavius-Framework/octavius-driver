@@ -3,6 +3,8 @@ package io.github.octaviusframework.driver.type
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
+import io.github.octaviusframework.driver.mapping.EnumParameterConverter
+import io.github.octaviusframework.driver.mapping.EnumResultConverter
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.type.containter.ArrayDimension
@@ -19,6 +21,30 @@ class TypeManager(private val connection: OctaviusConnection) {
 
     fun registerResultConverter(converter: ResultConverter<*>) = registry.registerResultConverter(converter)
     fun registerParameterConverter(converter: ParameterConverter<*>) = registry.registerParameterConverter(converter)
+
+    inline fun <reified T : Any> registerComposite(typeName: String = "", schema: String = "") {
+        val qName = typeName.takeIf { it.isNotEmpty() } 
+            ?: CaseConverter.convert(T::class.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER)
+        registry.registerCompositeType<T>(qName, schema)
+    }
+
+    inline fun <reified T : Enum<T>> registerEnum(
+        typeName: String = "",
+        schema: String = "",
+        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_UPPER,
+        kotlinConvention: CaseConvention = CaseConvention.PASCAL_CASE
+    ) {
+        val enumClass = T::class
+
+        val actualTypeName = typeName.takeIf { it.isNotEmpty() } ?: CaseConverter.convert(
+            enumClass.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER
+        )
+
+        val actualSchema = schema.takeIf { it.isNotEmpty() } ?: ""
+        val qualifiedName = QualifiedName(actualSchema, actualTypeName)
+        registry.registerParameterConverter(EnumParameterConverter(enumClass, pgConvention, kotlinConvention))
+        registry.registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
+    }
 
     fun createComposite(typeName: String, schema: String = ""): PgComposite {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())

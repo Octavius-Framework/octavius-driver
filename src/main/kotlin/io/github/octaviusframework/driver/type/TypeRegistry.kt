@@ -77,20 +77,11 @@ class TypeRegistry {
 
     inline fun <reified T : Any> registerCompositeType(
         name: String,
-        schema: String = "",
-        resultConverter: ResultConverter<T>? = null,
-        parameterConverter: ParameterConverter<T>? = null
+        schema: String = ""
     ) {
         val newMap = registeredComposites.toMutableMap()
         newMap[T::class] = QualifiedName(schema, name)
         registeredComposites = newMap
-
-        if (resultConverter != null) {
-            converterRegistry.addConverter(resultConverter)
-        }
-        if (parameterConverter != null) {
-            parameterConverterRegistry.addConverter(parameterConverter)
-        }
     }
 
     init {
