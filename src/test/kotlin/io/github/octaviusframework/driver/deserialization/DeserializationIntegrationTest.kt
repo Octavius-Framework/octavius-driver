@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.containter.PgComposite
+import io.github.octaviusframework.driver.type.withPgType
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -201,6 +202,54 @@ class DeserializationIntegrationTest {
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_user_data CASCADE")
                 octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_status_enum CASCADE")
+            } catch (e: Exception) {}
+            octaviusConn.close()
+        }
+    }
+    data class DomainUser(val id: Int, val age: Int)
+
+    @Test
+    fun testDomainTypeHandling() {
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+
+        try {
+            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS domain_user CASCADE")
+            octaviusConn.queryExecutor.execute("DROP DOMAIN IF EXISTS positive_int CASCADE")
+            octaviusConn.queryExecutor.execute("CREATE DOMAIN positive_int AS int CHECK (VALUE > 0)")
+            octaviusConn.queryExecutor.execute("CREATE TYPE domain_user AS (id positive_int, age positive_int)")
+
+            octaviusConn.reloadTypes()
+            octaviusConn.typeRegistry.registerCompositeType<DomainUser>("domain_user")
+
+            // Test deserialization of pure domain
+            val res1 = octaviusConn.createQuery("SELECT 42::positive_int AS num").fetchAll().first()
+            assertEquals(42, res1.get<Int>("num"))
+
+            // Test deserialization of array of domains
+            val res2 = octaviusConn.createQuery("SELECT ARRAY[10, 20]::positive_int[] AS nums").fetchAll().first()
+            val list = res2.get<List<Int>>("nums")
+            assertEquals(listOf(10, 20), list)
+
+            // Test deserialization of composite with domains
+            val res3 = octaviusConn.createQuery("SELECT ROW(1, 25)::domain_user AS usr").fetchAll().first()
+            val usr = res3.get<DomainUser>("usr")
+            assertEquals(1, usr.id)
+            assertEquals(25, usr.age)
+
+            // Test serialization of domains (implicit, mapped as underlying type since JDBC sends parameters with matching format/Oid if we specify it or just sends integer)
+            // If we send it via composite
+            val res4 = octaviusConn.createQuery("SELECT $1::domain_user AS usr_back")
+                .bind(DomainUser(100, 30).withPgType("domain_user"))
+                .fetchOne()!!
+            
+            val usrBack = res4.get<DomainUser>("usr_back")
+            assertEquals(100, usrBack.id)
+            assertEquals(30, usrBack.age)
+
+        } finally {
+            try {
+                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS domain_user CASCADE")
+                octaviusConn.queryExecutor.execute("DROP DOMAIN IF EXISTS positive_int CASCADE")
             } catch (e: Exception) {}
             octaviusConn.close()
         }

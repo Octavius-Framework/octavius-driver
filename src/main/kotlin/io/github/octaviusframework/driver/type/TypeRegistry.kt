@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicEnumCodec
+import io.github.octaviusframework.driver.codec.dynamic.DynamicDomainCodec
 import io.github.octaviusframework.driver.codec.standard.*
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
@@ -181,6 +182,10 @@ class TypeRegistry {
                 val enumCodec = DynamicEnumCodec(oid, type.name, type.schema)
                 newOidMap[oid] = enumCodec
                 newNameMap[QualifiedName(type.schema, type.name, false)] = enumCodec
+            } else if (type is PgType.Domain && !newOidMap.containsKey(oid)) {
+                val domainCodec = DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, this)
+                newOidMap[oid] = domainCodec
+                newNameMap[QualifiedName(type.schema, type.name, false)] = domainCodec
             }
         }
 
