@@ -8,7 +8,6 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
 import io.github.octaviusframework.driver.mapping.parameter.SerializationContext
 import io.github.octaviusframework.driver.type.PgTyped
-import io.github.octaviusframework.driver.type.PgTypedParameter
 import io.github.octaviusframework.driver.type.TypeRegistry
 import io.github.octaviusframework.driver.type.containter.*
 
@@ -31,17 +30,20 @@ class ParameterSerializer(
         }
 
         if (parameter is PgTyped) {
-            val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
-            return serialize(PgTypedParameter(parameter.value, resolvedOid))
-        }
-
-        if (parameter is PgTypedParameter) {
             val paramValue = parameter.value ?: return null
+            val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
             
-            val convertedValue = parameterConverterRegistry.convert(paramValue, parameter.oid, context, typeRegistry) ?: return null
+            val convertedValue = parameterConverterRegistry.convert(paramValue, resolvedOid, context, typeRegistry) ?: return null
             
-            val serializer = typeRegistry.getCodecByOid<Any>(parameter.oid)
+            val serializer = typeRegistry.getCodecByOid<Any>(resolvedOid)
             if (serializer != null) {
+                if (!serializer.kotlinClass.isInstance(convertedValue)) {
+                    throw OctaviusTypeException(
+                        TypeExceptionMessage.INVALID_PARAMETER_TYPE,
+                        oid = resolvedOid,
+                        details = "Niezgodność typów. Próba serializacji wartości typu ${convertedValue::class.qualifiedName} za pomocą serializatora dla ${serializer.kotlinClass.qualifiedName}"
+                    )
+                }
                 return serializer.toBinary(convertedValue)
             }
             
@@ -76,9 +78,7 @@ class ParameterSerializer(
             return resolvedOid
         }
 
-        if (parameter is PgTypedParameter) {
-            return parameter.oid
-        }
+
 
         val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeRegistry) ?: return 0u
 
