@@ -39,7 +39,7 @@ class ParameterConverterTest {
         octaviusConn.typeRegistry.registerAutoCompositeType<SimpleAddress>("simple_address")
         octaviusConn.typeRegistry.registerAutoCompositeType<ComplexUser>("complex_user")
         
-        val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
+        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         parameterSerializer = ParameterSerializer(dummyRow.typeRegistry, dummyRow.typeRegistry.parameterConverterRegistry)
     }
 

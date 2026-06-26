@@ -20,7 +20,7 @@ class OctaviusTest {
         
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val result = octaviusConn.createQuery("SELECT 1, 'abc', 4.5::float8").fetchAll()
+        val result = octaviusConn.createNativeQuery("SELECT 1, 'abc', 4.5::float8").fetchAll()
         val row = result.first()
         assertEquals(1, row.get(0))
         assertEquals("abc", row.get(1))

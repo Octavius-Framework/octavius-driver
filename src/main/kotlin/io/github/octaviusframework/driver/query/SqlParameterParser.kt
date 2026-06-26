@@ -149,7 +149,11 @@ object SqlParameterParser {
             if (sql[i] == '\\') {
                 i++
             } else if (sql[i] == '\'') {
-                return i
+                if (i + 1 < sql.length && sql[i + 1] == '\'') {
+                    i++
+                } else {
+                    return i
+                }
             }
             i++
         }

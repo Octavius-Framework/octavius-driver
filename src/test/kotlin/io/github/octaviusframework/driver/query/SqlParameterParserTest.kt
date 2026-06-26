@@ -54,4 +54,10 @@ class SqlParameterParserTest {
         assertEquals("SELECT $1::uuid, $2", parsed.transformedSql)
         assertEquals(listOf("val", "other"), parsed.paramNames)
     }
+    @Test
+    fun testParseEscapedStringWithQuotes() {
+        val parsed = SqlParameterParser.parse("SELECT E'a''b \\' @notParam', @param")
+        assertEquals("SELECT E'a''b \\' @notParam', $1", parsed.transformedSql)
+        assertEquals(listOf("param"), parsed.paramNames)
+    }
 }

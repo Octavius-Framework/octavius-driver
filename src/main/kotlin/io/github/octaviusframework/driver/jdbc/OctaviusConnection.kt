@@ -5,6 +5,8 @@ import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.query.OctaviusQuery
+import io.github.octaviusframework.driver.query.NativeQuery
+import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.GlobalTypeRegistry
@@ -64,9 +66,14 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
         GlobalTypeRegistry.reload(url, queryExecutor, getSearchPath())
     }
 
-    fun createQuery(sql: String): OctaviusQuery {
+    fun createNativeQuery(sql: String): NativeQuery {
         checkClosed()
-        return OctaviusQuery(sql, queryExecutor, typeRegistry)
+        return NativeQuery(sql, queryExecutor, typeRegistry)
+    }
+
+    fun createNamedQuery(sql: String): NamedParameterQuery {
+        checkClosed()
+        return NamedParameterQuery(sql, queryExecutor, typeRegistry)
     }
 
     @Suppress("UNCHECKED_CAST")

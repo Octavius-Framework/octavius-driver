@@ -29,7 +29,7 @@ class SerializationTest {
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
         octaviusConn.reloadTypes()
 
-        val row = octaviusConn.createQuery("SELECT ROW(12345, 'octavius_test')::ser_test_composite as my_comp").fetchAll()
+        val row = octaviusConn.createNativeQuery("SELECT ROW(12345, 'octavius_test')::ser_test_composite as my_comp").fetchAll()
             .first()
 
         // Wyciągamy z warstwy pierwszej okno na surowe bajty (aby mieć wzorzec)
@@ -62,7 +62,7 @@ class SerializationTest {
 
         // Pobieramy wzorzec z bazy dla zmienionych wartości by porównać
         val expectedRow =
-            octaviusConn.createQuery("SELECT ROW(99999, 'changed_text')::ser_test_composite as my_comp").fetchAll().first()
+            octaviusConn.createNativeQuery("SELECT ROW(99999, 'changed_text')::ser_test_composite as my_comp").fetchAll().first()
         val expectedBytes = expectedRow.fields[0].rawValue!!.toByteArray()
 
         assertContentEquals(
@@ -80,7 +80,7 @@ class SerializationTest {
 
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val row = octaviusConn.createQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchAll().first()
+        val row = octaviusConn.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchAll().first()
 
         val originalWindow = row.fields[0].rawValue!!
         val originalBytes = originalWindow.toByteArray()
@@ -99,7 +99,7 @@ class SerializationTest {
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
-        val expectedRow = octaviusConn.createQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchAll().first()
+        val expectedRow = octaviusConn.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchAll().first()
         val expectedBytes = expectedRow.fields[0].rawValue!!.toByteArray()
 
         assertContentEquals(expectedBytes, writer2.toByteArray())
@@ -118,7 +118,7 @@ class SerializationTest {
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
         octaviusConn.reloadTypes()
 
-        val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
+        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
@@ -132,7 +132,7 @@ class SerializationTest {
 
         // Porównanie z bazą
         val expectedCompositeRow =
-            octaviusConn.createQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchAll().first()
+            octaviusConn.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchAll().first()
         assertContentEquals(
             expectedCompositeRow.fields[0].rawValue!!.toByteArray(),
             builtCompositeBytes,
@@ -147,7 +147,7 @@ class SerializationTest {
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
         val builtArrayBytes = writer2.toByteArray()
 
-        val expectedArrayRow = octaviusConn.createQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchAll().first()
+        val expectedArrayRow = octaviusConn.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchAll().first()
         assertContentEquals(
             expectedArrayRow.fields[0].rawValue!!.toByteArray(),
             builtArrayBytes,
@@ -163,7 +163,7 @@ class SerializationTest {
 
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
+        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val array = octaviusConn.types.createArray(1007u, 3) // 1007u = _int4
         array.setAll(10, 20, 30)
@@ -249,11 +249,11 @@ class SerializationTest {
         multiArray.setDimension(intArrayOf(1), 4, 5, 6)
 
         val writer = PgByteWriter()
-        val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
+        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         ContainerCodec.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
         val serializedArray = writer.toByteArray()
 
-        val rows = octaviusConn.createQuery(
+        val rows = octaviusConn.createNativeQuery(
             "SELECT ARRAY[[1, 2, 3], [4, 5, 6]]::int[] as test_col"
         ).fetchAll()
 
@@ -272,7 +272,7 @@ class SerializationTest {
 
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val dummyRow = octaviusConn.createQuery("SELECT 1").fetchAll().first()
+        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val serializer = ParameterSerializer(typeRegistry, typeRegistry.parameterConverterRegistry)
 
