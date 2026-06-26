@@ -212,6 +212,13 @@ internal object ContainerCodec {
                     oid = expectedOid,
                     details = "Serializacja wartości: ${field.value}"
                 )
+            if (!codec.kotlinClass.isInstance(field.value!!)) {
+                throw OctaviusTypeException(
+                    TypeExceptionMessage.INVALID_PARAMETER_TYPE,
+                    oid = expectedOid,
+                    details = "Niezgodność typów w kompozycie. Oczekiwano ${codec.kotlinClass.qualifiedName}, otrzymano ${field.value!!::class.qualifiedName}"
+                )
+            }
             val bytes = codec.toBinary(field.value!!)
             writer.writeInt(bytes.size)
             writer.writeBytes(bytes)
@@ -259,6 +266,13 @@ internal object ContainerCodec {
                     oid = array.elementOid,
                     details = "Element tablicy"
                 )
+                if (!codec.kotlinClass.isInstance(value)) {
+                    throw OctaviusTypeException(
+                        TypeExceptionMessage.INVALID_PARAMETER_TYPE,
+                        oid = array.elementOid,
+                        details = "Niezgodność typów w PgArray. Oczekiwano ${codec.kotlinClass.qualifiedName}, otrzymano ${value::class.qualifiedName}"
+                    )
+                }
                 val bytes = codec.toBinary(value)
                 writer.writeInt(bytes.size)
                 writer.writeBytes(bytes)
