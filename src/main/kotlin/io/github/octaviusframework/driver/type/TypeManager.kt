@@ -138,31 +138,79 @@ class TypeManager(private val connection: OctaviusConnection) {
      * @param flags Range flags (e.g., inclusive/exclusive bounds).
      * @return A new [PgRange] instance.
      */
-    fun createRange(typeName: String, schema: String = "", lower: Any?, upper: Any?, flags: Byte): PgRange {
+    fun createRange(
+        typeName: String,
+        schema: String = "",
+        lower: Any? = null,
+        upper: Any? = null,
+        isLowerInclusive: Boolean = true,
+        isUpperInclusive: Boolean = false,
+        isLowerInfinite: Boolean = (lower == null),
+        isUpperInfinite: Boolean = (upper == null),
+        isLowerNull: Boolean = false,
+        isUpperNull: Boolean = false
+    ): PgRange {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
-        return createRange(resolvedOid, lower, upper, flags)
+        return createRange(
+            oid = resolvedOid,
+            lower = lower,
+            upper = upper,
+            isLowerInclusive = isLowerInclusive,
+            isUpperInclusive = isUpperInclusive,
+            isLowerInfinite = isLowerInfinite,
+            isUpperInfinite = isUpperInfinite,
+            isLowerNull = isLowerNull,
+            isUpperNull = isUpperNull
+        )
     }
 
     /**
      * Creates a new instance of a PostgreSQL range type using its Object ID (OID).
-     *
-     * @param oid The OID of the range type.
-     * @param lower The lower bound value.
-     * @param upper The upper bound value.
-     * @param flags Range flags (e.g., inclusive/exclusive bounds).
-     * @return A new [PgRange] instance.
      */
-    fun createRange(oid: UInt, lower: Any?, upper: Any?, flags: Byte): PgRange {
+    fun createRange(
+        oid: UInt,
+        lower: Any? = null,
+        upper: Any? = null,
+        isLowerInclusive: Boolean = true,
+        isUpperInclusive: Boolean = false,
+        isLowerInfinite: Boolean = (lower == null),
+        isUpperInfinite: Boolean = (upper == null),
+        isLowerNull: Boolean = false,
+        isUpperNull: Boolean = false
+    ): PgRange {
         val rangeType = registry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
             
-        val lowerField = lower?.let {
-            ContainerField(null, it as? PgContainer, if (it !is PgContainer) it else null)
-        }
-        val upperField = upper?.let {
-            ContainerField(null, it as? PgContainer, if (it !is PgContainer) it else null)
-        }
-        return PgRange(rangeType.oid, rangeType.subtypeOid, flags, lowerField, upperField, registry)
+        return PgRange.create(
+            rangeOid = rangeType.oid,
+            elementOid = rangeType.subtypeOid,
+            lowerBound = lower,
+            upperBound = upper,
+            isLowerInclusive = isLowerInclusive,
+            isUpperInclusive = isUpperInclusive,
+            isLowerInfinite = isLowerInfinite,
+            isUpperInfinite = isUpperInfinite,
+            isLowerNull = isLowerNull,
+            isUpperNull = isUpperNull,
+            typeRegistry = registry
+        )
+    }
+
+    /**
+     * Creates an empty PostgreSQL range type using its name and schema.
+     */
+    fun createEmptyRange(typeName: String, schema: String = ""): PgRange {
+        val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
+        return createEmptyRange(resolvedOid)
+    }
+
+    /**
+     * Creates an empty PostgreSQL range type using its Object ID (OID).
+     */
+    fun createEmptyRange(oid: UInt): PgRange {
+        val rangeType = registry.types[oid] as? PgType.Range
+            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
+        return PgRange.empty(rangeType.oid, rangeType.subtypeOid, registry)
     }
 
     /**

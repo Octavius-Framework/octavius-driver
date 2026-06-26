@@ -29,4 +29,14 @@ class PgMultirange internal constructor(
         }
         return bounds
     }
+
+    companion object {
+        fun create(
+            multirangeOid: UInt,
+            rangeOid: UInt,
+            ranges: List<PgRange>
+        ): PgMultirange {
+            return PgMultirange(multirangeOid, rangeOid, ranges)
+        }
+    }
 }

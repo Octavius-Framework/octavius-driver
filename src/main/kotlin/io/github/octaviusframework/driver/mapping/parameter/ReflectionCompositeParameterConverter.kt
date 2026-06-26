@@ -9,10 +9,6 @@ import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
 class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
-    private fun String.toSnakeCase(): String {
-        return replace(Regex("([a-z])([A-Z]+)"), "$1_$2").lowercase()
-    }
-
     override fun canConvert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Boolean {
         if (!source::class.isData) return false
         

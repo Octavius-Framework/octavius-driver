@@ -73,4 +73,56 @@ class PgRange internal constructor(
             )
         }
     }
+
+    companion object {
+        fun empty(rangeOid: UInt, elementOid: UInt, typeRegistry: TypeRegistry): PgRange {
+            return PgRange(
+                rangeOid = rangeOid,
+                elementOid = elementOid,
+                flags = 0x01,
+                lowerBoundField = null,
+                upperBoundField = null,
+                typeRegistry = typeRegistry
+            )
+        }
+
+        fun create(
+            rangeOid: UInt,
+            elementOid: UInt,
+            lowerBound: Any? = null,
+            upperBound: Any? = null,
+            isLowerInclusive: Boolean = true,
+            isUpperInclusive: Boolean = false,
+            isLowerInfinite: Boolean = (lowerBound == null),
+            isUpperInfinite: Boolean = (upperBound == null),
+            isLowerNull: Boolean = false,
+            isUpperNull: Boolean = false,
+            typeRegistry: TypeRegistry
+        ): PgRange {
+            var flags = 0
+
+            if (isLowerInclusive) flags = flags or 0x02
+            if (isUpperInclusive) flags = flags or 0x04
+
+            var lowerField: ContainerField? = null
+            if (isLowerInfinite) {
+                flags = flags or 0x08
+            } else if (isLowerNull || lowerBound == null) {
+                flags = flags or 0x20
+            } else {
+                lowerField = if (lowerBound is PgContainer) ContainerField(null, container = lowerBound) else ContainerField(null, value = lowerBound)
+            }
+
+            var upperField: ContainerField? = null
+            if (isUpperInfinite) {
+                flags = flags or 0x10
+            } else if (isUpperNull || upperBound == null) {
+                flags = flags or 0x40
+            } else {
+                upperField = if (upperBound is PgContainer) ContainerField(null, container = upperBound) else ContainerField(null, value = upperBound)
+            }
+
+            return PgRange(rangeOid, elementOid, flags.toByte(), lowerField, upperField, typeRegistry)
+        }
+    }
 }
