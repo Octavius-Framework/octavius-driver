@@ -44,7 +44,7 @@ object TypeRegistryLoader {
             val oidBytes = row.fields[0].rawValue!!
             val oid = oidBytes.getUIntBE()
 
-            // Zbieramy główne informacje o typie tylko za pierwszym razem dla danego OID
+            // We collect the main type information only the first time for a given OID
             if (oid !in parsedTypes) {
                 val f1 = row.fields[1].rawValue!!
                 val name = String(f1.data, f1.offset, f1.length, Charsets.UTF_8)
@@ -100,7 +100,7 @@ object TypeRegistryLoader {
 
         val newTypes = mutableMapOf<UInt, PgType>()
 
-        // Finalne budowanie prawidłowych obiektów instancji dla każdego wykrytego typu
+        // Final construction of correct instance objects for each detected type
         for ((oid, info) in parsedTypes) {
             val pgType = when {
                 info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())

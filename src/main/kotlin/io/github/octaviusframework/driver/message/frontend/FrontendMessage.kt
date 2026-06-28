@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.io.PgOutputStream
 
 sealed interface FrontendMessage {
     /**
-     * Zapisuje całą ramkę wiadomości do strumienia (włącznie ze znacznikiem typu i długością).
+     * Writes the entire message frame to the stream (including type marker and length).
      */
     fun encode(out: PgOutputStream)
 }

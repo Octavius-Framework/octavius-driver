@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.message.frontend
 import io.github.octaviusframework.driver.io.PgOutputStream
 
 /**
- * Wiadomość zakończenia połączenia (Tag 'X').
+ * Connection termination message (Tag 'X').
  */
 class TerminateMessage : FrontendMessage {
     override fun encode(out: PgOutputStream) {

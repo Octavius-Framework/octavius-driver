@@ -16,8 +16,8 @@ class QueryExecutor(
         private set
 
     /**
-     * Używa Simple Query Protocol (Q). 
-     * Przeznaczone do wywołań, które nie zwracają wyników lub ignorujemy ich wyniki (np. SET TIME ZONE, BEGIN).
+     * Uses Simple Query Protocol (Q). 
+     * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
     fun execute(sql: String) {
         stream.sendMessage(SimpleQueryMessage(sql))
@@ -34,7 +34,7 @@ class QueryExecutor(
                 }
                 is RowDescriptionMessage, is DataRowMessage -> {
                     if (errorMessage == null) {
-                        errorMessage = "Metoda execute() otrzymała wiersze z wynikami. Użyj query() dla zapytań DQL."
+                        errorMessage = "Method execute() received result rows. Use query() for DQL queries."
                     }
                 }
                 is CommandCompleteMessage, is EmptyQueryResponseMessage -> { /* Ignore - expected */ }
@@ -43,14 +43,14 @@ class QueryExecutor(
         }
 
         if (errorMessage != null) {
-            throw SQLException("Błąd bazy danych podczas wykonywania zapytania: $errorMessage")
+            throw SQLException("Database error during query execution: $errorMessage")
         }
     }
 
     /**
-     * Używa Extended Query Protocol (Parse, Bind, Execute, Sync).
-     * Przeznaczone do DML (INSERT, UPDATE, DELETE). Oczekuje braku zwracanych wierszy.
-     * Zwraca liczbę zaktualizowanych wierszy.
+     * Uses Extended Query Protocol (Parse, Bind, Execute, Sync).
+     * Intended for DML (INSERT, UPDATE, DELETE). Expects no rows returned.
+     * Returns the number of updated rows.
      */
     fun update(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long {
         val statementName = ""
@@ -70,19 +70,19 @@ class QueryExecutor(
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ParseCompleteMessage, is BindCompleteMessage, is NoDataMessage -> { /* Oczekiwane */ }
+                is ParseCompleteMessage, is BindCompleteMessage, is NoDataMessage -> { /* Expected */ }
                 is CommandCompleteMessage -> {
-                    // tag ma postać np. "INSERT 0 1", "UPDATE 5", "DELETE 2"
+                    // tag format is e.g., "INSERT 0 1", "UPDATE 5", "DELETE 2"
                     val parts = msg.tag.split(" ")
                     if (parts.size >= 2) {
                         rowsAffected = parts.last().toLongOrNull() ?: 0L
                     }
                 }
                 is DataRowMessage, is RowDescriptionMessage -> {
-                    if (errorMessage == null) errorMessage = "Metoda update() otrzymała wiersze z wynikami. Użyj query() dla zapytań DQL."
+                    if (errorMessage == null) errorMessage = "Method update() received result rows. Use query() for DQL queries."
                 }
                 is ErrorResponseMessage -> {
-                    if (errorMessage == null) errorMessage = "Błąd bazy danych podczas wykonywania zapytania (update): ${msg.message}"
+                    if (errorMessage == null) errorMessage = "Database error during query execution (update): ${msg.message}"
                 }
                 is ReadyForQueryMessage -> {
                     transactionStatus = msg.transactionStatus
@@ -100,9 +100,9 @@ class QueryExecutor(
     }
 
     /**
-     * Używa Extended Query Protocol.
-     * Przeznaczone do DQL (SELECT).
-     * Zwraca od razu sparsowaną listę wierszy (Row).
+     * Uses Extended Query Protocol.
+     * Intended for DQL (SELECT).
+     * Returns a parsed list of rows (Row) immediately.
      */
     fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), deserializer: ResultMapper): List<Row> {
         val statementName = ""
@@ -123,13 +123,13 @@ class QueryExecutor(
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ParseCompleteMessage, is BindCompleteMessage -> { /* Oczekiwane */ }
+                is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
                 is RowDescriptionMessage -> rowDescription = msg
-                is NoDataMessage -> { /* Oczekiwane jeśli zapytanie nie zwraca wierszy */ }
+                is NoDataMessage -> { /* Expected if query returns no rows */ }
                 is DataRowMessage -> rows.add(msg)
-                is CommandCompleteMessage -> { /* Ignorujemy w zapytaniach DQL */ }
+                is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
                 is ErrorResponseMessage -> {
-                    if (errorMessage == null) errorMessage = "Błąd bazy danych podczas wykonywania zapytania (query): ${msg.message}"
+                    if (errorMessage == null) errorMessage = "Database error during query execution (query): ${msg.message}"
                 }
                 is ReadyForQueryMessage -> {
                     transactionStatus = msg.transactionStatus
@@ -144,7 +144,7 @@ class QueryExecutor(
         }
 
         if (rowDescription == null) {
-            throw SQLException("Metoda query() nie otrzymała opisu wierszy (RowDescriptionMessage). Upewnij się, że zapytanie to DQL (SELECT).")
+            throw SQLException("Method query() did not receive row descriptions (RowDescriptionMessage). Ensure the query is DQL (SELECT).")
         }
 
         val descriptors = rowDescription.fields

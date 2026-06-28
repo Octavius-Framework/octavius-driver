@@ -25,7 +25,7 @@ class PgOutputStream(outputStream: OutputStream) {
     }
 
     /**
-     * Zapisuje łańcuch znaków zakończony zerem.
+     * Writes a null-terminated string.
      */
     fun writeCString(s: String) {
         val bytes = s.toByteArray(StandardCharsets.UTF_8)

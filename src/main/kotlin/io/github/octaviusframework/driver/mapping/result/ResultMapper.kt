@@ -31,7 +31,7 @@ internal class DefaultDeserializationContext(
             return converter.convert(source, expectedType, this, sourceType) as T
         }
 
-        // Fallback: jeśli źródło jest już odpowiedniego typu, po prostu rzutujemy
+        // Fallback: if the source is already of the appropriate type, just cast it
         // np. String -> String
         val kClass = expectedType.classifier as? KClass<*>
         if (kClass != null && kClass.isInstance(source)) {

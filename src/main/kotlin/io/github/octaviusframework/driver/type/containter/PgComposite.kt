@@ -18,8 +18,8 @@ data class ContainerField(
 }
 
 /**
- * Reprezentuje strukturę kompozytu (np. wiersz konkretnego typu) załadowaną z bazy danych.
- * Wartości wewnętrzne są trzymane w formie binarnej i leniwie rzutowane przy pobieraniu.
+ * Represents a composite structure (e.g. row of a specific type) loaded from the database.
+ * Internal values are kept in binary form and lazily cast on retrieval.
  */
 class PgComposite(
     val type: PgType.Composite,
@@ -31,7 +31,7 @@ class PgComposite(
     }
 
     /**
-     * Zwraca listę nazw wszystkich atrybutów tego kompozytu.
+     * Returns a list of all attribute names of this composite.
      */
     val attributeNames: List<String>
         get() = type.attributes.keys.toList()
@@ -66,7 +66,7 @@ class PgComposite(
                 throw OctaviusTypeException(
                     TypeExceptionMessage.CASTING_ERROR,
                     typeName = T::class.simpleName,
-                    details = "Oczekiwano wartości nie-null dla atrybutu o indeksie $index, otrzymano null"
+                    details = "Expected non-null value for attribute at index $index, got null"
                 )
             }
         }

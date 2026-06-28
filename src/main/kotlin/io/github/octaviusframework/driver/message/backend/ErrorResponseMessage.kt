@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.message.backend
 
 /**
- * Odpowiedź błędu od serwera (Tag 'E').
+ * Error response from server (Tag 'E').
  */
 class ErrorResponseMessage(val fields: Map<Char, String>) : BackendMessage {
 

@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.exception
 import java.sql.SQLException
 
 /**
- * Bazowy wyjątek dla wszystkich błędów w sterowniku Octavius JDBC.
+ * Base exception for all errors in the Octavius JDBC driver.
  */
 open class OctaviusException(
     message: String,

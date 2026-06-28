@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.type.TypeRegistry
 
 /**
  * Reprezentuje zakres w bazie PostgreSQL (np. int4range, tsrange).
- * Wartości brzegowe przechowywane są natywnie, parsowanie zlecane jest leniwie.
+ * Boundary values are stored natively, parsing is delegated lazily.
  */
 class PgRange internal constructor(
     val rangeOid: UInt,
@@ -30,8 +30,8 @@ class PgRange internal constructor(
     val isUpperNull: Boolean get() = (flags.toInt() and 0x40) != 0
 
     /**
-     * Leniwie rzutuje i zwraca dolną granicę zakresu.
-     * Zwraca null, jeśli granicy brak (nieskończoność), jest jawnie null, lub zbiór jest pusty.
+     * Lazily casts and returns the lower bound of the range.
+     * Returns null if boundary is missing (infinity), explicitly null, or set is empty.
      */
     inline fun <reified T> lowerBound(): T? {
         if (isEmpty || isLowerInfinite || isLowerNull) return null
@@ -39,8 +39,8 @@ class PgRange internal constructor(
     }
 
     /**
-     * Leniwie rzutuje i zwraca górną granicę zakresu.
-     * Zwraca null, jeśli granicy brak (nieskończoność), jest jawnie null, lub zbiór jest pusty.
+     * Lazily casts and returns the upper bound of the range.
+     * Returns null if boundary is missing (infinity), explicitly null, or set is empty.
      */
     inline fun <reified T> upperBound(): T? {
         if (isEmpty || isUpperInfinite || isUpperNull) return null
@@ -59,7 +59,7 @@ class PgRange internal constructor(
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_SERIALIZER,
                 oid = elementOid,
-                details = "Pobieranie krawędzi zakresu"
+                details = "Getting range bound"
             )
 
         val parsed = serializer.fromBinary(window)

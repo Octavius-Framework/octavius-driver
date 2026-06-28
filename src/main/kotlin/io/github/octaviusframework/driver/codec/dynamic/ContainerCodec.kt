@@ -30,7 +30,7 @@ internal object ContainerCodec {
             else -> throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
-                details = "Oczekiwano typu kontenerowego"
+                details = "Expected container type"
             )
         }
     }
@@ -39,7 +39,7 @@ internal object ContainerCodec {
         var offset = 0
         if (window.length < 12) throw OctaviusTypeException(
             TypeExceptionMessage.NOT_ENOUGH_DATA,
-            details = "Zbyt mało danych dla PgArray (min. 12)"
+            details = "Not enough data for PgArray (min. 12)"
         )
 
         val ndims = window.getIntBE(offset); offset += 4
@@ -84,7 +84,7 @@ internal object ContainerCodec {
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
-                details = "Oczekiwano typu Composite"
+                details = "Expected Composite type"
             )
 
         var offset = 0
@@ -115,7 +115,7 @@ internal object ContainerCodec {
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
-                details = "Oczekiwano typu Range"
+                details = "Expected Range type"
             )
 
         var offset = 0
@@ -161,7 +161,7 @@ internal object ContainerCodec {
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
-                details = "Oczekiwano typu Multirange"
+                details = "Expected Multirange type"
             )
 
         var offset = 0
@@ -189,7 +189,7 @@ internal object ContainerCodec {
             else -> throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 typeName = container::class.simpleName,
-                details = "Nieznany typ kontenera"
+                details = "Unknown container type"
             )
         }
     }
@@ -210,13 +210,13 @@ internal object ContainerCodec {
                 ?: throw OctaviusTypeException(
                     TypeExceptionMessage.MISSING_SERIALIZER,
                     oid = expectedOid,
-                    details = "Serializacja wartości: ${field.value}"
+                    details = "Serializing value: ${field.value}"
                 )
             if (!codec.kotlinClass.isInstance(field.value!!)) {
                 throw OctaviusTypeException(
                     TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                     oid = expectedOid,
-                    details = "Niezgodność typów w kompozycie. Oczekiwano ${codec.kotlinClass.qualifiedName}, otrzymano ${field.value!!::class.qualifiedName}"
+                    details = "Type mismatch in composite. Expected ${codec.kotlinClass.qualifiedName}, got ${field.value!!::class.qualifiedName}"
                 )
             }
             val bytes = codec.toBinary(field.value!!)
@@ -264,13 +264,13 @@ internal object ContainerCodec {
                 if (codec == null) throw OctaviusTypeException(
                     TypeExceptionMessage.MISSING_SERIALIZER,
                     oid = array.elementOid,
-                    details = "Element tablicy"
+                    details = "Array element"
                 )
                 if (!codec.kotlinClass.isInstance(value)) {
                     throw OctaviusTypeException(
                         TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                         oid = array.elementOid,
-                        details = "Niezgodność typów w PgArray. Oczekiwano ${codec.kotlinClass.qualifiedName}, otrzymano ${value::class.qualifiedName}"
+                        details = "Type mismatch in PgArray. Expected ${codec.kotlinClass.qualifiedName}, got ${value::class.qualifiedName}"
                     )
                 }
                 val bytes = codec.toBinary(value)

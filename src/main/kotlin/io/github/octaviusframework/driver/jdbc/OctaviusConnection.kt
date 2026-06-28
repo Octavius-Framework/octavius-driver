@@ -354,7 +354,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
             cachedSearchPath = parsed
             return parsed
         }
-        // Fallback w rzadkim przypadku (np. mockowany serwer testowy)
+        // Fallback in rare cases (e.g., mocked test server)
         return listOf("public")
     }
 

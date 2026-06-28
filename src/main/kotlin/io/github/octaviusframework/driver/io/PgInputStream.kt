@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets
 class PgInputStream(inputStream: InputStream) {
     private val dataIn = DataInputStream(inputStream)
     
-    // Używamy tego bufora by zredukować alokacje przy odczytywaniu stringów C-style
+    // We use this buffer to reduce allocations when reading C-style strings
     private var stringBuffer = ByteArray(256)
 
     fun readByte(): Byte = dataIn.readByte()
@@ -21,7 +21,7 @@ class PgInputStream(inputStream: InputStream) {
     }
 
     /**
-     * Zwraca dokładnie zadaną liczbę bajtów.
+     * Returns exactly the specified number of bytes.
      */
     fun readBytes(length: Int): ByteArray {
         val array = ByteArray(length)
@@ -30,7 +30,7 @@ class PgInputStream(inputStream: InputStream) {
     }
 
     /**
-     * Odczytuje łańcuch znaków zakończony bajtem 0 (null-terminated).
+     * Reads a null-terminated string.
      */
     fun readCString(): String {
         var length = 0
@@ -40,7 +40,7 @@ class PgInputStream(inputStream: InputStream) {
                 break
             }
             if (length >= stringBuffer.size) {
-                // Powiększamy bufor jeśli napis jest bardzo długi
+                // Enlarge buffer if the string is very long
                 val newBuffer = ByteArray(stringBuffer.size * 2)
                 System.arraycopy(stringBuffer, 0, newBuffer, 0, stringBuffer.size)
                 stringBuffer = newBuffer

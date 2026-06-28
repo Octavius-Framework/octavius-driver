@@ -31,7 +31,7 @@ class PgArray(
 
     operator fun set(index: Int, newValue: Any?) {
         if (newValue is PgArray) {
-            throw IllegalArgumentException("Tablica nie może zawierać innej tablicy")
+            throw IllegalArgumentException("Array cannot contain another array")
         }
 
         if (newValue == null) {
@@ -43,7 +43,7 @@ class PgArray(
 
         if (newValue is PgContainer) {
             if (values != null && values!!.any { it != null }) {
-                throw IllegalArgumentException("Tablica zawiera już wartości niebędące kontenerami")
+                throw IllegalArgumentException("Array already contains non-container values")
             }
             if (containers == null) {
                 val elementType = typeRegistry.types[elementOid]
@@ -54,7 +54,7 @@ class PgArray(
                     throw OctaviusTypeException(
                         TypeExceptionMessage.NOT_A_CONTAINER,
                         oid = elementOid,
-                        details = "Tablica typu OID $elementOid nie przechowuje kontenerów"
+                        details = "Array of OID $elementOid does not store containers"
                     )
                 }
                 containers = MutableList(totalElements) { null }
@@ -64,7 +64,7 @@ class PgArray(
             values?.set(index, null)
         } else {
             if (containers != null && containers!!.any { it != null }) {
-                throw IllegalArgumentException("Tablica zawiera już kontenery")
+                throw IllegalArgumentException("Array already contains containers")
             }
             if (values == null) {
                 values = MutableList(totalElements) { null }
@@ -76,7 +76,7 @@ class PgArray(
     }
 
     fun setElement(indices: IntArray, newValue: Any?) {
-        require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
+        require(indices.size == dimensions.size) { "Expected ${dimensions.size} indices for multidimensional array, got ${indices.size}" }
         val flatIndex = indices.foldIndexed(0) { idx, acc, i ->
             acc * dimensions[idx].size + i
         }
@@ -85,7 +85,7 @@ class PgArray(
 
     fun setDimension(indices: IntArray, newValues: Iterable<Any?>) {
         val expectedIndices = dimensions.size - 1
-        require(indices.size == expectedIndices) { "Oczekiwano $expectedIndices indeksów do określenia wymiaru, otrzymano ${indices.size}" }
+        require(indices.size == expectedIndices) { "Expected $expectedIndices indices to specify dimension, got ${indices.size}" }
         val lastDimensionSize = dimensions.last().size
 
         var baseIndex = 0
@@ -100,7 +100,7 @@ class PgArray(
         }
 
         val list = newValues.toList()
-        require(list.size == lastDimensionSize) { "Oczekiwano $lastDimensionSize wartości dla ostatniego wymiaru, otrzymano ${list.size}" }
+        require(list.size == lastDimensionSize) { "Expected $lastDimensionSize values for last dimension, got ${list.size}" }
 
         list.forEachIndexed { i, value ->
             set(baseIndex + i, value)
@@ -113,7 +113,7 @@ class PgArray(
 
     fun setAll(newValues: Iterable<Any?>) {
         val list = newValues.toList()
-        require(list.size == totalElements) { "Oczekiwano $totalElements elementów, otrzymano ${list.size}" }
+        require(list.size == totalElements) { "Expected $totalElements elements, got ${list.size}" }
         list.forEachIndexed { i, value ->
             set(i, value)
         }
@@ -124,7 +124,7 @@ class PgArray(
     }
 
     inline fun <reified T> getElement(indices: IntArray): T? {
-        require(indices.size == dimensions.size) { "Oczekiwano ${dimensions.size} indeksów dla tablicy wielowymiarowej, otrzymano ${indices.size}" }
+        require(indices.size == dimensions.size) { "Expected ${dimensions.size} indices for multidimensional array, got ${indices.size}" }
         val flatIndex = indices.foldIndexed(0) { idx, acc, i ->
             acc * dimensions[idx].size + i
         }

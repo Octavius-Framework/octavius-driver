@@ -36,7 +36,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         if (arrayType == null) {
             throw OctaviusTypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
-                details = "Nie można wywnioskować typu tablicy dla kolekcji. Kolekcja jest pusta lub zawiera same nulle, lub typ elementu jest nieznany. Użyj jawnego typowania (np. .withPgType(...))."
+                details = "Cannot infer array type for the collection. The collection is empty, contains only nulls, or the element type is unknown. Use explicit typing (e.g. .withPgType(...))."
             )
         }
 

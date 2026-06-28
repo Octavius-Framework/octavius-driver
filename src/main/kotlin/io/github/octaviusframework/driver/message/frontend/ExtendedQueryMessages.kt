@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 class ParseMessage(
     private val statementName: String,
     private val query: String,
-    private val parameterTypes: List<UInt> = emptyList() // Lista OID-ów parametrów (może być pusta do odgadnięcia przez Postgresa)
+    private val parameterTypes: List<UInt> = emptyList() // List of parameter OIDs (can be empty to be inferred by Postgres)
 ) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val nameBytes = statementName.toByteArray(StandardCharsets.UTF_8)
@@ -26,8 +26,8 @@ class BindMessage(
     private val portalName: String,
     private val statementName: String,
     private val parameterValues: List<ByteArray?>, // null oznacza NULL w bazie
-    private val parameterFormats: List<Int>, // 0 dla tekstu, 1 dla binarki (dla każdego parametru, albo jeden dla wszystkich)
-    private val resultFormats: List<Int> = listOf(1) // domyślnie chcemy wszystko w binarce
+    private val parameterFormats: List<Int>, // 0 for text, 1 for binary (for each parameter, or one for all)
+    private val resultFormats: List<Int> = listOf(1) // default to binary for all
 ) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val portalBytes = portalName.toByteArray(StandardCharsets.UTF_8)
@@ -46,11 +46,11 @@ class BindMessage(
         out.writeCString(portalName)
         out.writeCString(statementName)
 
-        // Formaty parametrów
+        // Parameter formats
         out.writeShort(parameterFormats.size)
         parameterFormats.forEach { out.writeShort(it) }
 
-        // Wartości parametrów
+        // Parameter values
         out.writeShort(parameterValues.size)
         parameterValues.forEach { value ->
             if (value == null) {
@@ -61,7 +61,7 @@ class BindMessage(
             }
         }
 
-        // Formaty wyników
+        // Result formats
         out.writeShort(resultFormats.size)
         resultFormats.forEach { out.writeShort(it) }
     }

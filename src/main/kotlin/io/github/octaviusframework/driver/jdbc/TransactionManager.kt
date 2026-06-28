@@ -32,7 +32,7 @@ class TransactionManager(@PublishedApi internal val connection: OctaviusConnecti
             connection.rollback()
             throw e
         } finally {
-            if (initialAutoCommit) { // TODO: Consider lazy transaction management in the future to avoid redundant empty COMMITs
+            if (initialAutoCommit) {
                 connection.autoCommit = true
             }
         }

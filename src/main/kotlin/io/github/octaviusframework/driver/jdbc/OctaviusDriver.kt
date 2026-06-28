@@ -85,7 +85,7 @@ class OctaviusDriver : Driver {
             val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
             if (majorVersion < 18) {
                 stream.close()
-                throw SQLException("Octavius JDBC wymaga bazy PostgreSQL w wersji co najmniej 18. Otrzymano wersję: $serverVersion")
+                throw SQLException("Octavius JDBC requires PostgreSQL database version 18 or higher. Received version: $serverVersion")
             }
         }
         

@@ -16,10 +16,10 @@ object GlobalTypeRegistry {
         if (loadedFlags[url] == true) return
 
         val registry = getRegistry(url)
-        // Tylko jeden wątek na raz może wejść do tego bloku dla danego rejestru
+        // Only one thread at a time can enter this block for a given registry
         synchronized(registry) {
             if (loadedFlags[url] != true) {
-                println("Wątek ${Thread.currentThread().name} ładuje typy z bazy dla URL: $url...")
+                println("Thread ${Thread.currentThread().name} loading types from database for URL: $url...")
                 TypeRegistryLoader.load(registry, executor, searchPath)
                 loadedFlags[url] = true
             }
@@ -27,12 +27,12 @@ object GlobalTypeRegistry {
     }
 
     /**
-     * Jawny reload do wywołania przez użytkownika (np. connection.reloadTypes())
+     * Explicit reload to be called by user (e.g. connection.reloadTypes())
      */
     fun reload(url: String, executor: QueryExecutor, searchPath: List<String>) {
         val registry = getRegistry(url)
         synchronized(registry) {
-            println("Jawne przeładowanie słownika typów dla URL: $url...")
+            println("Explicit reload of type dictionary for URL: $url...")
             TypeRegistryLoader.load(registry, executor, searchPath)
             loadedFlags[url] = true
         }

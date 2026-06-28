@@ -41,7 +41,7 @@ class ParameterSerializer(
                     throw OctaviusTypeException(
                         TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                         oid = resolvedOid,
-                        details = "Niezgodność typów. Próba serializacji wartości typu ${convertedValue::class.qualifiedName} za pomocą serializatora dla ${serializer.kotlinClass.qualifiedName}"
+                        details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using serializer for ${serializer.kotlinClass.qualifiedName}"
                     )
                 }
                 return serializer.toBinary(convertedValue)
@@ -102,15 +102,15 @@ class ParameterSerializer(
     }
 
     /**
-     * Zwraca pełen obiekt reprezentujący parametr ze wszystkimi informacjami dla QueryExecutor'a.
+     * Returns a complete object representing the parameter with all information for the QueryExecutor.
      */
     fun serializeWithOid(parameter: Any?): SerializedParameter {
         return SerializedParameter(getOid(parameter), serialize(parameter))
     }
 
     /**
-     * Serializuje listę parametrów i zwraca dwie osobne listy: OID'y i ich binarne reprezentacje,
-     * ułatwiając bezpośrednie wpięcie do `QueryExecutor.query(...)`.
+     * Serializes the list of parameters and returns two separate lists: OIDs and their binary representations,
+     * facilitating direct integration into `QueryExecutor.query(...)`.
      */
     fun serializeAll(parameters: List<Any?>): Pair<List<UInt>, List<ByteArray?>> {
         val oids = parameters.map { getOid(it) }

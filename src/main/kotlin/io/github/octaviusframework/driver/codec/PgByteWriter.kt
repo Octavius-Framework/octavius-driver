@@ -3,8 +3,8 @@ package io.github.octaviusframework.driver.codec
 import io.github.octaviusframework.driver.io.ByteArrayWindow
 
 /**
- * Zoptymalizowany bufor do budowania pakietów binarnych dla bazy danych.
- * Pozwala na rezerwowanie miejsca na rozmiar i późniejsze jego wypełnienie bez kopiowania pamięci.
+ * Optimized buffer for building binary packets for the database.
+ * Allows reserving space for size and filling it later without memory copying.
  */
 internal class PgByteWriter(initialCapacity: Int = 1024) {
     var data = ByteArray(initialCapacity)
@@ -57,8 +57,8 @@ internal class PgByteWriter(initialCapacity: Int = 1024) {
     }
 
     /**
-     * Zostawia 4 bajty miejsca na liczbę (np. rozmiar paczki) i zwraca indeks,
-     * pod którym ten rozmiar ma zostać później zapisany.
+     * Leaves 4 bytes of space for a number (e.g. packet size) and returns the index
+     * where this size should be written later.
      */
     fun reserveLengthInt(): Int {
         val marker = position
@@ -67,8 +67,8 @@ internal class PgByteWriter(initialCapacity: Int = 1024) {
     }
 
     /**
-     * Oblicza ilość bajtów dodanych od momentu wywołania reserveLengthInt i wpisuje tę wartość pod marker.
-     * Nie wlicza 4 bajtów samego markera (zgodnie z wieloma strukturami PG).
+     * Calculates the number of bytes added since reserveLengthInt was called and writes this value at the marker.
+     * Does not include the 4 bytes of the marker itself (in accordance with many PG structures).
      */
     fun fillLengthInt(markerIndex: Int) {
         val length = position - markerIndex - 4

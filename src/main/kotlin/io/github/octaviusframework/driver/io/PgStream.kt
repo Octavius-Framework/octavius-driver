@@ -74,7 +74,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                         fields[token] = inputStream.readCString()
                     }
                     val notice = NoticeResponseMessage(fields)
-                    // TODO: ewentualnie system logowania
+                    // TODO: eventually a logging system
                 }
                 'A' -> {
                     val pid = inputStream.readInt()
@@ -140,7 +140,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 }
                 else -> {
                     val unparsed = inputStream.readBytes(payloadLength)
-                    println("IGNORUJE: Nieobsługiwany typ wiadomości synchronicznej: $tag")
+                    println("IGNORING: Unsupported synchronous message type: $tag")
                 }
             }
         }
@@ -171,7 +171,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw IllegalStateException("Nieznany typ autentykacji: $type")
+            else -> throw IllegalStateException("Unknown authentication type: $type")
         }
     }
 
@@ -192,7 +192,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 sendMessage(TerminateMessage())
                 flush()
             } catch (e: Exception) {
-                // Ignorujemy błędy podczas zamykania
+                // Ignoring errors during close
             }
             socket.close()
         }

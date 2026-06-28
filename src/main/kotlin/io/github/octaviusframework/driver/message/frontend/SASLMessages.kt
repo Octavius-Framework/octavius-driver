@@ -4,14 +4,14 @@ import io.github.octaviusframework.driver.io.PgOutputStream
 import java.nio.charset.StandardCharsets
 
 /**
- * Pierwsza odpowiedź klienta w mechanizmie SASL.
+ * First client response in the SASL mechanism.
  */
 class SASLInitialResponse(private val mechanism: String, private val clientFirstMessage: String) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val mechBytes = mechanism.toByteArray(StandardCharsets.UTF_8)
         val dataBytes = clientFirstMessage.toByteArray(StandardCharsets.UTF_8)
 
-        // Rozmiar wiadomości = 4 + rozmiar mechanism (z nullem) + 4 (rozmiar data) + rozmiar data
+        // Message size = 4 + mechanism size (with null) + 4 (data size) + data size
         val length = 4 + mechBytes.size + 1 + 4 + dataBytes.size
 
         out.writeByte('p'.code.toByte())
@@ -23,7 +23,7 @@ class SASLInitialResponse(private val mechanism: String, private val clientFirst
 }
 
 /**
- * Kolejna odpowiedź klienta w mechanizmie SASL (zwykle wysyłająca client-final-message).
+ * Next client response in the SASL mechanism (usually sending client-final-message).
  */
 class SASLResponse(private val clientFinalMessage: String) : FrontendMessage {
     override fun encode(out: PgOutputStream) {

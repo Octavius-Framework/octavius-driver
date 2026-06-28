@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.message.backend
 
 /**
- * Odpowiedź uwierzytelniająca wysyłana przez serwer (Tag 'R').
+ * Authentication response sent by the server (Tag 'R').
  */
 sealed interface AuthenticationMessage : BackendMessage {
     object Ok : AuthenticationMessage
@@ -11,5 +11,5 @@ sealed interface AuthenticationMessage : BackendMessage {
     class SASLContinue(val data: ByteArray) : AuthenticationMessage
     class SASLFinal(val data: ByteArray) : AuthenticationMessage
 
-    // Na ten moment wspieramy te powyżej, reszta może rzucać wyjątki w bloku parsującym.
+    // Currently we support the above, the rest may throw exceptions in the parsing block.
 }

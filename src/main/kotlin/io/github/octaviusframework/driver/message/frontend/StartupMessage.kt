@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.io.PgOutputStream
 class StartupMessage(private val parameters: Map<String, String>) : FrontendMessage {
 
     override fun encode(out: PgOutputStream) {
-        // Długość wiadomości = rozmiar własny (4) + rozmiar numeru protokołu (4) + rozmiar wszystkich par k-v + ostateczny bajt null
+        // Message length = self size (4) + protocol number size (4) + size of all k-v pairs + final null byte
         var length = 8
         for ((k, v) in parameters) {
             length += k.toByteArray().size + 1 // +1 za byte 0
@@ -13,7 +13,7 @@ class StartupMessage(private val parameters: Map<String, String>) : FrontendMess
         }
         length += 1 // finalny byte 0 na sam koniec listy
 
-        // Startup Message nie ma 1-bajtowego tagu na początku!
+        // Startup Message does not have a 1-byte tag at the beginning!
         out.writeInt(length)
         out.writeInt(196608) // Protocol 3.0 (3 << 16 | 0)
 

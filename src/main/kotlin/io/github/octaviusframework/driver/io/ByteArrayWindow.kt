@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.io
 
 /**
- * Reprezentuje wycinek głównego bufora wiersza.
- * Zero kopiowania bajtów!
+ * Represents a slice of the main row buffer.
+ * Zero byte copying!
  */
 class ByteArrayWindow(
     var data: ByteArray,
@@ -10,7 +10,7 @@ class ByteArrayWindow(
     val length: Int
 ) {
     /**
-     * Tworzy nowe "pod-okno" dla zagnieżdżonych struktur (np. tablicy w kompozycie).
+     * Creates a new "sub-window" for nested structures (e.g. array in a composite).
      */
     fun slice(relativeOffset: Int, sliceLength: Int): ByteArrayWindow {
         require(relativeOffset + sliceLength <= length) { "Slice out of bounds" }
@@ -18,7 +18,7 @@ class ByteArrayWindow(
     }
 
     /**
-     * Kopiuje wycinek do nowej, odseparowanej tablicy, uwalniając referencję do całego bufora.
+     * Copies the slice to a new, separate array, releasing the reference to the entire buffer.
      */
     fun detach() {
         if (offset == 0 && data.size == length) return

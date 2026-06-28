@@ -1,28 +1,28 @@
 package io.github.octaviusframework.driver.message.backend
 
 /**
- * Informacja o parametrze połączenia (Tag 'S').
+ * Information about connection parameter (Tag 'S').
  */
 class ParameterStatusMessage(val name: String, val value: String) : BackendMessage {
     override fun toString(): String = "ParameterStatus($name=$value)"
 }
 
 /**
- * Dane o kluczach do anulowania zapytań (Tag 'K').
+ * Data about keys for canceling queries (Tag 'K').
  */
 class BackendKeyDataMessage(val processId: Int, val secretKey: Int) : BackendMessage {
     override fun toString(): String = "BackendKeyData(pid=$processId, key=$secretKey)"
 }
 
 /**
- * Gotowość do przyjmowania zapytań (Tag 'Z').
+ * Ready to accept queries (Tag 'Z').
  */
 class ReadyForQueryMessage(val transactionStatus: Char) : BackendMessage {
     override fun toString(): String = "ReadyForQuery(status=$transactionStatus)"
 }
 
 /**
- * Zwykła uwaga/ostrzeżenie od serwera (Tag 'N').
+ * Normal notice/warning from server (Tag 'N').
  */
 class NoticeResponseMessage(val fields: Map<Char, String>) : BackendMessage {
     val message: String? get() = fields['M']

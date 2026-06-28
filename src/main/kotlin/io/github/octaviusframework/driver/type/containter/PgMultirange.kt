@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.type.containter
 
 /**
- * Reprezentuje strukturę multirange z bazy danych.
+ * Represents a multirange structure from the database.
  */
 class PgMultirange internal constructor(
     val multirangeOid: UInt,
@@ -19,7 +19,7 @@ class PgMultirange internal constructor(
     fun toList(): List<PgRange> = ranges
 
     /**
-     * Konwertuje multirange do listy wszystkich granic (jeśli są tego samego typu).
+     * Converts multirange to a list of all bounds (if they are of the same type).
      */
     inline fun <reified T> extractAllBounds(): List<T?> {
         val bounds = mutableListOf<T?>()

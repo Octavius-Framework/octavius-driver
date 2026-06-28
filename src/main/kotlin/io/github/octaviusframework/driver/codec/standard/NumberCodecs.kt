@@ -72,8 +72,8 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
         } else {
             val parsedScale = -4 * (weight - ndigits + 1)
 
-            // FAST PATH: Jeśli liczba to max 4 "cyfry" base-10000 (czyli do 16 cyfr dziesiętnych),
-            // mieści się bezpiecznie w prymitywnym 64-bitowym typie Long. Obliczenia są ułamek sekundy.
+            // FAST PATH: If the number is max 4 "digits" base-10000 (up to 16 decimal digits),
+            // it fits safely in primitive 64-bit Long type. Computations take a fraction of a second.
             if (ndigits <= 4) {
                 var unscaled = 0L
                 for (i in 0 until ndigits) {
@@ -89,8 +89,8 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                 }
                 result
             } else {
-                // SLOW PATH: Ekstremalnie duże liczby przetwarzamy jako String. Unikamy w ten sposób
-                // $O(N^2)$ tworzenia BigIntegerów. Po prostu sklejamy ze sobą grupy 4-cyfrowe.
+                // SLOW PATH: Extremely large numbers are processed as String. This avoids
+                // O(N^2) BigInteger creation. We simply concatenate 4-digit groups.
                 val sb = StringBuilder(ndigits * 4 + 1)
                 if (sign == 0x4000) {
                     sb.append('-')
@@ -98,9 +98,9 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                 for (i in 0 until ndigits) {
                     val digit = it.getShortBE(8 + i * 2).toInt()
                     if (i == 0) {
-                        sb.append(digit) // Bez zer wiodących dla pierwszej grupy
+                        sb.append(digit) // No leading zeros for the first group
                     } else {
-                        // Szybki padding
+                        // Fast padding
                         if (digit < 10) sb.append("000")
                         else if (digit < 100) sb.append("00")
                         else if (digit < 1000) sb.append('0')
@@ -143,11 +143,11 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
 
             val unscaled = adjusted.unscaledValue()
 
-            // FAST PATH: Jeżeli unscaledValue zmieści się w typie Long (bitLength <= 63),
-            // pomijamy Stringi oraz matematykę BigInteger. Zwykłe prymitywne modulo z Longa.
+            // FAST PATH: If unscaledValue fits in Long type (bitLength <= 63),
+            // we skip Strings and BigInteger math. Simple primitive modulo with Long.
             if (unscaled.bitLength() <= 63) {
                 var v = unscaled.toLong()
-                val temp = LongArray(16) // Max 5 zrzutów dla Long
+                val temp = LongArray(16) // Max 5 dumps for Long
                 var originalNdigits = 0
                 while (v > 0L) {
                     temp[originalNdigits++] = v % 10000L
@@ -156,7 +156,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
 
                 val weight = originalNdigits - 1 - (adjustedScale / 4)
 
-                // Pominięcie końcowych zer w reprezentacji Postgresa
+                // Skip trailing zeros in Postgres representation
                 var startIdx = 0
                 while (startIdx < originalNdigits && temp[startIdx] == 0L) {
                     startIdx++
@@ -176,7 +176,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                 }
                 bytes
             } else {
-                // SLOW PATH: Ekstremalnie duże BigIntegery zamienia się w koszmar dla GC przez `divideAndRemainder()`.
+                // SLOW PATH: Extremely large BigIntegers become a GC nightmare due to `divideAndRemainder()`.
                 val str = unscaled.toString()
                 val len = str.length
                 val originalNdigits = (len + 3) / 4
@@ -210,7 +210,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                     val start = maxOf(0, end - 4)
                     var digit = 0
                     for (j in start until end) {
-                        digit = digit * 10 + (str[j] - '0') // błyskawiczne parsowanie Int'a
+                        digit = digit * 10 + (str[j] - '0') // lightning fast Int parsing
                     }
                     bytes.setShortBE(offset, digit.toShort())
                     offset += 2

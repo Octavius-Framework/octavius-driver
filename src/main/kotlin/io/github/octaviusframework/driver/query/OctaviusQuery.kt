@@ -8,7 +8,7 @@ import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.type.TypeRegistry
 
 /**
- * Bazowa klasa do wykonywania zapytań z parametrami.
+ * Base class for executing queries with parameters.
  */
 @Suppress("UNCHECKED_CAST")
 abstract class OctaviusQuery<T : OctaviusQuery<T>>(

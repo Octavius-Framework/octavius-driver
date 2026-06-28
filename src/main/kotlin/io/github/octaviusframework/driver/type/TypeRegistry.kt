@@ -118,9 +118,9 @@ class TypeRegistry {
     }
 
     /**
-     * Rejestruje własny serializator. Jeżeli OID jest nieznane (typ dynamiczny),
-     * zostanie dopasowane po nazwie natychmiast, a także zapamiętane przy
-     * kolejnych przeładowaniach słownika (reloadTypes).
+     * Registers a custom serializer. If OID is unknown (dynamic type),
+     * it will be matched by name immediately, and also remembered during
+     * subsequent dictionary reloads (reloadTypes).
      */
     fun registerCodec(codec: TypeCodec<*>, searchPath: List<String> = emptyList()) {
         val newOidMap = codecsByOid.toMutableMap()
@@ -160,8 +160,8 @@ class TypeRegistry {
     }
 
     /**
-     * Zastępuje całą mapę typów nową instancją, gwarantując thread-safety.
-     * Dodatkowo aplikuje customowe serializatory oczekujące na OID.
+     * Replaces the entire type map with a new instance, ensuring thread-safety.
+     * Additionally applies custom serializers waiting for an OID.
      */
     fun updateTypes(newTypes: Map<UInt, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = codecsByOid.toMutableMap()

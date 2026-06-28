@@ -9,7 +9,7 @@ class ResultConverterRegistry(
     private val converters = mutableListOf<ResultConverter<*>>()
 
     fun addConverter(converter: ResultConverter<*>) {
-        // Dodawanie na początek, aby nowsze konwertery miały wyższy priorytet
+        // Adding to the beginning so that newer converters have higher priority
         converters.add(0, converter)
     }
 
