@@ -8,6 +8,7 @@ internal data class ParsedParameter(val name: String, val startIndex: Int, val e
 
 object SqlParameterParser {
     private val cache = ConcurrentHashMap<String, ParsedSql>()
+    private const val MAX_CACHE_SIZE = 10_000
 
     private const val PARAMETER_SEPARATORS = "\"':&,;()|=+-*%/\\<>^[]@~!#`?"
     private val separatorIndex = BooleanArray(128).apply {
@@ -19,7 +20,13 @@ object SqlParameterParser {
     }
 
     fun parse(sql: String): ParsedSql {
-        return cache.getOrPut(sql) { doParse(sql) }
+        return cache[sql] ?: run {
+            if (cache.size >= MAX_CACHE_SIZE) {
+                cache.clear()
+            }
+            val parsed = doParse(sql)
+            cache.putIfAbsent(sql, parsed) ?: parsed
+        }
     }
 
     private fun doParse(sql: String): ParsedSql {
