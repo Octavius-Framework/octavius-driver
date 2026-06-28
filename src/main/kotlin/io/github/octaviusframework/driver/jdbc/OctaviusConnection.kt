@@ -185,7 +185,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
                 'I' -> IDLE
                 'T' -> IN_TRANSACTION
                 'E' -> FAILED
-                else -> throw SQLException("Unknown transaction state: $c")
+                else -> throw OctaviusJdbcException(JdbcExceptionMessage.UNKNOWN_TRANSACTION_STATE, "Unknown transaction state: $c")
             }
         }
     }
@@ -425,7 +425,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
 
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing =
-        throw SQLFeatureNotSupportedException("This feature is not supported by Octavius JDBC Driver")
+        throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     // Replaced by io.github.octaviusframework.container.ContainerFactory.kt
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()

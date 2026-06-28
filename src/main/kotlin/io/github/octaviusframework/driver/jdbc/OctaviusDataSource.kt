@@ -1,10 +1,10 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import java.io.PrintWriter
 import java.sql.Connection
 import java.sql.DriverManager
-import java.sql.SQLException
-import java.sql.SQLFeatureNotSupportedException
 import java.util.*
 import java.util.logging.Logger
 import javax.sql.DataSource
@@ -22,7 +22,7 @@ class OctaviusDataSource : DataSource {
     }
 
     override fun getConnection(username: String?, pass: String?): Connection {
-        val jdbcUrl = url ?: throw SQLException("URL must be set on OctaviusDataSource")
+        val jdbcUrl = url ?: throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_URL, "URL must be set on OctaviusDataSource")
         val props = Properties()
         if (username != null) props.setProperty("user", username)
         if (pass != null) props.setProperty("password", pass)
@@ -41,14 +41,14 @@ class OctaviusDataSource : DataSource {
     
     override fun getLoginTimeout(): Int = loginTimeout
 
-    override fun getParentLogger(): Logger = throw SQLFeatureNotSupportedException()
+    override fun getParentLogger(): Logger = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw SQLException("Cannot unwrap to ${iface.name}")
+        throw OctaviusJdbcException(JdbcExceptionMessage.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)

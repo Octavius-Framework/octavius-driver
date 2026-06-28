@@ -1,6 +1,8 @@
 package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.io.get
 import io.github.octaviusframework.driver.io.getLongBE
@@ -35,7 +37,7 @@ internal object UnitCodec : TypeCodec<Unit> {
 
     override val fromBinary: (ByteArrayWindow) -> Unit = { }
     override val toBinary: (Unit) -> ByteArray =
-        { throw UnsupportedOperationException("Cannot send Unit/void as parameter") }
+        { throw OctaviusTypeException(TypeExceptionMessage.INVALID_PARAMETER_TYPE, typeName = "Unit", details = "Cannot send Unit/void as parameter") }
 }
 
 internal object UuidCodec : TypeCodec<Uuid> {

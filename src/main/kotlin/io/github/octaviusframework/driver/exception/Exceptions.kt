@@ -107,7 +107,15 @@ enum class JdbcExceptionMessage {
     UNSUPPORTED_ISOLATION_LEVEL,
     AUTO_COMMIT_VIOLATION,
     INVALID_TIMEOUT,
-    UNWRAP_ERROR
+    UNWRAP_ERROR,
+    FEATURE_NOT_SUPPORTED,
+    INVALID_URL,
+    SSL_ERROR,
+    UNSUPPORTED_SERVER_VERSION,
+    INVALID_SAVEPOINT,
+    STATEMENT_CLOSED,
+    NULL_SQL,
+    UNKNOWN_TRANSACTION_STATE
 }
 
 class OctaviusJdbcException(
@@ -128,15 +136,40 @@ private fun generateDeveloperMessage(messageEnum: JdbcExceptionMessage): String 
         JdbcExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
         JdbcExceptionMessage.INVALID_TIMEOUT -> "Timeout value cannot be negative."
         JdbcExceptionMessage.UNWRAP_ERROR -> "Cannot unwrap the connection/statement to the requested interface."
+        JdbcExceptionMessage.FEATURE_NOT_SUPPORTED -> "This feature is not supported by the Octavius JDBC Driver."
+        JdbcExceptionMessage.INVALID_URL -> "Invalid JDBC URL provided."
+        JdbcExceptionMessage.SSL_ERROR -> "SSL negotiation failed or is not supported by the server."
+        JdbcExceptionMessage.UNSUPPORTED_SERVER_VERSION -> "Unsupported PostgreSQL server version. Octavius requires version 18 or higher."
+        JdbcExceptionMessage.INVALID_SAVEPOINT -> "Invalid savepoint operation."
+        JdbcExceptionMessage.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
+        JdbcExceptionMessage.NULL_SQL -> "SQL string cannot be null."
+        JdbcExceptionMessage.UNKNOWN_TRANSACTION_STATE -> "Unknown transaction state."
     }
 
 // ------------------- STATEMENT -------------------
 
 enum class BadStatementExceptionMessage {
-    SYNTAX_ERROR
+    SYNTAX_ERROR,
+    UNCLOSED_QUOTE,
+    UNCLOSED_DOLLAR_QUOTE,
+    UNCLOSED_COMMENT
 }
 
 class BadStatementException(
-    val messageType: BadStatementExceptionMessage,
-    override val cause: Throwable? = null
-) : OctaviusException(messageType.name, cause)
+    val messageEnum: BadStatementExceptionMessage,
+    val details: String? = null,
+    cause: Throwable? = null
+) : OctaviusException(messageEnum.name, cause) {
+    override fun getDetailedMessage(): String = buildString {
+        appendLine("message: ${generateDeveloperMessage(messageEnum)}")
+        if (details != null) appendLine("Details: $details")
+    }
+}
+
+private fun generateDeveloperMessage(messageEnum: BadStatementExceptionMessage): String =
+    when (messageEnum) {
+        BadStatementExceptionMessage.SYNTAX_ERROR -> "The SQL statement contains a syntax error."
+        BadStatementExceptionMessage.UNCLOSED_QUOTE -> "The SQL statement contains an unclosed string or identifier quote."
+        BadStatementExceptionMessage.UNCLOSED_DOLLAR_QUOTE -> "The SQL statement contains an unclosed dollar-quoted string."
+        BadStatementExceptionMessage.UNCLOSED_COMMENT -> "The SQL statement contains an unclosed multi-line comment."
+    }

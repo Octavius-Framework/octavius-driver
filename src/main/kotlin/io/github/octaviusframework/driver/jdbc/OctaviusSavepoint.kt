@@ -1,6 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
+import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import java.sql.SQLException
 import java.sql.Savepoint
 
@@ -24,12 +26,12 @@ internal class OctaviusSavepoint : Savepoint {
 
     override fun getSavepointId(): Int {
         if (savepointName != null) {
-            throw SQLException("Savepoint is named")
+            throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_SAVEPOINT, "Savepoint is named")
         }
         return savepointId
     }
 
     override fun getSavepointName(): String {
-        return savepointName ?: throw SQLException("Savepoint is un-named")
+        return savepointName ?: throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_SAVEPOINT, "Savepoint is un-named")
     }
 }

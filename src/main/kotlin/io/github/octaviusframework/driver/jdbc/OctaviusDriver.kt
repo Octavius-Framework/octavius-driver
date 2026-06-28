@@ -1,6 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
+import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
@@ -62,9 +64,9 @@ class OctaviusDriver : Driver {
             if (response == 'S') {
                 stream.upgradeToSSL(host, port)
             } else if (response == 'N') {
-                throw SQLException("Server does not support SSL, but ssl=true was specified.")
+                throw OctaviusJdbcException(JdbcExceptionMessage.SSL_ERROR, "Server does not support SSL, but ssl=true was specified.")
             } else {
-                throw SQLException("Unexpected SSL negotiation response: $response")
+                throw OctaviusJdbcException(JdbcExceptionMessage.SSL_ERROR, "Unexpected SSL negotiation response: $response")
             }
         }
         
@@ -85,7 +87,7 @@ class OctaviusDriver : Driver {
             val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
             if (majorVersion < 18) {
                 stream.close()
-                throw SQLException("Octavius JDBC requires PostgreSQL database version 18 or higher. Received version: $serverVersion")
+                throw OctaviusJdbcException(JdbcExceptionMessage.UNSUPPORTED_SERVER_VERSION, "Octavius JDBC requires PostgreSQL database version 18 or higher. Received version: $serverVersion")
             }
         }
         
@@ -103,7 +105,7 @@ class OctaviusDriver : Driver {
     override fun getMajorVersion(): Int = 1
     override fun getMinorVersion(): Int = 0
     override fun jdbcCompliant(): Boolean = false
-    override fun getParentLogger(): Logger = throw SQLFeatureNotSupportedException()
+    override fun getParentLogger(): Logger = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
 }
 
 fun getOctaviusConnection(

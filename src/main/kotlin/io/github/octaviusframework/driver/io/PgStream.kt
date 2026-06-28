@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.io
 
+import io.github.octaviusframework.driver.exception.AuthExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusAuthException
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
@@ -171,7 +173,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw IllegalStateException("Unknown authentication type: $type")
+            else -> throw OctaviusAuthException(AuthExceptionMessage.UNSUPPORTED_MECHANISM, details = "Unknown authentication type: $type")
         }
     }
 

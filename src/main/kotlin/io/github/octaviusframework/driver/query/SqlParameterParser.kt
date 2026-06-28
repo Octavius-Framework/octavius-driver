@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.exception.BadStatementException
+import io.github.octaviusframework.driver.exception.BadStatementExceptionMessage
 import java.util.concurrent.ConcurrentHashMap
 
 data class ParsedSql(val originalSql: String, val transformedSql: String, val paramNames: List<String>)
@@ -75,8 +77,8 @@ object SqlParameterParser {
     private fun findConstructEnd(sql: String, i: Int): Int {
         return when (sql[i]) {
             '\'' -> processSingleQuote(sql, i)
-            '"' -> skipUntil(sql, i, '"')
-            '-' -> if (i + 1 < sql.length && sql[i + 1] == '-') skipUntil(sql, i, '\n') else i
+            '"' -> skipUntil(sql, i, '"', throwOnEof = true, exceptionMessage = BadStatementExceptionMessage.UNCLOSED_QUOTE)
+            '-' -> if (i + 1 < sql.length && sql[i + 1] == '-') skipUntil(sql, i, '\n', throwOnEof = false) else i
             '/' -> if (i + 1 < sql.length && sql[i + 1] == '*') skipComment(sql, i) else i
             '$' -> {
                 val end = findDollarQuoteEnd(sql, i)
@@ -90,7 +92,7 @@ object SqlParameterParser {
         return if (index > 0 && (sql[index - 1] == 'E' || sql[index - 1] == 'e')) {
             skipBackslashEscapedLiteral(sql, index)
         } else {
-            skipUntil(sql, index, '\'')
+            skipUntil(sql, index, '\'', throwOnEof = true, exceptionMessage = BadStatementExceptionMessage.UNCLOSED_QUOTE)
         }
     }
 
@@ -139,7 +141,7 @@ object SqlParameterParser {
             searchPos++
         }
 
-        return -1
+        throw BadStatementException(BadStatementExceptionMessage.UNCLOSED_DOLLAR_QUOTE, "Unclosed dollar-quoted string starting at index $start")
     }
 
     private fun isValidTagCharacter(char: Char, isFirstChar: Boolean): Boolean {
@@ -164,12 +166,18 @@ object SqlParameterParser {
             }
             i++
         }
-        return i
+        throw BadStatementException(BadStatementExceptionMessage.UNCLOSED_QUOTE, "Unclosed backslash-escaped literal starting at index $start")
     }
 
-    private fun skipUntil(sql: String, start: Int, endChar: Char): Int {
+    private fun skipUntil(sql: String, start: Int, endChar: Char, throwOnEof: Boolean = false, exceptionMessage: BadStatementExceptionMessage? = null): Int {
         val index = sql.indexOf(endChar, start + 1)
-        return if (index == -1) sql.length else index
+        if (index == -1) {
+            if (throwOnEof) {
+                throw BadStatementException(exceptionMessage ?: BadStatementExceptionMessage.UNCLOSED_QUOTE, "Unclosed token starting at index $start")
+            }
+            return sql.length
+        }
+        return index
     }
 
     private fun skipComment(sql: String, start: Int): Int {
@@ -186,6 +194,9 @@ object SqlParameterParser {
                 }
             }
             i++
+        }
+        if (depth > 0) {
+            throw BadStatementException(BadStatementExceptionMessage.UNCLOSED_COMMENT, "Unclosed multi-line comment starting at index $start")
         }
         return i - 1
     }
