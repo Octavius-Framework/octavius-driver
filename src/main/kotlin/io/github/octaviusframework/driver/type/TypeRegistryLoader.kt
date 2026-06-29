@@ -26,7 +26,7 @@ object TypeRegistryLoader {
         """.trimIndent()
 
         val resultMapper = ResultMapper(typeRegistry.converterRegistry)
-        val result = queryExecutor.query(typesSql, deserializer = resultMapper)
+        val result = queryExecutor.query(typesSql, mapper = resultMapper)
 
         val enumMap = mutableMapOf<UInt, MutableList<String>>()
         val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()

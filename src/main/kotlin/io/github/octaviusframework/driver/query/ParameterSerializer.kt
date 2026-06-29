@@ -35,19 +35,19 @@ class ParameterSerializer(
             
             val convertedValue = parameterConverterRegistry.convert(paramValue, resolvedOid, context, typeRegistry) ?: return null
             
-            val serializer = typeRegistry.getCodecByOid<Any>(resolvedOid)
-            if (serializer != null) {
-                if (!serializer.kotlinClass.isInstance(convertedValue)) {
+            val codec = typeRegistry.getCodecByOid<Any>(resolvedOid)
+            if (codec != null) {
+                if (!codec.kotlinClass.isInstance(convertedValue)) {
                     throw OctaviusTypeException(
                         TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                         oid = resolvedOid,
-                        details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using serializer for ${serializer.kotlinClass.qualifiedName}"
+                        details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using codec for ${codec.kotlinClass.qualifiedName}"
                     )
                 }
-                return serializer.toBinary(convertedValue)
+                return codec.toBinary(convertedValue)
             }
             
-            // Fallback for containers or missing OID serializers
+            // Fallback for containers or missing OID codecs
             return serialize(convertedValue)
         }
 
@@ -59,15 +59,15 @@ class ParameterSerializer(
             return writer.toByteArray()
         }
 
-        val serializer = typeRegistry.getCodecByClass(convertedParameter::class)
+        val codec = typeRegistry.getCodecByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_SERIALIZER,
+                TypeExceptionMessage.MISSING_CODEC,
                 details = "Nie znaleziono serializatora dla typu: ${convertedParameter::class.qualifiedName}"
             )
 
         @Suppress("UNCHECKED_CAST")
-        val anySerializer = serializer as TypeCodec<Any>
-        return anySerializer.toBinary(convertedParameter)
+        val anyCodec = codec as TypeCodec<Any>
+        return anyCodec.toBinary(convertedParameter)
     }
 
     fun getOid(parameter: Any?): UInt {
@@ -92,13 +92,13 @@ class ParameterSerializer(
             }
         }
 
-        val serializer = typeRegistry.getCodecByClass(convertedParameter::class)
+        val codec = typeRegistry.getCodecByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_SERIALIZER,
+                TypeExceptionMessage.MISSING_CODEC,
                 details = "Nie znaleziono handlera dla typu: ${convertedParameter::class.qualifiedName}"
             )
 
-        return serializer.oid!!
+        return codec.oid!!
     }
 
     /**

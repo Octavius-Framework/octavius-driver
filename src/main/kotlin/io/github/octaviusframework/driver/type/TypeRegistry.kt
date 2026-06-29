@@ -81,12 +81,12 @@ class TypeRegistry {
         oidMap: MutableMap<UInt, TypeCodec<*>>,
         classMap: MutableMap<KClass<*>, TypeCodec<*>>
     ) {
-        fun register(serializer: TypeCodec<*>) {
-            if (serializer.isDefaultForKotlinType) {
-                classMap[serializer.kotlinClass] = serializer
+        fun register(codec: TypeCodec<*>) {
+            if (codec.isDefaultForKotlinType) {
+                classMap[codec.kotlinClass] = codec
             }
-            if (serializer.oid != null) {
-                oidMap[serializer.oid!!] = serializer
+            if (codec.oid != null) {
+                oidMap[codec.oid!!] = codec
             }
         }
 
@@ -118,7 +118,7 @@ class TypeRegistry {
     }
 
     /**
-     * Registers a custom serializer. If OID is unknown (dynamic type),
+     * Registers a custom codec. If OID is unknown (dynamic type),
      * it will be matched by name immediately, and also remembered during
      * subsequent dictionary reloads (reloadTypes).
      */
@@ -161,7 +161,7 @@ class TypeRegistry {
 
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
-     * Additionally applies custom serializers waiting for an OID.
+     * Additionally applies custom codecs waiting for an OID.
      */
     fun updateTypes(newTypes: Map<UInt, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = codecsByOid.toMutableMap()

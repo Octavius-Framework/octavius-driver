@@ -30,17 +30,17 @@ class EverythingIntegrationTest {
     fun setup() {
         val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
-            conn.queryExecutor.execute("DROP TYPE IF EXISTS person_profile CASCADE")
-            conn.queryExecutor.execute("CREATE TYPE person_profile AS (first_name text, last_name text)")
+            conn.createNativeQuery("DROP TYPE IF EXISTS person_profile CASCADE").execute()
+            conn.createNativeQuery("CREATE TYPE person_profile AS (first_name text, last_name text)").execute()
 
-            conn.queryExecutor.execute("DROP TYPE IF EXISTS employee_data CASCADE")
-            conn.queryExecutor.execute("CREATE TYPE employee_data AS (" +
+            conn.createNativeQuery("DROP TYPE IF EXISTS employee_data CASCADE").execute()
+            conn.createNativeQuery("CREATE TYPE employee_data AS (" +
                     "profile person_profile, " +
                     "roles text[], " +
                     "active_period daterange, " +
                     "schedule_shifts tsrange[], " +
                     "available_days datemultirange" +
-                    ")")
+                    ")").execute()
         } finally {
             conn.close()
         }
@@ -50,8 +50,8 @@ class EverythingIntegrationTest {
     fun teardown() {
         val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
-            conn.queryExecutor.execute("DROP SCHEMA public CASCADE")
-            conn.queryExecutor.execute("CREATE SCHEMA public")
+            conn.createNativeQuery("DROP SCHEMA public CASCADE").execute()
+            conn.createNativeQuery("CREATE SCHEMA public").execute()
         } finally {
             conn.close()
         }

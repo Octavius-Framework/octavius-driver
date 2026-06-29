@@ -56,7 +56,7 @@ class ParameterConverterTest {
             "SELECT ($1).*",
             paramTypes = listOf(param.oid),
             paramValues = listOf(param.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         
         val returnedUser = rows.first().getEntireRowAs<ComplexUser>()
@@ -79,7 +79,7 @@ class ParameterConverterTest {
             "SELECT $1::text[] as res",
             paramTypes = listOf(param.oid),
             paramValues = listOf(param.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
 
         val returnedArray = rows.first().get<PgArray>("res")

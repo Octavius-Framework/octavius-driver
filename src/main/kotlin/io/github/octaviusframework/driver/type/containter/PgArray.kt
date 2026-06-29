@@ -157,14 +157,14 @@ class PgArray(
         }
 
         val window = windows!![index] ?: return null
-        val serializer = elementSerializer
+        val codec = elementSerializer
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_SERIALIZER,
+                TypeExceptionMessage.MISSING_CODEC,
                 oid = elementOid,
                 details = "Pobieranie elementu tablicy"
             )
 
-        val parsedValue = serializer.fromBinary(window)
+        val parsedValue = codec.fromBinary(window)
         if (parsedValue is T) return parsedValue
         throw OctaviusTypeException(
             TypeExceptionMessage.CASTING_ERROR,

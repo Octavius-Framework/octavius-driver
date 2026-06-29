@@ -55,14 +55,14 @@ class PgRange internal constructor(
 
         val window = field.rawValue ?: return null
 
-        val serializer = typeRegistry.getCodecByOid<Any>(elementOid)
+        val codec = typeRegistry.getCodecByOid<Any>(elementOid)
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_SERIALIZER,
+                TypeExceptionMessage.MISSING_CODEC,
                 oid = elementOid,
                 details = "Getting range bound"
             )
 
-        val parsed = serializer.fromBinary(window)
+        val parsed = codec.fromBinary(window)
         if (parsed is T) {
             return parsed
         } else {

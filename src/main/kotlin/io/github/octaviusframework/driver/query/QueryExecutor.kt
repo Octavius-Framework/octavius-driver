@@ -104,7 +104,7 @@ class QueryExecutor(
      * Intended for DQL (SELECT).
      * Returns a parsed list of rows (Row) immediately.
      */
-    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), deserializer: ResultMapper): List<Row> {
+    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> {
         val statementName = ""
         val portalName = ""
         
@@ -148,6 +148,6 @@ class QueryExecutor(
         }
 
         val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, deserializer) }
+        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, mapper) }
     }
 }

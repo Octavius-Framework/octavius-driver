@@ -18,7 +18,7 @@ internal class DynamicDomainCodec<T : Any>(
     @Suppress("UNCHECKED_CAST")
     private val delegate: TypeCodec<T>
         get() = typeRegistry.getCodecByOid<T>(baseTypeOid)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_SERIALIZER, oid = baseTypeOid, details = "Nie znaleziono serializatora dla bazowego typu domeny o OID $baseTypeOid")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = baseTypeOid, details = "Nie znaleziono serializatora dla bazowego typu domeny o OID $baseTypeOid")
 
     override val kotlinClass: KClass<T>
         get() = delegate.kotlinClass

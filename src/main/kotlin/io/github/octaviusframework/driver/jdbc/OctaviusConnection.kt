@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
-import io.github.octaviusframework.driver.query.OctaviusQuery
 import io.github.octaviusframework.driver.query.NativeQuery
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
@@ -397,7 +396,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
         checkClosed()
         if (catalogName == null) {
             val resultMapper = ResultMapper(converterRegistry)
-            val result = queryExecutor.query("SELECT current_database()", deserializer = resultMapper)
+            val result = queryExecutor.query("SELECT current_database()", mapper = resultMapper)
             catalogName = result[0].get<String>("current_database")
         }
         return catalogName!!

@@ -176,7 +176,7 @@ class SerializationTest {
             "SELECT $1::int[] as test_col",
             paramTypes = listOf(0u),
             paramValues = listOf(serializedArray),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
 
         val returnedArray = rows.first().get<PgArray>("test_col")
@@ -283,7 +283,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(intParam.oid),
             paramValues = listOf(intParam.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         assertEquals(intVal, rowsInt.first().get<Int>("res"))
 
@@ -294,7 +294,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(strParam.oid),
             paramValues = listOf(strParam.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         assertEquals(strVal, rowsStr.first().get<String>("res"))
 
@@ -305,7 +305,7 @@ class SerializationTest {
             "SELECT $1::bool as res",
             paramTypes = listOf(boolParam.oid),
             paramValues = listOf(boolParam.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         assertEquals(boolVal, rowsBool.first().get<Boolean>("res"))
 
@@ -316,7 +316,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(doubleParam.oid),
             paramValues = listOf(doubleParam.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
@@ -329,7 +329,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(arrayParam.oid),
             paramValues = listOf(arrayParam.value),
-            deserializer = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.converterRegistry)
         )
         val returnedArray = rowsArray.first().get<PgArray>("res")
         assertNotNull(returnedArray)

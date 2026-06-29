@@ -72,14 +72,14 @@ class PgComposite(
         }
 
         val attributeOid = type.attributes.values.toList()[index]
-        val serializer = typeRegistry.getCodecByOid<Any>(attributeOid)
+        val codec = typeRegistry.getCodecByOid<Any>(attributeOid)
             ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_SERIALIZER,
+                TypeExceptionMessage.MISSING_CODEC,
                 oid = attributeOid,
                 details = "Pobieranie atrybutu kompozytu"
             )
 
-        val parsedValue = serializer.fromBinary(window)
+        val parsedValue = codec.fromBinary(window)
         if (parsedValue is T) {
             return parsedValue
         } else {

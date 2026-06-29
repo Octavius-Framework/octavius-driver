@@ -67,7 +67,7 @@ private fun generateDeveloperMessage(messageEnum: AuthExceptionMessage): String 
 enum class TypeExceptionMessage {
     TYPE_NOT_FOUND,
     NOT_A_CONTAINER,
-    MISSING_SERIALIZER,
+    MISSING_CODEC,
     CASTING_ERROR,
     ATTRIBUTE_NOT_FOUND,
     NOT_ENOUGH_DATA,
@@ -93,7 +93,7 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
     when (messageEnum) {
         TypeExceptionMessage.TYPE_NOT_FOUND -> "The specified type was not found in the TypeRegistry."
         TypeExceptionMessage.NOT_A_CONTAINER -> "The type with the specified OID is not a valid container type (Composite, Array, etc.)."
-        TypeExceptionMessage.MISSING_SERIALIZER -> "Missing serializer for the specific OID when parsing or serializing."
+        TypeExceptionMessage.MISSING_CODEC -> "Missing codec for the specific OID when parsing or serializing."
         TypeExceptionMessage.CASTING_ERROR -> "Type casting error when converting database value to Kotlin type."
         TypeExceptionMessage.ATTRIBUTE_NOT_FOUND -> "Requested attribute/column was not found in the composite type."
         TypeExceptionMessage.NOT_ENOUGH_DATA -> "Not enough data in the buffer to parse the container (e.g., array header)."

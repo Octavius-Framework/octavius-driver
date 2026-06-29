@@ -208,7 +208,7 @@ internal object ContainerCodec {
         if (field.value != null) {
             val codec = typeRegistry.getCodecByOid<Any>(expectedOid)
                 ?: throw OctaviusTypeException(
-                    TypeExceptionMessage.MISSING_SERIALIZER,
+                    TypeExceptionMessage.MISSING_CODEC,
                     oid = expectedOid,
                     details = "Serializing value: ${field.value}"
                 )
@@ -262,7 +262,7 @@ internal object ContainerCodec {
             val value = array.values?.getOrNull(i)
             if (value != null) {
                 if (codec == null) throw OctaviusTypeException(
-                    TypeExceptionMessage.MISSING_SERIALIZER,
+                    TypeExceptionMessage.MISSING_CODEC,
                     oid = array.elementOid,
                     details = "Array element"
                 )
