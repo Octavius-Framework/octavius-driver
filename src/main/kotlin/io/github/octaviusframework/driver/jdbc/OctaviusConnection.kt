@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.query.NativeQuery
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.QueryExecutor
+import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.GlobalTypeRegistry
 import io.github.octaviusframework.driver.type.TypeManager
@@ -85,7 +86,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
 
-    override fun nativeSQL(sql: String?): String = sql ?: ""
+    override fun nativeSQL(sql: String?): String = sql?.let { SqlParameterParser.parse(sql).transformedSql } ?: ""
 
     override fun close() {
         if (!isClosedFlag) {
