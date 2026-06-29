@@ -70,7 +70,7 @@ internal object LocalDateCodec : TypeCodec<LocalDate> {
     }
 
     override val toBinary: (LocalDate) -> ByteArray = {
-        (it.toEpochDays() - PG_EPOCH_DAYS).toByteArrayBE()
+        (it.toEpochDays() - PG_EPOCH_DAYS).toInt().toByteArrayBE()
     }
 }
 
