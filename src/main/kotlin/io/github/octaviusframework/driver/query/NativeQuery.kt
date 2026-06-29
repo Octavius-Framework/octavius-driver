@@ -18,13 +18,8 @@ class NativeQuery(
         return rows.firstOrNull()
     }
 
-    fun executeUpdate(vararg params: Any?): Long {
+    fun execute(vararg params: Any?): Long {
         val (types, values) = serializeParameters(params.toList())
         return queryExecutor.update(sql, types, values)
-    }
-
-    fun execute(vararg params: Any?) {
-        val (types, values) = serializeParameters(params.toList())
-        queryExecutor.update(sql, types, values)
     }
 }

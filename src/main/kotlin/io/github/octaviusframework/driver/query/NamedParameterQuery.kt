@@ -30,21 +30,14 @@ class NamedParameterQuery(
         return rows.firstOrNull()
     }
 
-    fun executeUpdate(params: Map<String, Any?>): Long {
+    fun execute(params: Map<String, Any?>): Long {
         val (transformedSql, types, values) = prepareNamedQuery(params)
         return queryExecutor.update(transformedSql, types, values)
-    }
-
-    fun execute(params: Map<String, Any?>) {
-        val (transformedSql, types, values) = prepareNamedQuery(params)
-        queryExecutor.update(transformedSql, types, values)
     }
 
     fun fetchAll(vararg params: Pair<String, Any?>): List<Row> = fetchAll(params.toMap())
 
     fun fetchOne(vararg params: Pair<String, Any?>): Row? = fetchOne(params.toMap())
 
-    fun executeUpdate(vararg params: Pair<String, Any?>): Long = executeUpdate(params.toMap())
-
-    fun execute(vararg params: Pair<String, Any?>) = execute(params.toMap())
+    fun execute(vararg params: Pair<String, Any?>): Long = execute(params.toMap())
 }
