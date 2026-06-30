@@ -71,7 +71,7 @@ class PgComposite(
             }
         }
 
-        val attributeOid = type.attributes.values.toList()[index]
+        val attributeOid = type.attributeOids[index]
         val codec = typeRegistry.getCodecByOid<Any>(attributeOid)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_CODEC,
@@ -80,19 +80,28 @@ class PgComposite(
             )
 
         val parsedValue = codec.fromBinary(window)
+        
+        if (parsedValue is PgContainer) {
+            field.container = parsedValue
+            field.rawValue = null
+        } else {
+            field.value = parsedValue
+            field.rawValue = null
+        }
+
         if (parsedValue is T) {
             return parsedValue
         } else {
             throw OctaviusTypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
-                details = "Otrzymano ${parsedValue::class.simpleName}"
+                details = "Otrzymano ${if (parsedValue != null) parsedValue::class.simpleName else "null"}"
             )
         }
     }
 
     fun getColumnIndex(columnName: String): Int {
-        val index = type.attributes.keys.indexOf(columnName)
+        val index = type.nameToIndex[columnName] ?: -1
         if (index == -1) throw OctaviusTypeException(
             TypeExceptionMessage.ATTRIBUTE_NOT_FOUND,
             details = "Atrybut: $columnName"
@@ -121,7 +130,7 @@ class PgComposite(
      * Leniwie rzutuje i zwraca atrybut po jego nazwie.
      */
     inline fun <reified T> get(name: String): T {
-        val index = type.attributes.keys.indexOf(name)
+        val index = type.nameToIndex[name] ?: -1
         if (index == -1) throw OctaviusTypeException(
             TypeExceptionMessage.ATTRIBUTE_NOT_FOUND,
             details = "Atrybut '$name' w kompozycie '${type.name}'"

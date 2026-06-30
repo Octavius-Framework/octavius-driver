@@ -17,6 +17,4 @@ The driver architecture is split into several distinct layers:
 - **Type / Mapping**: Maps raw binary data directly to and from Kotlin types. Supports dynamic codecs for complex types.
 - **JDBC**: Implements essential `java.sql.Connection` and `java.sql.Statement` functionality.
 
-## Roadmap
-- Enhanced mapping strategies for PostgreSQL Composite types and domain types.
 

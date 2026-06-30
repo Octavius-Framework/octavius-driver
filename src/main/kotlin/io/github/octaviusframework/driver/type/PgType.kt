@@ -30,7 +30,14 @@ sealed class PgType(
         override val name: String,
         override val schema: String,
         val attributes: LinkedHashMap<String, UInt>
-    ) : PgType(oid, name, schema)
+    ) : PgType(oid, name, schema) {
+        val attributeOids: List<UInt> by lazy { attributes.values.toList() }
+        val nameToIndex: Map<String, Int> by lazy {
+            val map = HashMap<String, Int>()
+            attributes.keys.forEachIndexed { index, name -> map[name] = index }
+            map
+        }
+    }
 
     data class Domain(
         override val oid: UInt,
