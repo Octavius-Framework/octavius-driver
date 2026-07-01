@@ -6,6 +6,8 @@ import io.github.octaviusframework.driver.mapping.parameter.SerializationContext
 import io.github.octaviusframework.driver.mapping.result.DeserializationContext
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.type.PgStandardType
+import io.github.octaviusframework.driver.type.withPgType
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.PgComposite
@@ -112,7 +114,7 @@ class JsonElementIntegrationTest {
                 put("number", JsonPrimitive(42))
             }
 
-            conn.createNamedQuery("INSERT INTO test_json_elements (id, data) VALUES (@id, @data::jsonb)")
+            conn.createNamedQuery("INSERT INTO test_json_elements (id, data) VALUES (@id, @data)")
                 .update(mapOf("id" to 1, "data" to inputJson))
 
             val row = conn.createNamedQuery("SELECT data FROM test_json_elements WHERE id = @id")
@@ -143,12 +145,55 @@ class JsonElementIntegrationTest {
             val holder = MetadataHolder(100, inputJson)
 
             val row = conn.createNamedQuery("SELECT @holder::metadata_holder as res")
-                .fetchOne(mapOf("holder" to holder))
+                .fetchOne("holder" to holder)
 
             val outputHolder = row.get<MetadataHolder>("res")
             assertEquals(100, outputHolder.id)
             val outputJson = outputHolder.metadata as JsonObject
             assertEquals("active", (outputJson["status"] as JsonPrimitive).content)
+        } finally {
+            conn.close()
+        }
+    }
+
+    @Test
+    fun testJsonElementListAsParameter() {
+        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        try {
+            val list = listOf(
+                buildJsonObject { put("key1", JsonPrimitive("val1")) },
+                buildJsonObject { put("key2", JsonPrimitive("val2")) }
+            )
+
+            // Przekazujemy listę bez jawnego typu, powinno zostać wywnioskowane jako jsonb[]
+            val row = conn.createNamedQuery("SELECT @list as res")
+                .fetchOne("list" to list)
+
+            val outputList = row.get<List<JsonElement>>("res")
+            assertEquals(2, outputList.size)
+            assertEquals("val1", (outputList[0] as JsonObject)["key1"]?.let { (it as JsonPrimitive).content })
+            assertEquals("val2", (outputList[1] as JsonObject)["key2"]?.let { (it as JsonPrimitive).content })
+        } finally {
+            conn.close()
+        }
+    }
+
+    @Test
+    fun testJsonElementWithExplicitType() {
+        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        try {
+            val inputJson = buildJsonObject {
+                put("key", JsonPrimitive("explicit"))
+            }
+
+            val row = conn.createNamedQuery("SELECT pg_typeof(@data)::text as type_name, @data as res")
+                .fetchOne("data" to inputJson.withPgType(PgStandardType.JSON))
+
+            val typeName = row.get<String>("type_name")
+            assertEquals("json", typeName)
+
+            val outputJson = row.get<JsonElement>("res")
+            assertEquals("explicit", (outputJson as JsonObject)["key"]?.let { (it as JsonPrimitive).content })
         } finally {
             conn.close()
         }

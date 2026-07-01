@@ -3,6 +3,7 @@ package io.github.octaviusframework.driver.mapping.parameter
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.ArrayDimension
 import io.github.octaviusframework.driver.type.containter.PgArray
@@ -27,7 +28,13 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             // Try to infer from first non-null element
             val firstNonNull = list.firstOrNull { it != null }
             if (firstNonNull != null) {
-                val elementOid = typeRegistry.getCodecByClass(firstNonNull::class)?.oid
+                val converted = context.convert(firstNonNull, null)
+                val elementOid = if (converted is PgTyped) {
+                    typeRegistry.resolveOid(converted.pgType.name, converted.pgType.schema, emptyList(), converted.pgType.isArray).first
+                } else if (converted != null) {
+                    typeRegistry.getCodecByClass(converted::class)?.oid
+                } else null
+
                 if (elementOid != null) {
                     typeRegistry.types.values.firstOrNull { it is PgType.Array && it.elementOid == elementOid } as? PgType.Array
                 } else null

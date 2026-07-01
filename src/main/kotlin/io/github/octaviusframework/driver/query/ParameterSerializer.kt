@@ -55,6 +55,10 @@ class ParameterSerializer(
 
         val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeManager) ?: return null
 
+        if (convertedParameter is PgTyped) {
+            return serialize(convertedParameter)
+        }
+
         if (convertedParameter is PgContainer) {
             val writer = PgByteWriter()
             ContainerCodec.serializeContainer(convertedParameter, writer, typeRegistry)
@@ -83,6 +87,10 @@ class ParameterSerializer(
 
 
         val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeManager) ?: return 0u
+
+        if (convertedParameter is PgTyped) {
+            return getOid(convertedParameter)
+        }
 
         if (convertedParameter is PgContainer) {
             return when (convertedParameter) {
