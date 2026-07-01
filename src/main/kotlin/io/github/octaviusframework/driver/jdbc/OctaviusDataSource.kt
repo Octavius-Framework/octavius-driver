@@ -54,8 +54,8 @@ class OctaviusDataSource : DataSource {
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
 }
 
-fun DataSource.unwrapToOctavius(): OctaviusConnection {
-    return this.unwrap(OctaviusConnection::class.java)
+fun DataSource.unwrapToOctavius(): OctaviusDataSource {
+    return this.unwrap(OctaviusDataSource::class.java)
 }
 
 inline fun <reified T> DataSource.unwrap(): T {
