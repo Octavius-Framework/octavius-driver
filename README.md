@@ -1,6 +1,6 @@
 # Octavius JDBC Driver
 
-A native, high-performance, and lightweight PostgreSQL database driver for Kotlin/Java, implementing the standard JDBC interfaces while communicating directly with PostgreSQL via the Wire Protocol v3.
+A native, high-performance, and lightweight PostgreSQL database driver for Kotlin/Java, implementing some the standard JDBC interfaces while communicating directly with PostgreSQL via the Wire Protocol v3.
 
 ## Features
 

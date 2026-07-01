@@ -80,7 +80,7 @@ class PgComposite(
             )
 
         val parsedValue = codec.fromBinary(window)
-        
+
         if (parsedValue is PgContainer) {
             field.container = parsedValue
             field.rawValue = null
@@ -144,7 +144,11 @@ class PgComposite(
     fun getAttributeType(index: Int): PgType {
         val oid = type.attributeOids[index]
         return typeRegistry.types[oid]
-            ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, oid = oid, details = "Nie znaleziono typu w rejestrze")
+            ?: throw OctaviusTypeException(
+                TypeExceptionMessage.TYPE_NOT_FOUND,
+                oid = oid,
+                details = "Nie znaleziono typu w rejestrze"
+            )
     }
 
     /**
