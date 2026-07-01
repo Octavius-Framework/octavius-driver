@@ -7,6 +7,8 @@ import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.mapping.result.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.PgArray
 import io.github.octaviusframework.driver.type.containter.PgComposite
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -274,7 +276,8 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
-        val serializer = ParameterSerializer(typeRegistry, typeRegistry.parameterConverterRegistry)
+        val typeManager = TypeManager(typeRegistry)
+        val serializer = ParameterSerializer(typeManager, typeRegistry.parameterConverterRegistry)
 
         // 1. Integer Round Trip
         val intVal = 424242

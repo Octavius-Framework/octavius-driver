@@ -3,17 +3,18 @@ package io.github.octaviusframework.driver.mapping.parameter
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.ArrayDimension
 import io.github.octaviusframework.driver.type.containter.PgArray
 import io.github.octaviusframework.driver.type.containter.PgContainer
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Boolean {
+    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
         return source is Collection<*> || source is Array<*>
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any? {
+    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+        val typeRegistry = typeManager.registry
         val list = when (source) {
             is Collection<*> -> source.toList()
             is Array<*> -> source.toList()
@@ -50,9 +51,6 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             } else null
         }
 
-        // We can't easily build PgArray with internal raw arrays in ContainerCodec, but we can construct it.
-        // Actually, PgArray has values, containers, windows.
-        // Let's populate values and containers.
         val values = mutableListOf<Any?>()
         val containers = mutableListOf<PgContainer?>()
         

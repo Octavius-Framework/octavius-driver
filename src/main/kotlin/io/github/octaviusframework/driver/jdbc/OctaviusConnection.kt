@@ -31,7 +31,7 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
      * Allows registering custom type codecs and converters, enabling seamless
      * integration of user-defined database types with Kotlin classes.
      */
-    val types: TypeManager by lazy { TypeManager(this) }
+    val types: TypeManager by lazy { TypeManager(typeRegistry) { getSearchPath() } }
 
     /**
      * Manages database transactions for this connection.
@@ -68,12 +68,12 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
 
     fun createNativeQuery(sql: String): NativeQuery {
         checkClosed()
-        return NativeQuery(sql, queryExecutor, typeRegistry)
+        return NativeQuery(sql, queryExecutor, types)
     }
 
     fun createNamedQuery(sql: String): NamedParameterQuery {
         checkClosed()
-        return NamedParameterQuery(sql, queryExecutor, typeRegistry)
+        return NamedParameterQuery(sql, queryExecutor, types)
     }
 
     @Suppress("UNCHECKED_CAST")

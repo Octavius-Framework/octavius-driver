@@ -18,11 +18,11 @@ class EnumParameterConverter<T : Enum<T>>(
         CaseConverter.convert(it.name, kotlinConvention, pgConvention)
     }
 
-    override fun canConvert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Boolean {
+    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
         return source::class == enumClass
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any? {
+    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
         return enumToPg[source]
     }
 }

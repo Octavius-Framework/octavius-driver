@@ -7,8 +7,7 @@ import io.github.octaviusframework.driver.mapping.result.DeserializationContext
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.type.containter.ContainerField
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.PgComposite
 import io.github.octaviusframework.driver.type.withPgType
 import org.junit.jupiter.api.AfterAll
@@ -38,22 +37,25 @@ class BusinessUseCaseIntegrationTest {
     }
 
     class PaymentInfoParameterConverter : ParameterConverter<PaymentInfo> {
-        override fun canConvert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Boolean {
+        override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
             return source is PaymentInfo
         }
 
-        override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any {
+        override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any {
             val payment = source as PaymentInfo
-            val oid = expectedOid ?: typeRegistry.resolveOid("payment_info", "public", emptyList()).first
-            val type = typeRegistry.types[oid] as PgType.Composite
             
-            // Atrybuty w kompozycie są ułożone w kolejności jak przy tworzeniu typu
-            // (amount int, currency text)
-            val fields = listOf(
-                ContainerField(rawValue = null, value = payment.amount),
-                ContainerField(rawValue = null, value = payment.currency)
-            )
-            return PgComposite(type, fields, typeRegistry)
+            // Tworzenie kompozytu jest znacznie czystsze z użyciem TypeManager
+            val composite = if (expectedOid != null) {
+                typeManager.createComposite(expectedOid)
+            } else {
+                typeManager.createComposite("payment_info")
+            }
+            
+            // Do atrybutów odwołujemy się po nazwie
+            composite["amount"] = payment.amount
+            composite["currency"] = payment.currency
+            
+            return composite
         }
     }
 
@@ -89,8 +91,8 @@ class BusinessUseCaseIntegrationTest {
             conn.reloadTypes()
             
             // Rejestrujemy nasze ręczne mappery
-            conn.typeRegistry.registerResultConverter(PaymentInfoResultConverter())
-            conn.typeRegistry.registerParameterConverter(PaymentInfoParameterConverter())
+            conn.types.registerResultConverter(PaymentInfoResultConverter())
+            conn.types.registerParameterConverter(PaymentInfoParameterConverter())
 
             conn.transactions.transaction {
                 val payment = PaymentInfo(1500, "PLN")

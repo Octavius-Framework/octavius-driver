@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.mapping.parameter
 
 import io.github.octaviusframework.driver.mapping.ReflectionCompositeCache
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.ContainerField
 import io.github.octaviusframework.driver.type.containter.PgComposite
 import io.github.octaviusframework.driver.type.containter.PgContainer
@@ -10,8 +10,9 @@ import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
 
 class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: UInt?, typeRegistry: TypeRegistry): Boolean {
+    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
         if (!source::class.isData) return false
+        val typeRegistry = typeManager.registry
         
         val registration = typeRegistry.registeredComposites[source::class]
         if (registration != null) return true
@@ -23,7 +24,8 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         return false
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeRegistry: TypeRegistry): Any? {
+    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+        val typeRegistry = typeManager.registry
         val registration = typeRegistry.registeredComposites[source::class]
 
         val type = if (expectedOid != null) {

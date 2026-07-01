@@ -15,6 +15,7 @@ import io.github.octaviusframework.driver.type.containter.PgComposite
 import io.github.octaviusframework.driver.type.containter.PgContainer
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.typeOf
 
 class ReflectionCompositeMappingTest {
@@ -93,9 +94,10 @@ class ReflectionCompositeMappingTest {
 
         val person = Person("Jane", "Smith", 28)
 
-        assertTrue(converter.canConvert(person, type.oid, dummyRegistry))
+        val dummyTypeManager = TypeManager(dummyRegistry)
+        assertTrue(converter.canConvert(person, type.oid, dummyTypeManager))
 
-        val serialized = converter.convert(person, type.oid, context, dummyRegistry) as PgComposite
+        val serialized = converter.convert(person, type.oid, context, dummyTypeManager) as PgComposite
 
         assertNotNull(serialized)
         assertEquals(type, serialized.type)

@@ -2,19 +2,20 @@ package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.jdbc.OctaviusConnection
+
 import io.github.octaviusframework.driver.mapping.EnumParameterConverter
 import io.github.octaviusframework.driver.mapping.EnumResultConverter
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
 import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.type.containter.*
 
-class TypeManager(private val connection: OctaviusConnection) {
+class TypeManager(
+    val registry: TypeRegistry,
+    private val searchPathProvider: () -> List<String> = { emptyList() }
+) {
     /**
-     * The underlying type registry associated with this connection.
+     * The underlying type registry associated with this TypeManager.
      */
-    val registry: TypeRegistry
-        get() = connection.typeRegistry
 
     /**
      * Registers a custom [ResultConverter] for mapping PostgreSQL database types to Kotlin types.
@@ -85,7 +86,7 @@ class TypeManager(private val connection: OctaviusConnection) {
      * @return A new [PgComposite] instance with empty fields.
      */
     fun createComposite(typeName: String, schema: String = ""): PgComposite {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
+        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPathProvider())
         return createComposite(resolvedOid)
     }
 
@@ -113,7 +114,7 @@ class TypeManager(private val connection: OctaviusConnection) {
      * @return A new [PgArray] instance initialized with nulls.
      */
     fun createArray(typeName: String, schema: String = "", vararg dimensionSizes: Int): PgArray {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
+        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPathProvider())
         return createArray(resolvedOid, *dimensionSizes)
     }
 
@@ -157,7 +158,7 @@ class TypeManager(private val connection: OctaviusConnection) {
         isLowerNull: Boolean = false,
         isUpperNull: Boolean = false
     ): PgRange {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
+        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPathProvider())
         return createRange(
             oid = resolvedOid,
             lower = lower,
@@ -207,7 +208,7 @@ class TypeManager(private val connection: OctaviusConnection) {
      * Creates an empty PostgreSQL range type using its name and schema.
      */
     fun createEmptyRange(typeName: String, schema: String = ""): PgRange {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
+        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPathProvider())
         return createEmptyRange(resolvedOid)
     }
 
@@ -229,7 +230,7 @@ class TypeManager(private val connection: OctaviusConnection) {
      * @return A new [PgMultirange] instance.
      */
     fun createMultirange(typeName: String, schema: String = "", vararg ranges: PgRange): PgMultirange {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, connection.getSearchPath())
+        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPathProvider())
         return createMultirange(resolvedOid, *ranges)
     }
 

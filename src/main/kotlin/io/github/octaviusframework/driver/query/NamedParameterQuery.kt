@@ -1,12 +1,12 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 
 class NamedParameterQuery(
     sql: String,
     queryExecutor: QueryExecutor,
-    typeRegistry: TypeRegistry
-) : OctaviusQuery<NamedParameterQuery>(sql, queryExecutor, typeRegistry) {
+    typeManager: TypeManager
+) : OctaviusQuery<NamedParameterQuery>(sql, queryExecutor, typeManager) {
 
     private fun prepareNamedQuery(params: Map<String, Any?>): Triple<String, List<UInt>, List<ByteArray?>> {
         val parsed = SqlParameterParser.parse(sql)

@@ -1,12 +1,12 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 
 class NativeQuery(
     sql: String,
     queryExecutor: QueryExecutor,
-    typeRegistry: TypeRegistry
-) : OctaviusQuery<NativeQuery>(sql, queryExecutor, typeRegistry) {
+    typeManager: TypeManager
+) : OctaviusQuery<NativeQuery>(sql, queryExecutor, typeManager) {
 
     fun fetchAll(vararg params: Any?): List<Row> {
         val (types, values) = serializeParameters(params.toList())

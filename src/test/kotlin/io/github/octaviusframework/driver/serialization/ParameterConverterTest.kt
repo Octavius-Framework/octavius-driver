@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.query.getEntireRowAs
 import io.github.octaviusframework.driver.type.containter.PgArray
+import io.github.octaviusframework.driver.type.TypeManager
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -40,7 +41,8 @@ class ParameterConverterTest {
         octaviusConn.typeRegistry.registerAutoCompositeType<ComplexUser>("complex_user")
         
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
-        parameterSerializer = ParameterSerializer(dummyRow.typeRegistry, dummyRow.typeRegistry.parameterConverterRegistry)
+        val typeManager = TypeManager(dummyRow.typeRegistry)
+        parameterSerializer = ParameterSerializer(typeManager, dummyRow.typeRegistry.parameterConverterRegistry)
     }
 
     @Test

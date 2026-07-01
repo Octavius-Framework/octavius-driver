@@ -8,18 +8,20 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
 import io.github.octaviusframework.driver.mapping.parameter.SerializationContext
 import io.github.octaviusframework.driver.type.PgTyped
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.*
 
 data class SerializedParameter(val oid: UInt, val value: ByteArray?)
 
 class ParameterSerializer(
-    private val typeRegistry: TypeRegistry,
+    private val typeManager: TypeManager,
     private val parameterConverterRegistry: ParameterConverterRegistry
 ) {
+    private val typeRegistry = typeManager.registry
+
     private val context = object : SerializationContext {
         override fun convert(source: Any, expectedOid: UInt?): Any? {
-            return parameterConverterRegistry.convert(source, expectedOid, this, typeRegistry)
+            return parameterConverterRegistry.convert(source, expectedOid, this, typeManager)
         }
     }
 
@@ -33,7 +35,7 @@ class ParameterSerializer(
             val paramValue = parameter.value ?: return null
             val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
             
-            val convertedValue = parameterConverterRegistry.convert(paramValue, resolvedOid, context, typeRegistry) ?: return null
+            val convertedValue = parameterConverterRegistry.convert(paramValue, resolvedOid, context, typeManager) ?: return null
             
             val codec = typeRegistry.getCodecByOid<Any>(resolvedOid)
             if (codec != null) {
@@ -51,7 +53,7 @@ class ParameterSerializer(
             return serialize(convertedValue)
         }
 
-        val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeRegistry) ?: return null
+        val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeManager) ?: return null
 
         if (convertedParameter is PgContainer) {
             val writer = PgByteWriter()
@@ -80,7 +82,7 @@ class ParameterSerializer(
 
 
 
-        val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeRegistry) ?: return 0u
+        val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeManager) ?: return 0u
 
         if (convertedParameter is PgContainer) {
             return when (convertedParameter) {
