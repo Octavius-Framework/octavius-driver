@@ -137,4 +137,34 @@ class PgComposite(
         )
         return get<T>(index)
     }
+
+    /**
+     * Zwraca typ (PgType) atrybutu pod wskazanym indeksem.
+     */
+    fun getAttributeType(index: Int): PgType {
+        val oid = type.attributeOids[index]
+        return typeRegistry.types[oid]
+            ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, oid = oid, details = "Nie znaleziono typu w rejestrze")
+    }
+
+    /**
+     * Zwraca typ (PgType) atrybutu o wskazanej nazwie.
+     */
+    fun getAttributeType(name: String): PgType {
+        return getAttributeType(getColumnIndex(name))
+    }
+
+    /**
+     * Zwraca OID atrybutu pod wskazanym indeksem.
+     */
+    fun getAttributeOid(index: Int): UInt {
+        return type.attributeOids[index]
+    }
+
+    /**
+     * Zwraca OID atrybutu o wskazanej nazwie.
+     */
+    fun getAttributeOid(name: String): UInt {
+        return getAttributeOid(getColumnIndex(name))
+    }
 }

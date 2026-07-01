@@ -8,7 +8,6 @@ import io.github.octaviusframework.driver.mapping.result.ResultConverter
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.TypeRegistry
 import io.github.octaviusframework.driver.type.containter.PgComposite
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -29,18 +28,25 @@ class JsonElementIntegrationTest {
         val metadata: JsonElement
     )
 
-    class MetadataHolderResultConverter(private val typeRegistry: TypeRegistry) : ResultConverter<MetadataHolder> {
+    class MetadataHolderResultConverter : ResultConverter<MetadataHolder> {
         override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
             return expectedType.classifier == MetadataHolder::class
         }
 
-        override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): MetadataHolder {
+        override fun convert(
+            source: Any,
+            expectedType: KType,
+            context: DeserializationContext,
+            sourceType: PgType
+        ): MetadataHolder {
             val composite = source as PgComposite
-            val jsonbOid = (sourceType as PgType.Composite).attributes.values.elementAt(1)
-            val jsonbType = typeRegistry.types[jsonbOid]!!
             return MetadataHolder(
-                id = composite.get(0) as Int,
-                metadata = context.convert<JsonElement>(composite.get(1)!!, typeOf<JsonElement>(), jsonbType)
+                id = composite.get("id"),
+                metadata = context.convert(
+                    composite.get("metadata"),
+                    typeOf<JsonElement>(),
+                    composite.getAttributeType("metadata")
+                )
             )
         }
     }
@@ -50,7 +56,12 @@ class JsonElementIntegrationTest {
             return source is MetadataHolder
         }
 
-        override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any {
+        override fun convert(
+            source: Any,
+            expectedOid: UInt?,
+            context: SerializationContext,
+            typeManager: TypeManager
+        ): Any {
             val holder = source as MetadataHolder
             val composite = if (expectedOid != null) {
                 typeManager.createComposite(expectedOid)
@@ -58,7 +69,7 @@ class JsonElementIntegrationTest {
                 typeManager.createComposite("metadata_holder")
             }
             composite["id"] = holder.id
-            composite["metadata"] = context.convert(holder.metadata, null)
+            composite["metadata"] = context.convert(holder.metadata, composite.getAttributeOid("metadata"))
             return composite
         }
     }
@@ -71,7 +82,7 @@ class JsonElementIntegrationTest {
             try {
                 conn.createNativeQuery("DROP TABLE IF EXISTS test_json_elements CASCADE").execute()
                 conn.createNativeQuery("CREATE TABLE test_json_elements (id int PRIMARY KEY, data jsonb)").execute()
-                
+
                 conn.createNativeQuery("DROP TYPE IF EXISTS metadata_holder CASCADE").execute()
                 conn.createNativeQuery("CREATE TYPE metadata_holder AS (id int, metadata jsonb)").execute()
             } finally {
@@ -121,9 +132,9 @@ class JsonElementIntegrationTest {
         val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             conn.reloadTypes()
-            
+
             // Rejestrujemy ręczne konwertery dla naszego kompozytu
-            conn.types.registerResultConverter(MetadataHolderResultConverter(conn.typeRegistry))
+            conn.types.registerResultConverter(MetadataHolderResultConverter())
             conn.types.registerParameterConverter(MetadataHolderParameterConverter())
 
             val inputJson = buildJsonObject {
