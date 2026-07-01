@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.codec.standard.*
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.mapping.parameter.CollectionArrayParameterConverter
+import io.github.octaviusframework.driver.mapping.parameter.JsonElementParameterConverter
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
 import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
 import io.github.octaviusframework.driver.mapping.parameter.ReflectionCompositeParameterConverter
@@ -33,6 +34,7 @@ class TypeRegistry {
     val parameterConverterRegistry = ParameterConverterRegistry().apply {
         addConverter(CollectionArrayParameterConverter())
         addConverter(ReflectionCompositeParameterConverter())
+        addConverter(JsonElementParameterConverter())
     }
 
     fun registerResultConverter(converter: ResultConverter<*>) {
