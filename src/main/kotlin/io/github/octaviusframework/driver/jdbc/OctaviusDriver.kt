@@ -102,8 +102,8 @@ class OctaviusDriver : Driver {
         return emptyArray()
     }
 
-    override fun getMajorVersion(): Int = 1
-    override fun getMinorVersion(): Int = 0
+    override fun getMajorVersion(): Int = 0
+    override fun getMinorVersion(): Int = 4
     override fun jdbcCompliant(): Boolean = false
     override fun getParentLogger(): Logger = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
 }
