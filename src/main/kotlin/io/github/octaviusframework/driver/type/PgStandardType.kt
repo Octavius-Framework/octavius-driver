@@ -36,7 +36,7 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     BOOL("bool", false, 16u),
     UUID("uuid", false, 2950u),
     BYTEA("bytea", false, 17u),
-    RECORD("record", false, 2249u),
+    UNKNOWN("unknown", false, 705u),
 
     // --- Array types ---
     INT2_ARRAY("int2", true, 1005u),
@@ -58,7 +58,6 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     BOOL_ARRAY("bool", true, 1000u),
     UUID_ARRAY("uuid", true, 2951u),
     BYTEA_ARRAY("bytea", true, 1001u),
-    RECORD_ARRAY("record", true, 2287u)
 }
 
 /**

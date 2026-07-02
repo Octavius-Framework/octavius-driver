@@ -104,6 +104,7 @@ class TypeRegistry {
         register(VarcharCodec)
         register(BpcharCodec)
         register(ByteArrayCodec)
+        register(UnknownCodec)
 
         // DateTime
         register(InstantCodec)

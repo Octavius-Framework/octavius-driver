@@ -353,21 +353,21 @@ class SerializationTest {
         props.setProperty("password", "1234")
 
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-        
+
         // 6. Record Map Serialization
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val typeManager = TypeManager(typeRegistry)
         val serializer = ParameterSerializer(typeManager, typeRegistry.parameterConverterRegistry)
-        
+
         val recordMap = mapOf(
             "str_key" to "hello",
             "int_key" to 12345
         )
-        
+
         val exception = assertThrows<OctaviusTypeException> {
             val recordParam = serializer.serializeWithOid(recordMap)
-            
+
             octaviusConn.queryExecutor.query(
                 "SELECT $1 as res",
                 paramTypes = listOf(recordParam.oid),
@@ -377,5 +377,25 @@ class SerializationTest {
         }
         
         assertEquals(TypeExceptionMessage.MISSING_CODEC, exception.messageEnum)
+    }
+
+
+    @Test
+    fun testUnknownTypeSerialization() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+
+        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val stringVal = "some literal value"
+        val rows = octaviusConn.queryExecutor.query(
+            "SELECT $1 as res",
+            paramTypes = listOf(705u),
+            paramValues = listOf(stringVal.toByteArray()),
+            mapper = ResultMapper(octaviusConn.converterRegistry)
+        )
+
+        assertEquals(stringVal, rows.first().get<String>("res"))
     }
 }

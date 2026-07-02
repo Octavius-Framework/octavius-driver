@@ -69,3 +69,12 @@ internal object JsonCodec : TypeCodec<String> {
         it.toByteArray(Charsets.UTF_8)
     }
 }
+
+internal object UnknownCodec : TypeCodec<String> {
+    override val pgTypeName = "unknown"
+    override val oid: UInt = 705u
+    override val kotlinClass = String::class
+    override val isDefaultForKotlinType = false
+    override val fromBinary = StringCodec.fromBinary
+    override val toBinary = StringCodec.toBinary
+}
