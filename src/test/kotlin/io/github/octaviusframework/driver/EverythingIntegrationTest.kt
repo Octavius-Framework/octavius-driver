@@ -174,14 +174,14 @@ class EverythingIntegrationTest {
             assertEquals("Kowalski", parsedEmp.profile.lastName)
             assertEquals(listOf("admin", "user"), parsedEmp.roles)
             
-            assertEquals(LocalDate(2023, 1, 1), parsedEmp.activePeriod.lowerBound<LocalDate>()!!)
-            assertEquals(LocalDate(2023, 12, 31), parsedEmp.activePeriod.upperBound<LocalDate>()!!)
+            assertEquals(LocalDate(2023, 1, 1), parsedEmp.activePeriod.lowerBound<LocalDate>())
+            assertEquals(LocalDate(2023, 12, 31), parsedEmp.activePeriod.upperBound<LocalDate>())
 
             assertEquals(2, parsedEmp.scheduleShifts.size)
-            assertEquals(LocalDateTime(2023, 5, 1, 8, 0), parsedEmp.scheduleShifts[0].lowerBound<LocalDateTime>()!!)
+            assertEquals(LocalDateTime(2023, 5, 1, 8, 0), parsedEmp.scheduleShifts[0].lowerBound<LocalDateTime>())
             
             assertEquals(2, parsedEmp.availableDays.ranges.size)
-            assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound<LocalDate>()!!)
+            assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound<LocalDate>())
             
         } finally {
             conn.close()

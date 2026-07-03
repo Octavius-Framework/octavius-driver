@@ -32,7 +32,7 @@ class CollectionArrayConverter : ResultConverter<Collection<*>> {
             val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
             val kClass = expectedType.classifier as? KClass<*> ?: List::class
             val mappedElements = (0 until source.totalElements).map { i ->
-                val value = source.get<Any>(i)
+                val value = source.get<Any?>(i)
                 val type = source.typeRegistry.types[source.elementOid]!!
                 if (value == null) null else context.convert<Any>(value, elementType, type)
             }
@@ -46,7 +46,7 @@ class CollectionArrayConverter : ResultConverter<Collection<*>> {
         val mappedElements = if (dimensionIndex == source.dimensions.size - 1) {
             (0 until currentDimSize).map { i ->
                 val flatIndex = flatIndexOffset + i
-                val value = source.get<Any>(flatIndex)
+                val value = source.get<Any?>(flatIndex)
                 val type = source.typeRegistry.types[source.elementOid]!!
                 if (value == null) null else context.convert<Any>(value, elementType, type)
             }

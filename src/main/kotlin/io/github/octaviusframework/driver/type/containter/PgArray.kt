@@ -124,7 +124,7 @@ class PgArray(
         setAll(newValues.toList())
     }
 
-    inline fun <reified T> getElement(indices: IntArray): T? {
+    inline fun <reified T> getElement(indices: IntArray): T {
         require(indices.size == dimensions.size) { "Expected ${dimensions.size} indices for multidimensional array, got ${indices.size}" }
         val flatIndex = indices.foldIndexed(0) { idx, acc, i ->
             acc * dimensions[idx].size + i
@@ -137,7 +137,7 @@ class PgArray(
         typeRegistry.getCodecByOid(elementOid)
     }
 
-    inline fun <reified T> get(index: Int): T? {
+    inline fun <reified T> get(index: Int): T {
         if (values != null && values!![index] != null) {
             val v = values!![index]
             if (v is T) return v
@@ -157,7 +157,19 @@ class PgArray(
             )
         }
 
-        val window = windows!![index] ?: return null
+        val wList = windows
+        if (wList == null) {
+            // Jeśli element nie był w values/containers, a windows nie istnieje, to element jest nullem
+            if (null is T) return null as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Expected non-null element at index $index, got null")
+        }
+
+        val window = wList[index]
+        if (window == null) {
+            if (null is T) return null as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Expected non-null element at index $index, got null")
+        }
+
         val codec = elementSerializer
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_CODEC,
@@ -166,11 +178,21 @@ class PgArray(
             )
 
         val parsedValue = codec.fromBinary(window)
+        
+        if (parsedValue is PgContainer) {
+            if (containers == null) containers = MutableList(totalElements) { null }
+            containers!![index] = parsedValue
+        } else {
+            if (values == null) values = MutableList(totalElements) { null }
+            values!![index] = parsedValue
+        }
+        wList[index] = null
+
         if (parsedValue is T) return parsedValue
         throw OctaviusTypeException(
             TypeExceptionMessage.CASTING_ERROR,
             typeName = T::class.simpleName,
-            details = "Otrzymano ${parsedValue::class.simpleName}"
+            details = "Otrzymano ${if (parsedValue != null) parsedValue::class.simpleName else "null"}"
         )
     }
 

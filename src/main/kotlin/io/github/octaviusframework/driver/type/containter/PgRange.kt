@@ -31,29 +31,64 @@ class PgRange internal constructor(
 
     /**
      * Lazily casts and returns the lower bound of the range.
-     * Returns null if boundary is missing (infinity), explicitly null, or set is empty.
+     * Returns null only if the boundary is missing (infinity), explicitly null, or set is empty AND type T is nullable.
      */
-    inline fun <reified T> lowerBound(): T? {
-        if (isEmpty || isLowerInfinite || isLowerNull) return null
+    inline fun <reified T> lowerBound(): T {
+        if (isEmpty || isLowerInfinite || isLowerNull) {
+            if (null is T) return null as T
+            throw OctaviusTypeException(
+                TypeExceptionMessage.CASTING_ERROR,
+                typeName = T::class.simpleName,
+                details = "Lower bound is null or infinite (missing) but requested type is non-nullable"
+            )
+        }
         return parseBound(lowerBoundField)
     }
 
     /**
      * Lazily casts and returns the upper bound of the range.
-     * Returns null if boundary is missing (infinity), explicitly null, or set is empty.
+     * Returns null only if the boundary is missing (infinity), explicitly null, or set is empty AND type T is nullable.
      */
-    inline fun <reified T> upperBound(): T? {
-        if (isEmpty || isUpperInfinite || isUpperNull) return null
+    inline fun <reified T> upperBound(): T {
+        if (isEmpty || isUpperInfinite || isUpperNull) {
+            if (null is T) return null as T
+            throw OctaviusTypeException(
+                TypeExceptionMessage.CASTING_ERROR,
+                typeName = T::class.simpleName,
+                details = "Upper bound is null or infinite (missing) but requested type is non-nullable"
+            )
+        }
         return parseBound(upperBoundField)
     }
 
     @PublishedApi
-    internal inline fun <reified T> parseBound(field: ContainerField?): T? {
-        if (field == null) return null
-        if (field.value != null && field.value is T) return field.value as T
-        if (field.container != null && field.container is T) return field.container as T
+    internal inline fun <reified T> parseBound(field: ContainerField?): T {
+        if (field == null) {
+            if (null is T) return null as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Field is null")
+        }
+        if (field.value != null) {
+            if (field.value is T) return field.value as T
+            throw OctaviusTypeException(
+                TypeExceptionMessage.CASTING_ERROR,
+                typeName = T::class.simpleName,
+                details = "Otrzymano ${field.value!!::class.simpleName}"
+            )
+        }
+        if (field.container != null) {
+            if (field.container is T) return field.container as T
+            throw OctaviusTypeException(
+                TypeExceptionMessage.CASTING_ERROR,
+                typeName = T::class.simpleName,
+                details = "Otrzymano ${field.container!!::class.simpleName}"
+            )
+        }
 
-        val window = field.rawValue ?: return null
+        val window = field.rawValue
+        if (window == null) {
+            if (null is T) return null as T
+            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, typeName = T::class.simpleName, details = "Expected non-null bound")
+        }
 
         val codec = typeRegistry.getCodecByOid<Any>(elementOid)
             ?: throw OctaviusTypeException(
@@ -63,13 +98,21 @@ class PgRange internal constructor(
             )
 
         val parsed = codec.fromBinary(window)
+        if (parsed is PgContainer) {
+            field.container = parsed
+            field.rawValue = null
+        } else {
+            field.value = parsed
+            field.rawValue = null
+        }
+
         if (parsed is T) {
             return parsed
         } else {
             throw OctaviusTypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
-                details = "Otrzymano ${parsed::class.simpleName}"
+                details = "Otrzymano ${if (parsed != null) parsed::class.simpleName else "null"}"
             )
         }
     }

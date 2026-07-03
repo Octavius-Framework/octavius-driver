@@ -22,7 +22,7 @@ class IntArrayConverter : ResultConverter<IntArray> {
         source as PgArray
         val result = IntArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into IntArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
             result[i] = context.convert(value, typeOf<Int>(), type)
         }
@@ -45,7 +45,7 @@ class DoubleArrayConverter : ResultConverter<DoubleArray> {
         source as PgArray
         val result = DoubleArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into DoubleArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
             result[i] = context.convert(value, typeOf<Double>(), type)
         }
@@ -68,7 +68,7 @@ class FloatArrayConverter : ResultConverter<FloatArray> {
         source as PgArray
         val result = FloatArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into FloatArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
             result[i] = context.convert(value, typeOf<Float>(), type)
         }
@@ -91,9 +91,9 @@ class LongArrayConverter : ResultConverter<LongArray> {
         source as PgArray
         val result = LongArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into LongArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
-            result[i] = context.convert<Long>(value, typeOf<Long>(), type)
+            result[i] = context.convert(value, typeOf<Long>(), type)
         }
         return result
     }
@@ -114,9 +114,9 @@ class ShortArrayConverter : ResultConverter<ShortArray> {
         source as PgArray
         val result = ShortArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into ShortArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
-            result[i] = context.convert<Short>(value, typeOf<Short>(), type)
+            result[i] = context.convert(value, typeOf<Short>(), type)
         }
         return result
     }
@@ -137,9 +137,9 @@ class ByteArrayConverter : ResultConverter<ByteArray> {
         source as PgArray
         val result = ByteArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into ByteArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
-            result[i] = context.convert<Byte>(value, typeOf<Byte>(), type)
+            result[i] = context.convert(value, typeOf<Byte>(), type)
         }
         return result
     }
@@ -160,9 +160,9 @@ class BooleanArrayConverter : ResultConverter<BooleanArray> {
         source as PgArray
         val result = BooleanArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into BooleanArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
-            result[i] = context.convert<Boolean>(value, typeOf<Boolean>(), type)
+            result[i] = context.convert(value, typeOf<Boolean>(), type)
         }
         return result
     }
@@ -183,9 +183,9 @@ class CharArrayConverter : ResultConverter<CharArray> {
         source as PgArray
         val result = CharArray(source.totalElements)
         for (i in 0 until source.totalElements) {
-            val value = source.get<Any>(i) ?: throw IllegalArgumentException("Cannot insert null into CharArray")
+            val value = source.get<Any>(i)
             val type = source.typeRegistry.types[source.elementOid]!!
-            result[i] = context.convert<Char>(value, typeOf<Char>(), type)
+            result[i] = context.convert(value, typeOf<Char>(), type)
         }
         return result
     }
