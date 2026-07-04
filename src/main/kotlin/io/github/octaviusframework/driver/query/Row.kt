@@ -8,7 +8,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.message.backend.RowDescriptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.type.containter.PgContainer
+import io.github.octaviusframework.driver.type.container.PgContainer
 import kotlin.reflect.typeOf
 
 data class Field(

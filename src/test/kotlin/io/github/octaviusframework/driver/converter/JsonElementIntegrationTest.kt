@@ -10,7 +10,7 @@ import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.withPgType
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.containter.PgComposite
+import io.github.octaviusframework.driver.type.container.PgComposite
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

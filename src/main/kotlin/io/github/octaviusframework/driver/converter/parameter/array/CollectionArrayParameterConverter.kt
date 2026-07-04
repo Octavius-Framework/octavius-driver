@@ -7,9 +7,9 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.Serializati
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.containter.ArrayDimension
-import io.github.octaviusframework.driver.type.containter.PgArray
-import io.github.octaviusframework.driver.type.containter.PgContainer
+import io.github.octaviusframework.driver.type.container.ArrayDimension
+import io.github.octaviusframework.driver.type.container.PgArray
+import io.github.octaviusframework.driver.type.container.PgContainer
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {

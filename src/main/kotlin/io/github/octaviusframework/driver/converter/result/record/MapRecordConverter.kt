@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.converter.result.record
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.containter.PgRecord
+import io.github.octaviusframework.driver.type.container.PgRecord
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf

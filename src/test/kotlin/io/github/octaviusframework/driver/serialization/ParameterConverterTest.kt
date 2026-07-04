@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.query.getEntireRowAs
-import io.github.octaviusframework.driver.type.containter.PgArray
+import io.github.octaviusframework.driver.type.container.PgArray
 import io.github.octaviusframework.driver.type.TypeManager
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll

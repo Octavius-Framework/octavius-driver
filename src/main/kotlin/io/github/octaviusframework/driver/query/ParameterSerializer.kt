@@ -8,7 +8,7 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.containter.*
+import io.github.octaviusframework.driver.type.container.*
 
 data class SerializedParameter(val oid: UInt, val value: ByteArray?)
 

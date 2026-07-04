@@ -10,8 +10,8 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.containter.PgArray
-import io.github.octaviusframework.driver.type.containter.PgComposite
+import io.github.octaviusframework.driver.type.container.PgArray
+import io.github.octaviusframework.driver.type.container.PgComposite
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows

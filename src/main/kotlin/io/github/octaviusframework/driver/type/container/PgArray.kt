@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.type.containter
+package io.github.octaviusframework.driver.type.container
 
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException

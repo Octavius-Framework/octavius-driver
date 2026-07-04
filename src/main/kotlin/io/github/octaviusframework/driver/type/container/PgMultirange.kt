@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.type.containter
+package io.github.octaviusframework.driver.type.container
 
 /**
  * Represents a multirange structure from the database.

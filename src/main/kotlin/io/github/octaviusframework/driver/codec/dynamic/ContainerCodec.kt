@@ -9,7 +9,7 @@ import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.io.getUIntBE
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
-import io.github.octaviusframework.driver.type.containter.*
+import io.github.octaviusframework.driver.type.container.*
 
 internal object ContainerCodec {
 

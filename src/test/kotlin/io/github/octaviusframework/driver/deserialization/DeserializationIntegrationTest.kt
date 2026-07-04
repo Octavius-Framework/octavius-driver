@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.containter.PgComposite
+import io.github.octaviusframework.driver.type.container.PgComposite
 import io.github.octaviusframework.driver.type.withPgType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
