@@ -4,60 +4,60 @@ package io.github.octaviusframework.driver.type
  * Represents standard, built-in PostgreSQL data types.
  * Used for type-safe type specification in the `withPgType` method.
  */
-enum class PgStandardType(val typeName: String, val isArray: Boolean = false, val oid: UInt) {
+enum class PgStandardType(val typeName: String, val isArray: Boolean = false, val oid: Int) {
     // --- Simple types ---
     // Fixed-point types
-    INT2("int2", false, 21u),
-    INT4("int4", false, 23u),
-    INT8("int8", false, 20u),
+    INT2("int2", false, 21),
+    INT4("int4", false, 23),
+    INT8("int8", false, 20),
 
     // Floating-point types
-    FLOAT4("float4", false, 700u),
-    FLOAT8("float8", false, 701u),
-    NUMERIC("numeric", false, 1700u),
+    FLOAT4("float4", false, 700),
+    FLOAT8("float8", false, 701),
+    NUMERIC("numeric", false, 1700),
 
     // Text types
-    VARCHAR("varchar", false, 1043u),
-    BPCHAR("bpchar", false, 1042u),
-    TEXT("text", false, 25u),
+    VARCHAR("varchar", false, 1043),
+    BPCHAR("bpchar", false, 1042),
+    TEXT("text", false, 25),
 
     // Date and time
-    DATE("date", false, 1082u),
-    TIMESTAMP("timestamp", false, 1114u),
-    TIMESTAMPTZ("timestamptz", false, 1184u),
-    TIME("time", false, 1083u),
-    INTERVAL("interval", false, 1186u),
+    DATE("date", false, 1082),
+    TIMESTAMP("timestamp", false, 1114),
+    TIMESTAMPTZ("timestamptz", false, 1184),
+    TIME("time", false, 1083),
+    INTERVAL("interval", false, 1186),
 
     // Json
-    JSON("json", false, 114u),
-    JSONB("jsonb", false, 3802u),
+    JSON("json", false, 114),
+    JSONB("jsonb", false, 3802),
 
     // Other
-    BOOL("bool", false, 16u),
-    UUID("uuid", false, 2950u),
-    BYTEA("bytea", false, 17u),
-    UNKNOWN("unknown", false, 705u),
+    BOOL("bool", false, 16),
+    UUID("uuid", false, 2950),
+    BYTEA("bytea", false, 17),
+    UNKNOWN("unknown", false, 705),
 
     // --- Array types ---
-    INT2_ARRAY("int2", true, 1005u),
-    INT4_ARRAY("int4", true, 1007u),
-    INT8_ARRAY("int8", true, 1016u),
-    FLOAT4_ARRAY("float4", true, 1021u),
-    FLOAT8_ARRAY("float8", true, 1022u),
-    NUMERIC_ARRAY("numeric", true, 1231u),
-    VARCHAR_ARRAY("varchar", true, 1015u),
-    BPCHAR_ARRAY("bpchar", true, 1014u),
-    TEXT_ARRAY("text", true, 1009u),
-    DATE_ARRAY("date", true, 1182u),
-    TIMESTAMP_ARRAY("timestamp", true, 1115u),
-    TIMESTAMPTZ_ARRAY("timestamptz", true, 1185u),
-    TIME_ARRAY("time", true, 1183u),
-    INTERVAL_ARRAY("interval", true, 1187u),
-    JSON_ARRAY("json", true, 199u),
-    JSONB_ARRAY("jsonb", true, 3807u),
-    BOOL_ARRAY("bool", true, 1000u),
-    UUID_ARRAY("uuid", true, 2951u),
-    BYTEA_ARRAY("bytea", true, 1001u),
+    INT2_ARRAY("int2", true, 1005),
+    INT4_ARRAY("int4", true, 1007),
+    INT8_ARRAY("int8", true, 1016),
+    FLOAT4_ARRAY("float4", true, 1021),
+    FLOAT8_ARRAY("float8", true, 1022),
+    NUMERIC_ARRAY("numeric", true, 1231),
+    VARCHAR_ARRAY("varchar", true, 1015),
+    BPCHAR_ARRAY("bpchar", true, 1014),
+    TEXT_ARRAY("text", true, 1009),
+    DATE_ARRAY("date", true, 1182),
+    TIMESTAMP_ARRAY("timestamp", true, 1115),
+    TIMESTAMPTZ_ARRAY("timestamptz", true, 1185),
+    TIME_ARRAY("time", true, 1183),
+    INTERVAL_ARRAY("interval", true, 1187),
+    JSON_ARRAY("json", true, 199),
+    JSONB_ARRAY("jsonb", true, 3807),
+    BOOL_ARRAY("bool", true, 1000),
+    UUID_ARRAY("uuid", true, 2951),
+    BYTEA_ARRAY("bytea", true, 1001),
 }
 
 /**
@@ -92,3 +92,4 @@ fun Any?.withPgType(name: String, schema: String = "", isArray: Boolean = false)
  */
 fun Any?.withPgType(pgType: QualifiedName): PgTyped =
     PgTyped(this, pgType)
+

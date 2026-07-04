@@ -13,8 +13,8 @@ data class ArrayDimension(
 )
 
 class PgArray(
-    val arrayOid: UInt,
-    val elementOid: UInt,
+    val arrayOid: Int,
+    val elementOid: Int,
     val dimensions: List<ArrayDimension>,
     val elements: MutableList<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
@@ -97,3 +97,4 @@ class PgArray(
         )
     }
 }
+

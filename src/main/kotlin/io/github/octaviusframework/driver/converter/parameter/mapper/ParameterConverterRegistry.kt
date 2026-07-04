@@ -11,7 +11,7 @@ class ParameterConverterRegistry(
         converters.add(0, converter)
     }
 
-    fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+    fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val converter = converters.firstOrNull { it.canConvert(source, expectedOid, typeManager) }
         val result = converter?.convert(source, expectedOid, context, typeManager)
         if (result != null) return result

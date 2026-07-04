@@ -28,29 +28,29 @@ object TypeRegistryLoader {
         val resultMapper = ResultMapper(typeRegistry.converterRegistry)
         val result = queryExecutor.query(typesSql, mapper = resultMapper)
 
-        val enumMap = mutableMapOf<UInt, MutableList<String>>()
-        val attrMap = mutableMapOf<UInt, LinkedHashMap<String, UInt>>()
-        val rangeMap = mutableMapOf<UInt, UInt>()
-        val multirangeMap = mutableMapOf<UInt, UInt>()
+        val enumMap = mutableMapOf<Int, MutableList<String>>()
+        val attrMap = mutableMapOf<Int, LinkedHashMap<String, Int>>()
+        val rangeMap = mutableMapOf<Int, Int>()
+        val multirangeMap = mutableMapOf<Int, Int>()
 
         class BaseTypeInfo(
-            val name: String, val typelem: UInt, val typarray: UInt,
-            val typtype: Char, val typbasetype: UInt, val schema: String
+            val name: String, val typelem: Int, val typarray: Int,
+            val typtype: Char, val typbasetype: Int, val schema: String
         )
 
-        val parsedTypes = mutableMapOf<UInt, BaseTypeInfo>()
+        val parsedTypes = mutableMapOf<Int, BaseTypeInfo>()
 
         for (row in result) {
-            val oid = row.getRaw(0) as UInt
+            val oid = row.getRaw(0) as Int
 
             // We collect the main type information only the first time for a given OID
             if (oid !in parsedTypes) {
                 val name = row.getRaw(1) as String
-                val typelem = row.getRaw(2) as UInt
-                val typarray = row.getRaw(3) as UInt
+                val typelem = row.getRaw(2) as Int
+                val typarray = row.getRaw(3) as Int
                 val typtypeString = row.getRaw(4) as String
                 val typtype = typtypeString.first()
-                val typbasetype = row.getRaw(5) as UInt
+                val typbasetype = row.getRaw(5) as Int
                 val schema = row.getRaw(6) as String
 
                 parsedTypes[oid] = BaseTypeInfo(name, typelem, typarray, typtype, typbasetype, schema)
@@ -65,19 +65,19 @@ object TypeRegistryLoader {
             }
 
             // Range
-            val rngSubtype = row.getRaw(8) as UInt?
+            val rngSubtype = row.getRaw(8) as Int?
             if (rngSubtype != null) {
                 rangeMap[oid] = rngSubtype
 
-                val multirangeOid = row.getRaw(11) as UInt?
-                if (multirangeOid != null && multirangeOid != 0u) {
+                val multirangeOid = row.getRaw(11) as Int?
+                if (multirangeOid != null && multirangeOid != 0) {
                     multirangeMap[multirangeOid] = oid
                 }
             }
 
             // Composite
             val attName = row.getRaw(9) as String?
-            val attTypid = row.getRaw(10) as UInt?
+            val attTypid = row.getRaw(10) as Int?
 
             if (attName != null && attTypid != null) {
                 val attrList = attrMap.getOrPut(oid) { LinkedHashMap() }
@@ -87,7 +87,7 @@ object TypeRegistryLoader {
             }
         }
 
-        val newTypes = mutableMapOf<UInt, PgType>()
+        val newTypes = mutableMapOf<Int, PgType>()
 
         // Final construction of correct instance objects for each detected type
         for ((oid, info) in parsedTypes) {
@@ -110,7 +110,7 @@ object TypeRegistryLoader {
                     }
                 }
 
-                info.typelem != 0u && info.typarray == 0u -> PgType.Array(oid, info.name, info.schema, info.typelem)
+                info.typelem != 0 && info.typarray == 0 -> PgType.Array(oid, info.name, info.schema, info.typelem)
                 else -> PgType.Base(oid, info.name, info.schema)
             }
             } catch (e: Exception) {
@@ -123,3 +123,4 @@ object TypeRegistryLoader {
         typeRegistry.updateTypes(newTypes, searchPath)
     }
 }
+

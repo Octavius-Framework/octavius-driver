@@ -24,7 +24,7 @@ class TypeManager(
         typeName: String,
         schema: String = "",
         isArray: Boolean = false
-    ): Pair<UInt, QualifiedName> {
+    ): Pair<Int, QualifiedName> {
         return registry.resolveOid(typeName, schema, isArray, searchPathProvider())
     }
 
@@ -107,7 +107,7 @@ class TypeManager(
      * @param oid The OID of the composite type.
      * @return A new [PgComposite] instance with empty fields.
      */
-    fun createComposite(oid: UInt): PgComposite {
+    fun createComposite(oid: Int): PgComposite {
         val pgType = registry.types[oid] as? PgType.Composite
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
         val fields = Array<Any?>(pgType.attributes.size) { null }
@@ -134,7 +134,7 @@ class TypeManager(
      * @param dimensionSizes Sizes of the array dimensions.
      * @return A new [PgArray] instance initialized with nulls.
      */
-    fun createArray(oid: UInt, vararg dimensionSizes: Int): PgArray {
+    fun createArray(oid: Int, vararg dimensionSizes: Int): PgArray {
         require(dimensionSizes.isNotEmpty()) { "Array must have at least 1 dimension" }
         val arrayType = registry.types[oid] as? PgType.Array
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not an array or does not exist in TypeRegistry")
@@ -185,7 +185,7 @@ class TypeManager(
      * Creates a new instance of a PostgreSQL range type using its Object ID (OID).
      */
     fun createRange(
-        oid: UInt,
+        oid: Int,
         lower: Any? = null,
         upper: Any? = null,
         isLowerInclusive: Boolean = true,
@@ -224,7 +224,7 @@ class TypeManager(
     /**
      * Creates an empty PostgreSQL range type using its Object ID (OID).
      */
-    fun createEmptyRange(oid: UInt): PgRange {
+    fun createEmptyRange(oid: Int): PgRange {
         val rangeType = registry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
         return PgRange.empty(rangeType.oid, rangeType.subtypeOid, registry)
@@ -250,9 +250,10 @@ class TypeManager(
      * @param ranges The ranges included in the multirange.
      * @return A new [PgMultirange] instance.
      */
-    fun createMultirange(oid: UInt, vararg ranges: PgRange): PgMultirange {
+    fun createMultirange(oid: Int, vararg ranges: PgRange): PgMultirange {
         val multirangeType = registry.types[oid] as? PgType.Multirange
             ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange or does not exist in TypeRegistry")
         return PgMultirange(multirangeType.oid, multirangeType.rangeOid, ranges.toList())
     }
 }
+

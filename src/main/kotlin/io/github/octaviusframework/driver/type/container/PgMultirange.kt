@@ -4,8 +4,8 @@ package io.github.octaviusframework.driver.type.container
  * Represents a multirange structure from the database.
  */
 class PgMultirange internal constructor(
-    val multirangeOid: UInt,
-    val rangeOid: UInt,
+    val multirangeOid: Int,
+    val rangeOid: Int,
     val ranges: List<PgRange>
 ) : PgContainer {
     val size: Int get() = ranges.size
@@ -16,8 +16,8 @@ class PgMultirange internal constructor(
 
     companion object {
         fun create(
-            multirangeOid: UInt,
-            rangeOid: UInt,
+            multirangeOid: Int,
+            rangeOid: Int,
             ranges: List<PgRange>
         ): PgMultirange {
             return PgMultirange(multirangeOid, rangeOid, ranges)

@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.codec.dynamic
 import io.github.octaviusframework.driver.codec.TypeCodec
 
 internal class DynamicEnumCodec(
-    override val oid: UInt,
+    override val oid: Int,
     override val pgTypeName: String,
     override val pgSchema: String
 ) : TypeCodec<String> {

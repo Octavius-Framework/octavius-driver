@@ -52,10 +52,10 @@ class TypeRegistry {
     }
 
     @Volatile
-    var types: Map<UInt, PgType> = emptyMap()
+    var types: Map<Int, PgType> = emptyMap()
 
     @Volatile
-    private var codecsByOid: Map<UInt, TypeCodec<*>> = emptyMap()
+    private var codecsByOid: Map<Int, TypeCodec<*>> = emptyMap()
 
     @Volatile
     private var codecsByName: Map<QualifiedName, TypeCodec<*>> = emptyMap()
@@ -78,7 +78,7 @@ class TypeRegistry {
     }
 
     init {
-        val newOidMap = mutableMapOf<UInt, TypeCodec<*>>()
+        val newOidMap = mutableMapOf<Int, TypeCodec<*>>()
         val newClassMap = mutableMapOf<KClass<*>, TypeCodec<*>>()
         registerBuiltins(newOidMap, newClassMap)
         codecsByOid = newOidMap
@@ -86,7 +86,7 @@ class TypeRegistry {
     }
 
     private fun registerBuiltins(
-        oidMap: MutableMap<UInt, TypeCodec<*>>,
+        oidMap: MutableMap<Int, TypeCodec<*>>,
         classMap: MutableMap<KClass<*>, TypeCodec<*>>
     ) {
         fun register(codec: TypeCodec<*>) {
@@ -162,7 +162,7 @@ class TypeRegistry {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getCodecByOid(oid: UInt): TypeCodec<T>? {
+    fun <T : Any> getCodecByOid(oid: Int): TypeCodec<T>? {
         return codecsByOid[oid] as TypeCodec<T>?
     }
 
@@ -175,7 +175,7 @@ class TypeRegistry {
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
      */
-    fun updateTypes(newTypes: Map<UInt, PgType>, searchPath: List<String> = emptyList()) {
+    fun updateTypes(newTypes: Map<Int, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = codecsByOid.toMutableMap()
         val newNameMap = codecsByName.toMutableMap()
         for ((name, codec) in codecsByName) {
@@ -214,8 +214,8 @@ class TypeRegistry {
         requestedSchema: String,
         isArray: Boolean = false,
         searchPath: List<String>,
-        sourceTypes: Map<UInt, PgType> = types
-    ): Pair<UInt, QualifiedName> {
+        sourceTypes: Map<Int, PgType> = types
+    ): Pair<Int, QualifiedName> {
         // Find matching types by name
         val schemasForName = sourceTypes.values
             .filter { it.name == typeName }
@@ -230,7 +230,7 @@ class TypeRegistry {
             )
         }
 
-        var resolvedOid: UInt? = null
+        var resolvedOid: Int? = null
         var resolvedSchema = ""
 
         // 1. If schema is explicitly requested
@@ -282,3 +282,4 @@ class TypeRegistry {
         return resolvedOid to QualifiedName(resolvedSchema, typeName, false)
     }
 }
+

@@ -77,7 +77,7 @@ enum class TypeExceptionMessage {
 
 class OctaviusTypeException(
     val messageEnum: TypeExceptionMessage,
-    val oid: UInt? = null,
+    val oid: Int? = null,
     val typeName: String? = null,
     val details: String? = null,
     cause: Throwable? = null
@@ -175,3 +175,4 @@ private fun generateDeveloperMessage(messageEnum: BadStatementExceptionMessage):
         BadStatementExceptionMessage.UNCLOSED_DOLLAR_QUOTE -> "The SQL statement contains an unclosed dollar-quoted string."
         BadStatementExceptionMessage.UNCLOSED_COMMENT -> "The SQL statement contains an unclosed multi-line comment."
     }
+

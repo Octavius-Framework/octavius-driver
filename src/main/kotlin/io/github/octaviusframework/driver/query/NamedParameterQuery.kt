@@ -8,7 +8,7 @@ class NamedParameterQuery(
     typeManager: TypeManager
 ) : OctaviusQuery<NamedParameterQuery>(sql, queryExecutor, typeManager) {
 
-    private fun prepareNamedQuery(params: Map<String, Any?>): Triple<String, List<UInt>, List<ByteArray?>> {
+    private fun prepareNamedQuery(params: Map<String, Any?>): Triple<String, List<Int>, List<ByteArray?>> {
         val parsed = SqlParameterParser.parse(sql)
         val listParams = parsed.paramNames.map {
             if (!params.containsKey(it)) {
@@ -54,3 +54,4 @@ class NamedParameterQuery(
         queryExecutor.execute(sql)
     }
 }
+

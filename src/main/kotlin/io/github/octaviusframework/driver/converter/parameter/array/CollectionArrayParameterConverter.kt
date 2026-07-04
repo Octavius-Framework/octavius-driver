@@ -12,7 +12,7 @@ import io.github.octaviusframework.driver.type.container.PgArray
 import io.github.octaviusframework.driver.type.container.PgContainer
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
         return source is Collection<*> || source is Array<*>
     }
 
@@ -48,7 +48,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         }
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
         val (dimensions, list) = getDimensionsAndFlatten(source)
 

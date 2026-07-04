@@ -20,8 +20,8 @@ class DeserializationTest {
 
     private val dummyRegistry = TypeRegistry().apply {
         types = mapOf(
-            1u to PgType.Base(1u, "dummy", "public"),
-            2u to PgType.Array(2u, "dummy_array", "public", 1u)
+            1 to PgType.Base(1, "dummy", "public"),
+            2 to PgType.Array(2, "dummy_array", "public", 1)
         )
         registerAutoCompositeType<Address>("address")
         registerAutoCompositeType<Person>("person")
@@ -30,15 +30,15 @@ class DeserializationTest {
     }
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
-        val type = PgType.Composite(1u, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1u }))
+        val type = PgType.Composite(1, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1 }))
         val fields = attributes.values.toTypedArray()
         return PgComposite(type, fields, dummyRegistry)
     }
 
     private fun createArray(elements: List<Any?>): PgArray {
         return PgArray(
-            arrayOid = 2u,
-            elementOid = 1u,
+            arrayOid = 2,
+            elementOid = 1,
             dimensions = listOf(ArrayDimension(elements.size, 1)),
             elements = elements.toMutableList(),
             typeRegistry = dummyRegistry
@@ -198,3 +198,4 @@ class DeserializationTest {
         assertEquals("Global", globalAddress?.street)
     }
 }
+

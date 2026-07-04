@@ -8,11 +8,11 @@ import io.github.octaviusframework.driver.type.TypeManager
 import kotlinx.serialization.json.JsonElement
 
 class JsonElementParameterConverter : ParameterConverter<JsonElement> {
-    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
         return source is JsonElement
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val element = source as JsonElement
         val str = element.toString()
         if (expectedOid == null) {

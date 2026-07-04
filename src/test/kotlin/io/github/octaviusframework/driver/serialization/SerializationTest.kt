@@ -138,7 +138,7 @@ class SerializationTest {
         )
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.types.createArray(1007u, 3) // 1007u = _int4
+        val array = octaviusConn.types.createArray(1007, 3) // 1007 = _int4
         array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
@@ -167,7 +167,7 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.types.createArray(1007u, 3) // 1007u = _int4
+        val array = octaviusConn.types.createArray(1007, 3) // 1007 = _int4
         array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
@@ -176,7 +176,7 @@ class SerializationTest {
 
         val rows = octaviusConn.queryExecutor.query(
             "SELECT $1::int[] as test_col",
-            paramTypes = listOf(0u),
+            paramTypes = listOf(0),
             paramValues = listOf(serializedArray),
             mapper = ResultMapper(octaviusConn.converterRegistry)
         )
@@ -197,7 +197,7 @@ class SerializationTest {
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
-        val multiArray = octaviusConn.types.createArray(1007u, 2, 3)
+        val multiArray = octaviusConn.types.createArray(1007, 2, 3)
 
         // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
@@ -283,7 +283,7 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.types.createArray(1007u, 3) // 23 = int4
+        val arrayVal = octaviusConn.types.createArray(1007, 3) // 23 = int4
         arrayVal.setAll(10, 20, 30)
 
         val arrayParam = serializer.serializeWithOid(arrayVal)
@@ -345,7 +345,7 @@ class SerializationTest {
         val stringVal = "some literal value"
         val rows = octaviusConn.queryExecutor.query(
             "SELECT $1 as res",
-            paramTypes = listOf(705u),
+            paramTypes = listOf(705),
             paramValues = listOf(stringVal.toByteArray()),
             mapper = ResultMapper(octaviusConn.converterRegistry)
         )
@@ -353,3 +353,4 @@ class SerializationTest {
         assertEquals(stringVal, rows.first().get<String>("res"))
     }
 }
+

@@ -11,7 +11,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
 
 class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
         if (!source::class.isData) return false
         val typeRegistry = typeManager.registry
 
@@ -25,7 +25,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         return false
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
         val registration = typeRegistry.registeredComposites[source::class]
 
@@ -70,3 +70,4 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         return PgComposite(type, fields, typeRegistry)
     }
 }
+

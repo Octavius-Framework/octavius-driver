@@ -8,9 +8,9 @@ import io.github.octaviusframework.driver.type.TypeRegistry
 /**
  * Represents a record structure (e.g. ROW(...) without a specific registered composite type) loaded from the database.
  */
-class PgRecord @OptIn(ExperimentalUnsignedTypes::class) internal constructor(
+class PgRecord  internal constructor(
     val type: PgType.Record,
-    val fieldOids: UIntArray,
+    val fieldOids: IntArray,
     val fields: Array<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
@@ -38,7 +38,7 @@ class PgRecord @OptIn(ExperimentalUnsignedTypes::class) internal constructor(
 
 
     fun getAttributeType(index: Int): PgType {
-        @OptIn(ExperimentalUnsignedTypes::class)
+        
         val oid = fieldOids[index]
         return typeRegistry.types[oid]
             ?: throw OctaviusTypeException(
@@ -48,8 +48,10 @@ class PgRecord @OptIn(ExperimentalUnsignedTypes::class) internal constructor(
             )
     }
 
-    fun getAttributeOid(index: Int): UInt {
-        @OptIn(ExperimentalUnsignedTypes::class)
+    fun getAttributeOid(index: Int): Int {
+        
         return fieldOids[index]
     }
 }
+
+

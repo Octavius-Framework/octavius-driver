@@ -10,7 +10,7 @@ import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.container.*
 
-data class SerializedParameter(val oid: UInt, val value: ByteArray?)
+data class SerializedParameter(val oid: Int, val value: ByteArray?)
 
 class ParameterSerializer(
     private val typeManager: TypeManager,
@@ -22,7 +22,7 @@ class ParameterSerializer(
         return serializeWithOid(parameter).value
     }
 
-    fun getOid(parameter: Any?): UInt {
+    fun getOid(parameter: Any?): Int {
         return serializeWithOid(parameter).oid
     }
 
@@ -31,12 +31,12 @@ class ParameterSerializer(
      * Combines OID resolution and value serialization into a single pass to avoid redundant type conversions.
      */
     fun serializeWithOid(parameter: Any?): SerializedParameter {
-        if (parameter == null) return SerializedParameter(0u, null)
+        if (parameter == null) return SerializedParameter(0, null)
 
-        val convertedParameter = parameterMapper.convert(parameter) ?: return SerializedParameter(0u, null)
+        val convertedParameter = parameterMapper.convert(parameter) ?: return SerializedParameter(0, null)
 
         if (convertedParameter is PgTyped) {
-            val paramValue = convertedParameter.value ?: return SerializedParameter(0u, null)
+            val paramValue = convertedParameter.value ?: return SerializedParameter(0, null)
             val (resolvedOid, _) = typeManager.resolveOid(
                 convertedParameter.pgType.name,
                 convertedParameter.pgType.schema,
@@ -68,8 +68,8 @@ class ParameterSerializer(
                 is PgArray -> convertedParameter.arrayOid
                 is PgRange -> convertedParameter.rangeOid
                 is PgMultirange -> convertedParameter.multirangeOid
-                is PgRecord -> 2249u
-                else -> 0u
+                is PgRecord -> 2249
+                else -> 0
             }
             val writer = PgByteWriter()
             ContainerCodec.serializeContainer(convertedParameter, writer, typeRegistry)
@@ -91,8 +91,8 @@ class ParameterSerializer(
      * Serializes the list of parameters and returns two separate lists: OIDs and their binary representations,
      * facilitating direct integration into `QueryExecutor`.
      */
-    fun serializeAll(parameters: List<Any?>): Pair<List<UInt>, List<ByteArray?>> {
-        val oids = ArrayList<UInt>(parameters.size)
+    fun serializeAll(parameters: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
+        val oids = ArrayList<Int>(parameters.size)
         val values = ArrayList<ByteArray?>(parameters.size)
 
         for (param in parameters) {
@@ -104,3 +104,4 @@ class ParameterSerializer(
         return oids to values
     }
 }
+

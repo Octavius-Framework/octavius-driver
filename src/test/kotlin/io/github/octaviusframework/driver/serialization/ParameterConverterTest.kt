@@ -53,7 +53,7 @@ class ParameterConverterTest {
 
         val param = parameterSerializer.serializeWithOid(user)
         
-        assertTrue(param.oid > 0u, "OID should be resolved for the ComplexUser")
+        assertTrue(param.oid > 0, "OID should be resolved for the ComplexUser")
 
         val rows = octaviusConn.queryExecutor.query(
             "SELECT ($1).*",
@@ -92,3 +92,4 @@ class ParameterConverterTest {
         assertEquals("three", returnedArray.get<String>(2))
     }
 }
+

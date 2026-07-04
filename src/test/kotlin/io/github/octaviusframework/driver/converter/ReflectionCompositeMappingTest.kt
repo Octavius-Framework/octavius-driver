@@ -26,8 +26,8 @@ class ReflectionCompositeMappingTest {
 
     private val dummyRegistry = TypeRegistry().apply {
         types = mapOf(
-            1u to PgType.Base(1u, "text", "public"),
-            2u to PgType.Base(2u, "int4", "public")
+            1 to PgType.Base(1, "text", "public"),
+            2 to PgType.Base(2, "int4", "public")
         )
     }
 
@@ -36,15 +36,15 @@ class ReflectionCompositeMappingTest {
         kotlinConvention: CaseConvention
     ): PgType.Composite {
         val type = PgType.Composite(
-            3u, "person_type", "public", LinkedHashMap(
+            3, "person_type", "public", LinkedHashMap(
                 mapOf(
-                    "first_name" to 1u,
-                    "last_name" to 1u,
-                    "age_in_years" to 2u
+                    "first_name" to 1,
+                    "last_name" to 1,
+                    "age_in_years" to 2
                 )
             )
         )
-        dummyRegistry.types = dummyRegistry.types + (3u to type)
+        dummyRegistry.types = dummyRegistry.types + (3 to type)
         dummyRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
         return type
     }
@@ -82,7 +82,7 @@ class ReflectionCompositeMappingTest {
         val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
         val converter = ReflectionCompositeParameterConverter()
         val context = object : SerializationContext {
-            override fun convert(source: Any, expectedOid: UInt?): Any? = source
+            override fun convert(source: Any, expectedOid: Int?): Any? = source
         }
 
         val person = Person("Jane", "Smith", 28)
@@ -99,3 +99,4 @@ class ReflectionCompositeMappingTest {
         assertEquals(28, serialized.get(2))
     }
 }
+

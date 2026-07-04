@@ -34,7 +34,8 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
         return this as T
     }
 
-    protected fun serializeParameters(params: List<Any?>): Pair<List<UInt>, List<ByteArray?>> {
+    protected fun serializeParameters(params: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
         return parameterSerializer.serializeAll(params)
     }
 }
+

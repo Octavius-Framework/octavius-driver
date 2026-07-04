@@ -7,10 +7,10 @@ import io.github.octaviusframework.driver.type.TypeRegistry
 import kotlin.reflect.KClass
 
 internal class DynamicDomainCodec<T : Any>(
-    override val oid: UInt,
+    override val oid: Int,
     override val pgTypeName: String,
     override val pgSchema: String,
-    private val baseTypeOid: UInt,
+    private val baseTypeOid: Int,
     private val typeRegistry: TypeRegistry
 ) : TypeCodec<T> {
 
@@ -30,3 +30,4 @@ internal class DynamicDomainCodec<T : Any>(
     override val toBinary: (T) -> ByteArray
         get() = delegate.toBinary
 }
+

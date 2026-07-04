@@ -4,17 +4,17 @@ import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getIntBE
-import io.github.octaviusframework.driver.io.getUIntBE
+import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
 import io.github.octaviusframework.driver.type.container.*
 
-@ExperimentalUnsignedTypes
+
 internal object ContainerCodec {
 
     // PARSERS
 
-    private fun parseField(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): Any {
+    private fun parseField(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): Any {
         if (isContainerType(oid, typeRegistry)) {
             return parseContainer(data, offset, length, oid, typeRegistry)
         }
@@ -27,12 +27,12 @@ internal object ContainerCodec {
         return codec.fromBinary(data, offset, length)
     }
 
-    fun isContainerType(oid: UInt, typeRegistry: TypeRegistry): Boolean {
+    fun isContainerType(oid: Int, typeRegistry: TypeRegistry): Boolean {
         val pgType = typeRegistry.types[oid] ?: return false
         return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange || pgType is PgType.Record
     }
 
-    fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): PgContainer {
+    fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.types[oid]) {
             is PgType.Array -> parsePgArray(data, offset, length, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(data, offset, length, pgType.oid, typeRegistry)
@@ -47,7 +47,7 @@ internal object ContainerCodec {
         }
     }
 
-    fun parsePgArray(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): PgArray {
+    fun parsePgArray(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgArray {
         var localOffset = offset
         if (length < 12) throw OctaviusTypeException(
             TypeExceptionMessage.NOT_ENOUGH_DATA,
@@ -56,7 +56,7 @@ internal object ContainerCodec {
 
         val ndims = data.getIntBE(localOffset); localOffset += 4
         localOffset += 4 // hasNullsInt ignored
-        val elementOid = data.getUIntBE(localOffset); localOffset += 4
+        val elementOid = data.getIntBE(localOffset); localOffset += 4
 
         val dimensions = mutableListOf<ArrayDimension>()
         for (i in 0 until ndims) {
@@ -83,7 +83,7 @@ internal object ContainerCodec {
         return PgArray(oid, elementOid, dimensions, elements, typeRegistry)
     }
 
-    fun parsePgComposite(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): PgComposite {
+    fun parsePgComposite(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.types[oid] as? PgType.Composite
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -96,7 +96,7 @@ internal object ContainerCodec {
 
         val fields = Array<Any?>(numFields) { null }
         for (i in 0 until numFields) {
-            val fieldOid = data.getUIntBE(localOffset); localOffset += 4
+            val fieldOid = data.getIntBE(localOffset); localOffset += 4
             val len = data.getIntBE(localOffset); localOffset += 4
             if (len != -1) {
                 fields[i] = parseField(data, localOffset, len, fieldOid, typeRegistry)
@@ -107,7 +107,7 @@ internal object ContainerCodec {
         return PgComposite(pgType, fields, typeRegistry)
     }
 
-    fun parsePgRecord(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): PgRecord {
+    fun parsePgRecord(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
         val pgType = typeRegistry.types[oid] as? PgType.Record
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -119,10 +119,10 @@ internal object ContainerCodec {
         val numFields = data.getIntBE(localOffset); localOffset += 4
 
         val fields = Array<Any?>(numFields) { null }
-        val fieldOids = UIntArray(numFields) { 0u }
+        val fieldOids = IntArray(numFields) { 0 }
 
         for (i in 0 until numFields) {
-            val fieldOid = data.getUIntBE(localOffset); localOffset += 4
+            val fieldOid = data.getIntBE(localOffset); localOffset += 4
             val len = data.getIntBE(localOffset); localOffset += 4
             fieldOids[i] = fieldOid
             if (len == -1) {
@@ -136,7 +136,7 @@ internal object ContainerCodec {
         return PgRecord(pgType, fieldOids, fields, typeRegistry)
     }
 
-    fun parsePgRange(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): PgRange {
+    fun parsePgRange(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -170,7 +170,7 @@ internal object ContainerCodec {
         return PgRange(oid, pgType.subtypeOid, flags, lowerBound, upperBound, typeRegistry)
     }
 
-    fun parsePgMultirange(data: ByteArray, offset: Int, length: Int, oid: UInt, typeRegistry: TypeRegistry): PgMultirange {
+    fun parsePgMultirange(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.types[oid] as? PgType.Multirange
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -210,7 +210,7 @@ internal object ContainerCodec {
 
     private fun writeField(
         value: Any?,
-        expectedOid: UInt,
+        expectedOid: Int,
         writer: PgByteWriter,
         typeRegistry: TypeRegistry
     ) {
@@ -257,7 +257,7 @@ internal object ContainerCodec {
 
         writer.writeInt(array.dimensions.size)
         writer.writeInt(if (hasNulls) 1 else 0)
-        writer.writeUInt(array.elementOid)
+        writer.writeInt(array.elementOid)
 
         for (dim in array.dimensions) {
             writer.writeInt(dim.size)
@@ -273,7 +273,7 @@ internal object ContainerCodec {
         writer.writeInt(composite.fields.size)
         val attributeOids = composite.type.attributes.values.toList()
         for (i in composite.fields.indices) {
-            writer.writeUInt(attributeOids[i])
+            writer.writeInt(attributeOids[i])
             writeField(composite.fields[i], attributeOids[i], writer, typeRegistry)
         }
     }
@@ -281,7 +281,7 @@ internal object ContainerCodec {
     fun serializePgRecord() {
         throw OctaviusTypeException(
             TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED,
-            oid = 2249u,
+            oid = 2249,
             details = "Postgres cannot accept 'record' type directly as a bound parameter. Use a registered composite type instead."
         )
     }
@@ -308,3 +308,5 @@ internal object ContainerCodec {
         }
     }
 }
+
+

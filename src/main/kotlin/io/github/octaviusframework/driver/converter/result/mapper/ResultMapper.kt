@@ -5,10 +5,10 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 class ResultMapper(
-    private val registry: ResultConverterRegistry
+    registry: ResultConverterRegistry
 ) {
+    internal val context = DefaultDeserializationContext(registry)
     fun <T> deserialize(source: Any?, expectedType: KType, sourceType: PgType): T {
-        val context = DefaultDeserializationContext(registry)
         return context.convert(source, expectedType, sourceType)
     }
 }

@@ -38,11 +38,7 @@ class ReflectionRowConverter : ResultConverter<Any> {
             val param = meta.parameter
             val columnName = meta.keyName
             
-            val index = try {
-                row.getColumnIndex(columnName)
-            } catch (e: Exception) {
-                -1
-            }
+            val index = row.columnNames.indexOf(columnName)
 
             if (index != -1) {
                 val rawValue = row.getRaw(index)

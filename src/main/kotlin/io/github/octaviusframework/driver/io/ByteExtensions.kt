@@ -32,10 +32,6 @@ fun ByteArray.getDoubleBE(offset: Int = 0): Double {
     return Double.fromBits(this.getLongBE(offset))
 }
 
-fun ByteArray.getUIntBE(offset: Int = 0): UInt {
-    return this.getIntBE(offset).toUInt()
-}
-
 // set in ByteArray
 fun ByteArray.setShortBE(offset: Int, value: Short) {
     this[offset] = (value.toInt() ushr 8).toByte()
@@ -79,3 +75,4 @@ fun Float.toByteArrayBE(): ByteArray {
 fun Double.toByteArrayBE(): ByteArray {
     return this.toBits().toByteArrayBE()
 }
+

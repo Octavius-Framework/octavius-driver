@@ -54,13 +54,13 @@ class JsonElementIntegrationTest {
     }
 
     class MetadataHolderParameterConverter : ParameterConverter<MetadataHolder> {
-        override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+        override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
             return source is MetadataHolder
         }
 
         override fun convert(
             source: Any,
-            expectedOid: UInt?,
+            expectedOid: Int?,
             context: SerializationContext,
             typeManager: TypeManager
         ): Any {
@@ -199,3 +199,4 @@ class JsonElementIntegrationTest {
         }
     }
 }
+

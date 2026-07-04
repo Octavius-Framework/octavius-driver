@@ -31,10 +31,6 @@ internal class PgByteWriter(initialCapacity: Int = 1024) {
         data[position++] = i.toByte()
     }
 
-    fun writeUInt(u: UInt) {
-        writeInt(u.toInt())
-    }
-
     fun writeBytes(bytes: ByteArray) {
         ensureCapacity(bytes.size)
         bytes.copyInto(data, position)

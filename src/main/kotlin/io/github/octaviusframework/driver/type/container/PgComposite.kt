@@ -78,11 +78,12 @@ class PgComposite(
         return getAttributeType(getColumnIndex(name))
     }
 
-    fun getAttributeOid(index: Int): UInt {
+    fun getAttributeOid(index: Int): Int {
         return type.attributeOids[index]
     }
 
-    fun getAttributeOid(name: String): UInt {
+    fun getAttributeOid(name: String): Int {
         return getAttributeOid(getColumnIndex(name))
     }
 }
+

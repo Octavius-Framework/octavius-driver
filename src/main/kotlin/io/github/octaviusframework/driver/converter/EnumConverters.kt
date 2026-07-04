@@ -18,11 +18,11 @@ class EnumParameterConverter<T : Enum<T>>(
         CaseConverter.convert(it.name, kotlinConvention, pgConvention)
     }
 
-    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
         return source::class == enumClass
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         return enumToPg[source]
     }
 }
@@ -48,3 +48,4 @@ class EnumResultConverter<T : Enum<T>>(
             ?: throw IllegalArgumentException("Unknown enum value: $strSource for enum ${enumClass.simpleName}")
     }
 }
+

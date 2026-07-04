@@ -36,11 +36,11 @@ class ManualCompositeIntegrationTest {
     }
 
     class PaymentInfoParameterConverter : ParameterConverter<PaymentInfo> {
-        override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+        override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
             return source is PaymentInfo
         }
 
-        override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any {
+        override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
             val payment = source as PaymentInfo
             
             // Tworzenie kompozytu jest znacznie czystsze z użyciem TypeManager
@@ -119,3 +119,4 @@ class ManualCompositeIntegrationTest {
         }
     }
 }
+

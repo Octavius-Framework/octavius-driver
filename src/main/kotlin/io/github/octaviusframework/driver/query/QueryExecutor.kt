@@ -52,7 +52,7 @@ class QueryExecutor(
      * Intended for DML (INSERT, UPDATE, DELETE). Expects no rows returned.
      * Returns the number of updated rows.
      */
-    fun update(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long {
+    fun update(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long {
         val statementName = ""
         val portalName = ""
         
@@ -104,7 +104,7 @@ class QueryExecutor(
      * Intended for DQL (SELECT).
      * Returns a parsed list of rows (Row) immediately.
      */
-    fun query(sql: String, paramTypes: List<UInt> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> {
+    fun query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> {
         val statementName = ""
         val portalName = ""
         
@@ -152,3 +152,4 @@ class QueryExecutor(
         return rows
     }
 }
+

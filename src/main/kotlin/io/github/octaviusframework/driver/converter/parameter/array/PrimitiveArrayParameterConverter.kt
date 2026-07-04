@@ -12,12 +12,12 @@ import io.github.octaviusframework.driver.type.container.PgArray
 import io.github.octaviusframework.driver.type.container.PgContainer
 
 class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
         if (source is ByteArray) return false
         return source.javaClass.isArray && source.javaClass.componentType?.isPrimitive == true
     }
 
-    override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
 
         val list = when (source) {
@@ -54,9 +54,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
 
         val elementOid = arrayType.elementOid
         val convertedElements = list.map { element ->
-            if (element != null) {
-                context.convert(element, elementOid)
-            } else null
+            context.convert(element, elementOid)
         }
 
         return PgArray(
@@ -68,3 +66,4 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
         )
     }
 }
+

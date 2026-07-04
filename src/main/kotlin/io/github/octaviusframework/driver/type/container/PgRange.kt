@@ -8,8 +8,8 @@ import io.github.octaviusframework.driver.type.TypeRegistry
  * Reprezentuje zakres w bazie PostgreSQL (np. int4range, tsrange).
  */
 class PgRange internal constructor(
-    val rangeOid: UInt,
-    val elementOid: UInt,
+    val rangeOid: Int,
+    val elementOid: Int,
     val flags: Byte,
     val lowerBound: Any?,
     val upperBound: Any?,
@@ -60,7 +60,7 @@ class PgRange internal constructor(
     }
 
     companion object {
-        fun empty(rangeOid: UInt, elementOid: UInt, typeRegistry: TypeRegistry): PgRange {
+        fun empty(rangeOid: Int, elementOid: Int, typeRegistry: TypeRegistry): PgRange {
             return PgRange(
                 rangeOid = rangeOid,
                 elementOid = elementOid,
@@ -72,8 +72,8 @@ class PgRange internal constructor(
         }
 
         fun create(
-            rangeOid: UInt,
-            elementOid: UInt,
+            rangeOid: Int,
+            elementOid: Int,
             lowerBound: Any? = null,
             upperBound: Any? = null,
             isLowerInclusive: Boolean = true,
@@ -105,3 +105,4 @@ class PgRange internal constructor(
         }
     }
 }
+

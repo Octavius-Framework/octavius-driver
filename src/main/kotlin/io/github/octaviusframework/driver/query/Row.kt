@@ -19,7 +19,7 @@ interface Row {
     fun getColumnIndex(columnName: String): Int
 
     fun getRaw(index: Int): Any?
-    fun getOid(index: Int): UInt
+    fun getOid(index: Int): Int
 }
 
 inline fun <reified T> Row.get(index: Int): T {
@@ -34,9 +34,7 @@ inline fun <reified T> Row.get(columnName: String): T {
 }
 
 inline fun <reified T> Row.getEntireRowAs(): T {
-    val recordType = typeRegistry.types.values.firstOrNull { it is PgType.Record }
-        ?: PgType.Record(2249u, "record", "pg_catalog")
-    return resultMapper.deserialize(this, typeOf<T>(), recordType)
+    return resultMapper.deserialize(this, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
 }
 
 class OctaviusRow(
@@ -84,7 +82,7 @@ class OctaviusRow(
         return values[index]
     }
 
-    override fun getOid(index: Int): UInt {
+    override fun getOid(index: Int): Int {
         if (index !in descriptors.indices) throw IllegalArgumentException("Column index out of bounds: $index")
         return descriptors[index].dataTypeOid
     }
