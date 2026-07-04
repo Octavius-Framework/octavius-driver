@@ -7,11 +7,10 @@ import io.github.octaviusframework.driver.type.containter.PgRange
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import io.github.octaviusframework.driver.type.withPgType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class EverythingIntegrationTest {

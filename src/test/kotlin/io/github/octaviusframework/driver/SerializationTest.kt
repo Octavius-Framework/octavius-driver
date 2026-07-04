@@ -279,7 +279,8 @@ class SerializationTest {
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val typeManager = TypeManager(typeRegistry)
-        val serializer = ParameterSerializer(typeManager, typeRegistry.parameterConverterRegistry)
+        val parameterMapper = io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper(typeRegistry.parameterConverterRegistry, typeManager)
+        val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         // 1. Integer Round Trip
         val intVal = 424242
@@ -354,7 +355,8 @@ class SerializationTest {
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val typeManager = TypeManager(typeRegistry)
-        val serializer = ParameterSerializer(typeManager, typeRegistry.parameterConverterRegistry)
+        val parameterMapper = io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper(typeRegistry.parameterConverterRegistry, typeManager)
+        val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         val recordMap = mapOf(
             "str_key" to "hello",

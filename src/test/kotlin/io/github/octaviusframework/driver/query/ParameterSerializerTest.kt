@@ -7,6 +7,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 
 class ParameterSerializerTest {
 
@@ -14,7 +15,8 @@ class ParameterSerializerTest {
     fun testBasicRoundTrip() {
         val registry = TypeRegistry()
         val typeManager = TypeManager(registry)
-        val serializer = ParameterSerializer(typeManager, registry.parameterConverterRegistry)
+        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         // Test for Null
         val nullBytes = serializer.serialize(null)
@@ -57,7 +59,8 @@ class ParameterSerializerTest {
     fun testByteArrayRoundTrip() {
         val registry = TypeRegistry()
         val typeManager = TypeManager(registry)
-        val serializer = ParameterSerializer(typeManager, registry.parameterConverterRegistry)
+        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         val byteArrayVal = byteArrayOf(0x01, 0x02, 0x03, 0xFF.toByte())
         val bytes = serializer.serialize(byteArrayVal)

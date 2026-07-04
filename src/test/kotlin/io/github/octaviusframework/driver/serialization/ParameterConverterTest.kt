@@ -42,7 +42,8 @@ class ParameterConverterTest {
         
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeManager = TypeManager(dummyRow.typeRegistry)
-        parameterSerializer = ParameterSerializer(typeManager, dummyRow.typeRegistry.parameterConverterRegistry)
+        val parameterMapper = io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper(dummyRow.typeRegistry.parameterConverterRegistry, typeManager)
+        parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
     }
 
     @Test

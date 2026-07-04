@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
@@ -20,7 +21,8 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
     val resultConverterRegistry = ResultConverterRegistry(parent = typeRegistry.converterRegistry)
     val parameterConverterRegistry = ParameterConverterRegistry(parent = typeRegistry.parameterConverterRegistry)
     protected val localDeserializer = ResultMapper(resultConverterRegistry)
-    protected val parameterSerializer = ParameterSerializer(typeManager, parameterConverterRegistry)
+    protected val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
+    protected val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
 
     fun registerResultConverter(converter: ResultConverter<*>): T {
         resultConverterRegistry.addConverter(converter)

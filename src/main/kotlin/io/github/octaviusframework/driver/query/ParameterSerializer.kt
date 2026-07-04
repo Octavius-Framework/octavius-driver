@@ -5,8 +5,7 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
-import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.*
@@ -15,27 +14,36 @@ data class SerializedParameter(val oid: UInt, val value: ByteArray?)
 
 class ParameterSerializer(
     private val typeManager: TypeManager,
-    private val parameterConverterRegistry: ParameterConverterRegistry
+    private val parameterMapper: ParameterMapper
 ) {
     private val typeRegistry = typeManager.registry
 
-    private val context = object : SerializationContext {
-        override fun convert(source: Any, expectedOid: UInt?): Any? {
-            return parameterConverterRegistry.convert(source, expectedOid, this, typeManager)
-        }
+    fun serialize(parameter: Any?): ByteArray? {
+        return serializeWithOid(parameter).value
     }
 
+    fun getOid(parameter: Any?): UInt {
+        return serializeWithOid(parameter).oid
+    }
 
-    fun serialize(parameter: Any?): ByteArray? {
-        if (parameter == null) {
-            return null
-        }
+    /**
+     * Returns a complete object representing the parameter with all information for the QueryExecutor.
+     * Combines OID resolution and value serialization into a single pass to avoid redundant type conversions.
+     */
+    fun serializeWithOid(parameter: Any?): SerializedParameter {
+        if (parameter == null) return SerializedParameter(0u, null)
 
-        if (parameter is PgTyped) {
-            val paramValue = parameter.value ?: return null
-            val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
+        val convertedParameter = parameterMapper.convert(parameter) ?: return SerializedParameter(0u, null)
+
+        if (convertedParameter is PgTyped) {
+            val paramValue = convertedParameter.value ?: return SerializedParameter(0u, null)
+            val (resolvedOid, _) = typeManager.resolveOid(
+                convertedParameter.pgType.name,
+                convertedParameter.pgType.schema,
+                convertedParameter.pgType.isArray
+            )
             
-            val convertedValue = parameterConverterRegistry.convert(paramValue, resolvedOid, context, typeManager) ?: return null
+            val convertedValue = parameterMapper.convert(paramValue, resolvedOid) ?: return SerializedParameter(resolvedOid, null)
             
             val codec = typeRegistry.getCodecByOid<Any>(resolvedOid)
             if (codec != null) {
@@ -46,54 +54,16 @@ class ParameterSerializer(
                         details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using codec for ${codec.kotlinClass.qualifiedName}"
                     )
                 }
-                return codec.toBinary(convertedValue)
+                return SerializedParameter(resolvedOid, codec.toBinary(convertedValue))
             }
             
             // Fallback for containers or missing OID codecs
-            return serialize(convertedValue)
-        }
-
-        val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeManager) ?: return null
-
-        if (convertedParameter is PgTyped) {
-            return serialize(convertedParameter)
+            val fallback = serializeWithOid(convertedValue)
+            return SerializedParameter(resolvedOid, fallback.value)
         }
 
         if (convertedParameter is PgContainer) {
-            val writer = PgByteWriter()
-            ContainerCodec.serializeContainer(convertedParameter, writer, typeRegistry)
-            return writer.toByteArray()
-        }
-
-        val codec = typeRegistry.getCodecByClass(convertedParameter::class)
-            ?: throw OctaviusTypeException(
-                TypeExceptionMessage.MISSING_CODEC,
-                details = "Nie znaleziono serializatora dla typu: ${convertedParameter::class.qualifiedName}"
-            )
-
-        @Suppress("UNCHECKED_CAST")
-        val anyCodec = codec as TypeCodec<Any>
-        return anyCodec.toBinary(convertedParameter)
-    }
-
-    fun getOid(parameter: Any?): UInt {
-        if (parameter == null) return 0u // Unspecified type
-
-        if (parameter is PgTyped) {
-            val (resolvedOid, _) = typeRegistry.resolveOid(parameter.pgType.name, parameter.pgType.schema, emptyList(), parameter.pgType.isArray)
-            return resolvedOid
-        }
-
-
-
-        val convertedParameter = parameterConverterRegistry.convert(parameter, null, context, typeManager) ?: return 0u
-
-        if (convertedParameter is PgTyped) {
-            return getOid(convertedParameter)
-        }
-
-        if (convertedParameter is PgContainer) {
-            return when (convertedParameter) {
+            val oid = when (convertedParameter) {
                 is PgComposite -> convertedParameter.type.oid
                 is PgArray -> convertedParameter.arrayOid
                 is PgRange -> convertedParameter.rangeOid
@@ -101,22 +71,20 @@ class ParameterSerializer(
                 is PgRecord -> 2249u
                 else -> 0u
             }
+            val writer = PgByteWriter()
+            ContainerCodec.serializeContainer(convertedParameter, writer, typeRegistry)
+            return SerializedParameter(oid, writer.toByteArray())
         }
 
         val codec = typeRegistry.getCodecByClass(convertedParameter::class)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_CODEC,
-                details = "Nie znaleziono handlera dla typu: ${convertedParameter::class.qualifiedName}"
+                details = "Nie znaleziono serializatora (codecu) dla typu: ${convertedParameter::class.qualifiedName}"
             )
 
-        return codec.oid!!
-    }
-
-    /**
-     * Returns a complete object representing the parameter with all information for the QueryExecutor.
-     */
-    fun serializeWithOid(parameter: Any?): SerializedParameter {
-        return SerializedParameter(getOid(parameter), serialize(parameter))
+        @Suppress("UNCHECKED_CAST")
+        val anyCodec = codec as TypeCodec<Any>
+        return SerializedParameter(codec.oid!!, anyCodec.toBinary(convertedParameter))
     }
 
     /**
@@ -124,8 +92,7 @@ class ParameterSerializer(
      * facilitating direct integration into `QueryExecutor.query(...)`.
      */
     fun serializeAll(parameters: List<Any?>): Pair<List<UInt>, List<ByteArray?>> {
-        val oids = parameters.map { getOid(it) }
-        val values = parameters.map { serialize(it) }
-        return oids to values
+        val serializedParams = parameters.map { serializeWithOid(it) }
+        return serializedParams.map { it.oid } to serializedParams.map { it.value }
     }
 }

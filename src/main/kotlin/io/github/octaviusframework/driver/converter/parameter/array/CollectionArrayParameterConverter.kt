@@ -75,7 +75,11 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             if (firstNonNull != null) {
                 val converted = context.convert(firstNonNull, null)
                 val elementOid = if (converted is PgTyped) {
-                    typeRegistry.resolveOid(converted.pgType.name, converted.pgType.schema, emptyList(), converted.pgType.isArray).first
+                    typeManager.resolveOid(
+                        converted.pgType.name,
+                        converted.pgType.schema,
+                        converted.pgType.isArray
+                    ).first
                 } else if (converted != null) {
                     typeRegistry.getCodecByClass(converted::class)?.oid
                 } else null

@@ -142,7 +142,7 @@ class TypeRegistry {
             newOidMap[codec.oid!!] = codec
         } else {
             if (types.isNotEmpty()) {
-                val (resolvedOid, resolvedQName) = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath)
+                val (resolvedOid, resolvedQName) = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = searchPath)
                 newOidMap[resolvedOid] = codec
                 newNameMap[resolvedQName] = codec
             }
@@ -175,7 +175,7 @@ class TypeRegistry {
                 val (resolvedOid, resolvedQName) = resolveOid(
                     name.name,
                     name.schema,
-                    searchPath,
+                    searchPath = searchPath,
                     sourceTypes = newTypes
                 )
                 newOidMap[resolvedOid] = codec
@@ -204,8 +204,8 @@ class TypeRegistry {
     fun resolveOid(
         typeName: String,
         requestedSchema: String,
-        searchPath: List<String>,
         isArray: Boolean = false,
+        searchPath: List<String>,
         sourceTypes: Map<UInt, PgType> = types
     ): Pair<UInt, QualifiedName> {
         // Find matching types by name
