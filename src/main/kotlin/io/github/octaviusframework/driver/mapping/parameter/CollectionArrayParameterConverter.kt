@@ -11,16 +11,59 @@ import io.github.octaviusframework.driver.type.containter.PgContainer
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: UInt?, typeManager: TypeManager): Boolean {
-        return source is Collection<*> || source is Array<*>
+        if (source is ByteArray) return false
+        return source is Collection<*> || source is Array<*> || source::class.java.isArray
+    }
+
+    private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, List<Any?>> {
+        val dimensions = mutableListOf<Int>()
+        var current: Any? = source
+        while (current is Collection<*> || (current != null && current::class.java.isArray && current !is ByteArray)) {
+            val list = when (current) {
+                is Collection<*> -> current.toList()
+                is Array<*> -> current.toList()
+                is IntArray -> current.toList()
+                is DoubleArray -> current.toList()
+                is FloatArray -> current.toList()
+                is LongArray -> current.toList()
+                is ShortArray -> current.toList()
+                is BooleanArray -> current.toList()
+                is CharArray -> current.toList()
+                else -> break
+            }
+            dimensions.add(list.size)
+            current = list.firstOrNull()
+        }
+
+        val arrayDimensions = dimensions.map { ArrayDimension(it, 1) }
+        val flatList = flatten(source)
+
+        val expectedSize = dimensions.fold(1) { acc, i -> acc * i }
+        if (dimensions.isNotEmpty() && dimensions.first() > 0 && flatList.size != expectedSize) {
+            throw IllegalArgumentException("Multidimensional arrays must be rectangular")
+        }
+
+        return arrayDimensions to flatList
+    }
+
+    private fun flatten(source: Any?): List<Any?> {
+        when (source) {
+            is Collection<*> -> return source.flatMap { flatten(it) }
+            is Array<*> -> return source.flatMap { flatten(it) }
+            is IntArray -> return source.flatMap { flatten(it) }
+            is DoubleArray -> return source.flatMap { flatten(it) }
+            is FloatArray -> return source.flatMap { flatten(it) }
+            is LongArray -> return source.flatMap { flatten(it) }
+            is ShortArray -> return source.flatMap { flatten(it) }
+            is BooleanArray -> return source.flatMap { flatten(it) }
+            is CharArray -> return source.flatMap { flatten(it) }
+            else -> return listOf(source)
+        }
     }
 
     override fun convert(source: Any, expectedOid: UInt?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
-        val list = when (source) {
-            is Collection<*> -> source.toList()
-            is Array<*> -> source.toList()
-            else -> return source
-        }
+        val (dimensions, list) = getDimensionsAndFlatten(source)
 
         val arrayType = if (expectedOid != null) {
             typeRegistry.types[expectedOid] as? PgType.Array
@@ -49,7 +92,6 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         }
 
         val elementOid = arrayType.elementOid
-        val dimensions = listOf(ArrayDimension(list.size, 1))
         
         // Convert elements recursively
         val convertedElements = list.map { element ->
