@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.type.TypeRegistry
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -27,7 +26,7 @@ class ParameterSerializerTest {
         val intBytes = serializer.serialize(intVal)
         assertNotNull(intBytes)
         val intHandler = registry.getCodecByClass(Int::class)!!
-        val parsedInt = intHandler.fromBinary(ByteArrayWindow(intBytes, 0, intBytes.size))
+        val parsedInt = intHandler.fromBinary(intBytes, 0, intBytes.size)
         assertEquals(intVal, parsedInt, "Integer roundtrip should match original value")
 
         // Test for String
@@ -35,7 +34,7 @@ class ParameterSerializerTest {
         val stringBytes = serializer.serialize(stringVal)
         assertNotNull(stringBytes)
         val stringHandler = registry.getCodecByClass(String::class)!!
-        val parsedString = stringHandler.fromBinary(ByteArrayWindow(stringBytes, 0, stringBytes.size))
+        val parsedString = stringHandler.fromBinary(stringBytes, 0, stringBytes.size)
         assertEquals(stringVal, parsedString, "String roundtrip should match original value")
 
         // Test for Boolean
@@ -43,7 +42,7 @@ class ParameterSerializerTest {
         val boolBytes = serializer.serialize(boolVal)
         assertNotNull(boolBytes)
         val boolHandler = registry.getCodecByClass(Boolean::class)!!
-        val parsedBool = boolHandler.fromBinary(ByteArrayWindow(boolBytes, 0, boolBytes.size))
+        val parsedBool = boolHandler.fromBinary(boolBytes, 0, boolBytes.size)
         assertEquals(boolVal, parsedBool, "Boolean roundtrip should match original value")
 
         // Test for Double
@@ -51,7 +50,7 @@ class ParameterSerializerTest {
         val doubleBytes = serializer.serialize(doubleVal)
         assertNotNull(doubleBytes)
         val doubleHandler = registry.getCodecByClass(Double::class)!!
-        val parsedDouble = doubleHandler.fromBinary(ByteArrayWindow(doubleBytes, 0, doubleBytes.size))
+        val parsedDouble = doubleHandler.fromBinary(doubleBytes, 0, doubleBytes.size)
         assertEquals(doubleVal, parsedDouble, "Double roundtrip should match original value")
     }
 
@@ -66,7 +65,7 @@ class ParameterSerializerTest {
         val bytes = serializer.serialize(byteArrayVal)
         assertNotNull(bytes)
         val handler = registry.getCodecByClass(ByteArray::class)!!
-        val parsedByteArray = handler.fromBinary(ByteArrayWindow(bytes, 0, bytes.size))
+        val parsedByteArray = handler.fromBinary(bytes, 0, bytes.size)
         
         assertEquals(byteArrayVal.toList(), parsedByteArray.toList(), "ByteArray roundtrip should match original value")
     }

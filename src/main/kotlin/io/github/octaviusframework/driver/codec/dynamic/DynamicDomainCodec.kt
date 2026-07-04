@@ -3,7 +3,6 @@ package io.github.octaviusframework.driver.codec.dynamic
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.type.TypeRegistry
 import kotlin.reflect.KClass
 
@@ -17,7 +16,7 @@ internal class DynamicDomainCodec<T : Any>(
 
     @Suppress("UNCHECKED_CAST")
     private val delegate: TypeCodec<T>
-        get() = typeRegistry.getCodecByOid<T>(baseTypeOid)
+        get() = typeRegistry.getCodecByOid(baseTypeOid)
             ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = baseTypeOid, details = "Nie znaleziono serializatora dla bazowego typu domeny o OID $baseTypeOid")
 
     override val kotlinClass: KClass<T>
@@ -25,7 +24,7 @@ internal class DynamicDomainCodec<T : Any>(
 
     override val isDefaultForKotlinType = false
 
-    override val fromBinary: (ByteArrayWindow) -> T
+    override val fromBinary: (ByteArray, Int, Int) -> T
         get() = delegate.fromBinary
 
     override val toBinary: (T) -> ByteArray

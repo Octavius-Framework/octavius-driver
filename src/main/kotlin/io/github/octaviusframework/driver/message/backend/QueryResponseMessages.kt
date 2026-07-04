@@ -1,7 +1,5 @@
 package io.github.octaviusframework.driver.message.backend
 
-import io.github.octaviusframework.driver.io.ByteArrayWindow
-
 internal object ParseCompleteMessage : BackendMessage {
     override fun toString(): String = "ParseComplete"
 }
@@ -36,6 +34,10 @@ class RowDescriptionMessage(val fields: List<FieldDescription>) : BackendMessage
     )
 }
 
-class DataRowMessage(val columns: List<ByteArrayWindow?>) : BackendMessage {
-    override fun toString(): String = "DataRow(columns=${columns.size})"
+class DataRowMessage(
+    val rawData: ByteArray,
+    val columnOffsets: IntArray,
+    val columnLengths: IntArray
+) : BackendMessage {
+    override fun toString(): String = "DataRow(columns=${columnOffsets.size})"
 }

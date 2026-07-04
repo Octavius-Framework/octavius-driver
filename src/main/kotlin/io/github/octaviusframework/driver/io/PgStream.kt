@@ -127,21 +127,22 @@ class PgStream(val host: String, val port: Int) : AutoCloseable {
                 'D' -> {
                     val numColumns = inputStream.readShort().toInt()
                     val rawRowData = inputStream.readBytes(payloadLength - 2)
-                    val rowWindow = ByteArrayWindow(rawRowData, 0, rawRowData.size)
 
-                    val columns = mutableListOf<ByteArrayWindow?>()
+                    val columnOffsets = IntArray(numColumns)
+                    val columnLengths = IntArray(numColumns)
                     var offset = 0
                     for (i in 0 until numColumns) {
-                        val colLength = rowWindow.getIntBE(offset)
+                        val colLength = rawRowData.getIntBE(offset)
                         offset += 4
+                        columnLengths[i] = colLength
                         if (colLength == -1) {
-                            columns.add(null)
+                            columnOffsets[i] = -1
                         } else {
-                            columns.add(rowWindow.slice(offset, colLength))
+                            columnOffsets[i] = offset
                             offset += colLength
                         }
                     }
-                    return DataRowMessage(columns)
+                    return DataRowMessage(rawRowData, columnOffsets, columnLengths)
                 }
                 else -> {
                     val unparsed = inputStream.readBytes(payloadLength)

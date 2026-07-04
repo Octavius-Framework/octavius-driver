@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
-import io.github.octaviusframework.driver.io.ByteArrayWindow
 
 internal object StringCodec : TypeCodec<String> {
     override val pgTypeName = "text"
@@ -9,7 +8,7 @@ internal object StringCodec : TypeCodec<String> {
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = true
 
-    override val fromBinary: (ByteArrayWindow) -> String = { String(it.data, it.offset, it.length, Charsets.UTF_8) }
+    override val fromBinary: (ByteArray, Int, Int) -> String = { data, offset, length -> String(data, offset, length, Charsets.UTF_8) }
     override val toBinary: (String) -> ByteArray = { it.toByteArray(Charsets.UTF_8) }
 }
 
@@ -55,10 +54,10 @@ internal object JsonbCodec : TypeCodec<String> {
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = false
 
-    override val fromBinary: (ByteArrayWindow) -> String = {
-        val version = it.data[it.offset]
+    override val fromBinary: (ByteArray, Int, Int) -> String = { data, offset, length ->
+        val version = data[offset]
         if (version == 1.toByte()) {
-            String(it.data, it.offset + 1, it.length - 1, Charsets.UTF_8)
+            String(data, offset + 1, length - 1, Charsets.UTF_8)
         } else {
             error("Unsupported jsonb version byte: $version")
         }
@@ -79,8 +78,8 @@ internal object JsonCodec : TypeCodec<String> {
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = false
 
-    override val fromBinary: (ByteArrayWindow) -> String = {
-        String(it.data, it.offset, it.length, Charsets.UTF_8)
+    override val fromBinary: (ByteArray, Int, Int) -> String = { data, offset, length ->
+        String(data, offset, length, Charsets.UTF_8)
     }
 
     override val toBinary: (String) -> ByteArray = {

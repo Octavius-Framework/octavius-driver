@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.codec
 
-import io.github.octaviusframework.driver.io.ByteArrayWindow
 import kotlin.reflect.KClass
 
 interface TypeCodec<T : Any> {
@@ -10,6 +9,6 @@ interface TypeCodec<T : Any> {
     val kotlinClass: KClass<T>
     val isDefaultForKotlinType: Boolean get() = false
 
-    val fromBinary: (ByteArrayWindow) -> T
+    val fromBinary: (ByteArray, Int, Int) -> T
     val toBinary: (T) -> ByteArray
 }

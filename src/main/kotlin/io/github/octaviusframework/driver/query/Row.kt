@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.io.ByteArrayWindow
+// Removed ByteArrayWindow import
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.message.backend.RowDescriptionMessage
 import io.github.octaviusframework.driver.type.PgType
@@ -40,22 +40,26 @@ inline fun <reified T> Row.getEntireRowAs(): T {
 }
 
 class OctaviusRow(
-    columns: List<ByteArrayWindow?>,
+    val rawData: ByteArray,
+    val columnOffsets: IntArray,
+    val columnLengths: IntArray,
     val descriptors: List<RowDescriptionMessage.FieldDescription>,
     override val typeRegistry: TypeRegistry,
     override val resultMapper: ResultMapper
 ) : Row {
 
-    private val values: List<Any?> = columns.mapIndexed { index, window ->
-        if (window == null) null
+    private val values: List<Any?> = List(descriptors.size) { index ->
+        val colLength = columnLengths[index]
+        if (colLength == -1) null
         else {
+            val offset = columnOffsets[index]
             val oid = descriptors[index].dataTypeOid
             if (ContainerCodec.isContainerType(oid, typeRegistry)) {
-                ContainerCodec.parseContainer(window, oid, typeRegistry)
+                ContainerCodec.parseContainer(rawData, offset, colLength, oid, typeRegistry)
             } else {
                 val codec = typeRegistry.getCodecByOid<Any>(oid)
                     ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
-                codec.fromBinary(window)
+                codec.fromBinary(rawData, offset, colLength)
             }
         }
     }

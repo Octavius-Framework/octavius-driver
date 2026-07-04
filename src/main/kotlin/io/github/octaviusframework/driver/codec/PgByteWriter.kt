@@ -1,7 +1,5 @@
 package io.github.octaviusframework.driver.codec
 
-import io.github.octaviusframework.driver.io.ByteArrayWindow
-
 /**
  * Optimized buffer for building binary packets for the database.
  * Allows reserving space for size and filling it later without memory copying.
@@ -37,23 +35,10 @@ internal class PgByteWriter(initialCapacity: Int = 1024) {
         writeInt(u.toInt())
     }
 
-    fun writeShort(s: Short) {
-        ensureCapacity(2)
-        val intValue = s.toInt()
-        data[position++] = (intValue shr 8).toByte()
-        data[position++] = intValue.toByte()
-    }
-
     fun writeBytes(bytes: ByteArray) {
         ensureCapacity(bytes.size)
         bytes.copyInto(data, position)
         position += bytes.size
-    }
-
-    fun writeBytes(window: ByteArrayWindow) {
-        ensureCapacity(window.length)
-        window.data.copyInto(data, position, window.offset, window.offset + window.length)
-        position += window.length
     }
 
     /**

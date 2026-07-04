@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
-import io.github.octaviusframework.driver.io.ByteArrayWindow
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.io.getLongBE
 import io.github.octaviusframework.driver.io.toByteArrayBE
@@ -35,8 +34,8 @@ internal object InstantCodec : TypeCodec<Instant> {
     override val kotlinClass = Instant::class
     override val isDefaultForKotlinType = true
 
-    override val fromBinary: (ByteArrayWindow) -> Instant = {
-        microsToInstant(it.getLongBE())
+    override val fromBinary: (ByteArray, Int, Int) -> Instant = { data, offset, _ ->
+        microsToInstant(data.getLongBE(offset))
     }
 
     override val toBinary: (Instant) -> ByteArray = {
@@ -50,8 +49,8 @@ internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
     override val kotlinClass = LocalDateTime::class
     override val isDefaultForKotlinType = true
 
-    override val fromBinary: (ByteArrayWindow) -> LocalDateTime = {
-        microsToInstant(it.getLongBE()).toLocalDateTime(TimeZone.UTC)
+    override val fromBinary: (ByteArray, Int, Int) -> LocalDateTime = { data, offset, _ ->
+        microsToInstant(data.getLongBE(offset)).toLocalDateTime(TimeZone.UTC)
     }
 
     override val toBinary: (LocalDateTime) -> ByteArray = {
@@ -65,8 +64,8 @@ internal object LocalDateCodec : TypeCodec<LocalDate> {
     override val kotlinClass = LocalDate::class
     override val isDefaultForKotlinType = true
 
-    override val fromBinary: (ByteArrayWindow) -> LocalDate = {
-        LocalDate.fromEpochDays(it.getIntBE() + PG_EPOCH_DAYS)
+    override val fromBinary: (ByteArray, Int, Int) -> LocalDate = { data, offset, _ ->
+        LocalDate.fromEpochDays(data.getIntBE(offset) + PG_EPOCH_DAYS)
     }
 
     override val toBinary: (LocalDate) -> ByteArray = {
@@ -80,8 +79,8 @@ internal object LocalTimeCodec : TypeCodec<LocalTime> {
     override val kotlinClass = LocalTime::class
     override val isDefaultForKotlinType = true
 
-    override val fromBinary: (ByteArrayWindow) -> LocalTime = {
-        val micros = it.getLongBE()
+    override val fromBinary: (ByteArray, Int, Int) -> LocalTime = { data, offset, _ ->
+        val micros = data.getLongBE(offset)
         val secondsOfDay = (micros / 1000000).toInt()
         val nanosOfSecond = ((micros % 1000000) * 1000).toInt()
         val hours = secondsOfDay / 3600

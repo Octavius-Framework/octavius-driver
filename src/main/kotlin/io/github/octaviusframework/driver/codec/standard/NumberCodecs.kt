@@ -11,7 +11,7 @@ internal object ShortCodec : TypeCodec<Short> {
     override val oid: UInt = 21u
     override val kotlinClass = Short::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArrayWindow) -> Short = { it.getShortBE() }
+    override val fromBinary: (ByteArray, Int, Int) -> Short = { data, offset, _ -> data.getShortBE(offset) }
     override val toBinary: (Short) -> ByteArray = { it.toByteArrayBE() }
 }
 
@@ -20,7 +20,7 @@ internal object IntCodec : TypeCodec<Int> {
     override val oid: UInt = 23u
     override val kotlinClass = Int::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArrayWindow) -> Int = { it.getIntBE() }
+    override val fromBinary: (ByteArray, Int, Int) -> Int = { data, offset, _ -> data.getIntBE(offset) }
     override val toBinary: (Int) -> ByteArray = { it.toByteArrayBE() }
 }
 
@@ -29,7 +29,7 @@ internal object OidCodec : TypeCodec<UInt> {
     override val oid: UInt = 26u
     override val kotlinClass = UInt::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArrayWindow) -> UInt = { it.getUIntBE() }
+    override val fromBinary: (ByteArray, Int, Int) -> UInt = { data, offset, _ -> data.getUIntBE(offset) }
     override val toBinary: (UInt) -> ByteArray = {
         byteArrayOf(
             (it.toInt() ushr 24).toByte(),
@@ -45,7 +45,7 @@ internal object LongCodec : TypeCodec<Long> {
     override val oid: UInt = 20u
     override val kotlinClass = Long::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArrayWindow) -> Long = { it.getLongBE() }
+    override val fromBinary: (ByteArray, Int, Int) -> Long = { data, offset, _ -> data.getLongBE(offset) }
     override val toBinary: (Long) -> ByteArray = { it.toByteArrayBE() }
 }
 
@@ -54,7 +54,7 @@ internal object FloatCodec : TypeCodec<Float> {
     override val oid: UInt = 700u
     override val kotlinClass = Float::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArrayWindow) -> Float = { it.getFloatBE() }
+    override val fromBinary: (ByteArray, Int, Int) -> Float = { data, offset, _ -> data.getFloatBE(offset) }
     override val toBinary: (Float) -> ByteArray = { it.toByteArrayBE() }
 }
 
@@ -63,7 +63,7 @@ internal object DoubleCodec : TypeCodec<Double> {
     override val oid: UInt = 701u
     override val kotlinClass = Double::class
     override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArrayWindow) -> Double = { it.getDoubleBE() }
+    override val fromBinary: (ByteArray, Int, Int) -> Double = { data, offset, _ -> data.getDoubleBE(offset) }
     override val toBinary: (Double) -> ByteArray = { it.toByteArrayBE() }
 }
 
@@ -73,11 +73,11 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
     override val kotlinClass = BigDecimal::class
     override val isDefaultForKotlinType = true
 
-    override val fromBinary: (ByteArrayWindow) -> BigDecimal = {
-        val ndigits = it.getShortBE(0).toInt()
-        val weight = it.getShortBE(2).toInt()
-        val sign = it.getShortBE(4).toInt()
-        val dscale = it.getShortBE(6).toInt()
+    override val fromBinary: (ByteArray, Int, Int) -> BigDecimal = { data, offset, _ ->
+        val ndigits = data.getShortBE(offset + 0).toInt()
+        val weight = data.getShortBE(offset + 2).toInt()
+        val sign = data.getShortBE(offset + 4).toInt()
+        val dscale = data.getShortBE(offset + 6).toInt()
 
         if (sign == 0xC000) {
             error("NaN is not supported by java.math.BigDecimal") // :<
@@ -93,7 +93,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
             if (ndigits <= 4) {
                 var unscaled = 0L
                 for (i in 0 until ndigits) {
-                    val digit = it.getShortBE(8 + i * 2).toLong()
+                    val digit = data.getShortBE(offset + 8 + i * 2).toLong()
                     unscaled = unscaled * 10000L + digit
                 }
                 if (sign == 0x4000) {
@@ -112,7 +112,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                     sb.append('-')
                 }
                 for (i in 0 until ndigits) {
-                    val digit = it.getShortBE(8 + i * 2).toInt()
+                    val digit = data.getShortBE(offset + 8 + i * 2).toInt()
                     if (i == 0) {
                         sb.append(digit) // No leading zeros for the first group
                     } else {

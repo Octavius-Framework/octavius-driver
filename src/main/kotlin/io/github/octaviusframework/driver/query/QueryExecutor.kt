@@ -148,6 +148,6 @@ class QueryExecutor(
         }
 
         val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.columns, descriptors, typeRegistry, mapper) }
+        return rows.map { OctaviusRow(it.rawData, it.columnOffsets, it.columnLengths, descriptors, typeRegistry, mapper) }
     }
 }
