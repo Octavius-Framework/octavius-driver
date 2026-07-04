@@ -1,1 +1,1 @@
-rootProject.name = "octavius-jdbc"
+rootProject.name = "driver"

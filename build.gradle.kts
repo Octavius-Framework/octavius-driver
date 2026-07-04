@@ -1,9 +1,10 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    id("maven-publish")
 }
 
-group = "io.github.octaviusframework"
+group = "io.github.octavius-framework"
 version = "0.4.0"
 
 repositories {
@@ -23,6 +24,18 @@ kotlin {
     jvmToolchain(25)
 }
 
+java {
+    withSourcesJar()
+}
+
 tasks.test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+        }
+    }
 }
