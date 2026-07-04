@@ -89,10 +89,18 @@ class ParameterSerializer(
 
     /**
      * Serializes the list of parameters and returns two separate lists: OIDs and their binary representations,
-     * facilitating direct integration into `QueryExecutor.query(...)`.
+     * facilitating direct integration into `QueryExecutor`.
      */
     fun serializeAll(parameters: List<Any?>): Pair<List<UInt>, List<ByteArray?>> {
-        val serializedParams = parameters.map { serializeWithOid(it) }
-        return serializedParams.map { it.oid } to serializedParams.map { it.value }
+        val oids = ArrayList<UInt>(parameters.size)
+        val values = ArrayList<ByteArray?>(parameters.size)
+
+        for (param in parameters) {
+            val serialized = serializeWithOid(param)
+            oids.add(serialized.oid)
+            values.add(serialized.value)
+        }
+
+        return oids to values
     }
 }
