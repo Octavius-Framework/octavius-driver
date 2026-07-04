@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.message.backend
 /**
  * Authentication response sent by the server (Tag 'R').
  */
-sealed interface AuthenticationMessage : BackendMessage {
+internal sealed interface AuthenticationMessage : BackendMessage {
     object Ok : AuthenticationMessage
     object CleartextPassword : AuthenticationMessage
     class MD5Password(val salt: ByteArray) : AuthenticationMessage

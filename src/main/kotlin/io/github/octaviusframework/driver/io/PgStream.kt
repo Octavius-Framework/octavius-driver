@@ -48,7 +48,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
     )
     val notifications: SharedFlow<PgNotification> = _notifications
 
-    fun sendMessage(msg: FrontendMessage) {
+    internal fun sendMessage(msg: FrontendMessage) {
         msg.encode(outputStream)
     }
 
@@ -56,7 +56,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
         outputStream.flush()
     }
 
-    fun receiveMessage(): BackendMessage {
+    internal fun receiveMessage(): BackendMessage {
         while (true) {
             val tag = inputStream.readByte().toInt().toChar()
             val length = inputStream.readInt()

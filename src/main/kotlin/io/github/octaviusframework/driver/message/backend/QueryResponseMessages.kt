@@ -2,23 +2,23 @@ package io.github.octaviusframework.driver.message.backend
 
 import io.github.octaviusframework.driver.io.ByteArrayWindow
 
-object ParseCompleteMessage : BackendMessage {
+internal object ParseCompleteMessage : BackendMessage {
     override fun toString(): String = "ParseComplete"
 }
 
-object EmptyQueryResponseMessage : BackendMessage {
+internal object EmptyQueryResponseMessage : BackendMessage {
     override fun toString(): String = "EmptyQueryResponse"
 }
 
-object BindCompleteMessage : BackendMessage {
+internal object BindCompleteMessage : BackendMessage {
     override fun toString(): String = "BindComplete"
 }
 
-object NoDataMessage : BackendMessage {
+internal object NoDataMessage : BackendMessage {
     override fun toString(): String = "NoData"
 }
 
-class CommandCompleteMessage(val tag: String) : BackendMessage {
+internal class CommandCompleteMessage(val tag: String) : BackendMessage {
     override fun toString(): String = "CommandComplete(tag=$tag)"
 }
 

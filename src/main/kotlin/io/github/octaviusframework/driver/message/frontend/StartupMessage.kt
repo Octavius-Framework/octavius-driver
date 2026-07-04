@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.message.frontend
 
 import io.github.octaviusframework.driver.io.PgOutputStream
 
-class StartupMessage(private val parameters: Map<String, String>) : FrontendMessage {
+internal class StartupMessage(private val parameters: Map<String, String>) : FrontendMessage {
 
     override fun encode(out: PgOutputStream) {
         // Message length = self size (4) + protocol number size (4) + size of all k-v pairs + final null byte

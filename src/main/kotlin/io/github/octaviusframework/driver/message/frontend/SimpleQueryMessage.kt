@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.message.frontend
 
 import io.github.octaviusframework.driver.io.PgOutputStream
 
-class SimpleQueryMessage(private val query: String) : FrontendMessage {
+internal class SimpleQueryMessage(private val query: String) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val queryBytes = query.toByteArray(Charsets.UTF_8)
         val length = 4 + queryBytes.size + 1 // length itself + bytes + null terminator

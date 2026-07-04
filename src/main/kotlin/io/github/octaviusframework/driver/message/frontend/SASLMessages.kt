@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 /**
  * First client response in the SASL mechanism.
  */
-class SASLInitialResponse(private val mechanism: String, private val clientFirstMessage: String) : FrontendMessage {
+internal class SASLInitialResponse(private val mechanism: String, private val clientFirstMessage: String) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val mechBytes = mechanism.toByteArray(StandardCharsets.UTF_8)
         val dataBytes = clientFirstMessage.toByteArray(StandardCharsets.UTF_8)
@@ -25,7 +25,7 @@ class SASLInitialResponse(private val mechanism: String, private val clientFirst
 /**
  * Next client response in the SASL mechanism (usually sending client-final-message).
  */
-class SASLResponse(private val clientFinalMessage: String) : FrontendMessage {
+internal class SASLResponse(private val clientFinalMessage: String) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val dataBytes = clientFinalMessage.toByteArray(StandardCharsets.UTF_8)
         val length = 4 + dataBytes.size
