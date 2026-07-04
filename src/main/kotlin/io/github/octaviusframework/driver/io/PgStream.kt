@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.exception.OctaviusAuthException
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
+import io.github.octaviusframework.driver.notification.PgNotification
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -41,11 +42,11 @@ class PgStream(host: String, port: Int) : AutoCloseable {
         set(value) {
             socket.soTimeout = value
         }
-    private val _notifications = MutableSharedFlow<NotificationResponseMessage>(
+    private val _notifications = MutableSharedFlow<PgNotification>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    val notifications: SharedFlow<NotificationResponseMessage> = _notifications
+    val notifications: SharedFlow<PgNotification> = _notifications
 
     fun sendMessage(msg: FrontendMessage) {
         msg.encode(outputStream)
@@ -82,7 +83,7 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                     val pid = inputStream.readInt()
                     val channel = inputStream.readCString()
                     val payload = inputStream.readCString()
-                    _notifications.tryEmit(NotificationResponseMessage(pid, channel, payload))
+                    _notifications.tryEmit(PgNotification(pid, channel, payload))
                 }
                 'R' -> return parseAuthentication(payloadLength)
                 'E' -> return parseErrorResponse(payloadLength)

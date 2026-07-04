@@ -29,9 +29,3 @@ class NoticeResponseMessage(val fields: Map<Char, String>) : BackendMessage {
     override fun toString(): String = "NoticeResponse(message=$message)"
 }
 
-/**
- * Powiadomienie asynchroniczne z komendy LISTEN/NOTIFY (Tag 'A').
- */
-class NotificationResponseMessage(val processId: Int, val channel: String, val payload: String) : BackendMessage {
-    override fun toString(): String = "NotificationResponse(pid=$processId, channel=$channel, payload=$payload)"
-}

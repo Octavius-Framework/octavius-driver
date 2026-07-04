@@ -1,9 +1,13 @@
-package io.github.octaviusframework.driver.jdbc
+package io.github.octaviusframework.driver.notification
 
 import io.github.octaviusframework.driver.io.virtualDispatcher
-import io.github.octaviusframework.driver.message.backend.NotificationResponseMessage
-import kotlinx.coroutines.*
+import io.github.octaviusframework.driver.jdbc.OctaviusConnection
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.SocketException
 import java.net.SocketTimeoutException
@@ -13,7 +17,7 @@ class NotificationManager(private val connection: OctaviusConnection) {
     /**
      * A [SharedFlow] of asynchronous notifications (LISTEN/NOTIFY) received from the database.
      */
-    val messages: SharedFlow<NotificationResponseMessage>
+    val messages: SharedFlow<PgNotification>
         get() = connection.stream.notifications
 
     /**
