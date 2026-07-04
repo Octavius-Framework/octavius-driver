@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver
+package io.github.octaviusframework.driver.composite
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
@@ -18,7 +18,7 @@ import org.junit.jupiter.api.TestInstance
 import kotlin.reflect.KType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class BusinessUseCaseIntegrationTest {
+class ManualCompositeIntegrationTest {
 
     data class PaymentInfo(val amount: Int, val currency: String)
 

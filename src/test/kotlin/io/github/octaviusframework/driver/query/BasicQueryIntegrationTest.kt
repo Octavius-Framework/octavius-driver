@@ -1,14 +1,12 @@
-package io.github.octaviusframework.driver
+package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.io.toByteArrayBE
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.get
 import org.junit.jupiter.api.Test
 import java.util.*
 import kotlin.test.assertEquals
 
-class OctaviusTest {
+class BasicQueryIntegrationTest {
 
     @Test
     fun test() {
@@ -26,7 +24,8 @@ class OctaviusTest {
         assertEquals("abc", row.get(1))
         assertEquals(4.5, row.get(2))
 
-        val result2 = octaviusConn.queryExecutor.query("SELECT $1 as test_int, $2 as test_float, $1 as test_int2", listOf(23u,700u), listOf(1.toByteArrayBE(), 2.4f.toByteArrayBE()), ResultMapper(octaviusConn.converterRegistry)).first()
+        val result2 = octaviusConn.createNativeQuery("SELECT $1 as test_int, $2 as test_float, $1 as test_int2")
+            .fetchOne(1, 2.4f)
         assertEquals(1, result2.get(0))
         assertEquals(2.4f, result2.get(1))
         assertEquals(1, result2.get(2))

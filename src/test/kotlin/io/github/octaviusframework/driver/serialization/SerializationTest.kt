@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver
+package io.github.octaviusframework.driver.serialization
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
