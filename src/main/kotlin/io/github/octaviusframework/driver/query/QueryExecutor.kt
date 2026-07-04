@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.type.TypeRegistry

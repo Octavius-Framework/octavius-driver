@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver
 
 import io.github.octaviusframework.driver.io.toByteArrayBE
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.get
 import org.junit.jupiter.api.Test
 import java.util.*

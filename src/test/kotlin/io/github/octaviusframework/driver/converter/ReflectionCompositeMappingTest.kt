@@ -1,0 +1,107 @@
+package io.github.octaviusframework.driver.converter
+
+import io.github.octaviusframework.driver.annotation.MapKey
+import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
+import io.github.octaviusframework.driver.type.CaseConvention
+import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.type.containter.ContainerField
+import io.github.octaviusframework.driver.type.containter.PgComposite
+import io.github.octaviusframework.driver.type.containter.PgContainer
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import io.github.octaviusframework.driver.type.TypeManager
+import kotlin.reflect.typeOf
+
+class ReflectionCompositeMappingTest {
+
+    data class Person(
+        val firstName: String,
+        val lastName: String,
+        @MapKey("age_in_years") val age: Int
+    )
+
+    private val dummyRegistry = TypeRegistry().apply {
+        types = mapOf(
+            1u to PgType.Base(1u, "text", "public"),
+            2u to PgType.Base(2u, "int4", "public")
+        )
+    }
+
+    private fun registerPersonComposite(
+        pgConvention: CaseConvention,
+        kotlinConvention: CaseConvention
+    ): PgType.Composite {
+        val type = PgType.Composite(
+            3u, "person_type", "public", LinkedHashMap(
+                mapOf(
+                    "first_name" to 1u,
+                    "last_name" to 1u,
+                    "age_in_years" to 2u
+                )
+            )
+        )
+        dummyRegistry.types = dummyRegistry.types + (3u to type)
+        dummyRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
+        return type
+    }
+
+    private fun createComposite(type: PgType.Composite, attributes: Map<String, Any?>): PgComposite {
+        val fields = type.attributes.map { (key, _) ->
+            val value = attributes[key]
+            if (value is PgContainer) {
+                ContainerField(rawValue = null, container = value, value = null)
+            } else {
+                ContainerField(rawValue = null, container = null, value = value)
+            }
+        }
+        return PgComposite(type, fields, dummyRegistry)
+    }
+
+    @Test
+    fun `test deserialization with MapKey and conventions`() {
+        val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
+
+        val registry = ResultConverterRegistry()
+        registry.addConverter(ReflectionCompositeConverter())
+        val deserializer = ResultMapper(registry)
+
+        val composite = createComposite(type, mapOf(
+            "first_name" to "John",
+            "last_name" to "Doe",
+            "age_in_years" to 30
+        ))
+
+        val person: Person? = deserializer.deserialize(composite, typeOf<Person>(), type)
+        assertNotNull(person)
+        assertEquals("John", person?.firstName)
+        assertEquals("Doe", person?.lastName)
+        assertEquals(30, person?.age)
+    }
+
+    @Test
+    fun `test serialization with MapKey and conventions`() {
+        val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
+        val converter = ReflectionCompositeParameterConverter()
+        val context = object : SerializationContext {
+            override fun convert(source: Any, expectedOid: UInt?): Any? = source
+        }
+
+        val person = Person("Jane", "Smith", 28)
+
+        val dummyTypeManager = TypeManager(dummyRegistry)
+        assertTrue(converter.canConvert(person, type.oid, dummyTypeManager))
+
+        val serialized = converter.convert(person, type.oid, context, dummyTypeManager) as PgComposite
+
+        assertNotNull(serialized)
+        assertEquals(type, serialized.type)
+        assertEquals("Jane", serialized.get(0))
+        assertEquals("Smith", serialized.get(1))
+        assertEquals(28, serialized.get(2))
+    }
+}

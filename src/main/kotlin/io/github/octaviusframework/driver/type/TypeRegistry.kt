@@ -6,20 +6,20 @@ import io.github.octaviusframework.driver.codec.dynamic.DynamicDomainCodec
 import io.github.octaviusframework.driver.codec.standard.*
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.mapping.parameter.CollectionArrayParameterConverter
-import io.github.octaviusframework.driver.mapping.parameter.JsonElementParameterConverter
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
-import io.github.octaviusframework.driver.mapping.parameter.ReflectionCompositeParameterConverter
-import io.github.octaviusframework.driver.mapping.result.JsonElementConverter
-import io.github.octaviusframework.driver.mapping.result.ResultConverter
-import io.github.octaviusframework.driver.mapping.result.ResultConverterRegistry
-import io.github.octaviusframework.driver.mapping.result.array.CollectionArrayConverter
-import io.github.octaviusframework.driver.mapping.result.composite.MapCompositeConverter
-import io.github.octaviusframework.driver.mapping.result.composite.ReflectionCompositeConverter
-import io.github.octaviusframework.driver.mapping.result.row.MapRowConverter
-import io.github.octaviusframework.driver.mapping.result.row.ReflectionRowConverter
-import io.github.octaviusframework.driver.mapping.result.record.MapRecordConverter
+import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.standard.JsonElementParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
+import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
+import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
+import io.github.octaviusframework.driver.converter.result.array.CollectionArrayConverter
+import io.github.octaviusframework.driver.converter.result.composite.MapCompositeConverter
+import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
+import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
+import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
+import io.github.octaviusframework.driver.converter.result.record.MapRecordConverter
 import kotlin.reflect.KClass
 
 class TypeRegistry {

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.io.getUIntBE
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.QueryExecutor
 
 object TypeRegistryLoader {

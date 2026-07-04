@@ -1,10 +1,10 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
-import io.github.octaviusframework.driver.mapping.result.ResultConverter
-import io.github.octaviusframework.driver.mapping.result.ResultConverterRegistry
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.type.TypeManager
 
 /**

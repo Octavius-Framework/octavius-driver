@@ -1,12 +1,12 @@
 package io.github.octaviusframework.driver.deserialization
 
-import io.github.octaviusframework.driver.mapping.result.DeserializationContext
-import io.github.octaviusframework.driver.mapping.result.ResultConverter
-import io.github.octaviusframework.driver.mapping.result.ResultConverterRegistry
-import io.github.octaviusframework.driver.mapping.result.ResultMapper
-import io.github.octaviusframework.driver.mapping.result.array.CollectionArrayConverter
-import io.github.octaviusframework.driver.mapping.result.composite.MapCompositeConverter
-import io.github.octaviusframework.driver.mapping.result.composite.ReflectionCompositeConverter
+import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.converter.result.array.CollectionArrayConverter
+import io.github.octaviusframework.driver.converter.result.composite.MapCompositeConverter
+import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeRegistry
 import io.github.octaviusframework.driver.type.containter.*

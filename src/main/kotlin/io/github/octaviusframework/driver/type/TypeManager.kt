@@ -3,10 +3,10 @@ package io.github.octaviusframework.driver.type
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 
-import io.github.octaviusframework.driver.mapping.EnumParameterConverter
-import io.github.octaviusframework.driver.mapping.EnumResultConverter
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverter
-import io.github.octaviusframework.driver.mapping.result.ResultConverter
+import io.github.octaviusframework.driver.converter.EnumParameterConverter
+import io.github.octaviusframework.driver.converter.EnumResultConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.containter.*
 
 class TypeManager(

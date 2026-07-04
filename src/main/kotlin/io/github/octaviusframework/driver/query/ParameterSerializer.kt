@@ -5,8 +5,8 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.mapping.parameter.ParameterConverterRegistry
-import io.github.octaviusframework.driver.mapping.parameter.SerializationContext
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
+import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.containter.*
