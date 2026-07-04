@@ -54,7 +54,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
     override fun setEscapeProcessing(enable: Boolean) = unsupported()
     override fun getQueryTimeout(): Int = unsupported()
     override fun setQueryTimeout(seconds: Int) = unsupported()
-    override fun cancel() = unsupported()
+    override fun cancel() = connection.cancelQuery()
     override fun getWarnings(): SQLWarning? = null
     override fun clearWarnings() {}
     override fun setCursorName(name: String?) = unsupported()

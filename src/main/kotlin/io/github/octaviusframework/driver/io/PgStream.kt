@@ -14,10 +14,12 @@ import java.net.Socket
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 
-class PgStream(host: String, port: Int) : AutoCloseable {
+class PgStream(val host: String, val port: Int) : AutoCloseable {
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
     var outputStream: PgOutputStream
+    var processId: Int = -1
+    var secretKey: ByteArray = ByteArray(0)
 
     init {
         socket.connect(InetSocketAddress(host, port), 10000)
@@ -89,8 +91,8 @@ class PgStream(host: String, port: Int) : AutoCloseable {
                 'E' -> return parseErrorResponse(payloadLength)
                 'K' -> {
                     val pid = inputStream.readInt()
-                    val key = inputStream.readInt()
-                    return BackendKeyDataMessage(pid, key)
+                    val keyBytes = inputStream.readBytes(payloadLength - 4)
+                    return BackendKeyDataMessage(pid, keyBytes)
                 }
                 'Z' -> {
                     val status = inputStream.readByte().toInt().toChar()

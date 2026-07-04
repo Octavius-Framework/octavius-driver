@@ -1,15 +1,12 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
 import io.github.octaviusframework.driver.notification.NotificationManager
-import io.github.octaviusframework.driver.query.NativeQuery
-import io.github.octaviusframework.driver.query.NamedParameterQuery
-import io.github.octaviusframework.driver.query.QueryExecutor
-import io.github.octaviusframework.driver.query.SqlParameterParser
-import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.query.*
 import io.github.octaviusframework.driver.type.GlobalTypeRegistry
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
@@ -146,8 +143,17 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
         return stream.networkTimeout
     }
 
-
-
+    fun cancelQuery() {
+        checkClosed()
+        try {
+            val cancelStream = PgStream(stream.host, stream.port)
+            cancelStream.sendMessage(CancelRequestMessage(stream.processId, stream.secretKey))
+            cancelStream.flush()
+            cancelStream.close()
+        } catch (e: Exception) {
+            // Ignore errors during cancellation
+        }
+    }
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------
 

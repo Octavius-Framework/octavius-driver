@@ -116,6 +116,8 @@ internal class Authenticator(private val stream: PgStream) {
                 }
 
                 is BackendKeyDataMessage -> {
+                    stream.processId = msg.processId
+                    stream.secretKey = msg.secretKey
                     println("Received process keys: ${msg.processId}")
                 }
 

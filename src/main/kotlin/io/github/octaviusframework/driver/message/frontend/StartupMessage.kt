@@ -15,7 +15,7 @@ internal class StartupMessage(private val parameters: Map<String, String>) : Fro
 
         // Startup Message does not have a 1-byte tag at the beginning!
         out.writeInt(length)
-        out.writeInt(196608) // Protocol 3.0 (3 << 16 | 0)
+        out.writeInt(196610) // Protocol 3.2
 
         for ((k, v) in parameters) {
             out.writeCString(k)

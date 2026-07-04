@@ -10,8 +10,8 @@ internal class ParameterStatusMessage(val name: String, val value: String) : Bac
 /**
  * Data about keys for canceling queries (Tag 'K').
  */
-internal class BackendKeyDataMessage(val processId: Int, val secretKey: Int) : BackendMessage {
-    override fun toString(): String = "BackendKeyData(pid=$processId, key=$secretKey)"
+internal class BackendKeyDataMessage(val processId: Int, val secretKey: ByteArray) : BackendMessage {
+    override fun toString(): String = "BackendKeyData(pid=$processId, keySize=${secretKey.size})"
 }
 
 /**
