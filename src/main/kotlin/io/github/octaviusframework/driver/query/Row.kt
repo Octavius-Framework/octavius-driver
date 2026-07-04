@@ -40,9 +40,9 @@ inline fun <reified T> Row.getEntireRowAs(): T {
 }
 
 class OctaviusRow(
-    val rawData: ByteArray,
-    val columnOffsets: IntArray,
-    val columnLengths: IntArray,
+    rawData: ByteArray,
+    columnOffsets: IntArray,
+    columnLengths: IntArray,
     val descriptors: List<RowDescriptionMessage.FieldDescription>,
     override val typeRegistry: TypeRegistry,
     override val resultMapper: ResultMapper

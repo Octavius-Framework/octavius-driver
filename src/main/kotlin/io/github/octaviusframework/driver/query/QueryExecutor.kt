@@ -116,7 +116,7 @@ class QueryExecutor(
         
         stream.flush()
         
-        val rows = mutableListOf<DataRowMessage>()
+        val rows = mutableListOf<Row>()
         var rowDescription: RowDescriptionMessage? = null
         var errorMessage: String? = null
         
@@ -126,7 +126,13 @@ class QueryExecutor(
                 is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
                 is RowDescriptionMessage -> rowDescription = msg
                 is NoDataMessage -> { /* Expected if query returns no rows */ }
-                is DataRowMessage -> rows.add(msg)
+                is DataRowMessage -> {
+                    if (rowDescription == null) {
+                        errorMessage = "Received DataRow before RowDescription"
+                    } else {
+                        rows.add(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowDescription.fields, typeRegistry, mapper))
+                    }
+                }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
                 is ErrorResponseMessage -> {
                     if (errorMessage == null) errorMessage = "Database error during query execution (query): ${msg.message}"
@@ -143,11 +149,6 @@ class QueryExecutor(
             throw SQLException(errorMessage)
         }
 
-        if (rowDescription == null) {
-            throw SQLException("Method query() did not receive row descriptions (RowDescriptionMessage). Ensure the query is DQL (SELECT).")
-        }
-
-        val descriptors = rowDescription.fields
-        return rows.map { OctaviusRow(it.rawData, it.columnOffsets, it.columnLengths, descriptors, typeRegistry, mapper) }
+        return rows
     }
 }
