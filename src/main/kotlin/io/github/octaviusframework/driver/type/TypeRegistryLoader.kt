@@ -21,7 +21,7 @@ object TypeRegistryLoader {
             LEFT JOIN pg_catalog.pg_range r ON t.oid = r.rngtypid
             LEFT JOIN pg_catalog.pg_attribute a ON t.typrelid = a.attrelid AND a.attnum > 0 AND a.attisdropped = false
             WHERE NOT (t.typtype = 'c' AND n.nspname IN ('pg_catalog', 'information_schema'))
-            AND NOT (t.typtype = 'p' AND t.typname NOT IN ('void', 'record'))
+            AND NOT (t.typtype = 'p' AND t.typname NOT IN ('void', 'record', '_record'))
             ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
 
@@ -106,6 +106,7 @@ object TypeRegistryLoader {
                     when (info.name) {
                         "record" -> PgType.Record(oid, info.name, info.schema)
                         "void" -> PgType.Void(oid, info.name, info.schema)
+                        "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
                         else -> error("Unreachable code: unexpected pseudo-type ${info.name}")
                     }
                 }
