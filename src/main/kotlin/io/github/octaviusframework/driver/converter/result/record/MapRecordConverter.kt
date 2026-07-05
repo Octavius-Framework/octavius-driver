@@ -9,6 +9,8 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class MapRecordConverter : ResultConverter<Map<String, Any?>> {
+    override val supportedSourceClass = PgRecord::class
+
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgRecord) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false

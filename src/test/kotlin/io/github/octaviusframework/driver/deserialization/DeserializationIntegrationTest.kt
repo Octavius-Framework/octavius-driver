@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
@@ -140,6 +141,7 @@ class DeserializationIntegrationTest {
         try {
             // Rejestracja własnych, jawnych konwerterów
             octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<TestStatus> {
+                override val supportedSourceClass = Any::class
                 override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
                 }
@@ -150,6 +152,7 @@ class DeserializationIntegrationTest {
             })
             
             octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<TestUserData> {
+                override val supportedSourceClass = PgComposite::class
                 override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
                 }

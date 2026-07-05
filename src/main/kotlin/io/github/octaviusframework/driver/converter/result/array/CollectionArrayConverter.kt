@@ -9,6 +9,8 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class CollectionArrayConverter : ResultConverter<Collection<*>> {
+    override val supportedSourceClass = PgArray::class
+
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgArray) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false

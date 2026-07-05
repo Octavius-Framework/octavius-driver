@@ -38,6 +38,8 @@ class EnumResultConverter<T : Enum<T>>(
         CaseConverter.convert(it.name, kotlinConvention, pgConvention)
     }
 
+    override val supportedSourceClass = String::class
+
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         return sourceType is PgType.Enum && sourceType.name == qualifiedName.name //TODO TypeRegistry and resolveOid
     }

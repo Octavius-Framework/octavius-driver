@@ -10,6 +10,8 @@ import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
 class ReflectionCompositeConverter : ResultConverter<Any> {
+    override val supportedSourceClass = PgComposite::class
+
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgComposite) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false

@@ -12,6 +12,7 @@ import io.github.octaviusframework.driver.type.TypeRegistry
 import io.github.octaviusframework.driver.type.container.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
@@ -171,6 +172,7 @@ class DeserializationTest {
 
         // Define a custom converter for Address
         val localConverter = object : ResultConverter<Address> {
+            override val supportedSourceClass = Any::class
             override fun canConvert(source: Any, expectedType: KType, sourceType: PgType) =
                 expectedType.classifier == Address::class
 

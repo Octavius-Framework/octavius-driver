@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
@@ -31,6 +32,7 @@ class JsonElementIntegrationTest {
     )
 
     class MetadataHolderResultConverter : ResultConverter<MetadataHolder> {
+        override val supportedSourceClass = PgComposite::class
         override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
             return expectedType.classifier == MetadataHolder::class
         }

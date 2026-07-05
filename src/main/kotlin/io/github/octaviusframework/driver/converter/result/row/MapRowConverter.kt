@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.converter.result.row
 
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.query.OctaviusRow
 import io.github.octaviusframework.driver.query.Row
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
@@ -9,6 +10,8 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class MapRowConverter : ResultConverter<Map<String, Any?>> {
+    override val supportedSourceClass = OctaviusRow::class
+
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is Row) return false
         val kClass = expectedType.classifier as? KClass<*> ?: return false

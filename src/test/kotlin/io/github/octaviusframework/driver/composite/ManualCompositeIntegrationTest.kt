@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -23,6 +24,7 @@ class ManualCompositeIntegrationTest {
     data class PaymentInfo(val amount: Int, val currency: String)
 
     class PaymentInfoResultConverter : ResultConverter<PaymentInfo> {
+        override val supportedSourceClass = PgComposite::class
         override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
             return expectedType.classifier == PaymentInfo::class && sourceType is PgType.Composite && sourceType.name == "payment_info"
         }

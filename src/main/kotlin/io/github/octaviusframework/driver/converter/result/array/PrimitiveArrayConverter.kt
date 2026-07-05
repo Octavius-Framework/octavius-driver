@@ -4,10 +4,13 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.container.PgArray
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class PrimitiveArrayConverter : ResultConverter<Any> {
+    override val supportedSourceClass = PgArray::class
+
     override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
         if (source !is PgArray) return false
         val classifier = expectedType.classifier
