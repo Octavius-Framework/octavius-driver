@@ -9,18 +9,17 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
-class ReflectionCompositeConverter : ResultConverter<Any> {
+class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
     override val supportedSourceClass = PgComposite::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is PgComposite) return false
+    override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (!kClass.isData) return false
         return source.typeRegistry.registeredComposites.containsKey(kClass)
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
-        val composite = source as PgComposite
+    override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
+        val composite = source
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
         val registration = composite.typeRegistry.registeredComposites[kClass]

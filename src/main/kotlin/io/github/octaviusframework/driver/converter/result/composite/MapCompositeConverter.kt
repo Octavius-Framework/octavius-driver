@@ -9,17 +9,15 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 
-class MapCompositeConverter : ResultConverter<Map<String, Any?>> {
+class MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
     override val supportedSourceClass = PgComposite::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is PgComposite) return false
+    override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Map::class
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
-        source as PgComposite
+    override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
         val valueType = expectedType.arguments.getOrNull(1)?.type ?: typeOf<Any?>()
 
         val result = mutableMapOf<String, Any?>()

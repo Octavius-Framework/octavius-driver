@@ -31,24 +31,26 @@ class JsonElementIntegrationTest {
         val metadata: JsonElement
     )
 
-    class MetadataHolderResultConverter : ResultConverter<MetadataHolder> {
+    class MetadataHolderResultConverter : ResultConverter<PgComposite, MetadataHolder> {
         override val supportedSourceClass = PgComposite::class
-        override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+        override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
             return expectedType.classifier == MetadataHolder::class
         }
 
+        private val jsonElementType = typeOf<JsonElement>()
+
         override fun convert(
-            source: Any,
+            source: PgComposite,
             expectedType: KType,
             context: DeserializationContext,
             sourceType: PgType
         ): MetadataHolder {
-            val composite = source as PgComposite
+            val composite = source
             return MetadataHolder(
                 id = composite.get("id"),
                 metadata = context.convert(
                     composite.get("metadata"),
-                    typeOf<JsonElement>(),
+                    jsonElementType,
                     composite.getAttributeType("metadata")
                 )
             )

@@ -43,7 +43,7 @@ class TypeRegistry {
         addConverter(JsonElementParameterConverter())
     }
 
-    fun registerResultConverter(converter: ResultConverter<*>) {
+    fun registerResultConverter(converter: ResultConverter<*, *>) {
         converterRegistry.addConverter(converter)
     }
 

@@ -171,7 +171,7 @@ class DeserializationTest {
         val composite = createComposite(mapOf("street" to "Global", "city" to "City"))
 
         // Define a custom converter for Address
-        val localConverter = object : ResultConverter<Address> {
+        val localConverter = object : ResultConverter<Any, Address> {
             override val supportedSourceClass = Any::class
             override fun canConvert(source: Any, expectedType: KType, sourceType: PgType) =
                 expectedType.classifier == Address::class

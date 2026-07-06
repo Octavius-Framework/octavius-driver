@@ -23,14 +23,14 @@ class ManualCompositeIntegrationTest {
 
     data class PaymentInfo(val amount: Int, val currency: String)
 
-    class PaymentInfoResultConverter : ResultConverter<PaymentInfo> {
+    class PaymentInfoResultConverter : ResultConverter<PgComposite, PaymentInfo> {
         override val supportedSourceClass = PgComposite::class
-        override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+        override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
             return expectedType.classifier == PaymentInfo::class && sourceType is PgType.Composite && sourceType.name == "payment_info"
         }
 
-        override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): PaymentInfo {
-            val composite = source as PgComposite
+        override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): PaymentInfo {
+            val composite = source
             val amount = composite.get<Int>("amount")
             val currency = composite.get<String>("currency")
             return PaymentInfo(amount, currency)

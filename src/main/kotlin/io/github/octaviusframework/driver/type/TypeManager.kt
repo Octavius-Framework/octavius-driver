@@ -33,7 +33,7 @@ class TypeManager(
      *
      * @param converter The converter instance to register.
      */
-    fun registerResultConverter(converter: ResultConverter<*>) = registry.registerResultConverter(converter)
+    fun registerResultConverter(converter: ResultConverter<*, *>) = registry.registerResultConverter(converter)
 
     /**
      * Registers a custom [ParameterConverter] for mapping Kotlin types to PostgreSQL database types.

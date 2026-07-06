@@ -11,17 +11,16 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
-class ReflectionRowConverter : ResultConverter<Any> {
+class ReflectionRowConverter : ResultConverter<OctaviusRow, Any> {
     override val supportedSourceClass = OctaviusRow::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is Row) return false
+    override fun canConvert(source: OctaviusRow, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass.isData
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
-        val row = source as Row
+    override fun convert(source: OctaviusRow, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
+        val row = source
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
 

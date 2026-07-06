@@ -9,17 +9,15 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class MapRowConverter : ResultConverter<Map<String, Any?>> {
+class MapRowConverter : ResultConverter<OctaviusRow, Map<String, Any?>> {
     override val supportedSourceClass = OctaviusRow::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is Row) return false
+    override fun canConvert(source: OctaviusRow, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Map::class
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
-        source as Row
+    override fun convert(source: OctaviusRow, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
         val valueType = expectedType.arguments.getOrNull(1)?.type ?: typeOf<Any?>()
 
         val result = mutableMapOf<String, Any?>()

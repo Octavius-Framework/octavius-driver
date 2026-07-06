@@ -24,7 +24,7 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
     protected val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
     protected val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
 
-    fun registerResultConverter(converter: ResultConverter<*>): T {
+    fun registerResultConverter(converter: ResultConverter<*, *>): T {
         resultConverterRegistry.addConverter(converter)
         return this as T
     }

@@ -32,7 +32,7 @@ class EnumResultConverter<T : Enum<T>>(
     private val qualifiedName: QualifiedName,
     private val pgConvention: CaseConvention,
     private val kotlinConvention: CaseConvention
-) : ResultConverter<T> {
+) : ResultConverter<String, T> {
 
     private val pgToEnum = enumClass.java.enumConstants.associateBy {
         CaseConverter.convert(it.name, kotlinConvention, pgConvention)
@@ -40,14 +40,13 @@ class EnumResultConverter<T : Enum<T>>(
 
     override val supportedSourceClass = String::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(source: String, expectedType: KType, sourceType: PgType): Boolean {
         return sourceType is PgType.Enum && sourceType.name == qualifiedName.name //TODO TypeRegistry and resolveOid
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): T {
-        val strSource = source.toString()
-        return pgToEnum[strSource]
-            ?: throw IllegalArgumentException("Unknown enum value: $strSource for enum ${enumClass.simpleName}")
+    override fun convert(source: String, expectedType: KType, context: DeserializationContext, sourceType: PgType): T {
+        return pgToEnum[source]
+            ?: throw IllegalArgumentException("Unknown enum value: $source for enum ${enumClass.simpleName}")
     }
 }
 

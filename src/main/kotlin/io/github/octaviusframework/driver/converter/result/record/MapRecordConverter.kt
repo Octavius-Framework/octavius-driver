@@ -8,17 +8,15 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class MapRecordConverter : ResultConverter<Map<String, Any?>> {
+class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
     override val supportedSourceClass = PgRecord::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is PgRecord) return false
+    override fun canConvert(source: PgRecord, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Map::class || expectedType.classifier == Any::class
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
-        source as PgRecord
+    override fun convert(source: PgRecord, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
         val valueType = if (expectedType.classifier == Map::class) {
             expectedType.arguments.getOrNull(1)?.type ?: typeOf<Any?>()
         } else {

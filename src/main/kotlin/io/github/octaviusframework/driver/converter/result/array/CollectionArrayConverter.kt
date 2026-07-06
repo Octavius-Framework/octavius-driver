@@ -8,17 +8,15 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class CollectionArrayConverter : ResultConverter<Collection<*>> {
+class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
     override val supportedSourceClass = PgArray::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is PgArray) return false
+    override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
     }
 
-    override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
-        source as PgArray
+    override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
         return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, sourceType)
     }
 

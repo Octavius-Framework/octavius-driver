@@ -140,7 +140,7 @@ class DeserializationIntegrationTest {
 
         try {
             // Rejestracja własnych, jawnych konwerterów
-            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<TestStatus> {
+            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<Any, TestStatus> {
                 override val supportedSourceClass = Any::class
                 override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
@@ -151,13 +151,12 @@ class DeserializationIntegrationTest {
                 }
             })
             
-            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<TestUserData> {
+            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
                 override val supportedSourceClass = PgComposite::class
-                override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+                override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
                 }
-                override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
-                    require(source is PgComposite)
+                override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
                     val code = source.get<String>("code")
                     val statusRaw = source.get<Any?>("status")
                     val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!

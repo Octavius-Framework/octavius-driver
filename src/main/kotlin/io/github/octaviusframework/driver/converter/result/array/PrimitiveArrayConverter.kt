@@ -8,11 +8,10 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class PrimitiveArrayConverter : ResultConverter<Any> {
+class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
     override val supportedSourceClass = PgArray::class
 
-    override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
-        if (source !is PgArray) return false
+    override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType): Boolean {
         val classifier = expectedType.classifier
         return classifier == IntArray::class ||
                classifier == DoubleArray::class ||
@@ -25,12 +24,11 @@ class PrimitiveArrayConverter : ResultConverter<Any> {
     }
 
     override fun convert(
-        source: Any,
+        source: PgArray,
         expectedType: KType,
         context: DeserializationContext,
         sourceType: PgType
     ): Any {
-        source as PgArray
         
         return when (expectedType.classifier) {
             IntArray::class -> {
