@@ -10,7 +10,8 @@ class NamedParameterQuery(
     typeManager: TypeManager
 ) : OctaviusQuery<NamedParameterQuery>(sql, queryExecutor, typeManager) {
 
-    private fun prepareNamedQuery(params: Map<String, Any?>): Triple<String, List<Int>, List<ByteArray?>> {
+    @PublishedApi
+    internal fun prepareNamedQuery(params: Map<String, Any?>): Triple<String, List<Int>, List<ByteArray?>> {
         val parsed = SqlParameterParser.parse(sql)
         val listParams = parsed.paramNames.map {
             if (!params.containsKey(it)) {
@@ -57,8 +58,11 @@ class NamedParameterQuery(
     }
 
     inline fun <reified T : Any> fetchListOf(params: Map<String, Any?>): List<T> {
-        return fetchAll(params).map {
-            it.resultMapper.deserialize(it, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        val (transformedSql, types, values) = prepareNamedQuery(params)
+        val targetType = typeOf<T>()
+        val recordType = PgType.Record(2249, "record", "pg_catalog")
+        return queryExecutor.query(transformedSql, types, values, localDeserializer) {
+            it.resultMapper.deserialize(it, targetType, recordType)
         }
     }
 
@@ -77,7 +81,9 @@ class NamedParameterQuery(
     }
 
     inline fun <reified T> fetchColumn(params: Map<String, Any?>): List<T> {
-        return fetchAll(params).map { it.get<T>(0) }
+        val (transformedSql, types, values) = prepareNamedQuery(params)
+        val targetType = typeOf<T>()
+        return queryExecutor.query(transformedSql, types, values, localDeserializer) { it.get<T>(0, targetType) }
     }
 
     inline fun <reified T : Any> fetchListOf(vararg params: Pair<String, Any?>): List<T> = fetchListOf(params.toMap())

@@ -105,6 +105,15 @@ class QueryExecutor(
      * Returns a parsed list of rows (Row) immediately.
      */
     fun query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> {
+        return query(sql, paramTypes, paramValues, mapper) { it }
+    }
+
+    /**
+     * Uses Extended Query Protocol.
+     * Intended for DQL (SELECT).
+     * Returns a parsed list of elements using the provided transform function immediately.
+     */
+    fun <R> query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper, transform: (Row) -> R): List<R> {
         val statementName = ""
         val portalName = ""
         
@@ -116,7 +125,7 @@ class QueryExecutor(
         
         stream.flush()
         
-        val rows = mutableListOf<Row>()
+        val rows = mutableListOf<R>()
         var rowDescription: RowDescriptionMessage? = null
         var errorMessage: String? = null
         
@@ -130,7 +139,7 @@ class QueryExecutor(
                     if (rowDescription == null) {
                         errorMessage = "Received DataRow before RowDescription"
                     } else {
-                        rows.add(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowDescription.fields, typeRegistry, mapper))
+                        rows.add(transform(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowDescription.fields, typeRegistry, mapper)))
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }

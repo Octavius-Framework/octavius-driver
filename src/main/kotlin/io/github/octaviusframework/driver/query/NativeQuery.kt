@@ -37,8 +37,11 @@ class NativeQuery(
     }
 
     inline fun <reified T : Any> fetchListOf(vararg params: Any?): List<T> {
-        return fetchAll(*params).map {
-            it.resultMapper.deserialize(it, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        val (types, values) = serializeParameters(params.toList())
+        val targetType = typeOf<T>()
+        val recordType = PgType.Record(2249, "record", "pg_catalog")
+        return queryExecutor.query(sql, types, values, localDeserializer) {
+            it.resultMapper.deserialize(it, targetType, recordType)
         }
     }
 
@@ -57,6 +60,8 @@ class NativeQuery(
     }
 
     inline fun <reified T> fetchColumn(vararg params: Any?): List<T> {
-        return fetchAll(*params).map { it.get<T>(0) }
+        val (types, values) = serializeParameters(params.toList())
+        val targetType = typeOf<T>()
+        return queryExecutor.query(sql, types, values, localDeserializer) { it.get<T>(0, targetType) }
     }
 }

@@ -13,14 +13,14 @@ import io.github.octaviusframework.driver.type.TypeManager
  */
 @Suppress("UNCHECKED_CAST")
 abstract class OctaviusQuery<T : OctaviusQuery<T>>(
-    protected val sql: String,
-    protected val queryExecutor: QueryExecutor,
+    @PublishedApi internal val sql: String,
+    @PublishedApi internal val queryExecutor: QueryExecutor,
     val typeManager: TypeManager
 ) {
     val typeRegistry = typeManager.registry
     val resultConverterRegistry = ResultConverterRegistry(parent = typeRegistry.converterRegistry)
     val parameterConverterRegistry = ParameterConverterRegistry(parent = typeRegistry.parameterConverterRegistry)
-    protected val localDeserializer = ResultMapper(resultConverterRegistry)
+    @PublishedApi internal val localDeserializer = ResultMapper(resultConverterRegistry)
     protected val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
     protected val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
 
@@ -34,7 +34,7 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
         return this as T
     }
 
-    protected fun serializeParameters(params: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
+    @PublishedApi internal fun serializeParameters(params: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
         return parameterSerializer.serializeAll(params)
     }
 }

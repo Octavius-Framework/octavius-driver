@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.message.backend.RowDescriptionMessage
 import io.github.octaviusframework.driver.type.TypeRegistry
+import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 interface Row {
@@ -20,15 +21,25 @@ interface Row {
     fun getOid(index: Int): Int
 }
 
-inline fun <reified T> Row.get(index: Int): T {
+@Suppress("UNCHECKED_CAST")
+fun <T> Row.get(index: Int, targetType: KType): T {
     val raw = getRaw(index)
     val oid = getOid(index)
     val type = typeRegistry.types[oid]!!
-    return resultMapper.deserialize(raw, typeOf<T>(), sourceType = type)
+    return resultMapper.deserialize(raw, targetType, sourceType = type) as T
+}
+
+inline fun <reified T> Row.get(index: Int): T {
+    return get(index, typeOf<T>())
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T> Row.get(columnName: String, targetType: KType): T {
+    return get<T>(getColumnIndex(columnName), targetType)
 }
 
 inline fun <reified T> Row.get(columnName: String): T {
-    return get<T>(getColumnIndex(columnName))
+    return get<T>(getColumnIndex(columnName), typeOf<T>())
 }
 
 class OctaviusRow(
