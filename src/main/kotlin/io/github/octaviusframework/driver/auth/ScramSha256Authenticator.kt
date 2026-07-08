@@ -8,17 +8,47 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
+/**
+ * Utility object for performing SCRAM-SHA-256 authentication cryptographic operations.
+ * It provides functions for generating nonces and computing SCRAM signatures
+ * according to RFC 7677.
+ */
 internal object ScramSha256Authenticator {
     private const val HMAC_SHA256 = "HmacSHA256"
 
+    /**
+     * Holds the results of a SCRAM signature computation.
+     *
+     * @property clientProof The computed client proof (base64 encoded).
+     * @property expectedServerSignature The expected server signature for verification (base64 encoded).
+     */
+    data class ScramResult(val clientProof: String, val expectedServerSignature: String)
+
+    /**
+     * Generates a random base64-encoded string to be used as a client nonce.
+     * Non-alphanumeric characters are removed.
+     *
+     * @return A random client nonce string.
+     */
     fun generateClientNonce(): String {
         val bytes = ByteArray(18)
         SecureRandom().nextBytes(bytes)
         return Base64.getEncoder().encodeToString(bytes).replace(Regex("[^a-zA-Z0-9]"), "")
     }
 
-    data class ScramResult(val clientProof: String, val expectedServerSignature: String)
 
+
+    /**
+     * Computes the client proof and expected server signature for SCRAM authentication.
+     *
+     * @param password The user's plaintext password.
+     * @param salt The salt provided by the server.
+     * @param iterations The iteration count provided by the server.
+     * @param clientFirstMessageBare The bare version of the client-first-message (without gs2-header).
+     * @param serverFirstMessage The server-first-message received from the server.
+     * @param clientFinalMessageWithoutProof The client-final-message up to the "p=" attribute.
+     * @return A [ScramResult] containing the computed `clientProof` and `expectedServerSignature`.
+     */
     fun computeSignatures(password: String, salt: ByteArray, iterations: Int, clientFirstMessageBare: String, serverFirstMessage: String, clientFinalMessageWithoutProof: String): ScramResult {
         // 1. SaltedPassword = Hi(Normalize(password), salt, i)
         val saltedPassword = pbkdf2(password, salt, iterations)

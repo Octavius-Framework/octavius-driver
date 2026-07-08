@@ -9,8 +9,22 @@ import io.github.octaviusframework.driver.message.frontend.SASLResponse
 import java.nio.charset.StandardCharsets
 import java.util.*
 
+/**
+ * Handles the authentication process during the PostgreSQL connection startup phase.
+ * It manages the state machine for exchanging authentication messages with the server.
+ *
+ * @property stream The underlying PostgreSQL communication stream used for message exchange.
+ */
 internal class Authenticator(private val stream: PgStream) {
 
+    /**
+     * Authenticates the user with the PostgreSQL server using the provided credentials.
+     * Currently, only SCRAM-SHA-256 authentication is supported.
+     *
+     * @param user The username used for authentication.
+     * @param password The password for the user, can be null if not required.
+     * @throws OctaviusAuthException If authentication fails, protocol is violated, or unsupported mechanism is requested.
+     */
     fun authenticate(user: String, password: String?) {
         while (true) {
             val msg = stream.receiveMessage()
