@@ -55,10 +55,10 @@ class TypeRegistry {
     }
 
     @Volatile
-    var types: Map<Int, PgType> = emptyMap()
+    var types: IntObjectMap<PgType> = IntObjectMap()
 
     @Volatile
-    private var codecsByOid: Map<Int, TypeCodec<*>> = emptyMap()
+    private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
 
     @Volatile
     private var codecsByName: Map<QualifiedName, TypeCodec<*>> = emptyMap()
@@ -81,7 +81,7 @@ class TypeRegistry {
     }
 
     init {
-        val newOidMap = mutableMapOf<Int, TypeCodec<*>>()
+        val newOidMap = IntObjectMap<TypeCodec<*>>()
         val newClassMap = mutableMapOf<KClass<*>, TypeCodec<*>>()
         registerBuiltins(newOidMap, newClassMap)
         codecsByOid = newOidMap
@@ -89,7 +89,7 @@ class TypeRegistry {
     }
 
     private fun registerBuiltins(
-        oidMap: MutableMap<Int, TypeCodec<*>>,
+        oidMap: IntObjectMap<TypeCodec<*>>,
         classMap: MutableMap<KClass<*>, TypeCodec<*>>
     ) {
         fun register(codec: TypeCodec<*>) {
@@ -138,7 +138,7 @@ class TypeRegistry {
      * subsequent dictionary reloads (reloadTypes).
      */
     fun registerCodec(codec: TypeCodec<*>, searchPath: List<String> = emptyList()) {
-        val newOidMap = codecsByOid.toMutableMap()
+        val newOidMap = IntObjectMap(codecsByOid)
         val newClassMap = codecsByClass.toMutableMap()
         val newNameMap = codecsByName.toMutableMap()
 
@@ -179,7 +179,7 @@ class TypeRegistry {
      * Additionally applies custom codecs waiting for an OID.
      */
     fun updateTypes(newTypes: Map<Int, PgType>, searchPath: List<String> = emptyList()) {
-        val newOidMap = codecsByOid.toMutableMap()
+        val newOidMap = IntObjectMap(codecsByOid)
         val newNameMap = codecsByName.toMutableMap()
         for ((name, codec) in codecsByName) {
             if (codec.oid == null) {
@@ -187,7 +187,7 @@ class TypeRegistry {
                     name.name,
                     name.schema,
                     searchPath = searchPath,
-                    sourceTypes = newTypes
+                    sourceTypes = newTypes.values
                 )
                 newOidMap[resolvedOid] = codec
                 newNameMap[resolvedQName] = codec
@@ -206,7 +206,12 @@ class TypeRegistry {
             }
         }
 
-        types = newTypes
+        // Preallocate to avoid any rehashes during initialization (load factor 0.75)
+        val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
+        for ((oid, type) in newTypes) {
+            intMap[oid] = type
+        }
+        types = intMap
         codecsByOid = newOidMap
         codecsByName = newNameMap
     }
@@ -217,10 +222,10 @@ class TypeRegistry {
         requestedSchema: String,
         isArray: Boolean = false,
         searchPath: List<String>,
-        sourceTypes: Map<Int, PgType> = types
+        sourceTypes: Iterable<PgType> = types.values
     ): Pair<Int, QualifiedName> {
         // Find matching types by name
-        val schemasForName = sourceTypes.values
+        val schemasForName = sourceTypes
             .filter { it.name == typeName }
             .groupBy { it.schema }
             .mapValues { it.value.first().oid }

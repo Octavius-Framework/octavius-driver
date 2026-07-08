@@ -154,7 +154,7 @@ class DeserializationIntegrationTest {
                 override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
                     val code = source.get<String>("code")
                     val statusRaw = source.get<Any?>("status")
-                    val statusType = source.typeRegistry.types[source.type.attributes["status"]]!!
+                    val statusType = source.typeRegistry.types[source.type.attributes["status"]!!]!!
                     val status = if (statusRaw != null) {
                         context.convert(statusRaw, typeOf<TestStatus>(), statusType)
                     } else {

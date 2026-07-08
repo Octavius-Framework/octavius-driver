@@ -11,6 +11,7 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
@@ -23,27 +24,28 @@ class ReflectionCompositeMappingTest {
         @MapKey("age_in_years") val age: Int
     )
 
-    private val dummyRegistry = TypeRegistry().apply {
-        types = mapOf(
-            1 to PgType.Base(1, "text", "public"),
-            2 to PgType.Base(2, "int4", "public")
+    val type = PgType.Composite(
+        3, "person_type", "public", LinkedHashMap(
+            mapOf(
+                "first_name" to 1,
+                "last_name" to 1,
+                "age_in_years" to 2
+            )
         )
+    )
+
+    private val dummyRegistry = TypeRegistry().apply {
+        types = IntObjectMap<PgType>().apply {
+            put(1, PgType.Base(1, "text", "public"))
+            put(2, PgType.Base(2, "int4", "public"))
+            put(3, type)
+        }
     }
 
     private fun registerPersonComposite(
         pgConvention: CaseConvention,
         kotlinConvention: CaseConvention
     ): PgType.Composite {
-        val type = PgType.Composite(
-            3, "person_type", "public", LinkedHashMap(
-                mapOf(
-                    "first_name" to 1,
-                    "last_name" to 1,
-                    "age_in_years" to 2
-                )
-            )
-        )
-        dummyRegistry.types = dummyRegistry.types + (3 to type)
         dummyRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
         return type
     }

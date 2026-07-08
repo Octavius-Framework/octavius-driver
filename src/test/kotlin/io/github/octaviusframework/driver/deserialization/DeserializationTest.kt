@@ -12,6 +12,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KType
@@ -21,10 +22,10 @@ import kotlin.reflect.typeOf
 class DeserializationTest {
 
     private val dummyRegistry = TypeRegistry().apply {
-        types = mapOf(
-            1 to PgType.Base(1, "dummy", "public"),
-            2 to PgType.Array(2, "dummy_array", "public", 1)
-        )
+        types = IntObjectMap<PgType>().apply {
+            put(1, PgType.Base(1, "dummy", "public"))
+            put(2, PgType.Array(2, "dummy_array", "public", 1))
+        }
         registerAutoCompositeType<Address>("address")
         registerAutoCompositeType<Person>("person")
         registerAutoCompositeType<Company>("company")
