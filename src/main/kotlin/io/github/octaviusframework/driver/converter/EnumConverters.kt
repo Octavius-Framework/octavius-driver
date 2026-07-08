@@ -23,7 +23,7 @@ class EnumParameterConverter<T : Enum<T>>(
     }
 
     override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
-        return source::class == enumClass
+        return enumClass.isInstance(source)
     }
 
     override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
@@ -35,7 +35,8 @@ class EnumResultConverter<T : Enum<T>>(
     private val enumClass: KClass<T>,
     private val qualifiedName: QualifiedName,
     private val pgConvention: CaseConvention,
-    private val kotlinConvention: CaseConvention
+    private val kotlinConvention: CaseConvention,
+    private val typeManager: TypeManager
 ) : ResultConverter<String, T> {
 
     private val pgToEnum = enumClass.java.enumConstants.associateBy {
@@ -45,7 +46,11 @@ class EnumResultConverter<T : Enum<T>>(
     override val supportedSourceClass = String::class
 
     override fun canConvert(source: String, expectedType: KType, sourceType: PgType): Boolean {
-        return sourceType is PgType.Enum && sourceType.name == qualifiedName.name //TODO TypeRegistry and resolveOid
+        if (expectedType.classifier != enumClass) return false
+        if (sourceType !is PgType.Enum) return false
+
+         val (resolvedOid, _) = typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
+         return sourceType.oid == resolvedOid
     }
 
     override fun convert(source: String, expectedType: KType, context: DeserializationContext, sourceType: PgType): T {
