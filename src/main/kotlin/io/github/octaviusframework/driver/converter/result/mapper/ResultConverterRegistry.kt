@@ -21,14 +21,24 @@ class ResultConverterRegistry(
         
         val specificConverters = converters[sourceClass]
         if (specificConverters != null) {
-            val converter = specificConverters.find { (it as ResultConverter<Any, *>).canConvert(source, expectedType, sourceType) }
-            if (converter != null) return converter as ResultConverter<Any, *>
+            for (i in 0 until specificConverters.size) {
+                @Suppress("UNCHECKED_CAST")
+                val converter = specificConverters[i] as ResultConverter<Any, *>
+                if (converter.canConvert(source, expectedType, sourceType)) {
+                    return converter
+                }
+            }
         }
 
         val anyConverters = converters[Any::class]
         if (anyConverters != null) {
-            val converter = anyConverters.find { (it as ResultConverter<Any, *>).canConvert(source, expectedType, sourceType) }
-            if (converter != null) return converter as ResultConverter<Any, *>
+            for (i in 0 until anyConverters.size) {
+                @Suppress("UNCHECKED_CAST")
+                val converter = anyConverters[i] as ResultConverter<Any, *>
+                if (converter.canConvert(source, expectedType, sourceType)) {
+                    return converter
+                }
+            }
         }
 
         return parent?.findConverter(source, expectedType, sourceType)
