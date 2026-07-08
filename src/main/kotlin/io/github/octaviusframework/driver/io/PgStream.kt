@@ -6,13 +6,13 @@ import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
 import io.github.octaviusframework.driver.notification.PgNotification
+import io.github.octaviusframework.driver.ssl.PgSslUpgrader
+import io.github.octaviusframework.driver.ssl.SslConfiguration
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.net.InetSocketAddress
 import java.net.Socket
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.SSLSocketFactory
 
 class PgStream(val host: String, val port: Int) : AutoCloseable {
     private var socket: Socket = Socket()
@@ -27,10 +27,8 @@ class PgStream(val host: String, val port: Int) : AutoCloseable {
         outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
     }
 
-    fun upgradeToSSL(host: String, port: Int) {
-        val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
-        val sslSocket = factory.createSocket(socket, host, port, true) as SSLSocket
-        sslSocket.startHandshake()
+    fun upgradeToSSL(host: String, port: Int, config: SslConfiguration) {
+        val sslSocket = PgSslUpgrader.upgrade(socket, host, port, config)
         socket = sslSocket
         inputStream = PgInputStream(socket.getInputStream().buffered(8192))
         outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))

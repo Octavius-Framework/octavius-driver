@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.auth.Authenticator
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
+import io.github.octaviusframework.driver.ssl.SslNegotiator
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import java.sql.*
 import java.util.*
@@ -53,22 +53,11 @@ class OctaviusDriver : Driver {
 
         val user = mergedInfo.getProperty("user") ?: "postgres"
         val password = mergedInfo.getProperty("password")
-        val ssl = mergedInfo.getProperty("ssl")?.toBoolean() ?: false
 
         val stream = PgStream(host, port)
         
-        if (ssl) {
-            stream.sendMessage(SSLRequestMessage())
-            stream.flush()
-            val response = stream.inputStream.readByte().toInt().toChar()
-            if (response == 'S') {
-                stream.upgradeToSSL(host, port)
-            } else if (response == 'N') {
-                throw OctaviusJdbcException(JdbcExceptionMessage.SSL_ERROR, "Server does not support SSL, but ssl=true was specified.")
-            } else {
-                throw OctaviusJdbcException(JdbcExceptionMessage.SSL_ERROR, "Unexpected SSL negotiation response: $response")
-            }
-        }
+        val sslNegotiator = SslNegotiator(stream)
+        sslNegotiator.negotiate(host, port, mergedInfo)
         
         val startupParams = mapOf(
             "user" to user,
