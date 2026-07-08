@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import java.net.InetSocketAddress
 import java.net.Socket
 
-class PgStream(val host: String, val port: Int) : AutoCloseable {
+class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : AutoCloseable {
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
     var outputStream: PgOutputStream
@@ -22,7 +22,9 @@ class PgStream(val host: String, val port: Int) : AutoCloseable {
     var secretKey: ByteArray = ByteArray(0)
 
     init {
-        socket.connect(InetSocketAddress(host, port), 10000)
+        val connectTimeoutMs = if (loginTimeoutSecs > 0) loginTimeoutSecs * 1000 else 10000
+        socket.connect(InetSocketAddress(host, port), connectTimeoutMs)
+        socket.soTimeout = connectTimeoutMs
         inputStream = PgInputStream(socket.getInputStream().buffered(8192))
         outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
     }

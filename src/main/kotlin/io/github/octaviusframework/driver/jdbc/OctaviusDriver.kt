@@ -53,8 +53,9 @@ class OctaviusDriver : Driver {
 
         val user = mergedInfo.getProperty("user") ?: "postgres"
         val password = mergedInfo.getProperty("password")
+        val loginTimeout = mergedInfo.getProperty("loginTimeout")?.toIntOrNull() ?: DriverManager.getLoginTimeout()
 
-        val stream = PgStream(host, port)
+        val stream = PgStream(host, port, loginTimeout)
         
         val sslNegotiator = SslNegotiator(stream)
         sslNegotiator.negotiate(host, port, mergedInfo)
@@ -70,6 +71,8 @@ class OctaviusDriver : Driver {
         
         val authenticator = Authenticator(stream)
         authenticator.authenticate(user, password)
+        
+        stream.networkTimeout = mergedInfo.getProperty("socketTimeout")?.toIntOrNull()?.let { it * 1000 } ?: 0
         
         val serverVersion = stream.parameters["server_version"]
         if (serverVersion != null) {
