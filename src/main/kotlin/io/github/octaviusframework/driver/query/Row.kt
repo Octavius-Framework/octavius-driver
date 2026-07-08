@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.message.backend.RowDescriptionMessage
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 

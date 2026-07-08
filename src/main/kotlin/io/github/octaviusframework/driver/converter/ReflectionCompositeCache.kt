@@ -1,14 +1,10 @@
 package io.github.octaviusframework.driver.converter
 
 import io.github.octaviusframework.driver.annotation.MapKey
-import io.github.octaviusframework.driver.type.CaseConvention
-import io.github.octaviusframework.driver.type.CaseConverter
+import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.driver.identifier.CaseConverter
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
-import kotlin.reflect.KParameter
-import kotlin.reflect.KProperty1
-import kotlin.reflect.KType
+import kotlin.reflect.*
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor

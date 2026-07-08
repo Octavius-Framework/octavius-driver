@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultConverte
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.container.PgComposite
+import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.type.withPgType
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*

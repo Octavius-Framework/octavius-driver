@@ -3,13 +3,15 @@ package io.github.octaviusframework.driver.jdbc
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.*
-import io.github.octaviusframework.driver.type.GlobalTypeRegistry
+import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
+import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.quoteAsPgIdentifier
 import java.sql.*
 import java.util.*
 import java.util.concurrent.Executor
@@ -411,9 +413,6 @@ class OctaviusConnection(internal val stream: PgStream, private val url: String)
         }
         return catalogName!!
     } // required by Hikari
-
-    //---------------------------------------------------TYPES----------------------------------------------------------
-
 
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)

@@ -2,12 +2,8 @@ package io.github.octaviusframework.driver.notification
 
 import io.github.octaviusframework.driver.io.virtualDispatcher
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.SocketException
 import java.net.SocketTimeoutException

@@ -1,19 +1,19 @@
 package io.github.octaviusframework.driver.serialization
 
+import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
-import io.github.octaviusframework.driver.type.container.PgArray
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.container.PgArray
 import org.junit.jupiter.api.Assertions.*
-import kotlin.reflect.typeOf
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.*
+import kotlin.reflect.typeOf
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParameterConverterTest {

@@ -10,7 +10,7 @@ import java.security.SecureRandom
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
-import java.util.Base64
+import java.util.*
 import javax.net.ssl.*
 
 object PgSslUpgrader {

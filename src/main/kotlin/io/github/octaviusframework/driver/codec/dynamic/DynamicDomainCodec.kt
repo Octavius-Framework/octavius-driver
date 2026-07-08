@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.codec.dynamic
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KClass
 
 internal class DynamicDomainCodec<T : Any>(

@@ -1,14 +1,14 @@
 package io.github.octaviusframework.driver.composite
 
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.container.PgComposite
+import io.github.octaviusframework.driver.container.PgComposite
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull

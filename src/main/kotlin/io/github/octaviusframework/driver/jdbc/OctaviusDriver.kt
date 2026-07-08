@@ -4,9 +4,12 @@ import io.github.octaviusframework.driver.auth.Authenticator
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.ssl.SslNegotiator
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
-import java.sql.*
+import io.github.octaviusframework.driver.ssl.SslNegotiator
+import java.sql.Connection
+import java.sql.Driver
+import java.sql.DriverManager
+import java.sql.DriverPropertyInfo
 import java.util.*
 import java.util.logging.Logger
 

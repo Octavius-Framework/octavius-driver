@@ -1,14 +1,21 @@
 package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.codec.TypeCodec
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-
+import io.github.octaviusframework.driver.container.ArrayDimension
+import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.container.PgMultirange
+import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.converter.EnumParameterConverter
 import io.github.octaviusframework.driver.converter.EnumResultConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.type.container.*
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.driver.identifier.CaseConverter
+import io.github.octaviusframework.driver.identifier.QualifiedName
+import io.github.octaviusframework.driver.registry.TypeRegistry
 
 class TypeManager(
     val registry: TypeRegistry,
@@ -103,7 +110,7 @@ class TypeManager(
      *
      * @param typeName The name of the composite type.
      * @param schema The schema where the composite type is defined.
-     * @return A new [PgComposite] instance with empty fields.
+     * @return A new [io.github.octaviusframework.driver.container.PgComposite] instance with empty fields.
      */
     fun createComposite(typeName: String, schema: String = ""): PgComposite {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
@@ -129,7 +136,7 @@ class TypeManager(
      * @param typeName The name of the array type.
      * @param schema The schema where the array type is defined.
      * @param dimensionSizes Sizes of the array dimensions.
-     * @return A new [PgArray] instance initialized with nulls.
+     * @return A new [io.github.octaviusframework.driver.container.PgArray] instance initialized with nulls.
      */
     fun createArray(typeName: String, schema: String = "", vararg dimensionSizes: Int): PgArray {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
@@ -162,7 +169,7 @@ class TypeManager(
      * @param lower The lower bound value.
      * @param upper The upper bound value.
      * @param flags Range flags (e.g., inclusive/exclusive bounds).
-     * @return A new [PgRange] instance.
+     * @return A new [io.github.octaviusframework.driver.container.PgRange] instance.
      */
     fun createRange(
         typeName: String,
@@ -245,7 +252,7 @@ class TypeManager(
      * @param typeName The name of the multirange type.
      * @param schema The schema where the multirange type is defined.
      * @param ranges The ranges included in the multirange.
-     * @return A new [PgMultirange] instance.
+     * @return A new [io.github.octaviusframework.driver.container.PgMultirange] instance.
      */
     fun createMultirange(typeName: String, schema: String = "", vararg ranges: PgRange): PgMultirange {
         val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())

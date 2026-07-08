@@ -1,9 +1,9 @@
-package io.github.octaviusframework.driver.type.container
+package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeRegistry
 
 /**
  * Represents a record structure (e.g. ROW(...) without a specific registered composite type) loaded from the database.

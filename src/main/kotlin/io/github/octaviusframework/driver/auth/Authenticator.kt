@@ -7,7 +7,7 @@ import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
 import io.github.octaviusframework.driver.message.frontend.SASLResponse
 import java.nio.charset.StandardCharsets
-import java.util.Base64
+import java.util.*
 
 internal class Authenticator(private val stream: PgStream) {
 

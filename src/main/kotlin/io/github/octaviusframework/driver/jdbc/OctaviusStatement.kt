@@ -2,7 +2,10 @@ package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
-import java.sql.*
+import java.sql.Connection
+import java.sql.ResultSet
+import java.sql.SQLWarning
+import java.sql.Statement
 
 /**
  * A stub implementation of java.sql.Statement.

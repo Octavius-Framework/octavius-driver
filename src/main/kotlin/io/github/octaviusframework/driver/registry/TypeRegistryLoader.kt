@@ -1,8 +1,8 @@
-package io.github.octaviusframework.driver.type
+package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.query.QueryExecutor
-import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.type.PgType
 
 object TypeRegistryLoader {
 

@@ -1,12 +1,12 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
+import io.github.octaviusframework.driver.registry.TypeRegistry
+import io.github.octaviusframework.driver.type.TypeManager
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 
 class ParameterSerializerTest {
 

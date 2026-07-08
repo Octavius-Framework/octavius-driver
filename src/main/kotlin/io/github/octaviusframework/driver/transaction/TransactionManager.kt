@@ -1,11 +1,8 @@
-package io.github.octaviusframework.driver.jdbc
+package io.github.octaviusframework.driver.transaction
+
+import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 
 class TransactionManager(@PublishedApi internal val connection: OctaviusConnection) {
-    /**
-     * The current transaction state of the connection.
-     */
-    val state: OctaviusConnection.TransactionState
-        get() = connection.transactionState
 
     /**
      * Executes the given block within a transaction.
@@ -19,7 +16,7 @@ class TransactionManager(@PublishedApi internal val connection: OctaviusConnecti
      */
     inline operator fun <T> invoke(block: OctaviusConnection.() -> T): T {
         val initialAutoCommit = connection.autoCommit
-        
+
         return if (!initialAutoCommit) {
             val sp = connection.setSavepoint()
             try {

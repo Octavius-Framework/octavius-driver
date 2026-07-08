@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.type
 
+import io.github.octaviusframework.driver.identifier.QualifiedName
+
 /**
  * Represents standard, built-in PostgreSQL data types.
  * Used for type-safe type specification in the `withPgType` method.

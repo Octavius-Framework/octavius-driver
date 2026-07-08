@@ -2,8 +2,8 @@ package io.github.octaviusframework.driver.composite
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
 import io.github.octaviusframework.driver.query.get
-import io.github.octaviusframework.driver.type.container.PgMultirange
-import io.github.octaviusframework.driver.type.container.PgRange
+import io.github.octaviusframework.driver.container.PgMultirange
+import io.github.octaviusframework.driver.container.PgRange
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll

@@ -1,8 +1,8 @@
-package io.github.octaviusframework.driver.type.container
+package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.type.TypeRegistry
+import io.github.octaviusframework.driver.registry.TypeRegistry
 
 /**
  * Reprezentuje pojedynczy wymiar tablicy w Postgresie.

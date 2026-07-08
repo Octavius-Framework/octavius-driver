@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
-import java.util.Properties
+import java.util.*
 
 class SslNegotiator(private val stream: PgStream) {
 

@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.jdbc
 
 import java.sql.Connection
 import java.sql.DriverManager
-import java.util.Properties
+import java.util.*
 import javax.sql.DataSource
 
 // DriverManager

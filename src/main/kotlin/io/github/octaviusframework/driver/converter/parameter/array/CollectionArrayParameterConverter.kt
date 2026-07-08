@@ -1,15 +1,14 @@
 package io.github.octaviusframework.driver.converter.parameter.array
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.container.ArrayDimension
-import io.github.octaviusframework.driver.type.container.PgArray
-import io.github.octaviusframework.driver.type.container.PgContainer
+import io.github.octaviusframework.driver.container.ArrayDimension
+import io.github.octaviusframework.driver.container.PgArray
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
