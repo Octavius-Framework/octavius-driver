@@ -40,10 +40,10 @@ internal object ContainerCodec {
     fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.types[oid]) {
             is PgType.Array -> parsePgArray(data, offset, length, pgType.oid, typeRegistry)
-            is PgType.Composite -> parsePgComposite(data, offset, length, pgType.oid, typeRegistry)
-            is PgType.Range -> parsePgRange(data, offset, length, pgType.oid, typeRegistry)
-            is PgType.Multirange -> parsePgMultirange(data, offset, length, pgType.oid, typeRegistry)
-            is PgType.Record -> parsePgRecord(data, offset, length, pgType.oid, typeRegistry)
+            is PgType.Composite -> parsePgComposite(data, offset, pgType.oid, typeRegistry)
+            is PgType.Range -> parsePgRange(data, offset, pgType.oid, typeRegistry)
+            is PgType.Multirange -> parsePgMultirange(data, offset, pgType.oid, typeRegistry)
+            is PgType.Record -> parsePgRecord(data, offset, pgType.oid, typeRegistry)
             else -> throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
@@ -73,14 +73,12 @@ internal object ContainerCodec {
         val totalElements = dimensions.fold(1) { acc, dim -> acc * dim.size }
         val count = if (ndims == 0) 0 else totalElements
 
-        val elements = ArrayList<Any?>(count)
+        val elements = arrayOfNulls<Any?>(count)
 
         for (i in 0 until count) {
             val len = data.getIntBE(localOffset); localOffset += 4
-            if (len == -1) {
-                elements.add(null)
-            } else {
-                elements.add(parseField(data, localOffset, len, elementOid, typeRegistry))
+            if (len != -1) {
+                elements[i] = parseField(data, localOffset, len, elementOid, typeRegistry)
                 localOffset += len
             }
         }
@@ -88,7 +86,7 @@ internal object ContainerCodec {
         return PgArray(oid, elementOid, dimensions, elements, typeRegistry)
     }
 
-    fun parsePgComposite(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
+    fun parsePgComposite(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.types[oid] as? PgType.Composite
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -112,7 +110,7 @@ internal object ContainerCodec {
         return PgComposite(pgType, fields, typeRegistry)
     }
 
-    fun parsePgRecord(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
+    fun parsePgRecord(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
         val pgType = typeRegistry.types[oid] as? PgType.Record
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -141,7 +139,7 @@ internal object ContainerCodec {
         return PgRecord(pgType, fieldOids, fields, typeRegistry)
     }
 
-    fun parsePgRange(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
+    fun parsePgRange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -175,7 +173,7 @@ internal object ContainerCodec {
         return PgRange(oid, pgType.subtypeOid, flags, lowerBound, upperBound, typeRegistry)
     }
 
-    fun parsePgMultirange(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
+    fun parsePgMultirange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.types[oid] as? PgType.Multirange
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
@@ -189,7 +187,7 @@ internal object ContainerCodec {
         val ranges = mutableListOf<PgRange>()
         for (i in 0 until numRanges) {
             val len = data.getIntBE(localOffset); localOffset += 4
-            ranges.add(parsePgRange(data, localOffset, len, pgType.rangeOid, typeRegistry))
+            ranges.add(parsePgRange(data, localOffset, pgType.rangeOid, typeRegistry))
             localOffset += len
         }
 

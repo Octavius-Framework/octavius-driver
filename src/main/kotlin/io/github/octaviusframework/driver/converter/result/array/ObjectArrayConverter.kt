@@ -4,53 +4,66 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgArray
+import java.lang.reflect.Array as JavaArray
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
+class ObjectArrayConverter : ResultConverter<PgArray, Array<*>> {
     override val supportedSourceClass = PgArray::class
 
     override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
-        return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
+        return kClass == Array::class
     }
 
-    override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
+    override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Array<*> {
         val pgElementType = source.typeRegistry.types[source.elementOid]
             ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
 
-        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
+        return buildMultiDimensionalArray(source, context, expectedType, 0, 0, pgElementType)
     }
 
-    private fun buildMultiDimensionalCollection(
+    private fun getJavaClassForType(kType: KType): Class<*> {
+        val classifier = kType.classifier as? KClass<*> ?: return Any::class.java
+        if (classifier == Array::class) {
+            val elementType = kType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
+            val elementJavaClass = getJavaClassForType(elementType)
+            return JavaArray.newInstance(elementJavaClass, 0).javaClass
+        }
+        return classifier.javaObjectType
+    }
+
+    private fun buildMultiDimensionalArray(
         source: PgArray,
         context: DeserializationContext,
         expectedType: KType,
         dimensionIndex: Int,
         flatIndexOffset: Int,
         pgElementType: PgType
-    ): Collection<*> {
-        val kClass = expectedType.classifier as? KClass<*> ?: List::class
+    ): Array<*> {
         val ktElementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
         val elements = source.elements
 
-        // Zabezpieczenie dla pustych wymiarów lub płaskich jednowymiarowych tablic
+        val jClass = getJavaClassForType(ktElementType)
+
         if (source.dimensions.isEmpty()) {
-            val mappedElements = List(elements.size) { i ->
+            val mappedElements = JavaArray.newInstance(jClass, elements.size) as Array<Any?>
+            for (i in elements.indices) {
                 val value = elements[i]
-                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
+                mappedElements[i] = if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
             }
-            return if (kClass == Set::class) mappedElements.toSet() else mappedElements
+            return mappedElements
         }
 
         val currentDimSize = source.dimensions[dimensionIndex].size
+        val mappedElements = JavaArray.newInstance(jClass, currentDimSize) as Array<Any?>
 
-        val mappedElements = if (dimensionIndex == source.dimensions.size - 1) {
-            List(currentDimSize) { i ->
+        if (dimensionIndex == source.dimensions.size - 1) {
+            for (i in 0 until currentDimSize) {
                 val flatIndex = flatIndexOffset + i
                 val value = elements[flatIndex]
-                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
+                mappedElements[i] = if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
             }
         } else {
             var multiplier = 1
@@ -58,11 +71,11 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 multiplier *= source.dimensions[j].size
             }
 
-            List(currentDimSize) { i ->
-                buildMultiDimensionalCollection(
+            for (i in 0 until currentDimSize) {
+                mappedElements[i] = buildMultiDimensionalArray(
                     source,
                     context,
-                    ktElementType, // List<List<Int>> -> List<Int> etc.
+                    ktElementType, // Array<Array<Int>> -> Array<Int> etc.
                     dimensionIndex + 1,
                     flatIndexOffset + i * multiplier,
                     pgElementType
@@ -70,6 +83,6 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
             }
         }
 
-        return if (kClass == Set::class) mappedElements.toSet() else mappedElements
+        return mappedElements
     }
 }
