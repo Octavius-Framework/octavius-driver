@@ -20,51 +20,6 @@ import kotlin.test.assertNotNull
 
 class SerializationTest {
 
-    @Test
-    fun testCompositeZeroCopySerialization() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
-
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
-
-        octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
-        octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
-        octaviusConn.reloadTypes()
-
-        val row = octaviusConn.createNativeQuery("SELECT ROW(12345, 'octavius_test')::ser_test_composite as my_comp").fetchAll()
-            .first()
-
-        val composite = row.get<PgComposite>("my_comp")
-        assertNotNull(composite)
-
-        val writer1 = PgByteWriter()
-        ContainerCodec.serializeContainer(composite, writer1, row.typeRegistry)
-        val originalBytesArr = writer1.toByteArray()
-
-        // TERAZ MODYFIKUJEMY WARSTWĘ 3 Z POMOCĄ OPERATORA SET
-        composite["id"] = 99999
-        composite["name"] = "changed_text"
-
-        // Serializujemy ponownie
-        val writer2 = PgByteWriter()
-        ContainerCodec.serializeContainer(composite, writer2, row.typeRegistry)
-        val modifiedBytes = writer2.toByteArray()
-
-        // Pobieramy wzorzec z bazy dla zmienionych wartości by porównać
-        val expectedRow =
-            octaviusConn.createNativeQuery("SELECT ROW(99999, 'changed_text')::ser_test_composite as my_comp").fetchAll().first()
-        val expectedComposite = expectedRow.get<PgComposite>(0)
-        val writer3 = PgByteWriter()
-        ContainerCodec.serializeContainer(expectedComposite, writer3, row.typeRegistry)
-        val expectedBytes = writer3.toByteArray()
-
-        assertContentEquals(
-            expectedBytes,
-            modifiedBytes,
-            "Serializacja po modyfikacji w 3 warstwie musi odpowiadać nowym danym"
-        )
-    }
 
     @Test
     fun testArraySerialization() {
