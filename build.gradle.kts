@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.jmh)
     id("maven-publish")
 }
 
@@ -38,4 +39,9 @@ publishing {
             from(components["java"])
         }
     }
+}
+
+jmh {
+    profilers.add("gc")
+    profilers.add("stack")
 }

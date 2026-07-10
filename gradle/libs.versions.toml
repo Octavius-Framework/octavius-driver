@@ -4,6 +4,7 @@ coroutines = "1.11.0"
 junit = "6.1.0"
 serialization = "1.11.0"
 datetime = "0.8.0"
+jmh = "0.7.2"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -16,3 +17,4 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.r
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+jmh = { id = "me.champeau.jmh", version.ref = "jmh" }
