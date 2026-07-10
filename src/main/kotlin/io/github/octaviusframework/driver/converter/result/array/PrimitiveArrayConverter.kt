@@ -9,6 +9,15 @@ import kotlin.reflect.typeOf
 
 class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
     override val supportedSourceClass = PgArray::class
+    
+    private val intKType = typeOf<Int>()
+    private val doubleKType = typeOf<Double>()
+    private val floatKType = typeOf<Float>()
+    private val longKType = typeOf<Long>()
+    private val shortKType = typeOf<Short>()
+    private val byteKType = typeOf<Byte>()
+    private val booleanKType = typeOf<Boolean>()
+    private val charKType = typeOf<Char>()
 
     override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType): Boolean {
         val classifier = expectedType.classifier
@@ -28,77 +37,81 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
         context: DeserializationContext,
         sourceType: PgType
     ): Any {
-        
+
+        val pgElementType = source.typeRegistry.types[source.elementOid]
+            ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
+
+        val elements = source.elements
+        val size = elements.size
+
         return when (expectedType.classifier) {
             IntArray::class -> {
-                val result = IntArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Int>(), type)
+                val result = IntArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive IntArray")
+                    result[i] = context.convert(value, intKType, pgElementType)
                 }
                 result
             }
+
             DoubleArray::class -> {
-                val result = DoubleArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Double>(), type)
+                val result = DoubleArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive DoubleArray")
+                    result[i] = context.convert(value, doubleKType, pgElementType)
                 }
                 result
             }
             FloatArray::class -> {
-                val result = FloatArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Float>(), type)
+                val result = FloatArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive FloatArray")
+                    result[i] = context.convert(value, floatKType, pgElementType)
                 }
                 result
             }
+
             LongArray::class -> {
-                val result = LongArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Long>(), type)
+                val result = LongArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive LongArray")
+                    result[i] = context.convert(value, longKType, pgElementType)
                 }
                 result
             }
+
             ShortArray::class -> {
-                val result = ShortArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Short>(), type)
+                val result = ShortArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive ShortArray")
+                    result[i] = context.convert(value, shortKType, pgElementType)
                 }
                 result
             }
+
             ByteArray::class -> {
-                val result = ByteArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Byte>(), type)
+                val result = ByteArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive ByteArray")
+                    result[i] = context.convert(value, byteKType, pgElementType)
                 }
                 result
             }
+
             BooleanArray::class -> {
-                val result = BooleanArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Boolean>(), type)
+                val result = BooleanArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive BooleanArray")
+                    result[i] = context.convert(value, booleanKType, pgElementType)
                 }
                 result
             }
+
             CharArray::class -> {
-                val result = CharArray(source.totalElements)
-                for (i in 0 until source.totalElements) {
-                    val value = source.get<Any>(i)
-                    val type = source.typeRegistry.types[source.elementOid]!!
-                    result[i] = context.convert(value, typeOf<Char>(), type)
+                val result = CharArray(size)
+                for (i in 0 until size) {
+                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive CharArray")
+                    result[i] = context.convert(value, charKType, pgElementType)
                 }
                 result
             }
