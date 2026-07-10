@@ -14,7 +14,7 @@ class PgComposite(
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
     val attributeNames: List<String>
-        get() = type.attributes.keys.toList()
+        get() = type.attributeNames
 
     inline fun <reified T> get(index: Int): T {
         val value = fields[index]

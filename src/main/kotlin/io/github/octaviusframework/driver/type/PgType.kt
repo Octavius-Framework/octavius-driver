@@ -32,6 +32,8 @@ sealed class PgType(
         val attributes: LinkedHashMap<String, Int>
     ) : PgType(oid, name, schema) {
         val attributeOids: List<Int> by lazy { attributes.values.toList() }
+
+        val attributeNames: List<String> by lazy { attributes.keys.toList() }
         val nameToIndex: Map<String, Int> by lazy {
             val map = HashMap<String, Int>()
             attributes.keys.forEachIndexed { index, name -> map[name] = index }

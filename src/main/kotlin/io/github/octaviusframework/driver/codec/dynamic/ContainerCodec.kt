@@ -99,7 +99,7 @@ internal object ContainerCodec {
         var localOffset = offset
         val numFields = data.getIntBE(localOffset); localOffset += 4
 
-        val fields = Array<Any?>(numFields) { null }
+        val fields = arrayOfNulls<Any?>(numFields)
         for (i in 0 until numFields) {
             val fieldOid = data.getIntBE(localOffset); localOffset += 4
             val len = data.getIntBE(localOffset); localOffset += 4
