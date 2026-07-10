@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*

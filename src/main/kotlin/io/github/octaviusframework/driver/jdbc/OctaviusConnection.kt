@@ -26,7 +26,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     val converterRegistry = typeRegistry.converterRegistry
     val queryExecutor = QueryExecutor(stream, typeRegistry)
 
-    // Custom functionalities moved to OctaviusSession
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
     }
