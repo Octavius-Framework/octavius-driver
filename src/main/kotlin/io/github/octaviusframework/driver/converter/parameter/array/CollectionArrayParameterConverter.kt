@@ -15,47 +15,47 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return source is Collection<*> || source is Array<*>
     }
 
-    private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, Array<Any?>> {
+    private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, List<Any?>> {
         val dimensions = mutableListOf<Int>()
         var current: Any? = source
-
         while (current is Collection<*> || current is Array<*>) {
-            val size = if (current is Collection<*>) current.size else (current as Array<*>).size
-            dimensions.add(size)
-            current = if (current is Collection<*>) current.firstOrNull() else (current as Array<*>).firstOrNull()
+            val list = when (current) {
+                is Collection<*> -> current.toList()
+                is Array<*> -> current.toList()
+                else -> break
+            }
+            dimensions.add(list.size)
+            current = list.firstOrNull()
         }
+
+        val arrayDimensions = dimensions.map { ArrayDimension(it, 1) }
+        val flatList = flatten(source)
 
         val expectedSize = dimensions.fold(1) { acc, i -> acc * i }
-        val arrayDimensions = dimensions.map { ArrayDimension(it, 1) }
-
-        val flatBuffer = arrayOfNulls<Any?>(expectedSize)
-        var index = 0
-
-        fun flattenInto(item: Any?) {
-            when (item) {
-                is Collection<*> -> item.forEach { flattenInto(it) }
-                is Array<*> -> item.forEach { flattenInto(it) }
-                else -> flatBuffer[index++] = item
-            }
-        }
-
-        flattenInto(source)
-
-        if (dimensions.isNotEmpty() && dimensions.first() > 0 && index != expectedSize) {
+        if (dimensions.isNotEmpty() && dimensions.first() > 0 && flatList.size != expectedSize) {
             throw IllegalArgumentException("Multidimensional arrays must be rectangular")
         }
 
-        return arrayDimensions to flatBuffer
+        return arrayDimensions to flatList
+    }
+
+    private fun flatten(source: Any?): List<Any?> {
+        when (source) {
+            is Collection<*> -> return source.flatMap { flatten(it) }
+            is Array<*> -> return source.flatMap { flatten(it) }
+            else -> return listOf(source)
+        }
     }
 
     override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
-        val (dimensions, flatList) = getDimensionsAndFlatten(source)
+        val (dimensions, list) = getDimensionsAndFlatten(source)
 
         val arrayType = if (expectedOid != null) {
             typeRegistry.types[expectedOid] as? PgType.Array
         } else {
-            val firstNonNull = flatList.firstOrNull { it != null }
+            // Try to infer from first non-null element
+            val firstNonNull = list.firstOrNull { it != null }
             if (firstNonNull != null) {
                 val converted = context.convert(firstNonNull, null)
                 val elementOid = if (converted is PgTyped) {
@@ -83,8 +83,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
 
         val elementOid = arrayType.elementOid
 
-        val convertedElements = Array(flatList.size) { i ->
-            val element = flatList[i]
+        val convertedElements = list.map { element ->
             if (element != null) {
                 context.convert(element, elementOid)
             } else null
@@ -94,7 +93,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            elements = convertedElements,
+            elements = convertedElements.toMutableList(),
             typeRegistry = typeRegistry
         )
     }

@@ -18,54 +18,50 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
     override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
 
-        val elementClass = when (source) {
-            is IntArray -> Int::class
-            is DoubleArray -> Double::class
-            is FloatArray -> Float::class
-            is LongArray -> Long::class
-            is ShortArray -> Short::class
-            is BooleanArray -> Boolean::class
-            is CharArray -> Char::class
+        val list = when (source) {
+            is IntArray -> source.toList()
+            is DoubleArray -> source.toList()
+            is FloatArray -> source.toList()
+            is LongArray -> source.toList()
+            is ShortArray -> source.toList()
+            is BooleanArray -> source.toList()
+            is CharArray -> source.toList()
             else -> throw IllegalArgumentException("Unsupported primitive array type")
         }
+
+        val dimensions = listOf(ArrayDimension(list.size, 1))
 
         val arrayType = if (expectedOid != null) {
             typeRegistry.types[expectedOid] as? PgType.Array
         } else {
-            val elementOid = typeRegistry.getCodecByClass(elementClass)?.oid
-            if (elementOid != null) {
-                typeRegistry.types.values.firstOrNull { it is PgType.Array && it.elementOid == elementOid } as? PgType.Array
+            val componentType = source.javaClass.componentType?.kotlin
+            if (componentType != null) {
+                val elementOid = typeRegistry.getCodecByClass(componentType)?.oid
+                if (elementOid != null) {
+                    typeRegistry.types.values.firstOrNull { it is PgType.Array && it.elementOid == elementOid } as? PgType.Array
+                } else null
             } else null
         }
 
         if (arrayType == null) {
             throw OctaviusTypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
-                details = "Cannot infer array type for the primitive array. Use explicit typing (e.g. .withPgType(...))."
+                details = "Cannot infer array type for the primitive array. The array is empty, or the element type is unknown. Use explicit typing (e.g. .withPgType(...))."
             )
         }
 
         val elementOid = arrayType.elementOid
-
-        val convertedElements: Array<Any?> = when (source) {
-            is IntArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            is DoubleArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            is FloatArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            is LongArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            is ShortArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            is BooleanArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            is CharArray -> Array(source.size) { context.convert(source[it], elementOid) }
-            else -> throw IllegalArgumentException("Unsupported primitive array type")
+        val convertedElements = list.map { element ->
+            context.convert(element, elementOid)
         }
-
-        val dimensions = listOf(ArrayDimension(convertedElements.size, 1))
 
         return PgArray(
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            elements = convertedElements,
+            elements = convertedElements.toMutableList(),
             typeRegistry = typeRegistry
         )
     }
 }
+

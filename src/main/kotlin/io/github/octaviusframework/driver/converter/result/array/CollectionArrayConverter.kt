@@ -17,10 +17,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
     }
 
     override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
-        val pgElementType = source.typeRegistry.types[source.elementOid]
-            ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
-
-        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
+        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, sourceType)
     }
 
     private fun buildMultiDimensionalCollection(
@@ -29,47 +26,51 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
         expectedType: KType,
         dimensionIndex: Int,
         flatIndexOffset: Int,
-        pgElementType: PgType
+        sourceType: PgType
     ): Collection<*> {
-        val kClass = expectedType.classifier as? KClass<*> ?: List::class
-        val ktElementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
-        val elements = source.elements
-
-        // Zabezpieczenie dla pustych wymiarów lub płaskich jednowymiarowych tablic
         if (source.dimensions.isEmpty()) {
-            val mappedElements = List(elements.size) { i ->
-                val value = elements[i]
-                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
+            val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
+            val kClass = expectedType.classifier as? KClass<*> ?: List::class
+            val mappedElements = (0 until source.totalElements).map { i ->
+                val value = source.get<Any?>(i)
+                val type = source.typeRegistry.types[source.elementOid]!!
+                if (value == null) null else context.convert<Any>(value, elementType, type)
             }
             return if (kClass == Set::class) mappedElements.toSet() else mappedElements
         }
 
         val currentDimSize = source.dimensions[dimensionIndex].size
+        val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
+        val kClass = expectedType.classifier as? KClass<*> ?: List::class
 
         val mappedElements = if (dimensionIndex == source.dimensions.size - 1) {
-            List(currentDimSize) { i ->
+            (0 until currentDimSize).map { i ->
                 val flatIndex = flatIndexOffset + i
-                val value = elements[flatIndex]
-                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
+                val value = source.get<Any?>(flatIndex)
+                val type = source.typeRegistry.types[source.elementOid]!!
+                if (value == null) null else context.convert<Any>(value, elementType, type)
             }
         } else {
             var multiplier = 1
             for (j in dimensionIndex + 1 until source.dimensions.size) {
                 multiplier *= source.dimensions[j].size
             }
-
-            List(currentDimSize) { i ->
+            (0 until currentDimSize).map { i ->
                 buildMultiDimensionalCollection(
                     source,
                     context,
-                    ktElementType, // List<List<Int>> -> List<Int> etc.
+                    elementType,
                     dimensionIndex + 1,
                     flatIndexOffset + i * multiplier,
-                    pgElementType
+                    sourceType
                 )
             }
         }
 
-        return if (kClass == Set::class) mappedElements.toSet() else mappedElements
+        return if (kClass == Set::class) {
+            mappedElements.toSet()
+        } else {
+            mappedElements
+        }
     }
 }

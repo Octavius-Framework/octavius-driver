@@ -2,7 +2,6 @@ package io.github.octaviusframework.driver.serialization
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
-import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
@@ -94,7 +93,8 @@ class SerializationTest {
         )
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = PgArray(1007, 23, listOf(ArrayDimension(3,1)), arrayOf(10,20,30), octaviusConn.typeRegistry) // 1007 = _int4
+        val array = octaviusConn.types.createArray(1007, 3) // 1007 = _int4
+        array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
@@ -122,7 +122,8 @@ class SerializationTest {
 
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = PgArray(1007, 23, listOf(ArrayDimension(3,1)), arrayOf(10,20,30), octaviusConn.typeRegistry) // 1007 = _int4
+        val array = octaviusConn.types.createArray(1007, 3) // 1007 = _int4
+        array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer, typeRegistry)
@@ -151,8 +152,12 @@ class SerializationTest {
         val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
+        val multiArray = octaviusConn.types.createArray(1007, 2, 3)
+
+        // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
-        val multiArray = PgArray(1007, 23, listOf(ArrayDimension(2,1), ArrayDimension(3, 1)), arrayOf(1,2,3,4,5,6), octaviusConn.typeRegistry)
+        multiArray.setDimension(intArrayOf(0), 1, 2, 3)
+        multiArray.setDimension(intArrayOf(1), 4, 5, 6)
 
         val writer = PgByteWriter()
         val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
@@ -233,8 +238,8 @@ class SerializationTest {
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = PgArray(1007, 23, listOf(ArrayDimension(3,1)), arrayOf(10,20,30), octaviusConn.typeRegistry) // 1007 = _int4
-
+        val arrayVal = octaviusConn.types.createArray(1007, 3) // 23 = int4
+        arrayVal.setAll(10, 20, 30)
 
         val arrayParam = serializer.serializeWithOid(arrayVal)
         val rowsArray = octaviusConn.queryExecutor.query(
