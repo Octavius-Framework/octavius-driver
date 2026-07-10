@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
-import java.sql.SQLException
+import io.github.octaviusframework.driver.exception.OctaviusException
 
 class QueryExecutor(
     private val stream: PgStream,
@@ -43,7 +43,7 @@ class QueryExecutor(
         }
 
         if (errorMessage != null) {
-            throw SQLException("Database error during query execution: $errorMessage")
+            throw OctaviusException("Database error during query execution: $errorMessage")
         }
     }
 
@@ -93,7 +93,7 @@ class QueryExecutor(
         }
 
         if (errorMessage != null) {
-            throw SQLException(errorMessage)
+            throw OctaviusException(errorMessage)
         }
         
         return rowsAffected
@@ -155,7 +155,7 @@ class QueryExecutor(
         }
         
         if (errorMessage != null) {
-            throw SQLException(errorMessage)
+            throw OctaviusException(errorMessage)
         }
 
         return rows

@@ -1,14 +1,12 @@
 package io.github.octaviusframework.driver.exception
 
-import java.sql.SQLException
-
 /**
  * Base exception for all errors in the Octavius JDBC driver.
  */
 open class OctaviusException(
     message: String,
     cause: Throwable? = null
-) : SQLException(message, cause) {
+) : RuntimeException(message, cause) {
     
     open fun getDetailedMessage(): String? = null
 

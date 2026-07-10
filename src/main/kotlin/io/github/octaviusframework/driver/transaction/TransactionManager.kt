@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.transaction
 
-import io.github.octaviusframework.driver.jdbc.OctaviusConnection
+import io.github.octaviusframework.driver.session.OctaviusSession
 
-class TransactionManager(@PublishedApi internal val connection: OctaviusConnection) {
+class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
 
     /**
      * Executes the given block within a transaction.
@@ -14,30 +14,30 @@ class TransactionManager(@PublishedApi internal val connection: OctaviusConnecti
      * @param block The code block to execute within the transaction, with the connection as the receiver.
      * @return The result of the block.
      */
-    inline operator fun <T> invoke(block: OctaviusConnection.() -> T): T {
-        val initialAutoCommit = connection.autoCommit
+    inline operator fun <T> invoke(block: OctaviusSession.() -> T): T {
+        val initialAutoCommit = session.autoCommit
 
         return if (!initialAutoCommit) {
-            val sp = connection.setSavepoint()
+            val sp = session.setSavepoint()
             try {
-                val result = connection.block()
-                connection.releaseSavepoint(sp)
+                val result = session.block()
+                session.releaseSavepoint(sp)
                 result
             } catch (e: Throwable) {
-                connection.rollback(sp)
+                session.rollback(sp)
                 throw e
             }
         } else {
-            connection.autoCommit = false
+            session.autoCommit = false
             try {
-                val result = connection.block()
-                // commited by autocommit = true
+                val result = session.block()
+                session.commit()
                 result
             } catch (e: Throwable) {
-                connection.rollback()
+                session.rollback()
                 throw e
             } finally {
-                connection.autoCommit = true
+                session.autoCommit = true
             }
         }
     }

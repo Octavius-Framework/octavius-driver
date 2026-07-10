@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.session
 
+import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
+
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
@@ -24,4 +26,31 @@ interface OctaviusSession : AutoCloseable {
      * to evict it instead of returning it to the pool.
      */
     fun abort()
+
+    val transactionState: TransactionState
+    var transactionIsolationLevel: Int
+
+    var autoCommit: Boolean
+    fun commit()
+    fun rollback()
+
+    fun setSavepoint(): OctaviusSavepoint
+    fun setSavepoint(name: String): OctaviusSavepoint
+    fun rollback(savepoint: OctaviusSavepoint)
+    fun releaseSavepoint(savepoint: OctaviusSavepoint)
+}
+
+enum class TransactionState {
+    IDLE,
+    IN_TRANSACTION,
+    FAILED;
+
+    companion object {
+        fun fromChar(c: Char): TransactionState = when (c) {
+            'I' -> IDLE
+            'T' -> IN_TRANSACTION
+            'E' -> FAILED
+            else -> throw IllegalArgumentException("Unknown transaction state: $c")
+        }
+    }
 }

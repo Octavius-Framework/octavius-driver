@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.*
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
@@ -23,7 +24,7 @@ import java.util.concurrent.Executor
  */
 class OctaviusConnection(internal val stream: PgStream, internal val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
-    val converterRegistry = typeRegistry.converterRegistry
+
     val queryExecutor = QueryExecutor(stream, typeRegistry)
 
     init {
@@ -66,8 +67,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     override fun getMetaData(): DatabaseMetaData = unsupported()
 
-    override fun getWarnings(): SQLWarning? = TODO("Not yet implemented")
-    override fun clearWarnings() = TODO("Not yet implemented") // required by Hikari
+    override fun getWarnings(): SQLWarning? = null
+    override fun clearWarnings() {} // required by Hikari
 
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
@@ -166,21 +167,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
 
-    enum class TransactionState {
-        IDLE,
-        IN_TRANSACTION,
-        FAILED;
-
-        companion object {
-            fun fromChar(c: Char): TransactionState = when (c) {
-                'I' -> IDLE
-                'T' -> IN_TRANSACTION
-                'E' -> FAILED
-                else -> throw OctaviusJdbcException(JdbcExceptionMessage.UNKNOWN_TRANSACTION_STATE, "Unknown transaction state: $c")
-            }
-        }
-    }
-
     val transactionState: TransactionState
         get() = TransactionState.fromChar(queryExecutor.transactionStatus)
 
@@ -236,61 +222,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     override fun getTransactionIsolation(): Int { // required by Hikari
         checkClosed()
         return transactionIsolationLevel
-    }
-
-    //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
-    private var savepointIdCounter: Int = 1
-
-    override fun setSavepoint(): Savepoint {
-        checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(
-            JdbcExceptionMessage.AUTO_COMMIT_VIOLATION,
-            details = "Cannot set a savepoint when auto-commit is enabled"
-        )
-        val sp = OctaviusSavepoint(savepointIdCounter++)
-        queryExecutor.execute("SAVEPOINT ${sp.pgName}")
-        return sp
-    }
-
-    override fun setSavepoint(name: String?): Savepoint {
-        checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(
-            JdbcExceptionMessage.AUTO_COMMIT_VIOLATION,
-            details = "Cannot set a savepoint when auto-commit is enabled"
-        )
-        if (name == null) throw OctaviusJdbcException(
-            JdbcExceptionMessage.UNWRAP_ERROR,
-            details = "Savepoint name cannot be null"
-        )
-        val sp = OctaviusSavepoint(name)
-        queryExecutor.execute("SAVEPOINT ${sp.pgName}")
-        return sp
-    }
-
-    override fun rollback(savepoint: Savepoint?) {
-        checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(
-            JdbcExceptionMessage.AUTO_COMMIT_VIOLATION,
-            details = "Cannot rollback to a savepoint when auto-commit is enabled"
-        )
-        if (savepoint !is OctaviusSavepoint) throw OctaviusJdbcException(
-            JdbcExceptionMessage.UNWRAP_ERROR,
-            details = "Unsupported savepoint type"
-        )
-        queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
-    }
-
-    override fun releaseSavepoint(savepoint: Savepoint?) {
-        checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(
-            JdbcExceptionMessage.AUTO_COMMIT_VIOLATION,
-            details = "Cannot release a savepoint when auto-commit is enabled"
-        )
-        if (savepoint !is OctaviusSavepoint) throw OctaviusJdbcException(
-            JdbcExceptionMessage.UNWRAP_ERROR,
-            details = "Unsupported savepoint type"
-        )
-        queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 
     //------------------------------------------SEARCH PATH-------------------------------------------------------------
@@ -368,31 +299,17 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         }
     }
 
+    //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
+    override fun setSavepoint(): Savepoint = unsupported()
+    override fun setSavepoint(name: String?): Savepoint = unsupported()
+    override fun rollback(savepoint: Savepoint?) = unsupported()
+    override fun releaseSavepoint(savepoint: Savepoint?) = unsupported()
+
     //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
-    private var catalogName: String? = null
-
-    override fun setSchema(schema: String?) {
-        checkClosed()
-        // no-op
-    }
-
-    override fun getSchema(): String? {
-        checkClosed()
-        return getSearchPath().firstOrNull()
-    } // required by Hikari
-
-    override fun setCatalog(catalog: String?) {  /* no-op */
-    } // required by Hikari
-
-    override fun getCatalog(): String {
-        checkClosed()
-        if (catalogName == null) {
-            val resultMapper = ResultMapper(converterRegistry)
-            val result = queryExecutor.query("SELECT current_database()", mapper = resultMapper)
-            catalogName = result[0].get<String>("current_database")
-        }
-        return catalogName!!
-    } // required by Hikari
+    override fun setSchema(schema: String?) { checkClosed() }
+    override fun getSchema(): String { checkClosed(); return "public" } // required by Hikari
+    override fun setCatalog(catalog: String?) { checkClosed() } // required by Hikari
+    override fun getCatalog(): String { checkClosed(); return "octavius" }  // required by Hikari
 
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)

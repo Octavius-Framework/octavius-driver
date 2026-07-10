@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.session
+import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 
-import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
@@ -18,7 +19,7 @@ internal class OctaviusSessionImpl(
 ) : OctaviusSession {
 
     override val types: TypeManager by lazy {
-        TypeManager(octaviusConnection.typeRegistry) { getSearchPath() }
+        TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
     }
 
     override val notifications: NotificationManager by lazy {
@@ -26,14 +27,63 @@ internal class OctaviusSessionImpl(
     }
 
     override val transaction: TransactionManager by lazy {
-        TransactionManager(octaviusConnection)
+        TransactionManager(this)
+    }
+
+    override val transactionState: TransactionState
+        get() = octaviusConnection.transactionState
+
+    override var transactionIsolationLevel: Int
+        get() = octaviusConnection.transactionIsolation
+        set(value) {
+            octaviusConnection.transactionIsolation = value
+        }
+
+    override var autoCommit: Boolean
+        get() = octaviusConnection.autoCommit
+        set(value) {
+            octaviusConnection.autoCommit = value
+        }
+
+    override fun commit() = octaviusConnection.commit()
+
+    override fun rollback() = octaviusConnection.rollback()
+
+    private var savepointIdCounter: Int = 1
+
+    override fun setSavepoint(): OctaviusSavepoint {
+        octaviusConnection.checkClosed()
+        if (autoCommit) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        val sp = OctaviusSavepoint(savepointIdCounter++)
+        octaviusConnection.queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        return sp
+    }
+
+    override fun setSavepoint(name: String): OctaviusSavepoint {
+        octaviusConnection.checkClosed()
+        if (autoCommit) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        val sp = OctaviusSavepoint(name)
+        octaviusConnection.queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        return sp
+    }
+
+    override fun rollback(savepoint: OctaviusSavepoint) {
+        octaviusConnection.checkClosed()
+        if (autoCommit) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
+        octaviusConnection.queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
+    }
+
+    override fun releaseSavepoint(savepoint: OctaviusSavepoint) {
+        octaviusConnection.checkClosed()
+        if (autoCommit) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
+        octaviusConnection.queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 
     override fun reloadTypes() {
         GlobalTypeRegistry.reload(
             octaviusConnection.url,
             octaviusConnection.queryExecutor,
-            getSearchPath()
+            octaviusConnection.getSearchPath()
         )
     }
 
@@ -50,62 +100,10 @@ internal class OctaviusSessionImpl(
     override fun cancelQuery() {
         octaviusConnection.cancelQuery()
     }
+    
+    override fun getSearchPath() = octaviusConnection.getSearchPath()
 
-    private var lastSearchPathString: String? = null
-    private var cachedSearchPath: List<String>? = null
-
-    private fun parseSearchPath(param: String): List<String> {
-        val result = mutableListOf<String>()
-        val current = StringBuilder()
-        var inQuotes = false
-        var i = 0
-        while (i < param.length) {
-            val c = param[i]
-            if (c == '"') {
-                if (inQuotes && i + 1 < param.length && param[i + 1] == '"') {
-                    current.append('"')
-                    i++
-                } else {
-                    inQuotes = !inQuotes
-                }
-            } else if (c == ',' && !inQuotes) {
-                result.add(current.toString().trimEnd())
-                current.clear()
-            } else if (c.isWhitespace() && !inQuotes && current.isEmpty()) {
-                // skip leading whitespace
-            } else {
-                current.append(c)
-            }
-            i++
-        }
-        result.add(current.toString().trimEnd())
-        return result.filter { it.isNotEmpty() }
-    }
-
-    override fun getSearchPath(): List<String> {
-        octaviusConnection.checkClosed()
-        val paramSearchPath = octaviusConnection.stream.parameters["search_path"]
-        if (paramSearchPath != null) {
-            if (paramSearchPath == lastSearchPathString && cachedSearchPath != null) {
-                return cachedSearchPath!!
-            }
-            val parsed = parseSearchPath(paramSearchPath)
-            lastSearchPathString = paramSearchPath
-            cachedSearchPath = parsed
-            return parsed
-        }
-        return listOf("public")
-    }
-
-    override fun setSearchPath(vararg schemas: String) {
-        octaviusConnection.checkClosed()
-        if (schemas.isEmpty()) {
-            octaviusConnection.queryExecutor.execute("SET search_path TO DEFAULT")
-        } else {
-            val pathStr = schemas.joinToString(", ") { it.quoteAsPgIdentifier() }
-            octaviusConnection.queryExecutor.execute("SET search_path TO $pathStr")
-        }
-    }
+    override fun setSearchPath(vararg schemas: String) = octaviusConnection.setSearchPath(*schemas)
 
     override fun abort() {
         try {
