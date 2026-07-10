@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.io.*
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -12,7 +13,7 @@ internal object ShortCodec : TypeCodec<Short> {
     override val kotlinClass = Short::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Short = { data, offset, _ -> data.getShortBE(offset) }
-    override val toBinary: (Short) -> ByteArray = { it.toByteArrayBE() }
+    override val toBinary: (Short, PgByteWriter) -> Unit = { value, writer -> writer.writeShort(value) }
 }
 
 internal object IntCodec : TypeCodec<Int> {
@@ -21,7 +22,7 @@ internal object IntCodec : TypeCodec<Int> {
     override val kotlinClass = Int::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Int = { data, offset, _ -> data.getIntBE(offset) }
-    override val toBinary: (Int) -> ByteArray = { it.toByteArrayBE() }
+    override val toBinary: (Int, PgByteWriter) -> Unit = { value, writer -> writer.writeInt(value) }
 }
 
 internal object OidCodec : TypeCodec<Int> {
@@ -30,13 +31,8 @@ internal object OidCodec : TypeCodec<Int> {
     override val kotlinClass = Int::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Int = { data, offset, _ -> data.getIntBE(offset) }
-    override val toBinary: (Int) -> ByteArray = {
-        byteArrayOf(
-            (it ushr 24).toByte(),
-            (it ushr 16).toByte(),
-            (it ushr 8).toByte(),
-            it.toByte()
-        )
+    override val toBinary: (Int, PgByteWriter) -> Unit = { value, writer -> 
+        writer.writeInt(value)
     }
 }
 
@@ -46,7 +42,7 @@ internal object LongCodec : TypeCodec<Long> {
     override val kotlinClass = Long::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Long = { data, offset, _ -> data.getLongBE(offset) }
-    override val toBinary: (Long) -> ByteArray = { it.toByteArrayBE() }
+    override val toBinary: (Long, PgByteWriter) -> Unit = { value, writer -> writer.writeLong(value) }
 }
 
 internal object FloatCodec : TypeCodec<Float> {
@@ -55,7 +51,7 @@ internal object FloatCodec : TypeCodec<Float> {
     override val kotlinClass = Float::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Float = { data, offset, _ -> data.getFloatBE(offset) }
-    override val toBinary: (Float) -> ByteArray = { it.toByteArrayBE() }
+    override val toBinary: (Float, PgByteWriter) -> Unit = { value, writer -> writer.writeFloat(value) }
 }
 
 internal object DoubleCodec : TypeCodec<Double> {
@@ -64,7 +60,7 @@ internal object DoubleCodec : TypeCodec<Double> {
     override val kotlinClass = Double::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Double = { data, offset, _ -> data.getDoubleBE(offset) }
-    override val toBinary: (Double) -> ByteArray = { it.toByteArrayBE() }
+    override val toBinary: (Double, PgByteWriter) -> Unit = { value, writer -> writer.writeDouble(value) }
 }
 
 internal object NumericCodec : TypeCodec<BigDecimal> {
@@ -133,19 +129,19 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
         }
     }
 
-    override val toBinary: (BigDecimal) -> ByteArray = {
-        val sign = if (it.signum() == -1) 0x4000 else 0x0000
-        val dscale = it.scale().coerceAtLeast(0)
+    override val toBinary: (BigDecimal, PgByteWriter) -> Unit = { value, writer ->
+        val sign = if (value.signum() == -1) 0x4000 else 0x0000
+        val dscale = value.scale().coerceAtLeast(0)
 
-        if (it.compareTo(BigDecimal.ZERO) == 0) {
+        if (value.compareTo(BigDecimal.ZERO) == 0) {
             val bytes = ByteArray(8)
             bytes.setShortBE(0, 0) // ndigits
             bytes.setShortBE(2, 0) // weight
             bytes.setShortBE(4, sign.toShort()) // sign
             bytes.setShortBE(6, dscale.toShort()) // dscale
-            bytes
+            writer.writeBytes(bytes)
         } else {
-            var adjusted = it.abs()
+            var adjusted = value.abs()
             var adjustedScale = adjusted.scale()
             if (adjustedScale < 0) {
                 adjusted = adjusted.setScale(0)
@@ -190,7 +186,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                     bytes.setShortBE(offset, temp[i].toShort())
                     offset += 2
                 }
-                bytes
+                writer.writeBytes(bytes)
             } else {
                 // SLOW PATH: Extremely large BigIntegers become a GC nightmare due to `divideAndRemainder()`.
                 val str = unscaled.toString()
@@ -231,7 +227,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                     bytes.setShortBE(offset, digit.toShort())
                     offset += 2
                 }
-                bytes
+                writer.writeBytes(bytes)
             }
         }
     }

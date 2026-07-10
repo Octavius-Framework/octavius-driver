@@ -4,7 +4,7 @@ package io.github.octaviusframework.driver.codec
  * Optimized buffer for building binary packets for the database.
  * Allows reserving space for size and filling it later without memory copying.
  */
-internal class PgByteWriter(initialCapacity: Int = 1024) {
+class PgByteWriter(initialCapacity: Int = 1024) {
     var data = ByteArray(initialCapacity)
         private set
     var position = 0
@@ -29,6 +29,33 @@ internal class PgByteWriter(initialCapacity: Int = 1024) {
         data[position++] = (i shr 16).toByte()
         data[position++] = (i shr 8).toByte()
         data[position++] = i.toByte()
+    }
+
+    fun writeShort(s: Short) {
+        ensureCapacity(2)
+        val i = s.toInt()
+        data[position++] = (i shr 8).toByte()
+        data[position++] = i.toByte()
+    }
+
+    fun writeLong(l: Long) {
+        ensureCapacity(8)
+        data[position++] = (l shr 56).toByte()
+        data[position++] = (l shr 48).toByte()
+        data[position++] = (l shr 40).toByte()
+        data[position++] = (l shr 32).toByte()
+        data[position++] = (l shr 24).toByte()
+        data[position++] = (l shr 16).toByte()
+        data[position++] = (l shr 8).toByte()
+        data[position++] = l.toByte()
+    }
+
+    fun writeFloat(f: Float) {
+        writeInt(f.toRawBits())
+    }
+
+    fun writeDouble(d: Double) {
+        writeLong(d.toRawBits())
     }
 
     fun writeBytes(bytes: ByteArray) {

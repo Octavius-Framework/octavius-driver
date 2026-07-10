@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.codec.dynamic
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
@@ -27,7 +28,7 @@ internal class DynamicDomainCodec<T : Any>(
     override val fromBinary: (ByteArray, Int, Int) -> T
         get() = delegate.fromBinary
 
-    override val toBinary: (T) -> ByteArray
+    override val toBinary: (T, PgByteWriter) -> Unit
         get() = delegate.toBinary
 }
 
