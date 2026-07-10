@@ -105,7 +105,25 @@ internal class OctaviusSessionImpl(
 
     override fun setSearchPath(vararg schemas: String) = octaviusConnection.setSearchPath(*schemas)
 
+    private fun evictHikariConnection(conn: Connection) {
+        try {
+            if (conn.javaClass.name.startsWith("com.zaxxer.hikari.pool.HikariProxyConnection")) {
+                val checkExceptionMethod = conn.javaClass.superclass.getDeclaredMethod(
+                    "checkException", java.sql.SQLException::class.java
+                )
+                checkExceptionMethod.isAccessible = true
+                checkExceptionMethod.invoke(
+                    conn,
+                    java.sql.SQLException("Connection aborted by OctaviusSession", "08000")
+                )
+            }
+        } catch (e: Exception) {
+            // Ignore reflection errors silently; it might not be Hikari or the internal structure changed
+        }
+    }
+
     override fun abort() {
+        evictHikariConnection(poolConnection)
         try {
             poolConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
         } catch (e: Exception) {
