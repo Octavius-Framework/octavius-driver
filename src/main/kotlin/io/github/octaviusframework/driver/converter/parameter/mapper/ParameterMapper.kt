@@ -20,5 +20,9 @@ internal class DefaultSerializationContext(
     override fun convert(source: Any, expectedOid: Int?): Any? {
         return registry.convert(source, expectedOid, this, typeManager)
     }
+
+    override fun findConverter(source: Any, expectedOid: Int?): ParameterConverter<Any>? {
+        return registry.findConverter(source, expectedOid, typeManager)
+    }
 }
 

@@ -17,7 +17,10 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
     }
 
     override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
-        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, sourceType)
+        val pgElementType = source.typeRegistry.types[source.elementOid]
+            ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
+
+        return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
     }
 
     private fun buildMultiDimensionalCollection(
@@ -26,51 +29,69 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
         expectedType: KType,
         dimensionIndex: Int,
         flatIndexOffset: Int,
-        sourceType: PgType
+        pgElementType: PgType
     ): Collection<*> {
+        val kClass = expectedType.classifier as? KClass<*> ?: List::class
+        val ktElementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
+
+        val elements = source.elements
+
         if (source.dimensions.isEmpty()) {
-            val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
-            val kClass = expectedType.classifier as? KClass<*> ?: List::class
-            val mappedElements = (0 until source.totalElements).map { i ->
-                val value = source.get<Any?>(i)
-                val type = source.typeRegistry.types[source.elementOid]!!
-                if (value == null) null else context.convert<Any>(value, elementType, type)
+            val mappedElements = List(elements.size) { i ->
+                val value = elements[i]
+                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
             }
             return if (kClass == Set::class) mappedElements.toSet() else mappedElements
         }
 
         val currentDimSize = source.dimensions[dimensionIndex].size
-        val elementType = expectedType.arguments.firstOrNull()?.type ?: typeOf<Any?>()
-        val kClass = expectedType.classifier as? KClass<*> ?: List::class
+
+        var elementConverter: ResultConverter<Any, *>? = null
+        var isFallbackCast = false
+        var converterSearched = false
+        val kClassForCast = ktElementType.classifier as? KClass<*>
 
         val mappedElements = if (dimensionIndex == source.dimensions.size - 1) {
-            (0 until currentDimSize).map { i ->
+            List(currentDimSize) { i ->
                 val flatIndex = flatIndexOffset + i
-                val value = source.get<Any?>(flatIndex)
-                val type = source.typeRegistry.types[source.elementOid]!!
-                if (value == null) null else context.convert<Any>(value, elementType, type)
+                val value = elements[flatIndex]
+                if (value == null) {
+                    null
+                } else {
+                    if (!converterSearched) {
+                        elementConverter = context.findConverter(value, ktElementType, pgElementType)
+                        if (elementConverter == null) isFallbackCast = true
+                        converterSearched = true
+                    }
+                    if (isFallbackCast) {
+                        if (kClassForCast != null && kClassForCast.isInstance(value)) {
+                            value
+                        } else {
+                            throw IllegalArgumentException("No converter found for source ${value::class} and expected type $ktElementType")
+                        }
+                    } else {
+                        elementConverter!!.convert(value, ktElementType, context, pgElementType)
+                    }
+                }
             }
         } else {
             var multiplier = 1
             for (j in dimensionIndex + 1 until source.dimensions.size) {
                 multiplier *= source.dimensions[j].size
             }
-            (0 until currentDimSize).map { i ->
+
+            List(currentDimSize) { i ->
                 buildMultiDimensionalCollection(
                     source,
                     context,
-                    elementType,
+                    ktElementType,
                     dimensionIndex + 1,
                     flatIndexOffset + i * multiplier,
-                    sourceType
+                    pgElementType
                 )
             }
         }
 
-        return if (kClass == Set::class) {
-            mappedElements.toSet()
-        } else {
-            mappedElements
-        }
+        return if (kClass == Set::class) mappedElements.toSet() else mappedElements
     }
 }
