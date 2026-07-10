@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.codec.standard
 
+import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 
 internal object StringCodec : TypeCodec<String> {
@@ -9,7 +10,7 @@ internal object StringCodec : TypeCodec<String> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> String = { data, offset, length -> String(data, offset, length, Charsets.UTF_8) }
-    override val toBinary: (String) -> ByteArray = { it.toByteArray(Charsets.UTF_8) }
+    override val toBinary: (String, PgByteWriter) -> Unit = { value, writer -> writer.writeBytes(value.toByteArray(Charsets.UTF_8)) }
 }
 
 internal object NameCodec : TypeCodec<String> {
@@ -63,12 +64,9 @@ internal object JsonbCodec : TypeCodec<String> {
         }
     }
 
-    override val toBinary: (String) -> ByteArray = {
-        val stringBytes = it.toByteArray(Charsets.UTF_8)
-        val result = ByteArray(stringBytes.size + 1)
-        result[0] = 1.toByte()
-        stringBytes.copyInto(result, 1)
-        result
+    override val toBinary: (String, PgByteWriter) -> Unit = { value, writer ->
+        writer.writeByte(1.toByte())
+        writer.writeBytes(value.toByteArray(Charsets.UTF_8))
     }
 }
 
@@ -82,8 +80,8 @@ internal object JsonCodec : TypeCodec<String> {
         String(data, offset, length, Charsets.UTF_8)
     }
 
-    override val toBinary: (String) -> ByteArray = {
-        it.toByteArray(Charsets.UTF_8)
+    override val toBinary: (String, PgByteWriter) -> Unit = { value, writer ->
+        writer.writeBytes(value.toByteArray(Charsets.UTF_8))
     }
 }
 

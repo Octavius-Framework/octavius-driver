@@ -59,7 +59,9 @@ class ParameterSerializer(
                         details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using codec for ${codec.kotlinClass.qualifiedName}"
                     )
                 }
-                return SerializedParameter(resolvedOid, codec.toBinary(convertedValue))
+                val writer = PgByteWriter()
+                codec.toBinary(convertedValue, writer)
+                return SerializedParameter(resolvedOid, writer.toByteArray())
             }
             
             // Fallback for containers or missing OID codecs
@@ -89,7 +91,9 @@ class ParameterSerializer(
 
         @Suppress("UNCHECKED_CAST")
         val anyCodec = codec as TypeCodec<Any>
-        return SerializedParameter(codec.oid!!, anyCodec.toBinary(convertedParameter))
+        val writer = PgByteWriter()
+        anyCodec.toBinary(convertedParameter, writer)
+        return SerializedParameter(codec.oid!!, writer.toByteArray())
     }
 
     /**

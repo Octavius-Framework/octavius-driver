@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getLongBE
@@ -12,7 +13,7 @@ internal object BooleanCodec : TypeCodec<Boolean> {
     override val kotlinClass = Boolean::class
     override val isDefaultForKotlinType = true
     override val fromBinary: (ByteArray, Int, Int) -> Boolean = { data, offset, _ -> data[offset].toInt() != 0 }
-    override val toBinary: (Boolean) -> ByteArray = { byteArrayOf(if (it) 1 else 0) }
+    override val toBinary: (Boolean, PgByteWriter) -> Unit = { value, writer -> writer.writeByte(if (value) 1.toByte() else 0.toByte()) }
 }
 
 
@@ -23,7 +24,7 @@ internal object ByteArrayCodec : TypeCodec<ByteArray> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> ByteArray = { data, offset, length -> data.copyOfRange(offset, offset + length) }
-    override val toBinary: (ByteArray) -> ByteArray = { it }
+    override val toBinary: (ByteArray, PgByteWriter) -> Unit = { value, writer -> writer.writeBytes(value) }
 }
 
 internal object UnitCodec : TypeCodec<Unit> {
@@ -33,8 +34,8 @@ internal object UnitCodec : TypeCodec<Unit> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> Unit = { _, _, _ -> }
-    override val toBinary: (Unit) -> ByteArray =
-        { throw OctaviusTypeException(TypeExceptionMessage.INVALID_PARAMETER_TYPE, typeName = "Unit", details = "Cannot send Unit/void as parameter") }
+    override val toBinary: (Unit, PgByteWriter) -> Unit =
+        { _, _ -> throw OctaviusTypeException(TypeExceptionMessage.INVALID_PARAMETER_TYPE, typeName = "Unit", details = "Cannot send Unit/void as parameter") }
 }
 
 internal object UuidCodec : TypeCodec<Uuid> {
@@ -47,7 +48,10 @@ internal object UuidCodec : TypeCodec<Uuid> {
         Uuid.fromLongs(data.getLongBE(offset), data.getLongBE(offset + 8))
     }
 
-    override val toBinary: (Uuid) -> ByteArray = {
-        it.toByteArray()
+    override val toBinary: (Uuid, PgByteWriter) -> Unit = { value, writer ->
+        value.toLongs { msb, lsb ->
+            writer.writeLong(msb)
+            writer.writeLong(lsb)
+        }
     }
 }

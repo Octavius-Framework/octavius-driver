@@ -251,9 +251,9 @@ internal object ContainerCodec {
                 details = "Type mismatch. Expected ${codec.kotlinClass.qualifiedName}, got ${value::class.qualifiedName}"
             )
         }
-        val bytes = codec.toBinary(value)
-        writer.writeInt(bytes.size)
-        writer.writeBytes(bytes)
+        val marker = writer.reserveLengthInt()
+        codec.toBinary(value, writer)
+        writer.fillLengthInt(marker)
     }
 
     fun serializePgArray(array: PgArray, writer: PgByteWriter, typeRegistry: TypeRegistry) {

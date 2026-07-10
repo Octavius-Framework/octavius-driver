@@ -10,6 +10,6 @@ interface TypeCodec<T : Any> {
     val isDefaultForKotlinType: Boolean get() = false
 
     val fromBinary: (ByteArray, Int, Int) -> T
-    val toBinary: (T) -> ByteArray
+    val toBinary: (T, PgByteWriter) -> Unit
 }
 

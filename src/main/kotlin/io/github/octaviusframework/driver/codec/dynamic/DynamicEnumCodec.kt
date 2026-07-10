@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.codec.dynamic
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.PgByteWriter
 
 internal class DynamicEnumCodec(
     override val oid: Int,
@@ -14,7 +15,5 @@ internal class DynamicEnumCodec(
         String(data, offset, length, Charsets.UTF_8)
     }
 
-    override val toBinary: (String) -> ByteArray = {
-        it.toByteArray(Charsets.UTF_8)
-    }
+    override val toBinary: (String, PgByteWriter) -> Unit = { value, writer -> writer.writeBytes(value.toByteArray(Charsets.UTF_8)) }
 }

@@ -1,9 +1,9 @@
 package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.io.getLongBE
-import io.github.octaviusframework.driver.io.toByteArrayBE
 import kotlinx.datetime.*
 import kotlin.time.Instant
 
@@ -38,8 +38,8 @@ internal object InstantCodec : TypeCodec<Instant> {
         microsToInstant(data.getLongBE(offset))
     }
 
-    override val toBinary: (Instant) -> ByteArray = {
-        instantToPgMicros(it).toByteArrayBE()
+    override val toBinary: (Instant, PgByteWriter) -> Unit = { value, writer ->
+        writer.writeLong(instantToPgMicros(value))
     }
 }
 
@@ -53,8 +53,8 @@ internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
         microsToInstant(data.getLongBE(offset)).toLocalDateTime(TimeZone.UTC)
     }
 
-    override val toBinary: (LocalDateTime) -> ByteArray = {
-        instantToPgMicros(it.toInstant(TimeZone.UTC)).toByteArrayBE()
+    override val toBinary: (LocalDateTime, PgByteWriter) -> Unit = { value, writer ->
+        writer.writeLong(instantToPgMicros(value.toInstant(TimeZone.UTC)))
     }
 }
 
@@ -68,8 +68,8 @@ internal object LocalDateCodec : TypeCodec<LocalDate> {
         LocalDate.fromEpochDays(data.getIntBE(offset) + PG_EPOCH_DAYS)
     }
 
-    override val toBinary: (LocalDate) -> ByteArray = {
-        (it.toEpochDays() - PG_EPOCH_DAYS).toInt().toByteArrayBE()
+    override val toBinary: (LocalDate, PgByteWriter) -> Unit = { value, writer ->
+        writer.writeInt((value.toEpochDays() - PG_EPOCH_DAYS).toInt())
     }
 }
 
@@ -89,8 +89,8 @@ internal object LocalTimeCodec : TypeCodec<LocalTime> {
         LocalTime(hours, minutes, seconds, nanosOfSecond)
     }
 
-    override val toBinary: (LocalTime) -> ByteArray = {
-        val micros = it.toSecondOfDay().toLong() * 1000000L + (it.nanosecond / 1000).toLong()
-        micros.toByteArrayBE()
+    override val toBinary: (LocalTime, PgByteWriter) -> Unit = { value, writer ->
+        val micros = value.toSecondOfDay().toLong() * 1000000L + (value.nanosecond / 1000).toLong()
+        writer.writeLong(micros)
     }
 }
