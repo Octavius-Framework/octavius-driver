@@ -22,4 +22,15 @@ class ParameterConverterRegistry(
 
         return parent?.convert(source, expectedOid, context, typeManager) ?: source
     }
+
+    fun findConverter(source: Any, expectedOid: Int?, typeManager: TypeManager): ParameterConverter<Any>? {
+        for (i in 0 until converters.size) {
+            val converter = converters[i]
+            if (converter.canConvert(source, expectedOid, typeManager)) {
+                @Suppress("UNCHECKED_CAST")
+                return converter as ParameterConverter<Any>
+            }
+        }
+        return parent?.findConverter(source, expectedOid, typeManager)
+    }
 }

@@ -5,4 +5,5 @@ import kotlin.reflect.KType
 
 interface DeserializationContext {
     fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType): T
+    fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>?
 }

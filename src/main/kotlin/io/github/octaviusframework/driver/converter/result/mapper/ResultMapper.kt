@@ -41,4 +41,8 @@ internal class DefaultDeserializationContext(
 
         throw IllegalArgumentException("No converter found for source ${source::class} and expected type $expectedType")
     }
+
+    override fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
+        return registry.findConverter(source, expectedType, sourceType)
+    }
 }
