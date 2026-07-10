@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.composite
 
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
@@ -27,13 +27,13 @@ class AutoCompositeIntegrationTest {
 
     @BeforeAll
     fun setup() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
-            conn.createNativeQuery("DROP TYPE IF EXISTS person_profile CASCADE").execute()
-            conn.createNativeQuery("CREATE TYPE person_profile AS (first_name text, last_name text)").execute()
+            session.createNativeQuery("DROP TYPE IF EXISTS person_profile CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE person_profile AS (first_name text, last_name text)").execute()
 
-            conn.createNativeQuery("DROP TYPE IF EXISTS employee_data CASCADE").execute()
-            conn.createNativeQuery("CREATE TYPE employee_data AS (" +
+            session.createNativeQuery("DROP TYPE IF EXISTS employee_data CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE employee_data AS (" +
                     "profile person_profile, " +
                     "roles text[], " +
                     "active_period daterange, " +
@@ -41,51 +41,51 @@ class AutoCompositeIntegrationTest {
                     "available_days datemultirange" +
                     ")").execute()
         } finally {
-            conn.close()
+            session.close()
         }
     }
 
     @AfterAll
     fun teardown() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
-            conn.createNativeQuery("DROP SCHEMA public CASCADE").execute()
-            conn.createNativeQuery("CREATE SCHEMA public").execute()
+            session.createNativeQuery("DROP SCHEMA public CASCADE").execute()
+            session.createNativeQuery("CREATE SCHEMA public").execute()
         } finally {
-            conn.close()
+            session.close()
         }
     }
 
     @Test
     fun testEverythingWithNativeQuery() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
-            conn.reloadTypes()
-            conn.typeRegistry.registerAutoCompositeType<PersonProfile>("person_profile")
-            conn.typeRegistry.registerAutoCompositeType<EmployeeData>("employee_data")
+            session.reloadTypes()
+            session.types.registerAutoComposite<PersonProfile>("person_profile")
+            session.types.registerAutoComposite<EmployeeData>("employee_data")
 
-            val activePeriod = conn.types.createRange(
+            val activePeriod = session.types.createRange(
                 "daterange",
                 lower = LocalDate(2023, 1, 1),
                 upper = LocalDate(2023, 12, 31)
             )
 
-            val shift1 = conn.types.createRange(
+            val shift1 = session.types.createRange(
                 "tsrange",
                 lower = LocalDateTime(2023, 5, 1, 8, 0),
                 upper = LocalDateTime(2023, 5, 1, 16, 0)
             )
-            val shift2 = conn.types.createRange(
+            val shift2 = session.types.createRange(
                 "tsrange",
                 lower = LocalDateTime(2023, 5, 2, 9, 0),
                 upper = LocalDateTime(2023, 5, 2, 17, 0)
             )
 
-            val availableDays = conn.types.createMultirange(
+            val availableDays = session.types.createMultirange(
                 "datemultirange",
                 ranges = arrayOf(
-                    conn.types.createRange("daterange", lower = LocalDate(2023, 6, 1), upper = LocalDate(2023, 6, 10)),
-                    conn.types.createRange("daterange", lower = LocalDate(2023, 7, 1), upper = LocalDate(2023, 7, 15))
+                    session.types.createRange("daterange", lower = LocalDate(2023, 6, 1), upper = LocalDate(2023, 6, 10)),
+                    session.types.createRange("daterange", lower = LocalDate(2023, 7, 1), upper = LocalDate(2023, 7, 15))
                 )
             )
 
@@ -99,7 +99,7 @@ class AutoCompositeIntegrationTest {
 
             val query = $$"SELECT $1 AS emp"
             println("Sending EmployeeData Native: $emp")
-            val resultRow = conn.createNativeQuery(query).fetchOne(emp)
+            val resultRow = session.createNativeQuery(query).fetchOne(emp)
             println("Result Row Native: $resultRow")
 
             val parsedEmp = resultRow.get<EmployeeData>("emp")
@@ -119,40 +119,40 @@ class AutoCompositeIntegrationTest {
             assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound<LocalDate>())
 
         } finally {
-            conn.close()
+            session.close()
         }
     }
 
     @Test
     fun testEverythingWithNamedParameterQuery() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
-            conn.reloadTypes()
-            conn.typeRegistry.registerAutoCompositeType<PersonProfile>("person_profile")
-            conn.typeRegistry.registerAutoCompositeType<EmployeeData>("employee_data")
+            session.reloadTypes()
+            session.types.registerAutoComposite<PersonProfile>("person_profile")
+            session.types.registerAutoComposite<EmployeeData>("employee_data")
 
-            val activePeriod = conn.types.createRange(
+            val activePeriod = session.types.createRange(
                 "daterange",
                 lower = LocalDate(2023, 1, 1),
                 upper = LocalDate(2023, 12, 31)
             )
 
-            val shift1 = conn.types.createRange(
+            val shift1 = session.types.createRange(
                 "tsrange",
                 lower = LocalDateTime(2023, 5, 1, 8, 0),
                 upper = LocalDateTime(2023, 5, 1, 16, 0)
             )
-            val shift2 = conn.types.createRange(
+            val shift2 = session.types.createRange(
                 "tsrange",
                 lower = LocalDateTime(2023, 5, 2, 9, 0),
                 upper = LocalDateTime(2023, 5, 2, 17, 0)
             )
 
-            val availableDays = conn.types.createMultirange(
+            val availableDays = session.types.createMultirange(
                 "datemultirange",
                 ranges = arrayOf(
-                    conn.types.createRange("daterange", lower = LocalDate(2023, 6, 1), upper = LocalDate(2023, 6, 10)),
-                    conn.types.createRange("daterange", lower = LocalDate(2023, 7, 1), upper = LocalDate(2023, 7, 15))
+                    session.types.createRange("daterange", lower = LocalDate(2023, 6, 1), upper = LocalDate(2023, 6, 10)),
+                    session.types.createRange("daterange", lower = LocalDate(2023, 7, 1), upper = LocalDate(2023, 7, 15))
                 )
             )
 
@@ -165,7 +165,7 @@ class AutoCompositeIntegrationTest {
             )
 
             val query = "SELECT @employee AS emp"
-            val resultRow = conn.createNamedQuery(query).fetchOne("employee" to emp)
+            val resultRow = session.createNamedQuery(query).fetchOne("employee" to emp)
 
             val parsedEmp = resultRow.get<EmployeeData>("emp")
 
@@ -183,7 +183,7 @@ class AutoCompositeIntegrationTest {
             assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound<LocalDate>())
             
         } finally {
-            conn.close()
+            session.close()
         }
     }
 }

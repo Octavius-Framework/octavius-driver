@@ -1,19 +1,20 @@
 package io.github.octaviusframework.driver.transaction
 
-import io.github.octaviusframework.driver.jdbc.OctaviusConnection
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.session.TransactionState
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.query.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.sql.SQLException
+import io.github.octaviusframework.driver.exception.OctaviusException
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class TransactionTest {
 
-    private lateinit var connection: OctaviusConnection
+    private lateinit var session: OctaviusSession
 
     @BeforeEach
     fun setup() {
@@ -21,33 +22,33 @@ class TransactionTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        connection = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        connection.createNativeQuery("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)").execute()
-        connection.createNativeQuery("TRUNCATE TABLE test_trx").execute()
+        session.createNativeQuery("CREATE TEMP TABLE IF NOT EXISTS test_trx (id INT, value TEXT)").execute()
+        session.createNativeQuery("TRUNCATE TABLE test_trx").execute()
     }
 
     @AfterEach
     fun teardown() {
-        if (!connection.isClosed) {
-            connection.close()
-        }
+        try {
+            session.close()
+        } catch (e: Exception) {}
     }
 
     private fun countRows(): Long {
-        val rows = connection.createNativeQuery("SELECT COUNT(*) FROM test_trx").fetchAll()
+        val rows = session.createNativeQuery("SELECT COUNT(*) FROM test_trx").fetchAll()
         return rows[0].get<Long>(0)
     }
 
     @Test
     fun `test autoCommit false requires explicit commit`() {
-        connection.autoCommit = false
-        assertFalse(connection.autoCommit)
+        session.autoCommit = false
+        assertFalse(session.autoCommit)
 
-        connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         assertEquals(1L, countRows())
 
-        connection.commit() // This should send COMMIT
+        session.commit() // This should send COMMIT
 
         // Verify data is still there outside transaction
         assertEquals(1L, countRows())
@@ -55,12 +56,12 @@ class TransactionTest {
 
     @Test
     fun `test rollback`() {
-        connection.autoCommit = false
+        session.autoCommit = false
 
-        connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         assertEquals(1L, countRows())
 
-        connection.rollback()
+        session.rollback()
 
         // Verify data is not there
         assertEquals(0L, countRows())
@@ -68,78 +69,78 @@ class TransactionTest {
 
     @Test
     fun `test savepoints`() {
-        connection.autoCommit = false
+        session.autoCommit = false
 
-        connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
-        val sp1 = connection.setSavepoint("sp1")
+        val sp1 = session.setSavepoint("sp1")
 
-        connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+        session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
 
         assertEquals(2L, countRows())
 
-        connection.rollback(sp1)
+        session.rollback(sp1)
 
         assertEquals(1L, countRows())
 
-        connection.commit()
+        session.commit()
 
         assertEquals(1L, countRows())
     }
 
     @Test
     fun `test release savepoint`() {
-        connection.autoCommit = false
+        session.autoCommit = false
 
-        connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
-        val sp1 = connection.setSavepoint()
+        val sp1 = session.setSavepoint()
 
-        connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+        session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
 
-        connection.releaseSavepoint(sp1)
+        session.releaseSavepoint(sp1)
 
-        connection.commit()
+        session.commit()
 
         assertEquals(2L, countRows())
     }
 
     @Test
     fun `test transaction state`() {
-        assertEquals(OctaviusConnection.TransactionState.IDLE, connection.transactionState)
+        assertEquals(TransactionState.IDLE, session.transactionState)
 
-        connection.autoCommit = false
+        session.autoCommit = false
 
-        assertEquals(OctaviusConnection.TransactionState.IN_TRANSACTION, connection.transactionState)
+        assertEquals(TransactionState.IN_TRANSACTION, session.transactionState)
 
         try {
-            connection.createNativeQuery("INSERT INTO test_trx (id, value) VALUES ('INVALID_INT', 'A')").execute()
-        } catch (e: SQLException) {
+            session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES ('INVALID_INT', 'A')").execute()
+        } catch (e: OctaviusException) {
             // Expected syntax error
         }
 
-        assertEquals(OctaviusConnection.TransactionState.FAILED, connection.transactionState)
+        assertEquals(TransactionState.FAILED, session.transactionState)
 
-        connection.rollback()
-        assertEquals(OctaviusConnection.TransactionState.IN_TRANSACTION, connection.transactionState)
+        session.rollback()
+        assertEquals(TransactionState.IN_TRANSACTION, session.transactionState)
     }
 
     @Test
     fun `test transaction manager successful block`() {
-        connection.transaction {
+        session.transaction {
             createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         }
 
         // Verify data was committed
         assertEquals(1L, countRows())
         // Verify autoCommit was restored to true
-        assertEquals(true, connection.autoCommit)
+        assertEquals(true, session.autoCommit)
     }
 
     @Test
     fun `test transaction manager failing block rolls back`() {
         try {
-            connection.transaction {
+            session.transaction {
                 createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
                 throw RuntimeException("Simulated error")
             }
@@ -150,12 +151,12 @@ class TransactionTest {
         // Verify data was rolled back
         assertEquals(0L, countRows())
         // Verify autoCommit was restored to true
-        assertEquals(true, connection.autoCommit)
+        assertEquals(true, session.autoCommit)
     }
 
     @Test
     fun `test transaction manager nested successful block`() {
-        connection.transaction {
+        session.transaction {
             createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
             transaction {
@@ -169,7 +170,7 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager nested failing block rolls back to savepoint`() {
-        connection.transaction {
+        session.transaction {
             createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
             try {

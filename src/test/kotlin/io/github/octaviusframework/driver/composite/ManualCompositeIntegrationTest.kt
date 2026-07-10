@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterCo
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
@@ -61,7 +61,7 @@ class ManualCompositeIntegrationTest {
 
     @BeforeAll
     fun setup() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             conn.createNativeQuery("DROP TABLE IF EXISTS orders CASCADE").execute()
             conn.createNativeQuery("DROP TYPE IF EXISTS payment_info CASCADE").execute()
@@ -74,7 +74,7 @@ class ManualCompositeIntegrationTest {
 
     @AfterAll
     fun teardown() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             conn.createNativeQuery("DROP TABLE IF EXISTS orders CASCADE").execute()
             conn.createNativeQuery("DROP TYPE IF EXISTS payment_info CASCADE").execute()
@@ -85,7 +85,7 @@ class ManualCompositeIntegrationTest {
 
     @Test
     fun testTransactionWithManualCompositeMapper() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             // Wymuszamy pobranie nowych typów (w tym payment_info)
             conn.reloadTypes()

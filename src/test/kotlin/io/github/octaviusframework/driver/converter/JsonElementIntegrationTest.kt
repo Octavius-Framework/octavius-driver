@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterCo
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.PgType
@@ -83,7 +83,7 @@ class JsonElementIntegrationTest {
         @BeforeAll
         @JvmStatic
         fun setup() {
-            val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+            val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
             try {
                 conn.createNativeQuery("DROP TABLE IF EXISTS test_json_elements CASCADE").execute()
                 conn.createNativeQuery("CREATE TABLE test_json_elements (id int PRIMARY KEY, data jsonb)").execute()
@@ -98,7 +98,7 @@ class JsonElementIntegrationTest {
         @AfterAll
         @JvmStatic
         fun teardown() {
-            val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+            val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
             try {
                 conn.createNativeQuery("DROP TABLE IF EXISTS test_json_elements CASCADE").execute()
                 conn.createNativeQuery("DROP TYPE IF EXISTS metadata_holder CASCADE").execute()
@@ -110,7 +110,7 @@ class JsonElementIntegrationTest {
 
     @Test
     fun testJsonElementAsParameterAndResult() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             val inputJson = buildJsonObject {
                 put("key", JsonPrimitive("value123"))
@@ -134,7 +134,7 @@ class JsonElementIntegrationTest {
 
     @Test
     fun testJsonElementInsideComposite() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             conn.reloadTypes()
 
@@ -161,7 +161,7 @@ class JsonElementIntegrationTest {
 
     @Test
     fun testJsonElementListAsParameter() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             val list = listOf(
                 buildJsonObject { put("key1", JsonPrimitive("val1")) },
@@ -183,7 +183,7 @@ class JsonElementIntegrationTest {
 
     @Test
     fun testJsonElementWithExplicitType() {
-        val conn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val conn = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             val inputJson = buildJsonObject {
                 put("key", JsonPrimitive("explicit"))

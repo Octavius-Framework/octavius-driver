@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.deserialization
 import io.github.octaviusframework.driver.annotation.MapKey
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgComposite
@@ -22,20 +22,20 @@ class DeserializationIntegrationTest {
 
     @Test
     fun testRealDatabaseDeserialization() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
-            octaviusConn.queryExecutor.execute("CREATE TYPE integ_address AS (street text, city text)")
+            session.createNativeQuery("DROP TYPE IF EXISTS integ_address CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE integ_address AS (street text, city text)").execute()
 
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_user CASCADE")
-            octaviusConn.queryExecutor.execute("CREATE TYPE integ_user AS (id int, name text, address integ_address)")
+            session.createNativeQuery("DROP TYPE IF EXISTS integ_user CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE integ_user AS (id int, name text, address integ_address)").execute()
 
-            octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationAddress>("integ_address")
-            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationUser>("integ_user")
+            session.reloadTypes()
+            session.types.registerAutoComposite<IntegrationAddress>("integ_address")
+            session.types.registerAutoComposite<IntegrationUser>("integ_user")
 
-            val result = octaviusConn.createNativeQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchAll().first()
+            val result = session.createNativeQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchAll().first()
             
             // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
             val parsedUser = result.get<IntegrationUser>("usr")
@@ -48,26 +48,26 @@ class DeserializationIntegrationTest {
             
         } finally {
             try {
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_user CASCADE")
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
+                session.createNativeQuery("DROP TYPE IF EXISTS integ_user CASCADE").execute()
+                session.createNativeQuery("DROP TYPE IF EXISTS integ_address CASCADE").execute()
             } catch (e: Exception) {
             }
-            octaviusConn.close()
+            session.close()
         }
     }
 
     @Test
     fun testRealDatabaseArrayDeserialization() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
-            octaviusConn.queryExecutor.execute("CREATE TYPE integ_address AS (street text, city text)")
+            session.createNativeQuery("DROP TYPE IF EXISTS integ_address CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE integ_address AS (street text, city text)").execute()
 
-            octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationAddress>("integ_address")
+            session.reloadTypes()
+            session.types.registerAutoComposite<IntegrationAddress>("integ_address")
 
-            val result = octaviusConn.createNativeQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchAll().first()
+            val result = session.createNativeQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchAll().first()
 
             // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
             val parsedList = result.get<List<IntegrationAddress>>("addresses")
@@ -79,19 +79,19 @@ class DeserializationIntegrationTest {
             
         } finally {
             try {
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
+                session.createNativeQuery("DROP TYPE IF EXISTS integ_address CASCADE").execute()
             } catch (e: Exception) {
             }
-            octaviusConn.close()
+            session.close()
         }
     }
 
     @Test
     fun testJsonDeserialization() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            val result = octaviusConn.createNativeQuery("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").fetchAll().first()
+            val result = session.createNativeQuery("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").fetchAll().first()
 
             val js = result.get<JsonElement>("js")
             val jsb = result.get<JsonElement>("jsb")
@@ -122,7 +122,7 @@ class DeserializationIntegrationTest {
             }
 
         } finally {
-            octaviusConn.close()
+            session.close()
         }
     }
 
@@ -131,11 +131,11 @@ class DeserializationIntegrationTest {
 
     @Test
     fun testExplicitEnumAndCompositeConverters() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
             // Rejestracja własnych, jawnych konwerterów
-            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<Any, TestStatus> {
+            session.types.registerResultConverter(object : ResultConverter<Any, TestStatus> {
                 override val supportedSourceClass = Any::class
                 override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
@@ -146,7 +146,7 @@ class DeserializationIntegrationTest {
                 }
             })
             
-            octaviusConn.typeRegistry.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
+            session.types.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
                 override val supportedSourceClass = PgComposite::class
                 override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
                     return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
@@ -165,19 +165,19 @@ class DeserializationIntegrationTest {
             })
 
             // Utworzenie typów w bazie
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_user_data CASCADE")
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_status_enum CASCADE")
+            session.createNativeQuery("DROP TYPE IF EXISTS test_root_composite CASCADE").execute()
+            session.createNativeQuery("DROP TYPE IF EXISTS test_user_data CASCADE").execute()
+            session.createNativeQuery("DROP TYPE IF EXISTS test_status_enum CASCADE").execute()
 
-            octaviusConn.queryExecutor.execute("CREATE TYPE test_status_enum AS ENUM ('ACTIVE', 'INACTIVE', 'UNKNOWN')")
-            octaviusConn.queryExecutor.execute("CREATE TYPE test_user_data AS (code text, status test_status_enum)")
-            octaviusConn.queryExecutor.execute("CREATE TYPE test_root_composite AS (main_status test_status_enum, user_data test_user_data)")
+            session.createNativeQuery("CREATE TYPE test_status_enum AS ENUM ('ACTIVE', 'INACTIVE', 'UNKNOWN')").execute()
+            session.createNativeQuery("CREATE TYPE test_user_data AS (code text, status test_status_enum)").execute()
+            session.createNativeQuery("CREATE TYPE test_root_composite AS (main_status test_status_enum, user_data test_user_data)").execute()
 
             // Odświeżenie rejestru typów, aby OID wczytały się do pamięci
-            octaviusConn.reloadTypes()
+            session.reloadTypes()
 
             // Zbudowanie zapytania, w którym tworzymy nasz kompozyt testowy
-            val result = octaviusConn.createNativeQuery(
+            val result = session.createNativeQuery(
                 "SELECT ROW('ACTIVE'::test_status_enum, ROW('CD123', 'INACTIVE')::test_user_data)::test_root_composite AS my_map"
             ).fetchAll().first()
 
@@ -199,46 +199,46 @@ class DeserializationIntegrationTest {
 
         } finally {
             try {
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_root_composite CASCADE")
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_user_data CASCADE")
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS test_status_enum CASCADE")
+                session.createNativeQuery("DROP TYPE IF EXISTS test_root_composite CASCADE").execute()
+                session.createNativeQuery("DROP TYPE IF EXISTS test_user_data CASCADE").execute()
+                session.createNativeQuery("DROP TYPE IF EXISTS test_status_enum CASCADE").execute()
             } catch (e: Exception) {}
-            octaviusConn.close()
+            session.close()
         }
     }
     data class DomainUser(val id: Int, val age: Int)
 
     @Test
     fun testDomainTypeHandling() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS domain_user CASCADE")
-            octaviusConn.queryExecutor.execute("DROP DOMAIN IF EXISTS positive_int CASCADE")
-            octaviusConn.queryExecutor.execute("CREATE DOMAIN positive_int AS int CHECK (VALUE > 0)")
-            octaviusConn.queryExecutor.execute("CREATE TYPE domain_user AS (id positive_int, age positive_int)")
+            session.createNativeQuery("DROP TYPE IF EXISTS domain_user CASCADE").execute()
+            session.createNativeQuery("DROP DOMAIN IF EXISTS positive_int CASCADE").execute()
+            session.createNativeQuery("CREATE DOMAIN positive_int AS int CHECK (VALUE > 0)").execute()
+            session.createNativeQuery("CREATE TYPE domain_user AS (id positive_int, age positive_int)").execute()
 
-            octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerAutoCompositeType<DomainUser>("domain_user")
+            session.reloadTypes()
+            session.types.registerAutoComposite<DomainUser>("domain_user")
 
             // Test deserialization of pure domain
-            val res1 = octaviusConn.createNativeQuery("SELECT 42::positive_int AS num").fetchAll().first()
+            val res1 = session.createNativeQuery("SELECT 42::positive_int AS num").fetchAll().first()
             assertEquals(42, res1.get<Int>("num"))
 
             // Test deserialization of array of domains
-            val res2 = octaviusConn.createNativeQuery("SELECT ARRAY[10, 20]::positive_int[] AS nums").fetchAll().first()
+            val res2 = session.createNativeQuery("SELECT ARRAY[10, 20]::positive_int[] AS nums").fetchAll().first()
             val list = res2.get<List<Int>>("nums")
             assertEquals(listOf(10, 20), list)
 
             // Test deserialization of composite with domains
-            val res3 = octaviusConn.createNativeQuery("SELECT ROW(1, 25)::domain_user AS usr").fetchAll().first()
+            val res3 = session.createNativeQuery("SELECT ROW(1, 25)::domain_user AS usr").fetchAll().first()
             val usr = res3.get<DomainUser>("usr")
             assertEquals(1, usr.id)
             assertEquals(25, usr.age)
 
             // Test serialization of domains (implicit, mapped as underlying type since JDBC sends parameters with matching format/Oid if we specify it or just sends integer)
             // If we send it via composite
-            val res4 = octaviusConn.createNativeQuery("SELECT $1 AS usr_back")
+            val res4 = session.createNativeQuery("SELECT $1 AS usr_back")
                 .fetchOne(DomainUser(100, 30).withPgType("domain_user"))
             
             val usrBack = res4.get<DomainUser>("usr_back")
@@ -247,10 +247,10 @@ class DeserializationIntegrationTest {
 
         } finally {
             try {
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS domain_user CASCADE")
-                octaviusConn.queryExecutor.execute("DROP DOMAIN IF EXISTS positive_int CASCADE")
+                session.createNativeQuery("DROP TYPE IF EXISTS domain_user CASCADE").execute()
+                session.createNativeQuery("DROP DOMAIN IF EXISTS positive_int CASCADE").execute()
             } catch (e: Exception) {}
-            octaviusConn.close()
+            session.close()
         }
     }
 
@@ -262,21 +262,21 @@ class DeserializationIntegrationTest {
 
     @Test
     fun testRealDatabaseMapKeyDeserializationAndSerialization() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
-            octaviusConn.queryExecutor.execute("CREATE TYPE integ_address AS (street text, city text)")
+            session.createNativeQuery("DROP TYPE IF EXISTS integ_address CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE integ_address AS (street text, city text)").execute()
 
-            octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_user_mapkey CASCADE")
-            octaviusConn.queryExecutor.execute("CREATE TYPE integ_user_mapkey AS (id int, full_name text, home_address integ_address)")
+            session.createNativeQuery("DROP TYPE IF EXISTS integ_user_mapkey CASCADE").execute()
+            session.createNativeQuery("CREATE TYPE integ_user_mapkey AS (id int, full_name text, home_address integ_address)").execute()
 
-            octaviusConn.reloadTypes()
-            octaviusConn.typeRegistry.registerAutoCompositeType<IntegrationAddress>("integ_address")
-            octaviusConn.typeRegistry.registerAutoCompositeType<MapKeyIntegrationUser>("integ_user_mapkey")
+            session.reloadTypes()
+            session.types.registerAutoComposite<IntegrationAddress>("integ_address")
+            session.types.registerAutoComposite<MapKeyIntegrationUser>("integ_user_mapkey")
 
             // Test deserialization
-            val result = octaviusConn.createNativeQuery("SELECT ROW(15, 'Anna Nowak', ROW('Mickiewicza', 'Kraków')::integ_address)::integ_user_mapkey AS usr").fetchAll().first()
+            val result = session.createNativeQuery("SELECT ROW(15, 'Anna Nowak', ROW('Mickiewicza', 'Kraków')::integ_address)::integ_user_mapkey AS usr").fetchAll().first()
             
             val parsedUser = result.get<MapKeyIntegrationUser>("usr")
 
@@ -287,7 +287,7 @@ class DeserializationIntegrationTest {
             assertEquals("Kraków", parsedUser.address.city)
 
             // Test serialization
-            val resBack = octaviusConn.createNativeQuery($$"SELECT $1 AS usr_back")
+            val resBack = session.createNativeQuery($$"SELECT $1 AS usr_back")
                 .fetchOne(parsedUser)
 
             val usrBack = resBack.get<MapKeyIntegrationUser>("usr_back")
@@ -297,20 +297,20 @@ class DeserializationIntegrationTest {
             
         } finally {
             try {
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_user_mapkey CASCADE")
-                octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS integ_address CASCADE")
+                session.createNativeQuery("DROP TYPE IF EXISTS integ_user_mapkey CASCADE").execute()
+                session.createNativeQuery("DROP TYPE IF EXISTS integ_address CASCADE").execute()
             } catch (e: Exception) {
             }
-            octaviusConn.close()
+            session.close()
         }
     }
 
     @Test
     fun testRecordTypeHandling() {
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            val result = octaviusConn.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchAll().first()
+            val result = session.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchAll().first()
             
             val map = result.get<Map<String, Any?>>("rec")
             assertNotNull(map)
@@ -323,7 +323,7 @@ class DeserializationIntegrationTest {
             assertEquals(Json.decodeFromString<JsonArray>("[\"b\",\"c\"]"), map["c"])
             
         } finally {
-            octaviusConn.close()
+            session.close()
         }
     }
 }

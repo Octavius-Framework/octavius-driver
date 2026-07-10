@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.jdbc.getOctaviusConnection
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.query.ParameterSerializer
 import io.github.octaviusframework.driver.query.get
 import io.github.octaviusframework.driver.type.TypeManager
@@ -27,9 +27,10 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
-        val row = octaviusConn.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchAll().first()
+        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchAll().first()
 
         val array = row.get<PgArray>("my_arr")
         assertNotNull(array)
@@ -45,7 +46,7 @@ class SerializationTest {
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
-        val expectedRow = octaviusConn.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchAll().first()
+        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchAll().first()
         val expectedArray = expectedRow.get<PgArray>(0)
         val writer3 = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writer3, row.typeRegistry)
@@ -60,18 +61,19 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
         //octaviusConn.setSearchPath("te\"st.schemy")
         octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS ser_test_composite CASCADE")
         octaviusConn.queryExecutor.execute("CREATE TYPE ser_test_composite AS (id int, name text)")
-        octaviusConn.reloadTypes()
+        session.reloadTypes()
 
-        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
-        val composite = octaviusConn.types.createComposite("ser_test_composite")
+        val composite = session.types.createComposite("ser_test_composite")
         composite["id"] = 777
         composite["name"] = "factory_test"
 
@@ -81,7 +83,7 @@ class SerializationTest {
 
         // Porównanie z bazą
         val expectedCompositeRow =
-            octaviusConn.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchAll().first()
+            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchAll().first()
         val expectedComposite = expectedCompositeRow.get<PgComposite>(0)
         val writerComp = PgByteWriter()
         ContainerCodec.serializeContainer(expectedComposite, writerComp, typeRegistry)
@@ -93,14 +95,14 @@ class SerializationTest {
         )
 
         // 2. Zbudowanie tablicy fabryką od zera
-        val array = octaviusConn.types.createArray(1007, 3) // 1007 = _int4
+        val array = session.types.createArray(1007, 3) // 1007 = _int4
         array.setAll(10, 20, 30)
 
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
         val builtArrayBytes = writer2.toByteArray()
 
-        val expectedArrayRow = octaviusConn.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchAll().first()
+        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchAll().first()
         val expectedArray = expectedArrayRow.get<PgArray>(0)
         val writerArr = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writerArr, typeRegistry)
@@ -118,11 +120,12 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
-        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
-        val array = octaviusConn.types.createArray(1007, 3) // 1007 = _int4
+        val array = session.types.createArray(1007, 3) // 1007 = _int4
         array.setAll(10, 20, 30)
 
         val writer = PgByteWriter()
@@ -133,7 +136,7 @@ class SerializationTest {
             "SELECT $1::int[] as test_col",
             paramTypes = listOf(0),
             paramValues = listOf(serializedArray),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
 
         val returnedArray = rows.first().get<PgArray>("test_col")
@@ -149,10 +152,11 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
-        val multiArray = octaviusConn.types.createArray(1007, 2, 3)
+        val multiArray = session.types.createArray(1007, 2, 3)
 
         // Wypełniamy danymi:
         // [ [1, 2, 3], [4, 5, 6] ]
@@ -160,11 +164,11 @@ class SerializationTest {
         multiArray.setDimension(intArrayOf(1), 4, 5, 6)
 
         val writer = PgByteWriter()
-        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
         ContainerCodec.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
         val serializedArray = writer.toByteArray()
 
-        val rows = octaviusConn.createNativeQuery(
+        val rows = session.createNativeQuery(
             "SELECT ARRAY[[1, 2, 3], [4, 5, 6]]::int[] as test_col"
         ).fetchAll()
 
@@ -185,9 +189,10 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
-        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val typeManager = TypeManager(typeRegistry)
         val parameterMapper = io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper(typeRegistry.parameterConverterRegistry, typeManager)
@@ -200,7 +205,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(intParam.oid),
             paramValues = listOf(intParam.value),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
         assertEquals(intVal, rowsInt.first().get<Int>("res"))
 
@@ -211,7 +216,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(strParam.oid),
             paramValues = listOf(strParam.value),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
         assertEquals(strVal, rowsStr.first().get<String>("res"))
 
@@ -222,7 +227,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(boolParam.oid),
             paramValues = listOf(boolParam.value),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
         assertEquals(boolVal, rowsBool.first().get<Boolean>("res"))
 
@@ -233,12 +238,12 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(doubleParam.oid),
             paramValues = listOf(doubleParam.value),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         // 5. Container (PgArray) Round Trip
-        val arrayVal = octaviusConn.types.createArray(1007, 3) // 23 = int4
+        val arrayVal = session.types.createArray(1007, 3) // 23 = int4
         arrayVal.setAll(10, 20, 30)
 
         val arrayParam = serializer.serializeWithOid(arrayVal)
@@ -246,7 +251,7 @@ class SerializationTest {
             "SELECT $1 as res",
             paramTypes = listOf(arrayParam.oid),
             paramValues = listOf(arrayParam.value),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
         val returnedArray = rowsArray.first().get<PgArray>("res")
         assertNotNull(returnedArray)
@@ -260,10 +265,11 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
         // 6. Record Map Serialization
-        val dummyRow = octaviusConn.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
         val typeRegistry = dummyRow.typeRegistry
         val typeManager = TypeManager(typeRegistry)
         val parameterMapper = io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper(typeRegistry.parameterConverterRegistry, typeManager)
@@ -281,7 +287,7 @@ class SerializationTest {
                 "SELECT $1 as res",
                 paramTypes = listOf(recordParam.oid),
                 paramValues = listOf(recordParam.value),
-                mapper = ResultMapper(octaviusConn.converterRegistry)
+                mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
             )
         }
         
@@ -295,14 +301,15 @@ class SerializationTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
 
-        val octaviusConn = getOctaviusConnection("jdbc:octavius://localhost:5432/octavius_test", props)
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props) as io.github.octaviusframework.driver.session.OctaviusSessionImpl
+        val octaviusConn = session.octaviusConnection
 
         val stringVal = "some literal value"
         val rows = octaviusConn.queryExecutor.query(
             "SELECT $1 as res",
             paramTypes = listOf(705),
             paramValues = listOf(stringVal.toByteArray()),
-            mapper = ResultMapper(octaviusConn.converterRegistry)
+            mapper = ResultMapper(octaviusConn.typeRegistry.converterRegistry)
         )
 
         assertEquals(stringVal, rows.first().get<String>("res"))

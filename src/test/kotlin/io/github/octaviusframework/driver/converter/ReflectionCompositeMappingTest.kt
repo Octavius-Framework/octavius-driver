@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.converter
 
 import io.github.octaviusframework.driver.annotation.MapKey
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
@@ -84,6 +85,7 @@ class ReflectionCompositeMappingTest {
         val converter = ReflectionCompositeParameterConverter()
         val context = object : SerializationContext {
             override fun convert(source: Any, expectedOid: Int?): Any? = source
+            override fun findConverter(source: Any, expectedOid: Int?): ParameterConverter<Any>? = null
         }
 
         val person = Person("Jane", "Smith", 28)

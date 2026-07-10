@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 
 internal class OctaviusSessionImpl(
     private val poolConnection: Connection,
-    private val octaviusConnection: OctaviusConnection
+    internal val octaviusConnection: OctaviusConnection
 ) : OctaviusSession {
 
     override val types: TypeManager by lazy {
@@ -100,7 +100,7 @@ internal class OctaviusSessionImpl(
     override fun cancelQuery() {
         octaviusConnection.cancelQuery()
     }
-    
+
     override fun getSearchPath() = octaviusConnection.getSearchPath()
 
     override fun setSearchPath(vararg schemas: String) = octaviusConnection.setSearchPath(*schemas)
