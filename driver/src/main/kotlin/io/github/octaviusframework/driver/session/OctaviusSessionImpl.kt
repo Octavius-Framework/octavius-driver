@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 
 internal class OctaviusSessionImpl(
     private val poolConnection: Connection,
-    internal val octaviusConnection: OctaviusConnection
+    private val octaviusConnection: OctaviusConnection
 ) : OctaviusSession {
 
     override val types: TypeManager by lazy {

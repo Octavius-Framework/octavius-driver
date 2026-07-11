@@ -1,27 +1,20 @@
 package io.github.octaviusframework.driver.serialization
 
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.session.OctaviusSession
-import io.github.octaviusframework.driver.query.ParameterSerializer
-import io.github.octaviusframework.driver.query.get
-import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgArray
-import org.junit.jupiter.api.Assertions.*
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.session.OctaviusSession
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.*
-import kotlin.reflect.typeOf
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParameterConverterTest {
 
     private lateinit var session: OctaviusSession
-    private lateinit var octaviusConn: io.github.octaviusframework.driver.jdbc.OctaviusConnection
-    private lateinit var parameterSerializer: ParameterSerializer
-    private lateinit var dummyTypeRegistry: io.github.octaviusframework.driver.registry.TypeRegistry
 
     data class SimpleAddress(val city: String, val zip: String)
     data class ComplexUser(val id: Int, val name: String, val address: SimpleAddress, val tags: List<String>)
@@ -32,23 +25,16 @@ class ParameterConverterTest {
         props.setProperty("user", "postgres")
         props.setProperty("password", "1234")
         session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
-        octaviusConn = (session as io.github.octaviusframework.driver.session.OctaviusSessionImpl).octaviusConnection
 
-        octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS simple_address CASCADE")
-        octaviusConn.queryExecutor.execute("CREATE TYPE simple_address AS (city text, zip text)")
-        
-        octaviusConn.queryExecutor.execute("DROP TYPE IF EXISTS complex_user CASCADE")
-        octaviusConn.queryExecutor.execute("CREATE TYPE complex_user AS (id int, name text, address simple_address, tags text[])")
+        session.createNativeQuery("DROP TYPE IF EXISTS simple_address CASCADE").execute()
+        session.createNativeQuery("CREATE TYPE simple_address AS (city text, zip text)").execute()
+
+        session.createNativeQuery("DROP TYPE IF EXISTS complex_user CASCADE").execute()
+        session.createNativeQuery("CREATE TYPE complex_user AS (id int, name text, address simple_address, tags text[])").execute()
         
         session.reloadTypes()
-        octaviusConn.typeRegistry.registerAutoCompositeType<SimpleAddress>("simple_address")
-        octaviusConn.typeRegistry.registerAutoCompositeType<ComplexUser>("complex_user")
-        
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
-        dummyTypeRegistry = dummyRow.typeRegistry
-        val typeManager = TypeManager(dummyTypeRegistry)
-        val parameterMapper = io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper(dummyTypeRegistry.parameterConverterRegistry, typeManager)
-        parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
+        session.types.registerAutoComposite<SimpleAddress>("simple_address")
+        session.types.registerAutoComposite<ComplexUser>("complex_user")
     }
 
     @Test
@@ -56,19 +42,8 @@ class ParameterConverterTest {
         val address = SimpleAddress("Warsaw", "00-001")
         val user = ComplexUser(42, "Kacper", address, listOf("developer", "kotlin"))
 
-        val param = parameterSerializer.serializeWithOid(user)
-        
-        assertTrue(param.oid > 0, "OID should be resolved for the ComplexUser")
-
-        val rows = octaviusConn.queryExecutor.query(
-            "SELECT ($1).*",
-            paramTypes = listOf(param.oid),
-            paramValues = listOf(param.value),
-            mapper = ResultMapper(dummyTypeRegistry.converterRegistry)
-        )
-        
-        val returnedUserRow = rows.first()
-        val returnedUser = returnedUserRow.resultMapper.deserialize(returnedUserRow, typeOf<ComplexUser>(), PgType.Record(2249, "record", "pg_catalog")) as ComplexUser
+        val returnedUser = session.createNativeQuery("SELECT ($1).*")
+            .fetchSingleOf<ComplexUser>(user)
         assertNotNull(returnedUser)
         assertEquals(42, returnedUser.id)
         assertEquals("Kacper", returnedUser.name)
@@ -82,16 +57,10 @@ class ParameterConverterTest {
     @Test
     fun testSimpleListConversion() {
         val list = listOf("one", "two", "three")
-        val param = parameterSerializer.serializeWithOid(list)
-
-        val rows = octaviusConn.queryExecutor.query(
-            "SELECT $1 as res",
-            paramTypes = listOf(param.oid),
-            paramValues = listOf(param.value),
-            mapper = ResultMapper(dummyTypeRegistry.converterRegistry)
-        )
-
-        val returnedArray = rows.first().get<PgArray>("res")
+        val returnedArray = session.createNativeQuery("SELECT $1 as res")
+            .fetchAll(list)
+            .first()
+            .get<PgArray>("res")
         assertNotNull(returnedArray)
         assertEquals("one", returnedArray.get<String>(0))
         assertEquals("two", returnedArray.get<String>(1))
