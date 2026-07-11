@@ -11,9 +11,8 @@ class NativeQuery(
 ) : OctaviusQuery<NativeQuery>(sql, queryExecutor, typeManager) {
 
     fun fetchAll(vararg params: Any?): List<Row> {
-        val (types, values) = serializeParameters(params.toList())
         return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
-            queryExecutor.query(sql, types, values, localDeserializer)
+            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper)
         }
     }
 
@@ -30,9 +29,8 @@ class NativeQuery(
     }
 
     fun update(vararg params: Any?): Long {
-        val (types, values) = serializeParameters(params.toList())
         return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
-            queryExecutor.update(sql, types, values)
+            queryExecutor.update(sql, params.toList(), parameterSerializer)
         }
     }
 
@@ -43,24 +41,23 @@ class NativeQuery(
     }
 
     inline fun <reified T : Any> fetchListOf(vararg params: Any?): List<T> {
-        val (types, values) = serializeParameters(params.toList())
         val targetType = typeOf<T>()
         val recordType = PgType.Record(2249, "record", "pg_catalog")
         return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
-            queryExecutor.query(sql, types, values, localDeserializer) {
-                it.resultMapper.deserialize(it, targetType, recordType)
+            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) {
+                resultMapper.deserialize(it, targetType, recordType)
             }
         }
     }
 
     inline fun <reified T : Any> fetchSingleOf(vararg params: Any?): T {
         val row = fetchOne(*params)
-        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
     }
 
     inline fun <reified T : Any> fetchSingleOfOrNull(vararg params: Any?): T? {
         val row = fetchOneOrNull(*params) ?: return null
-        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
+        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record(2249, "record", "pg_catalog"))
     }
 
     inline fun <reified T> fetchField(vararg params: Any?): T {
@@ -68,10 +65,9 @@ class NativeQuery(
     }
 
     inline fun <reified T> fetchColumn(vararg params: Any?): List<T> {
-        val (types, values) = serializeParameters(params.toList())
         val targetType = typeOf<T>()
         return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
-            queryExecutor.query(sql, types, values, localDeserializer) { it.get<T>(0, targetType) }
+            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) { it.get(0, targetType) }
         }
     }
 }

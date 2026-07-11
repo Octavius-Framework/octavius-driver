@@ -56,7 +56,12 @@ class QueryExecutor(
      * Intended for DML (INSERT, UPDATE, DELETE). Expects no rows returned.
      * Returns the number of updated rows.
      */
-    fun update(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList()): Long = synchronized(stream) {
+    fun update(
+        sql: String,
+        params: List<Any?> = emptyList(),
+        parameterSerializer: ParameterSerializer? = null
+    ): Long = synchronized(stream) {
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to emptyList<ByteArray?>())
         val statementName = ""
         val portalName = ""
         
@@ -111,8 +116,13 @@ class QueryExecutor(
      * Intended for DQL (SELECT).
      * Returns a parsed list of rows (Row) immediately.
      */
-    fun query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper): List<Row> = synchronized(stream) {
-        query(sql, paramTypes, paramValues, mapper) { it }
+    fun query(
+        sql: String,
+        params: List<Any?> = emptyList(),
+        parameterSerializer: ParameterSerializer? = null,
+        mapper: ResultMapper
+    ): List<Row> = synchronized(stream) {
+        query(sql, params, parameterSerializer, mapper) { it }
     }
 
     /**
@@ -120,7 +130,14 @@ class QueryExecutor(
      * Intended for DQL (SELECT).
      * Returns a parsed list of elements using the provided transform function immediately.
      */
-    fun <R> query(sql: String, paramTypes: List<Int> = emptyList(), paramValues: List<ByteArray?> = emptyList(), mapper: ResultMapper, transform: (Row) -> R): List<R> = synchronized(stream) {
+    fun <R> query(
+        sql: String,
+        params: List<Any?> = emptyList(),
+        parameterSerializer: ParameterSerializer?,
+        mapper: ResultMapper,
+        transform: (Row) -> R
+    ): List<R> = synchronized(stream) {
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to emptyList<ByteArray?>())
         val statementName = ""
         val portalName = ""
         

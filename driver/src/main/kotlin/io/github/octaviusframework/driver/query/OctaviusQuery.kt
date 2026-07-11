@@ -22,9 +22,9 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
     val typeRegistry = typeManager.registry
     val resultConverterRegistry = ResultConverterRegistry(parent = typeRegistry.converterRegistry)
     val parameterConverterRegistry = ParameterConverterRegistry(parent = typeRegistry.parameterConverterRegistry)
-    @PublishedApi internal val localDeserializer = ResultMapper(resultConverterRegistry)
+    @PublishedApi internal val resultMapper = ResultMapper(resultConverterRegistry)
     protected val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
-    protected val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
+    @PublishedApi internal val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
 
     fun registerResultConverter(converter: ResultConverter<*, *>): T {
         resultConverterRegistry.addConverter(converter)
@@ -34,10 +34,6 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>>(
     fun registerParameterConverter(converter: ParameterConverter<*>): T {
         parameterConverterRegistry.addConverter(converter)
         return this as T
-    }
-
-    @PublishedApi internal fun serializeParameters(params: List<Any?>): Pair<List<Int>, List<ByteArray?>> {
-        return parameterSerializer.serializeAll(params)
     }
 
     @PublishedApi
