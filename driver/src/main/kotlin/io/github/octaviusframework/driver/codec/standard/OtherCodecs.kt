@@ -9,6 +9,7 @@ import kotlin.uuid.Uuid
 
 internal object BooleanCodec : TypeCodec<Boolean> {
     override val pgTypeName = "bool"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 16
     override val kotlinClass = Boolean::class
     override val isDefaultForKotlinType = true
@@ -19,6 +20,7 @@ internal object BooleanCodec : TypeCodec<Boolean> {
 
 internal object ByteArrayCodec : TypeCodec<ByteArray> {
     override val pgTypeName = "bytea"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 17
     override val kotlinClass = ByteArray::class
     override val isDefaultForKotlinType = true
@@ -29,6 +31,7 @@ internal object ByteArrayCodec : TypeCodec<ByteArray> {
 
 internal object UnitCodec : TypeCodec<Unit> {
     override val pgTypeName = "void"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 2278
     override val kotlinClass = Unit::class
     override val isDefaultForKotlinType = true
@@ -40,6 +43,7 @@ internal object UnitCodec : TypeCodec<Unit> {
 
 internal object UuidCodec : TypeCodec<Uuid> {
     override val pgTypeName = "uuid"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 2950
     override val kotlinClass = Uuid::class
     override val isDefaultForKotlinType = true

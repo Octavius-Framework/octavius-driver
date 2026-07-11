@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 
 internal object StringCodec : TypeCodec<String> {
     override val pgTypeName = "text"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 25
     override val kotlinClass = String::class
     override val isDefaultForKotlinType = true
@@ -13,47 +14,39 @@ internal object StringCodec : TypeCodec<String> {
     override val toBinary: (String, PgByteWriter) -> Unit = { value, writer -> writer.writeBytes(value.toByteArray(Charsets.UTF_8)) }
 }
 
-internal object NameCodec : TypeCodec<String> {
-    override val pgTypeName = "name"
-    override val oid: Int = 19
-    override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
-}
-
-internal object CharCodec : TypeCodec<String> {
-    override val pgTypeName = "char"
-    override val oid: Int = 18
-    override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
-}
-
 internal object VarcharCodec : TypeCodec<String> {
     override val pgTypeName = "varchar"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1043
     override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
     override val fromBinary = StringCodec.fromBinary
     override val toBinary = StringCodec.toBinary
 }
 
 internal object BpcharCodec : TypeCodec<String> {
     override val pgTypeName = "bpchar"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1042
     override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
     override val fromBinary = StringCodec.fromBinary
     override val toBinary = StringCodec.toBinary
 }
 
+internal object UnknownCodec : TypeCodec<String> {
+    override val pgTypeName = "unknown"
+    override val pgSchema: String = "pg_catalog"
+    override val oid: Int = 705
+    override val kotlinClass = String::class
+    override val fromBinary = StringCodec.fromBinary
+    override val toBinary = StringCodec.toBinary
+}
+
+
 internal object JsonbCodec : TypeCodec<String> {
     override val pgTypeName = "jsonb"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 3802
     override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
 
     override val fromBinary: (ByteArray, Int, Int) -> String = { data, offset, length ->
         val version = data[offset]
@@ -72,9 +65,9 @@ internal object JsonbCodec : TypeCodec<String> {
 
 internal object JsonCodec : TypeCodec<String> {
     override val pgTypeName = "json"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 114
     override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
 
     override val fromBinary: (ByteArray, Int, Int) -> String = { data, offset, length ->
         String(data, offset, length, Charsets.UTF_8)
@@ -83,13 +76,4 @@ internal object JsonCodec : TypeCodec<String> {
     override val toBinary: (String, PgByteWriter) -> Unit = { value, writer ->
         writer.writeBytes(value.toByteArray(Charsets.UTF_8))
     }
-}
-
-internal object UnknownCodec : TypeCodec<String> {
-    override val pgTypeName = "unknown"
-    override val oid: Int = 705
-    override val kotlinClass = String::class
-    override val isDefaultForKotlinType = false
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
 }

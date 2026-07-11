@@ -15,10 +15,17 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 
 
+/**
+ * Utility object for parsing and serializing PostgreSQL container types.
+ * Supports arrays, composites, records, ranges, and multiranges.
+ */
 internal object ContainerCodec {
 
-    // PARSERS
+    // ------------------------------------------PARSERS----------------------------------------------------------------
 
+    /**
+     * Parses a generic field, which can be either a container or a primitive type.
+     */
     private fun parseField(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): Any {
         if (isContainerType(oid, typeRegistry)) {
             return parseContainer(data, offset, length, oid, typeRegistry)
@@ -32,11 +39,17 @@ internal object ContainerCodec {
         return codec.fromBinary(data, offset, length)
     }
 
+    /**
+     * Checks if the given OID corresponds to a container type (Array, Composite, Range, Multirange, Record).
+     */
     fun isContainerType(oid: Int, typeRegistry: TypeRegistry): Boolean {
         val pgType = typeRegistry.types[oid] ?: return false
         return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange || pgType is PgType.Record
     }
 
+    /**
+     * Parses a byte array into a [PgContainer] based on the OID.
+     */
     fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.types[oid]) {
             is PgType.Array -> parsePgArray(data, offset, length, pgType.oid, typeRegistry)
@@ -52,6 +65,16 @@ internal object ContainerCodec {
         }
     }
 
+    /**
+     * Parses a PostgreSQL array from its binary format.
+     *
+     * @param data The byte array containing the payload.
+     * @param offset The starting position in the byte array.
+     * @param length The total length of the array payload.
+     * @param oid The OID of the array type.
+     * @param typeRegistry Registry to look up types and codecs.
+     * @return The parsed [PgArray].
+     */
     fun parsePgArray(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgArray {
         var localOffset = offset
         if (length < 12) throw OctaviusTypeException(
@@ -88,6 +111,16 @@ internal object ContainerCodec {
         return PgArray(oid, elementOid, dimensions, elements, typeRegistry)
     }
 
+    /**
+     * Parses a PostgreSQL composite type (row) from its binary format.
+     *
+     * @param data The byte array containing the payload.
+     * @param offset The starting position in the byte array.
+     * @param length The total length of the composite payload.
+     * @param oid The OID of the composite type.
+     * @param typeRegistry Registry to look up types and codecs.
+     * @return The parsed [PgComposite].
+     */
     fun parsePgComposite(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.types[oid] as? PgType.Composite
             ?: throw OctaviusTypeException(
@@ -112,6 +145,16 @@ internal object ContainerCodec {
         return PgComposite(pgType, fields, typeRegistry)
     }
 
+    /**
+     * Parses an anonymous PostgreSQL record type from its binary format.
+     *
+     * @param data The byte array containing the payload.
+     * @param offset The starting position in the byte array.
+     * @param length The total length of the record payload.
+     * @param oid The OID of the record type.
+     * @param typeRegistry Registry to look up types and codecs.
+     * @return The parsed [PgRecord].
+     */
     fun parsePgRecord(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
         val pgType = typeRegistry.types[oid] as? PgType.Record
             ?: throw OctaviusTypeException(
@@ -141,6 +184,16 @@ internal object ContainerCodec {
         return PgRecord(pgType, fieldOids, fields, typeRegistry)
     }
 
+    /**
+     * Parses a PostgreSQL range type from its binary format.
+     *
+     * @param data The byte array containing the payload.
+     * @param offset The starting position in the byte array.
+     * @param length The total length of the range payload.
+     * @param oid The OID of the range type.
+     * @param typeRegistry Registry to look up types and codecs.
+     * @return The parsed [PgRange].
+     */
     fun parsePgRange(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
             ?: throw OctaviusTypeException(
@@ -175,6 +228,16 @@ internal object ContainerCodec {
         return PgRange(oid, pgType.subtypeOid, flags, lowerBound, upperBound, typeRegistry)
     }
 
+    /**
+     * Parses a PostgreSQL multirange type from its binary format.
+     *
+     * @param data The byte array containing the payload.
+     * @param offset The starting position in the byte array.
+     * @param length The total length of the multirange payload.
+     * @param oid The OID of the multirange type.
+     * @param typeRegistry Registry to look up types and codecs.
+     * @return The parsed [PgMultirange].
+     */
     fun parsePgMultirange(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.types[oid] as? PgType.Multirange
             ?: throw OctaviusTypeException(
@@ -196,8 +259,11 @@ internal object ContainerCodec {
         return PgMultirange(pgType.oid, pgType.rangeOid, ranges)
     }
 
-    // SERIALIZERS
+    // ----------------------------------------------SERIALIZERS--------------------------------------------------------
 
+    /**
+     * Serializes a [PgContainer] into the provided [PgByteWriter].
+     */
     fun serializeContainer(container: PgContainer, writer: PgByteWriter, typeRegistry: TypeRegistry) {
         when (container) {
             is PgArray -> serializePgArray(container, writer, typeRegistry)
@@ -213,6 +279,10 @@ internal object ContainerCodec {
         }
     }
 
+    /**
+     * Writes a single field (primitive or container) to the provided [PgByteWriter].
+     * Uses length prefix framing as expected by the PostgreSQL binary protocol.
+     */
     private fun writeField(
         value: Any?,
         expectedOid: Int,
@@ -256,6 +326,13 @@ internal object ContainerCodec {
         writer.fillLengthInt(marker)
     }
 
+    /**
+     * Serializes a [PgArray] into the provided [PgByteWriter].
+     *
+     * @param array The array container to serialize.
+     * @param writer The binary packet writer.
+     * @param typeRegistry Registry to look up types and codecs.
+     */
     fun serializePgArray(array: PgArray, writer: PgByteWriter, typeRegistry: TypeRegistry) {
         val count = array.totalElements
         val hasNulls = array.elements.any { it == null }
@@ -274,6 +351,13 @@ internal object ContainerCodec {
         }
     }
 
+    /**
+     * Serializes a [PgComposite] into the provided [PgByteWriter].
+     *
+     * @param composite The composite container to serialize.
+     * @param writer The binary packet writer.
+     * @param typeRegistry Registry to look up types and codecs.
+     */
     fun serializePgComposite(composite: PgComposite, writer: PgByteWriter, typeRegistry: TypeRegistry) {
         writer.writeInt(composite.fields.size)
         val attributeOids = composite.type.attributeOids
@@ -283,6 +367,10 @@ internal object ContainerCodec {
         }
     }
 
+    /**
+     * Attempting to serialize an anonymous record will throw an exception,
+     * since PostgreSQL does not accept anonymous records as bound parameters.
+     */
     fun serializePgRecord() {
         throw OctaviusTypeException(
             TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED,
@@ -291,6 +379,13 @@ internal object ContainerCodec {
         )
     }
 
+    /**
+     * Serializes a [PgRange] into the provided [PgByteWriter].
+     *
+     * @param range The range container to serialize.
+     * @param writer The binary packet writer.
+     * @param typeRegistry Registry to look up types and codecs.
+     */
     fun serializePgRange(range: PgRange, writer: PgByteWriter, typeRegistry: TypeRegistry) {
         writer.writeByte(range.flags)
 
@@ -304,6 +399,13 @@ internal object ContainerCodec {
         }
     }
 
+    /**
+     * Serializes a [PgMultirange] into the provided [PgByteWriter].
+     *
+     * @param multirange The multirange container to serialize.
+     * @param writer The binary packet writer.
+     * @param typeRegistry Registry to look up types and codecs.
+     */
     fun serializePgMultirange(multirange: PgMultirange, writer: PgByteWriter, typeRegistry: TypeRegistry) {
         writer.writeInt(multirange.ranges.size)
         for (range in multirange.ranges) {

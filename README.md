@@ -24,7 +24,7 @@ The driver architecture is split into several sub-projects and layers:
   - **Query**: The `QueryExecutor` acts as the operational heart, routing simple queries through the Simple Query Protocol and DML/DQL through the Extended Query Protocol.
   - **Type / Mapping**: Maps raw binary data directly to and from Kotlin types. Supports dynamic codecs for complex types.
   - **Session**: `OctaviusSession` and `OctaviusSavepoint` APIs wrapping connections.
-- **`hikari` module**: Dedicated integration and tests for HikariCP.
+- **`hikari` module**: Dedicated tests for HikariCP.
 
 ## Quick Start
 

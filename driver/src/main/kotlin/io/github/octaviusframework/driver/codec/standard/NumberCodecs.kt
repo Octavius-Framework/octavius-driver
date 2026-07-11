@@ -9,6 +9,7 @@ import java.math.BigInteger
 
 internal object ShortCodec : TypeCodec<Short> {
     override val pgTypeName = "int2"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 21
     override val kotlinClass = Short::class
     override val isDefaultForKotlinType = true
@@ -18,6 +19,7 @@ internal object ShortCodec : TypeCodec<Short> {
 
 internal object IntCodec : TypeCodec<Int> {
     override val pgTypeName = "int4"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 23
     override val kotlinClass = Int::class
     override val isDefaultForKotlinType = true
@@ -25,19 +27,9 @@ internal object IntCodec : TypeCodec<Int> {
     override val toBinary: (Int, PgByteWriter) -> Unit = { value, writer -> writer.writeInt(value) }
 }
 
-internal object OidCodec : TypeCodec<Int> {
-    override val pgTypeName = "oid"
-    override val oid: Int = 26
-    override val kotlinClass = Int::class
-    override val isDefaultForKotlinType = true
-    override val fromBinary: (ByteArray, Int, Int) -> Int = { data, offset, _ -> data.getIntBE(offset) }
-    override val toBinary: (Int, PgByteWriter) -> Unit = { value, writer -> 
-        writer.writeInt(value)
-    }
-}
-
 internal object LongCodec : TypeCodec<Long> {
     override val pgTypeName = "int8"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 20
     override val kotlinClass = Long::class
     override val isDefaultForKotlinType = true
@@ -47,6 +39,7 @@ internal object LongCodec : TypeCodec<Long> {
 
 internal object FloatCodec : TypeCodec<Float> {
     override val pgTypeName = "float4"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 700
     override val kotlinClass = Float::class
     override val isDefaultForKotlinType = true
@@ -56,6 +49,7 @@ internal object FloatCodec : TypeCodec<Float> {
 
 internal object DoubleCodec : TypeCodec<Double> {
     override val pgTypeName = "float8"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 701
     override val kotlinClass = Double::class
     override val isDefaultForKotlinType = true
@@ -65,6 +59,7 @@ internal object DoubleCodec : TypeCodec<Double> {
 
 internal object NumericCodec : TypeCodec<BigDecimal> {
     override val pgTypeName = "numeric"
+    override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1700
     override val kotlinClass = BigDecimal::class
     override val isDefaultForKotlinType = true
