@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicDomainCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicEnumCodec
 import io.github.octaviusframework.driver.codec.standard.*
+import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
@@ -78,6 +79,8 @@ class TypeRegistry {
         val newMap = registeredComposites.toMutableMap()
         newMap[T::class] = CompositeRegistration(QualifiedName(schema, name), pgConvention, kotlinConvention)
         registeredComposites = newMap
+
+        ReflectionCompositeCache.getOrCreateDataObjectMetadata(T::class, pgConvention, kotlinConvention)
     }
 
     init {
