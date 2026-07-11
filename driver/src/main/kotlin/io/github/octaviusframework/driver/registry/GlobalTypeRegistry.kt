@@ -2,6 +2,9 @@ package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.query.QueryExecutor
 import java.util.concurrent.ConcurrentHashMap
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val logger = KotlinLogging.logger {}
 
 object GlobalTypeRegistry {
     // Rejestry na URL bazy
@@ -19,7 +22,7 @@ object GlobalTypeRegistry {
         // Only one thread at a time can enter this block for a given registry
         synchronized(registry) {
             if (loadedFlags[url] != true) {
-                println("Thread ${Thread.currentThread().name} loading types from database for URL: $url...")
+                logger.trace { "Thread ${Thread.currentThread().name} loading types from database for URL: $url..." }
                 TypeRegistryLoader.load(registry, executor, searchPath)
                 loadedFlags[url] = true
             }
@@ -32,7 +35,7 @@ object GlobalTypeRegistry {
     fun reload(url: String, executor: QueryExecutor, searchPath: List<String>) {
         val registry = getRegistry(url)
         synchronized(registry) {
-            println("Explicit reload of type dictionary for URL: $url...")
+            logger.trace { "Explicit reload of type dictionary for URL: $url..." }
             TypeRegistryLoader.load(registry, executor, searchPath)
             loadedFlags[url] = true
         }

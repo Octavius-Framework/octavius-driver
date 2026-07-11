@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val logger = KotlinLogging.logger {}
 
 class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : AutoCloseable {
     private var socket: Socket = Socket()
@@ -160,7 +163,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                     else -> {
                         val unparsed = inputStream.readBytes(payloadLength)
-                        println("IGNORING: Unsupported synchronous message type: $tag")
+                        logger.trace { "IGNORING: Unsupported synchronous message type: $tag" }
                     }
                 }
             }

@@ -5,6 +5,8 @@ junit = "6.1.0"
 serialization = "1.11.0"
 datetime = "0.8.0"
 hikari = "7.1.0"
+kotlin-logging = "8.0.4"
+logback = "1.5.38"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -14,6 +16,8 @@ kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", vers
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
 hikaricp = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
+kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
+logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

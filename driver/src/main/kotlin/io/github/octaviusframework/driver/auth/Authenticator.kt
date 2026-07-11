@@ -6,8 +6,11 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
 import io.github.octaviusframework.driver.message.frontend.SASLResponse
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.nio.charset.StandardCharsets
 import java.util.*
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Handles the authentication process during the PostgreSQL connection startup phase.
@@ -31,7 +34,7 @@ internal class Authenticator(private val stream: PgStream) {
 
             when (msg) {
                 is AuthenticationMessage.Ok -> {
-                    println("Authentication successful!")
+                    logger.trace { "Authentication successful!" }
                     // Loop will continue to consume ParameterStatus until ReadyForQuery
                 }
 
@@ -146,20 +149,20 @@ internal class Authenticator(private val stream: PgStream) {
                 is BackendKeyDataMessage -> {
                     stream.processId = msg.processId
                     stream.secretKey = msg.secretKey
-                    println("Received process keys: ${msg.processId}")
+                    logger.trace { "Received process keys: ${msg.processId}" }
                 }
 
                 is ReadyForQueryMessage -> {
-                    println("Logged in successfully! Server ready for queries.")
+                    logger.trace { "Logged in successfully! Server ready for queries." }
                     return // End of login phase
                 }
 
                 is ParameterStatusMessage -> {
-                    println("Received session parameter: ${msg.name} = ${msg.value}")
+                    logger.trace { "Received session parameter: ${msg.name} = ${msg.value}" }
                 }
 
                 else -> {
-                    println("Ignoring unexpected message: $msg")
+                    logger.trace { "Ignoring unexpected message: $msg" }
                 }
             }
         }
