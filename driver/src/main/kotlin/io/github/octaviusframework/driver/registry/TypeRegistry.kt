@@ -29,6 +29,9 @@ import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 
 class TypeRegistry {
+    @Volatile
+    internal var isLoaded: Boolean = false
+
     val converterRegistry = ResultConverterRegistry().apply {
         addConverter(MapCompositeConverter())
         addConverter(PrimitiveArrayConverter())
