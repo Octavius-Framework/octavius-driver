@@ -162,7 +162,7 @@ class TypeRegistry {
             newOidMap[codec.oid!!] = codec
             newCodecToOid[codec] = codec.oid!!
         } else {
-            val (resolvedOid, _) = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = searchPath)
+            val resolvedOid = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = searchPath)
             newOidMap[resolvedOid] = codec
             newCodecToOid[codec] = resolvedOid
         }
@@ -196,7 +196,7 @@ class TypeRegistry {
         
         for ((codec, previousOid) in codecToOid) {
             if (codec.oid == null) {
-                val (resolvedOid, _) = resolveOid(
+                val resolvedOid = resolveOid(
                     codec.pgTypeName,
                     codec.pgSchema,
                     searchPath = searchPath,
@@ -236,7 +236,7 @@ class TypeRegistry {
         isArray: Boolean = false,
         searchPath: List<String>,
         sourceTypes: Iterable<PgType> = types.values
-    ): Pair<Int, QualifiedName> {
+    ): Int {
         // Find matching types by name
         val schemasForName = sourceTypes
             .filter { it.name == typeName }
@@ -252,7 +252,6 @@ class TypeRegistry {
         }
 
         var resolvedOid: Int? = null
-        var resolvedSchema = ""
 
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotBlank()) {
@@ -262,14 +261,12 @@ class TypeRegistry {
                     typeName = typeName,
                     details = "Type '$typeName' not found in requested schema '$requestedSchema'"
                 )
-            resolvedSchema = requestedSchema
         } else {
             // 2. If schema is empty, look in search_path (first match wins)
             for (schema in searchPath) {
                 val oid = schemasForName[schema]
                 if (oid != null) {
                     resolvedOid = oid
-                    resolvedSchema = schema
                     break
                 }
             }
@@ -278,7 +275,6 @@ class TypeRegistry {
             if (resolvedOid == null) {
                 if (schemasForName.size == 1) {
                     val entry = schemasForName.entries.first()
-                    resolvedSchema = entry.key
                     resolvedOid = entry.value
                 } else {
                     throw OctaviusTypeException(
@@ -297,10 +293,10 @@ class TypeRegistry {
                     typeName = typeName,
                     details = "Array type for '$typeName' not found in registry"
                 )
-            return arrayType.oid to QualifiedName(resolvedSchema, typeName, true)
+            return arrayType.oid
         }
 
-        return resolvedOid to QualifiedName(resolvedSchema, typeName, false)
+        return resolvedOid
     }
 }
 

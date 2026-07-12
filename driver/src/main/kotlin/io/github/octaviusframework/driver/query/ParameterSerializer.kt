@@ -42,7 +42,7 @@ class ParameterSerializer(
 
         if (convertedParameter is PgTyped) {
             val paramValue = convertedParameter.value ?: return SerializedParameter(0, null)
-            val (resolvedOid, _) = typeManager.resolveOid(
+            val resolvedOid = typeManager.resolveOid(
                 convertedParameter.pgType.name,
                 convertedParameter.pgType.schema,
                 convertedParameter.pgType.isArray

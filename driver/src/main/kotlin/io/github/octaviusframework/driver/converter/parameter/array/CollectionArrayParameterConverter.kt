@@ -63,7 +63,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
                         converted.pgType.name,
                         converted.pgType.schema,
                         converted.pgType.isArray
-                    ).first
+                    )
                 } else if (converted != null) {
                     typeRegistry.getCodecByClass(converted::class)?.oid
                 } else null

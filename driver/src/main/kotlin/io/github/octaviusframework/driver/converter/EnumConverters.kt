@@ -49,7 +49,7 @@ class EnumResultConverter<T : Enum<T>>(
         if (expectedType.classifier != enumClass) return false
         if (sourceType !is PgType.Enum) return false
 
-         val (resolvedOid, _) = typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
+         val resolvedOid = typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
          return sourceType.oid == resolvedOid
     }
 

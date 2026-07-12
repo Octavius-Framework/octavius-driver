@@ -32,7 +32,7 @@ class TypeManager(
         typeName: String,
         schema: String = "",
         isArray: Boolean = false
-    ): Pair<Int, QualifiedName> {
+    ): Int {
         return registry.resolveOid(typeName, schema, isArray, searchPathProvider())
     }
 
@@ -113,7 +113,7 @@ class TypeManager(
      * @return A new [io.github.octaviusframework.driver.container.PgComposite] instance with empty fields.
      */
     fun createComposite(typeName: String, schema: String = ""): PgComposite {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createComposite(resolvedOid)
     }
 
@@ -139,7 +139,7 @@ class TypeManager(
      * @return A new [io.github.octaviusframework.driver.container.PgArray] instance initialized with nulls.
      */
     fun createArray(typeName: String, schema: String = "", vararg dimensionSizes: Int): PgArray {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createArray(resolvedOid, *dimensionSizes)
     }
 
@@ -183,7 +183,7 @@ class TypeManager(
         isLowerNull: Boolean = false,
         isUpperNull: Boolean = false
     ): PgRange {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createRange(
             oid = resolvedOid,
             lower = lower,
@@ -233,7 +233,7 @@ class TypeManager(
      * Creates an empty PostgreSQL range type using its name and schema.
      */
     fun createEmptyRange(typeName: String, schema: String = ""): PgRange {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createEmptyRange(resolvedOid)
     }
 
@@ -255,7 +255,7 @@ class TypeManager(
      * @return A new [io.github.octaviusframework.driver.container.PgMultirange] instance.
      */
     fun createMultirange(typeName: String, schema: String = "", vararg ranges: PgRange): PgMultirange {
-        val (resolvedOid, _) = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createMultirange(resolvedOid, *ranges)
     }
 
