@@ -23,7 +23,7 @@ class HikariIntegrationTest {
         try {
             val session = dataSource.getOctaviusSession()
             val nativeQuery = session.createNativeQuery("SELECT 1 AS num")
-            val row = nativeQuery.fetchAll().first()
+            val row = nativeQuery.fetchOne()
             assertEquals(1, row.get<Int>("num"))
             
             // Abort the session
@@ -39,7 +39,7 @@ class HikariIntegrationTest {
             // The connection should be evicted from Hikari.
             // Without eviction newSession would be bypass isValid check by aliveBypassWindowMs and throw connection closed error
             val newSession = dataSource.getOctaviusSession()
-            val newRow = newSession.createNativeQuery("SELECT 3 AS num").fetchAll().first()
+            val newRow = newSession.createNativeQuery("SELECT 3 AS num").fetchOne()
             assertEquals(3, newRow.get<Int>("num"))
             newSession.close()
             

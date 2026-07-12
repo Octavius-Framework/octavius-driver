@@ -29,7 +29,7 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchAll().first()
+        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchOne()
 
         val array = row.get<PgArray>("my_arr")
         assertNotNull(array)
@@ -45,7 +45,7 @@ class SerializationTest {
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
-        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchAll().first()
+        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchOne()
         val expectedArray = expectedRow.get<PgArray>(0)
         val writer3 = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writer3, row.typeRegistry)
@@ -66,7 +66,7 @@ class SerializationTest {
         session.createNativeQuery("CREATE TYPE ser_test_composite AS (id int, name text)").execute()
         session.reloadTypes()
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchOne()
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
@@ -80,7 +80,7 @@ class SerializationTest {
 
         // Porównanie z bazą
         val expectedCompositeRow =
-            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchAll().first()
+            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchOne()
         val expectedComposite = expectedCompositeRow.get<PgComposite>(0)
         val writerComp = PgByteWriter()
         ContainerCodec.serializeContainer(expectedComposite, writerComp, typeRegistry)
@@ -99,7 +99,7 @@ class SerializationTest {
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
         val builtArrayBytes = writer2.toByteArray()
 
-        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchAll().first()
+        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchOne()
         val expectedArray = expectedArrayRow.get<PgArray>(0)
         val writerArr = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writerArr, typeRegistry)
@@ -148,7 +148,7 @@ class SerializationTest {
         multiArray.setDimension(intArrayOf(1), 4, 5, 6)
 
         val writer = PgByteWriter()
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchAll().first()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchOne()
         ContainerCodec.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
         val serializedArray = writer.toByteArray()
 
