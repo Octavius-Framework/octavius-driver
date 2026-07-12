@@ -69,7 +69,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
                 } else null
 
                 if (elementOid != null) {
-                    typeRegistry.types.values.firstOrNull { it is PgType.Array && it.elementOid == elementOid } as? PgType.Array
+                    typeRegistry.getArrayTypeByElementOid(elementOid)
                 } else null
             } else null
         }

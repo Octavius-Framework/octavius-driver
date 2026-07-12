@@ -62,6 +62,12 @@ class TypeRegistry {
     var types: IntObjectMap<PgType> = IntObjectMap()
 
     @Volatile
+    var typesByName: Map<String, Map<String, Int>> = emptyMap()
+
+    @Volatile
+    var arrayTypesByElementOid: IntObjectMap<PgType.Array> = IntObjectMap()
+
+    @Volatile
     private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
 
 
@@ -186,6 +192,10 @@ class TypeRegistry {
         return codecToOid[codec] ?: codec.oid
     }
 
+    fun getArrayTypeByElementOid(elementOid: Int): PgType.Array? {
+        return arrayTypesByElementOid[elementOid]
+    }
+
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
@@ -193,14 +203,29 @@ class TypeRegistry {
     fun updateTypes(newTypes: Map<Int, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = IntObjectMap(codecsByOid)
         val newCodecToOid = codecToOid.toMutableMap()
+
+        // Preallocate to avoid any rehashes during initialization (load factor 0.75)
+        val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
+        val newTypesByName = mutableMapOf<String, MutableMap<String, Int>>()
+        val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
+
+        for ((oid, type) in newTypes) {
+            intMap[oid] = type
+            newTypesByName.getOrPut(type.name) { mutableMapOf() }[type.schema] = oid
+            if (type is PgType.Array) {
+                newArrayTypesByElementOid[type.elementOid] = type
+            }
+        }
         
         for ((codec, previousOid) in codecToOid) {
             if (codec.oid == null) {
-                val resolvedOid = resolveOid(
-                    codec.pgTypeName,
-                    codec.pgSchema,
+                val resolvedOid = resolveOidInternal(
+                    typeName = codec.pgTypeName,
+                    requestedSchema = codec.pgSchema,
+                    isArray = false,
                     searchPath = searchPath,
-                    sourceTypes = newTypes.values
+                    typesByNameMap = newTypesByName,
+                    arrayTypesMap = newArrayTypesByElementOid
                 )
                 newOidMap[resolvedOid] = codec
                 newCodecToOid[codec] = resolvedOid
@@ -219,12 +244,9 @@ class TypeRegistry {
             }
         }
 
-        // Preallocate to avoid any rehashes during initialization (load factor 0.75)
-        val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
-        for ((oid, type) in newTypes) {
-            intMap[oid] = type
-        }
         types = intMap
+        typesByName = newTypesByName
+        arrayTypesByElementOid = newArrayTypesByElementOid
         codecsByOid = newOidMap
         codecToOid = newCodecToOid
     }
@@ -234,16 +256,22 @@ class TypeRegistry {
         typeName: String,
         requestedSchema: String,
         isArray: Boolean = false,
-        searchPath: List<String>,
-        sourceTypes: Iterable<PgType> = types.values
+        searchPath: List<String>
     ): Int {
-        // Find matching types by name
-        val schemasForName = sourceTypes
-            .filter { it.name == typeName }
-            .groupBy { it.schema }
-            .mapValues { it.value.first().oid }
+        return resolveOidInternal(typeName, requestedSchema, isArray, searchPath, typesByName, arrayTypesByElementOid)
+    }
 
-        if (schemasForName.isEmpty()) {
+    private fun resolveOidInternal(
+        typeName: String,
+        requestedSchema: String,
+        isArray: Boolean,
+        searchPath: List<String>,
+        typesByNameMap: Map<String, Map<String, Int>>,
+        arrayTypesMap: IntObjectMap<PgType.Array>
+    ): Int {
+        val schemasForName = typesByNameMap[typeName]
+
+        if (schemasForName.isNullOrEmpty()) {
             throw OctaviusTypeException(
                 messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                 typeName = typeName,
@@ -287,7 +315,7 @@ class TypeRegistry {
         }
 
         if (isArray) {
-            val arrayType = types.values.firstOrNull { it is PgType.Array && it.elementOid == resolvedOid }
+            val arrayType = arrayTypesMap[resolvedOid]
                 ?: throw OctaviusTypeException(
                     messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                     typeName = typeName,
