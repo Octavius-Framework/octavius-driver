@@ -64,11 +64,13 @@ class TypeRegistry {
     @Volatile
     private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
 
-    @Volatile
-    private var codecsByName: Map<QualifiedName, TypeCodec<*>> = emptyMap()
+
 
     @Volatile
     private var codecsByClass: Map<KClass<*>, TypeCodec<*>> = emptyMap()
+
+    @Volatile
+    private var codecToOid: Map<TypeCodec<*>, Int> = emptyMap()
 
     @Volatile
     var registeredComposites: Map<KClass<*>, CompositeRegistration> = emptyMap()
@@ -89,14 +91,17 @@ class TypeRegistry {
     init {
         val newOidMap = IntObjectMap<TypeCodec<*>>()
         val newClassMap = mutableMapOf<KClass<*>, TypeCodec<*>>()
-        registerBuiltins(newOidMap, newClassMap)
+        val newCodecToOid = mutableMapOf<TypeCodec<*>, Int>()
+        registerBuiltins(newOidMap, newClassMap, newCodecToOid)
         codecsByOid = newOidMap
         codecsByClass = newClassMap
+        codecToOid = newCodecToOid
     }
 
     private fun registerBuiltins(
         oidMap: IntObjectMap<TypeCodec<*>>,
-        classMap: MutableMap<KClass<*>, TypeCodec<*>>
+        classMap: MutableMap<KClass<*>, TypeCodec<*>>,
+        codecToOidMap: MutableMap<TypeCodec<*>, Int>
     ) {
         fun register(codec: TypeCodec<*>) {
             if (codec.isDefaultForKotlinType) {
@@ -104,6 +109,7 @@ class TypeRegistry {
             }
             if (codec.oid != null) {
                 oidMap[codec.oid!!] = codec
+                codecToOidMap[codec] = codec.oid!!
             }
         }
         // Postgres Internal Types
@@ -146,28 +152,24 @@ class TypeRegistry {
     fun registerCodec(codec: TypeCodec<*>, searchPath: List<String> = emptyList()) {
         val newOidMap = IntObjectMap(codecsByOid)
         val newClassMap = codecsByClass.toMutableMap()
-        val newNameMap = codecsByName.toMutableMap()
-
+        val newCodecToOid = codecToOid.toMutableMap()
+        
         if (codec.isDefaultForKotlinType) {
             newClassMap[codec.kotlinClass] = codec
         }
 
-        val qName = QualifiedName(codec.pgSchema, codec.pgTypeName)
-        newNameMap[qName] = codec
-
         if (codec.oid != null) {
             newOidMap[codec.oid!!] = codec
+            newCodecToOid[codec] = codec.oid!!
         } else {
-            if (types.isNotEmpty()) {
-                val (resolvedOid, resolvedQName) = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = searchPath)
-                newOidMap[resolvedOid] = codec
-                newNameMap[resolvedQName] = codec
-            }
+            val (resolvedOid, _) = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = searchPath)
+            newOidMap[resolvedOid] = codec
+            newCodecToOid[codec] = resolvedOid
         }
 
         codecsByOid = newOidMap
         codecsByClass = newClassMap
-        codecsByName = newNameMap
+        codecToOid = newCodecToOid
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -180,23 +182,28 @@ class TypeRegistry {
         return codecsByClass[kClass] as TypeCodec<T>?
     }
 
+    fun getOidForCodec(codec: TypeCodec<*>): Int? {
+        return codecToOid[codec] ?: codec.oid
+    }
+
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
      */
     fun updateTypes(newTypes: Map<Int, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = IntObjectMap(codecsByOid)
-        val newNameMap = codecsByName.toMutableMap()
-        for ((name, codec) in codecsByName) {
+        val newCodecToOid = codecToOid.toMutableMap()
+        
+        for ((codec, previousOid) in codecToOid) {
             if (codec.oid == null) {
-                val (resolvedOid, resolvedQName) = resolveOid(
-                    name.name,
-                    name.schema,
+                val (resolvedOid, _) = resolveOid(
+                    codec.pgTypeName,
+                    codec.pgSchema,
                     searchPath = searchPath,
                     sourceTypes = newTypes.values
                 )
                 newOidMap[resolvedOid] = codec
-                newNameMap[resolvedQName] = codec
+                newCodecToOid[codec] = resolvedOid
             }
         }
 
@@ -204,11 +211,11 @@ class TypeRegistry {
             if (type is PgType.Enum && !newOidMap.containsKey(oid)) {
                 val enumCodec = DynamicEnumCodec(oid, type.name, type.schema)
                 newOidMap[oid] = enumCodec
-                newNameMap[QualifiedName(type.schema, type.name, false)] = enumCodec
+                newCodecToOid[enumCodec] = oid
             } else if (type is PgType.Domain && !newOidMap.containsKey(oid)) {
                 val domainCodec = DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, this)
                 newOidMap[oid] = domainCodec
-                newNameMap[QualifiedName(type.schema, type.name, false)] = domainCodec
+                newCodecToOid[domainCodec] = oid
             }
         }
 
@@ -219,7 +226,7 @@ class TypeRegistry {
         }
         types = intMap
         codecsByOid = newOidMap
-        codecsByName = newNameMap
+        codecToOid = newCodecToOid
     }
 
 

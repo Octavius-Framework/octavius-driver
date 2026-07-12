@@ -93,7 +93,9 @@ class ParameterSerializer(
         val anyCodec = codec as TypeCodec<Any>
         val writer = PgByteWriter()
         anyCodec.toBinary(convertedParameter, writer)
-        return SerializedParameter(codec.oid!!, writer.toByteArray())
+        
+        val oid = typeRegistry.getOidForCodec(codec) ?: 0
+        return SerializedParameter(oid, writer.toByteArray())
     }
 
     /**
