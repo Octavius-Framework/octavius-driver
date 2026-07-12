@@ -1,0 +1,61 @@
+package io.github.octaviusframework.driver.converter
+
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.driver.identifier.CaseConverter
+import io.github.octaviusframework.driver.identifier.QualifiedName
+import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeManager
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
+
+class EnumParameterConverter<T : Enum<T>>(
+    private val enumClass: KClass<T>,
+    private val pgConvention: CaseConvention,
+    private val kotlinConvention: CaseConvention
+) : ParameterConverter<T> {
+
+    private val enumToPg = enumClass.java.enumConstants.associateWith {
+        CaseConverter.convert(it.name, kotlinConvention, pgConvention)
+    }
+
+    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+        return enumClass.isInstance(source)
+    }
+
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
+        return enumToPg[source]
+    }
+}
+
+class EnumResultConverter<T : Enum<T>>(
+    private val enumClass: KClass<T>,
+    private val qualifiedName: QualifiedName,
+    private val pgConvention: CaseConvention,
+    private val kotlinConvention: CaseConvention,
+    private val typeManager: TypeManager
+) : ResultConverter<String, T> {
+
+    private val pgToEnum = enumClass.java.enumConstants.associateBy {
+        CaseConverter.convert(it.name, kotlinConvention, pgConvention)
+    }
+
+    override val supportedSourceClass = String::class
+
+    override fun canConvert(source: String, expectedType: KType, sourceType: PgType): Boolean {
+        if (expectedType.classifier != enumClass) return false
+        if (sourceType !is PgType.Enum) return false
+
+         val resolvedOid = typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
+         return sourceType.oid == resolvedOid
+    }
+
+    override fun convert(source: String, expectedType: KType, context: DeserializationContext, sourceType: PgType): T {
+        return pgToEnum[source]
+            ?: throw IllegalArgumentException("Unknown enum value: $source for enum ${enumClass.simpleName}")
+    }
+}
+

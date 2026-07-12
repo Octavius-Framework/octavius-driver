@@ -1,47 +1,33 @@
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.jmh)
-    id("maven-publish")
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.plugin.serialization) apply false
 }
 
-group = "io.github.octavius-framework"
-version = "0.4.1"
+allprojects {
+    group = "io.github.octavius-framework"
+    version = "0.5.0"
 
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kotlinx.datetime)
-    implementation(libs.kotlin.reflect)
-    testImplementation(libs.kotlin.test)
-    testImplementation(libs.junit.jupiter)
-}
-
-kotlin {
-    jvmToolchain(25)
-}
-
-java {
-    withSourcesJar()
-}
-
-tasks.test {
-    useJUnitPlatform()
-}
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-        }
+    repositories {
+        mavenCentral()
     }
 }
 
-jmh {
-    profilers.add("gc")
-    profilers.add("stack")
+subprojects {
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        extensions.configure<KotlinJvmProjectExtension> {
+            jvmToolchain(25)
+        }
+
+        extensions.configure<JavaPluginExtension> {
+            withSourcesJar()
+        }
+
+        tasks.withType<Test> {
+            useJUnitPlatform()
+        }
+
+
+    }
 }
