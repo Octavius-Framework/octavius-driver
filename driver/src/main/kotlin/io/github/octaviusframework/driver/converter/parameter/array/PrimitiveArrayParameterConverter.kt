@@ -18,19 +18,6 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
     override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
 
-        val list = when (source) {
-            is IntArray -> source.toList()
-            is DoubleArray -> source.toList()
-            is FloatArray -> source.toList()
-            is LongArray -> source.toList()
-            is ShortArray -> source.toList()
-            is BooleanArray -> source.toList()
-            is CharArray -> source.toList()
-            else -> throw IllegalArgumentException("Unsupported primitive array type")
-        }
-
-        val dimensions = listOf(ArrayDimension(list.size, 1))
-
         val arrayType = if (expectedOid != null) {
             typeRegistry.types[expectedOid] as? PgType.Array
         } else {
@@ -51,15 +38,25 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
         }
 
         val elementOid = arrayType.elementOid
-        val convertedElements = list.map { element ->
-            context.convert(element, elementOid)
+
+        val convertedElements: MutableList<Any?> = when (source) {
+            is IntArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            is DoubleArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            is FloatArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            is LongArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            is ShortArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            is BooleanArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            is CharArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
+            else -> throw IllegalArgumentException("Unsupported primitive array type")
         }
+
+        val dimensions = listOf(ArrayDimension(convertedElements.size, 1))
 
         return PgArray(
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            elements = convertedElements.toMutableList(),
+            elements = convertedElements,
             typeRegistry = typeRegistry
         )
     }

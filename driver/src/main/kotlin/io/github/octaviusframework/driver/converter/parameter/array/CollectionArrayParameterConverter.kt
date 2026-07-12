@@ -15,36 +15,36 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return source is Collection<*> || source is Array<*>
     }
 
-    private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, List<Any?>> {
+    private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, MutableList<Any?>> {
         val dimensions = mutableListOf<Int>()
         var current: Any? = source
+
         while (current is Collection<*> || current is Array<*>) {
-            val list = when (current) {
-                is Collection<*> -> current.toList()
-                is Array<*> -> current.toList()
-                else -> break
-            }
-            dimensions.add(list.size)
-            current = list.firstOrNull()
+            val size = if (current is Collection<*>) current.size else (current as Array<*>).size
+            dimensions.add(size)
+            current = if (current is Collection<*>) current.firstOrNull() else (current as Array<*>).firstOrNull()
         }
 
-        val arrayDimensions = dimensions.map { ArrayDimension(it, 1) }
-        val flatList = flatten(source)
-
         val expectedSize = dimensions.fold(1) { acc, i -> acc * i }
+        val arrayDimensions = dimensions.map { ArrayDimension(it, 1) }
+
+        val flatList = ArrayList<Any?>(expectedSize)
+
+        fun flattenInto(item: Any?) {
+            when (item) {
+                is Collection<*> -> item.forEach { flattenInto(it) }
+                is Array<*> -> item.forEach { flattenInto(it) }
+                else -> flatList.add(item)
+            }
+        }
+
+        flattenInto(source)
+
         if (dimensions.isNotEmpty() && dimensions.first() > 0 && flatList.size != expectedSize) {
             throw IllegalArgumentException("Multidimensional arrays must be rectangular")
         }
 
         return arrayDimensions to flatList
-    }
-
-    private fun flatten(source: Any?): List<Any?> {
-        when (source) {
-            is Collection<*> -> return source.flatMap { flatten(it) }
-            is Array<*> -> return source.flatMap { flatten(it) }
-            else -> return listOf(source)
-        }
     }
 
     override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {

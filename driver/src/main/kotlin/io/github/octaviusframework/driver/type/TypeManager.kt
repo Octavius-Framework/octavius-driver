@@ -130,36 +130,6 @@ class TypeManager(
         return PgComposite(pgType, fields, registry)
     }
 
-    /**
-     * Creates a new instance of a PostgreSQL array type using its name and schema.
-     *
-     * @param typeName The name of the array type.
-     * @param schema The schema where the array type is defined.
-     * @param dimensionSizes Sizes of the array dimensions.
-     * @return A new [io.github.octaviusframework.driver.container.PgArray] instance initialized with nulls.
-     */
-    fun createArray(typeName: String, schema: String = "", vararg dimensionSizes: Int): PgArray {
-        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
-        return createArray(resolvedOid, *dimensionSizes)
-    }
-
-    /**
-     * Creates a new instance of a PostgreSQL array type using its Object ID (OID).
-     *
-     * @param oid The OID of the array type.
-     * @param dimensionSizes Sizes of the array dimensions.
-     * @return A new [PgArray] instance initialized with nulls.
-     */
-    fun createArray(oid: Int, vararg dimensionSizes: Int): PgArray {
-        require(dimensionSizes.isNotEmpty()) { "Array must have at least 1 dimension" }
-        val arrayType = registry.types[oid] as? PgType.Array
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not an array or does not exist in TypeRegistry")
-            
-        val dimensions = dimensionSizes.map { ArrayDimension(it, 1) }
-        val totalSize = dimensionSizes.fold(1) { acc, size -> acc * size }
-        val elements = MutableList<Any?>(totalSize) { null }
-        return PgArray(arrayType.oid, arrayType.elementOid, dimensions, elements, registry)
-    }
 
     /**
      * Creates a new instance of a PostgreSQL range type using its name and schema.

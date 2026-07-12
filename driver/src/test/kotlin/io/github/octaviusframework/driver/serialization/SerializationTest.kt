@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.serialization
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
+import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
@@ -91,9 +92,14 @@ class SerializationTest {
             "Zbudowany kompozyt musi zgadzać się z Postgresowym"
         )
 
-        // 2. Zbudowanie tablicy fabryką od zera
-        val array = session.types.createArray(1007, 3) // 1007 = _int4
-        array.setAll(10, 20, 30)
+        // 2. Zbudowanie tablicy ręcznie od zera
+        val array = PgArray(
+            arrayOid = 1007,
+            elementOid = 23,
+            dimensions = listOf(ArrayDimension(3, 1)),
+            elements = mutableListOf(10, 20, 30),
+            typeRegistry = typeRegistry
+        )
 
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
@@ -119,8 +125,7 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val array = session.types.createArray(1007, 3) // 1007 = _int4
-        array.setAll(10, 20, 30)
+        val array = listOf(10, 20, 30)
 
         val rows = session.createNativeQuery("SELECT $1::int[] as test_col").fetchAll(array)
 
@@ -139,16 +144,21 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        // Tablica 2x3 (2 wiersze, 3 kolumny)
-        val multiArray = session.types.createArray(1007, 2, 3)
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchOne()
 
-        // Wypełniamy danymi:
-        // [ [1, 2, 3], [4, 5, 6] ]
-        multiArray.setDimension(intArrayOf(0), 1, 2, 3)
-        multiArray.setDimension(intArrayOf(1), 4, 5, 6)
+        // Tablica 2x3 (2 wiersze, 3 kolumny)
+        val multiArray = PgArray(
+            arrayOid = 1007,
+            elementOid = 23,
+            dimensions = listOf(
+                ArrayDimension(2, 1),
+                ArrayDimension(3, 1)
+            ),
+            elements = mutableListOf(1, 2, 3, 4, 5, 6),
+            typeRegistry = dummyRow.typeRegistry
+        )
 
         val writer = PgByteWriter()
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchOne()
         ContainerCodec.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
         val serializedArray = writer.toByteArray()
 
@@ -195,9 +205,7 @@ class SerializationTest {
         val rowsDouble = session.createNativeQuery("SELECT $1 as res").fetchAll(doubleVal)
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
-        // 5. Container (PgArray) Round Trip
-        val arrayVal = session.types.createArray(1007, 3) // 23 = int4
-        arrayVal.setAll(10, 20, 30)
+        val arrayVal = listOf(10, 20, 30)
 
         val rowsArray = session.createNativeQuery("SELECT $1 as res").fetchAll(arrayVal)
         val returnedArray = rowsArray.first().get<PgArray>("res")
