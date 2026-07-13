@@ -51,7 +51,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
             socket.soTimeout = value
         }
     private val _notifications = MutableSharedFlow<PgNotification>(
-        extraBufferCapacity = 64,
+        extraBufferCapacity = 256,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val notifications: SharedFlow<PgNotification> = _notifications

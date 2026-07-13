@@ -67,9 +67,12 @@ class NotificationManager internal constructor(private val session: OctaviusSess
         if (connection.isClosedFlag) return
 
         withContext(dispatcher ?: virtualDispatcher) {
-            val job = currentCoroutineContext()[Job]
-            val completionHandle = job?.invokeOnCompletion {
-                session.abort()
+            val cancelJob = launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    awaitCancellation()
+                } finally {
+                    session.abort()
+                }
             }
 
             try {
@@ -85,7 +88,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                     }
                 }
             } finally {
-                completionHandle?.dispose()
+                cancelJob.cancel()
                 session.abort()
             }
         }

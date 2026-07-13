@@ -2,16 +2,15 @@ package io.github.octaviusframework.driver.session
 
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.io.virtualExecutor
-import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
 import java.sql.Connection
-import java.util.concurrent.Executors
 
 
 internal class OctaviusSessionImpl(
