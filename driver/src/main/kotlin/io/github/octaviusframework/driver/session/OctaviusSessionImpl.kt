@@ -123,33 +123,11 @@ internal class OctaviusSessionImpl(
 
     // -------------------------------------------Close/Abort-----------------------------------------------------------
 
-    private fun evictHikariConnection(conn: Connection) {
-        try {
-            if (conn.javaClass.name.startsWith("com.zaxxer.hikari.pool.HikariProxyConnection")) {
-                val checkExceptionMethod = conn.javaClass.superclass.getDeclaredMethod(
-                    "checkException", java.sql.SQLException::class.java
-                )
-                checkExceptionMethod.isAccessible = true
-                checkExceptionMethod.invoke(
-                    conn,
-                    java.sql.SQLException("Connection aborted by OctaviusSession", "08000")
-                )
-            }
-        } catch (e: Exception) {
-            // Ignore reflection errors silently; it might not be Hikari or the internal structure changed
-        }
-    }
-
     override fun abort() {
-        evictHikariConnection(rawConnection)
         try {
             rawConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
         } catch (e: Exception) {
-            // Fallback if abort is not supported
-            try {
-                rawConnection.close()
-            } catch (ignored: Exception) {
-            }
+            // Internal exception
         }
     }
 

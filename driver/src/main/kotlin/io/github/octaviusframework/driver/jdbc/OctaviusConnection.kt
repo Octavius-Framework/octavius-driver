@@ -109,6 +109,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
                 }
             }
         }
+        // Signal for Hikari to evict Connection
+        throw SQLException("Connection explicitly aborted by Octavius", "08000")
     }
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) { // required by Hikari
