@@ -127,7 +127,7 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager successful block`() {
-        session.transaction {
+        session.transaction.required {
             createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         }
 
@@ -140,7 +140,7 @@ class TransactionTest {
     @Test
     fun `test transaction manager failing block rolls back`() {
         try {
-            session.transaction {
+            session.transaction.required {
                 createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
                 throw RuntimeException("Simulated error")
             }
@@ -156,11 +156,11 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager nested successful block`() {
-        session.transaction {
-            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.transaction.required {
+            session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
-            transaction {
-                createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+            session.transaction.nested {
+                session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
             }
         }
 
@@ -170,12 +170,12 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager nested failing block rolls back to savepoint`() {
-        session.transaction {
-            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.transaction.required {
+            session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
             try {
-                transaction {
-                    createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+                session.transaction.nested {
+                    session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
                     throw RuntimeException("Simulated error in savepoint")
                 }
             } catch (e: RuntimeException) {

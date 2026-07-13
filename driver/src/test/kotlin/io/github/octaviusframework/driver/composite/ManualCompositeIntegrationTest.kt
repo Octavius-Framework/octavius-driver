@@ -94,7 +94,7 @@ class ManualCompositeIntegrationTest {
             conn.types.registerResultConverter(PaymentInfoResultConverter())
             conn.types.registerParameterConverter(PaymentInfoParameterConverter())
 
-            conn.transaction {
+            conn.transaction.required {
                 val payment = PaymentInfo(1500, "PLN")
                 
                 // Insert przy użyciu NamedQuery i rzutowania na typ payment_info

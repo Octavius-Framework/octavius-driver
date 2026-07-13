@@ -8,7 +8,7 @@ import io.github.octaviusframework.driver.query.NativeQuery
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
 
-interface OctaviusSession : AutoCloseable {
+interface OctaviusSessionOperations {
     val types: TypeManager
     val notifications: NotificationManager
     val transaction: TransactionManager
@@ -29,14 +29,15 @@ interface OctaviusSession : AutoCloseable {
 
     val transactionState: TransactionState
     var transactionIsolationLevel: Int
-
-    var autoCommit: Boolean
-    fun commit()
-    fun rollback()
-
     var readOnly: Boolean
     var networkTimeout: Int
     fun isValid(timeout: Int): Boolean
+}
+
+interface OctaviusSession : OctaviusSessionOperations, AutoCloseable {
+    var autoCommit: Boolean
+    fun commit()
+    fun rollback()
 
     fun setSavepoint(): OctaviusSavepoint
     fun setSavepoint(name: String): OctaviusSavepoint

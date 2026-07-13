@@ -1,23 +1,61 @@
 package io.github.octaviusframework.driver.transaction
 
 import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.session.OctaviusSessionOperations
 
+/**
+ * Manages database transactions for an [OctaviusSession].
+ */
 class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
 
     /**
-     * Executes the given block within a transaction.
-     * If already in a transaction, a savepoint is implicitly created for nested execution.
-     * If the block completes successfully, the transaction (or savepoint) is committed/released.
-     * If an exception is thrown, the transaction is rolled back (or rolled back to the savepoint).
-     *
-     * @param T The return type of the block.
-     * @param block The code block to execute within the transaction, with the connection as the receiver.
+     * Executes the given [block] within a transaction scope.
+     * 
+     * If a transaction is currently active (autoCommit = false), the block will be
+     * executed within the existing transaction. Otherwise, a new transaction is started,
+     * and it will be committed upon successful completion, or rolled back if an exception occurs.
+     * 
+     * Inside the block, manual transaction operations such as `commit`, `rollback`, 
+     * and `autoCommit` modifications are not accessible as the receiver is restricted
+     * to [OctaviusSessionOperations].
+     * 
+     * @param block The block of code to execute.
      * @return The result of the block.
      */
-    inline operator fun <T> invoke(block: OctaviusSession.() -> T): T {
-        val initialAutoCommit = session.autoCommit
+    inline fun <T> required(block: OctaviusSessionOperations.() -> T): T {
+        return if (!session.autoCommit) {
+            session.block()
+        } else {
+            session.autoCommit = false
+            try {
+                val result = session.block()
+                session.commit()
+                result
+            } catch (e: Throwable) {
+                session.rollback()
+                throw e
+            } finally {
+                session.autoCommit = true
+            }
+        }
+    }
 
-        return if (!initialAutoCommit) {
+    /**
+     * Executes the given [block] within a nested transaction scope.
+     * 
+     * If a transaction is already active, a savepoint is created. Upon successful
+     * completion of the block, the savepoint is released. If an exception occurs,
+     * the transaction is rolled back to the savepoint. If no transaction is active,
+     * a new one is started similar to [required].
+     * 
+     * Inside the block, manual transaction operations are not accessible as the receiver
+     * is restricted to [OctaviusSessionOperations].
+     * 
+     * @param block The block of code to execute.
+     * @return The result of the block.
+     */
+    inline fun <T> nested(block: OctaviusSessionOperations.() -> T): T {
+        return if (!session.autoCommit) {
             val sp = session.setSavepoint()
             try {
                 val result = session.block()
@@ -41,4 +79,5 @@ class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
             }
         }
     }
+
 }
