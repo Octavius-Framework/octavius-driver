@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.row
 
 // Removed ByteArrayWindow import
-import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
+
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
@@ -45,13 +45,9 @@ class Row(
         else {
             val offset = columnOffsets[index]
             val oid = metadata.getOid(index)
-            if (ContainerCodec.isContainerType(oid, typeRegistry)) {
-                ContainerCodec.parseContainer(rawData, offset, colLength, oid, typeRegistry)
-            } else {
-                val codec = typeRegistry.getCodecByOid<Any>(oid)
-                    ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
-                codec.fromBinary(rawData, offset, colLength)
-            }
+            val codec = typeRegistry.getCodecByOid<Any>(oid)
+                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
+            codec.fromBinary(rawData, offset, colLength)
         }
     }
 

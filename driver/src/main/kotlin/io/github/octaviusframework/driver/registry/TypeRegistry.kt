@@ -3,7 +3,13 @@ package io.github.octaviusframework.driver.registry
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicDomainCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicEnumCodec
+import io.github.octaviusframework.driver.codec.dynamic.DynamicContainerCodec
 import io.github.octaviusframework.driver.codec.standard.*
+import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.container.PgMultirange
+import io.github.octaviusframework.driver.container.PgRange
+import io.github.octaviusframework.driver.container.PgRecord
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArrayParameterConverter
@@ -236,14 +242,21 @@ class TypeRegistry {
         }
 
         for ((oid, type) in newTypes) {
-            if (type is PgType.Enum && !newOidMap.containsKey(oid)) {
-                val enumCodec = DynamicEnumCodec(oid, type.name, type.schema)
-                newOidMap[oid] = enumCodec
-                newCodecToOid[enumCodec] = oid
-            } else if (type is PgType.Domain && !newOidMap.containsKey(oid)) {
-                val domainCodec = DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, this)
-                newOidMap[oid] = domainCodec
-                newCodecToOid[domainCodec] = oid
+            if (!newOidMap.containsKey(oid)) {
+                val codec = when (type) {
+                    is PgType.Enum -> DynamicEnumCodec(oid, type.name, type.schema)
+                    is PgType.Domain -> DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, this)
+                    is PgType.Array -> DynamicContainerCodec(oid, type.name, type.schema, PgArray::class, this)
+                    is PgType.Composite -> DynamicContainerCodec(oid, type.name, type.schema, PgComposite::class, this)
+                    is PgType.Record -> DynamicContainerCodec(oid, type.name, type.schema, PgRecord::class, this)
+                    is PgType.Range -> DynamicContainerCodec(oid, type.name, type.schema, PgRange::class, this)
+                    is PgType.Multirange -> DynamicContainerCodec(oid, type.name, type.schema, PgMultirange::class, this)
+                    else -> null
+                }
+                if (codec != null) {
+                    newOidMap[oid] = codec
+                    newCodecToOid[codec] = oid
+                }
             }
         }
 

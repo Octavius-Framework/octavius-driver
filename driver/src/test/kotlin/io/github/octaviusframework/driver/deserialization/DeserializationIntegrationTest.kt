@@ -307,23 +307,19 @@ class DeserializationIntegrationTest {
 
     @Test
     fun testRecordTypeHandling() {
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234").use { session ->
+            val result =
+                session.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchOne()
 
-        try {
-            val result = session.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchOne()
-            
             val map = result.get<Map<String, Any?>>("rec")
             assertNotNull(map)
             assertEquals(2, map.size)
-            
+
             assertTrue(map["a"] is Map<*, *>)
             @Suppress("UNCHECKED_CAST")
             val innerMap = map["a"] as Map<String, Any?>
             assertEquals(1, innerMap["b"])
             assertEquals(Json.decodeFromString<JsonArray>("[\"b\",\"c\"]"), map["c"])
-            
-        } finally {
-            session.close()
         }
     }
 }

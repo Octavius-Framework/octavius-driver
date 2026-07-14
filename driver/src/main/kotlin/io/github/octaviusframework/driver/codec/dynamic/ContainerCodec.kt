@@ -27,9 +27,6 @@ internal object ContainerCodec {
      * Parses a generic field, which can be either a container or a primitive type.
      */
     private fun parseField(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): Any {
-        if (isContainerType(oid, typeRegistry)) {
-            return parseContainer(data, offset, length, oid, typeRegistry)
-        }
         val codec = typeRegistry.getCodecByOid<Any>(oid)
             ?: throw OctaviusTypeException(
                 TypeExceptionMessage.MISSING_CODEC,
@@ -37,14 +34,6 @@ internal object ContainerCodec {
                 details = "Parsing field of oid $oid"
             )
         return codec.fromBinary(data, offset, length)
-    }
-
-    /**
-     * Checks if the given OID corresponds to a container type (Array, Composite, Range, Multirange, Record).
-     */
-    fun isContainerType(oid: Int, typeRegistry: TypeRegistry): Boolean {
-        val pgType = typeRegistry.types[oid] ?: return false
-        return pgType is PgType.Array || pgType is PgType.Composite || pgType is PgType.Range || pgType is PgType.Multirange || pgType is PgType.Record
     }
 
     /**
@@ -291,20 +280,6 @@ internal object ContainerCodec {
     ) {
         if (value == null) {
             writer.writeInt(-1)
-            return
-        }
-
-        if (isContainerType(expectedOid, typeRegistry)) {
-            if (value !is PgContainer) {
-                throw OctaviusTypeException(
-                    TypeExceptionMessage.INVALID_PARAMETER_TYPE,
-                    oid = expectedOid,
-                    details = "Expected PgContainer for container type, got ${value::class.simpleName}"
-                )
-            }
-            val marker = writer.reserveLengthInt()
-            serializeContainer(value, writer, typeRegistry)
-            writer.fillLengthInt(marker)
             return
         }
 
