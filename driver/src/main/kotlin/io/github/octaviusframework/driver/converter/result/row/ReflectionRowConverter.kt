@@ -4,21 +4,21 @@ import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.identifier.CaseConvention
-import io.github.octaviusframework.driver.query.OctaviusRow
+import io.github.octaviusframework.driver.query.Row
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
-class ReflectionRowConverter : ResultConverter<OctaviusRow, Any> {
-    override val supportedSourceClass = OctaviusRow::class
+class ReflectionRowConverter : ResultConverter<Row, Any> {
+    override val supportedSourceClass = Row::class
 
-    override fun canConvert(source: OctaviusRow, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(source: Row, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass.isData
     }
 
-    override fun convert(source: OctaviusRow, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
+    override fun convert(source: Row, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
         val row = source
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>

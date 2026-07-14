@@ -128,7 +128,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                     'T' -> {
                         val numFields = inputStream.readShort().toInt()
-                        val fields = mutableListOf<RowDescriptionMessage.FieldDescription>()
+                        val fields = mutableListOf<FieldDescription>()
                         for (i in 0 until numFields) {
                             val fieldName = inputStream.readCString()
                             val tableOid = inputStream.readInt()
@@ -138,7 +138,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                             val typeModifier = inputStream.readInt()
                             val formatCode = inputStream.readShort()
                             fields.add(
-                                RowDescriptionMessage.FieldDescription(
+                                FieldDescription(
                                     fieldName, tableOid, columnAttr, dataTypeOid, dataTypeSize, typeModifier, formatCode
                                 )
                             )

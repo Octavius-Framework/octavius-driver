@@ -11,17 +11,6 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-interface Row {
-    val columnNames: List<String>
-    val typeRegistry: TypeRegistry
-    val resultMapper: ResultMapper
-
-    fun getColumnIndex(columnName: String): Int
-
-    fun getRaw(index: Int): Any?
-    fun getOid(index: Int): Int
-}
-
 @Suppress("UNCHECKED_CAST")
 fun <T> Row.get(index: Int, targetType: KType): T {
     val raw = getRaw(index)
@@ -70,14 +59,14 @@ class RowMetadata(
     }
 }
 
-class OctaviusRow(
+class Row(
     rawData: ByteArray,
     columnOffsets: IntArray,
     columnLengths: IntArray,
     val metadata: RowMetadata,
-    override val typeRegistry: TypeRegistry,
-    override val resultMapper: ResultMapper
-) : Row {
+    val typeRegistry: TypeRegistry,
+    val resultMapper: ResultMapper
+) {
 
     private val values: List<Any?> = List(metadata.size) { index ->
         val colLength = columnLengths[index]
@@ -95,19 +84,19 @@ class OctaviusRow(
         }
     }
 
-    override val columnNames: List<String>
+    val columnNames: List<String>
         get() = metadata.columnNames
 
-    override fun getColumnIndex(columnName: String): Int {
+    fun getColumnIndex(columnName: String): Int {
         return metadata.getColumnIndex(columnName)
     }
 
-    override fun getRaw(index: Int): Any? {
+    fun getRaw(index: Int): Any? {
         if (index !in values.indices) throw IllegalArgumentException("Column index out of bounds: $index")
         return values[index]
     }
 
-    override fun getOid(index: Int): Int {
+    fun getOid(index: Int): Int {
         return metadata.getOid(index)
     }
 }

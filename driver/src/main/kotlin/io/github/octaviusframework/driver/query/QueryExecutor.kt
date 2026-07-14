@@ -167,7 +167,7 @@ class QueryExecutor(
                     if (rowMetadata == null) {
                         errorMessage = "Received DataRow before RowDescription"
                     } else {
-                        rows.add(transform(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
+                        rows.add(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
