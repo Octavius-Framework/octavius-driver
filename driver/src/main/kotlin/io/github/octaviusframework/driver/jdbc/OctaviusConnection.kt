@@ -28,7 +28,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     }
 
     internal var isClosedFlag: Boolean = false
-    private var readOnlyFlag: Boolean = false
 
     private var lastSearchPathString: String? = null
     private var cachedSearchPath: List<String>? = null
@@ -37,8 +36,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     internal fun checkClosed() {
         if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED)
     }
-
-    // reloadTypes, createNativeQuery, createNamedQuery moved to OctaviusSession
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
@@ -94,7 +91,10 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     override fun abort(executor: Executor?) {
-        if (executor == null) throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED, details = "Executor cannot be null")
+        if (executor == null) throw OctaviusJdbcException(
+            JdbcExceptionMessage.FEATURE_NOT_SUPPORTED,
+            details = "Executor cannot be null"
+        )
         executor.execute {
             if (!isClosedFlag) {
                 isClosedFlag = true
@@ -133,93 +133,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         } catch (e: Exception) {
             // Ignore errors during cancellation
         }
-    }
-
-    //--------------------------------------------READ ONLY-------------------------------------------------------------
-
-    override fun setReadOnly(readOnly: Boolean) { // required by Hikari
-        checkClosed()
-        if (this.readOnlyFlag != readOnly) {
-            val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
-            val query = buildString {
-                append("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
-                if (transactionState == TransactionState.IN_TRANSACTION) {
-                    append("; SET TRANSACTION $modeStr")
-                }
-            }
-            queryExecutor.execute(query)
-            this.readOnlyFlag = readOnly
-        }
-    }
-
-    override fun isReadOnly(): Boolean { // required by Hikari
-        checkClosed()
-        return readOnlyFlag
-    }
-
-    //-----------------------------------------TRANSACTIONS-------------------------------------------------------------
-
-    // transaction manager moved to OctaviusSession
-    
-    private var autoCommitFlag: Boolean = true
-
-    private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
-
-    val transactionState: TransactionState
-        get() = TransactionState.fromChar(queryExecutor.transactionStatus)
-
-
-    override fun setAutoCommit(autoCommit: Boolean) { // required by Hikari
-        checkClosed()
-        if (this.autoCommitFlag != autoCommit) {
-            this.autoCommitFlag = autoCommit
-            if (autoCommit) {
-                queryExecutor.execute("COMMIT")
-            } else {
-                queryExecutor.execute("BEGIN")
-            }
-        }
-    }
-
-    override fun getAutoCommit(): Boolean { // required by Hikari
-        checkClosed()
-        return autoCommitFlag
-    }
-
-    override fun commit() {
-        checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
-        queryExecutor.execute("COMMIT; BEGIN")
-    }
-
-    override fun rollback() { // required by Hikari
-        checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
-        queryExecutor.execute("ROLLBACK; BEGIN")
-    }
-
-    override fun setTransactionIsolation(level: Int) { // required by Hikari
-        checkClosed()
-        val levelStr = when (level) {
-            Connection.TRANSACTION_READ_UNCOMMITTED -> "READ UNCOMMITTED"
-            Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
-            Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
-            Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
-            else -> throw OctaviusJdbcException(JdbcExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
-        }
-        val query = buildString {
-            append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
-            if (transactionState == TransactionState.IN_TRANSACTION) {
-                append("; SET TRANSACTION ISOLATION LEVEL $levelStr")
-            }
-        }
-        queryExecutor.execute(query)
-        this.transactionIsolationLevel = level
-    }
-
-    override fun getTransactionIsolation(): Int { // required by Hikari
-        checkClosed()
-        return transactionIsolationLevel
     }
 
     //------------------------------------------SEARCH PATH-------------------------------------------------------------
@@ -297,17 +210,114 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         }
     }
 
+    //--------------------------------------------READ ONLY-------------------------------------------------------------
+    private var readOnlyFlag: Boolean = false
+
+    override fun setReadOnly(readOnly: Boolean) { // required by Hikari
+        checkClosed()
+        if (this.readOnlyFlag != readOnly) {
+            val modeStr = if (readOnly) "READ ONLY" else "READ WRITE"
+            val query = buildString {
+                append("SET SESSION CHARACTERISTICS AS TRANSACTION $modeStr")
+                if (transactionState == TransactionState.IN_TRANSACTION) {
+                    append("; SET TRANSACTION $modeStr")
+                }
+            }
+            queryExecutor.execute(query)
+            this.readOnlyFlag = readOnly
+        }
+    }
+
+    override fun isReadOnly(): Boolean { // required by Hikari
+        checkClosed()
+        return readOnlyFlag
+    }
+
+    //-----------------------------------------TRANSACTIONS-------------------------------------------------------------
+
+    private var autoCommitFlag: Boolean = true
+
+    private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
+
+    val transactionState: TransactionState
+        get() = TransactionState.fromChar(queryExecutor.transactionStatus)
+
+
+    override fun setAutoCommit(autoCommit: Boolean) { // required by Hikari
+        checkClosed()
+        if (this.autoCommitFlag != autoCommit) {
+            this.autoCommitFlag = autoCommit
+            if (autoCommit) {
+                queryExecutor.execute("COMMIT")
+            } else {
+                queryExecutor.execute("BEGIN")
+            }
+        }
+    }
+
+    override fun getAutoCommit(): Boolean { // required by Hikari
+        checkClosed()
+        return autoCommitFlag
+    }
+
+    override fun commit() {
+        checkClosed()
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
+        queryExecutor.execute("COMMIT; BEGIN")
+    }
+
+    override fun rollback() { // required by Hikari
+        checkClosed()
+        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
+        queryExecutor.execute("ROLLBACK; BEGIN")
+    }
+
+    override fun setTransactionIsolation(level: Int) { // required by Hikari
+        checkClosed()
+        val levelStr = when (level) {
+            Connection.TRANSACTION_READ_UNCOMMITTED -> "READ UNCOMMITTED"
+            Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
+            Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
+            Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
+            else -> throw OctaviusJdbcException(JdbcExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
+        }
+        val query = buildString {
+            append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
+            if (transactionState == TransactionState.IN_TRANSACTION) {
+                append("; SET TRANSACTION ISOLATION LEVEL $levelStr")
+            }
+        }
+        queryExecutor.execute(query)
+        this.transactionIsolationLevel = level
+    }
+
+    override fun getTransactionIsolation(): Int { // required by Hikari
+        checkClosed()
+        return transactionIsolationLevel
+    }
+
+    //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
+    override fun setSchema(schema: String?) {
+        checkClosed()
+    }
+
+    override fun getSchema(): String {
+        checkClosed(); return "public"
+    } // required by Hikari
+
+    override fun setCatalog(catalog: String?) {
+        checkClosed()
+    } // required by Hikari
+
+    override fun getCatalog(): String {
+        checkClosed(); return "octavius"
+    }  // required by Hikari
+
     //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
     override fun setSavepoint(): Savepoint = unsupported()
     override fun setSavepoint(name: String?): Savepoint = unsupported()
     override fun rollback(savepoint: Savepoint?) = unsupported()
     override fun releaseSavepoint(savepoint: Savepoint?) = unsupported()
-
-    //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
-    override fun setSchema(schema: String?) { checkClosed() }
-    override fun getSchema(): String { checkClosed(); return "public" } // required by Hikari
-    override fun setCatalog(catalog: String?) { checkClosed() } // required by Hikari
-    override fun getCatalog(): String { checkClosed(); return "octavius" }  // required by Hikari
 
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)
@@ -330,11 +340,12 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     private fun unsupported(): Nothing =
         throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
 
-    // Replaced by io.github.octaviusframework.container.ContainerFactory.kt
+    // Replaced by typeManager
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()
     override fun createStruct(typeName: String?, attributes: Array<out Any>?): Struct = unsupported()
 
     override fun createSQLXML(): SQLXML = unsupported()
+
     // Postgres does not have these types
     override fun createClob(): Clob = unsupported()
     override fun createBlob(): Blob = unsupported()
