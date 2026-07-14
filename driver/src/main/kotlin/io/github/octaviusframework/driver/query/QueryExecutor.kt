@@ -153,7 +153,7 @@ class QueryExecutor(
         stream.flush()
         
         val rows = mutableListOf<R>()
-        var rowDescription: RowDescriptionMessage? = null
+        var rowMetadata: RowMetadata? = null
         var errorResponse: ErrorResponseMessage? = null
         var errorMessage: String? = null
         
@@ -161,13 +161,13 @@ class QueryExecutor(
             val msg = stream.receiveMessage()
             when (msg) {
                 is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
-                is RowDescriptionMessage -> rowDescription = msg
+                is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
                 is NoDataMessage -> { /* Expected if query returns no rows */ }
                 is DataRowMessage -> {
-                    if (rowDescription == null) {
+                    if (rowMetadata == null) {
                         errorMessage = "Received DataRow before RowDescription"
                     } else {
-                        rows.add(transform(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowDescription.fields, typeRegistry, mapper)))
+                        rows.add(transform(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }

@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.message.backend.FieldDescription
 import io.github.octaviusframework.driver.message.backend.RowDescriptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
@@ -42,21 +43,48 @@ inline fun <reified T> Row.get(columnName: String): T {
     return get<T>(getColumnIndex(columnName), typeOf<T>())
 }
 
+class RowMetadata(
+    val descriptors: List<FieldDescription>
+) {
+    val size: Int get() = descriptors.size
+
+    val columnNames: List<String> = descriptors.map { it.name }
+
+    private val nameToIndexCache: Map<String, Int>
+
+    init {
+        val map = HashMap<String, Int>()
+        descriptors.forEachIndexed { index, desc ->
+            map.putIfAbsent(desc.name, index)
+        }
+        nameToIndexCache = map
+    }
+
+    fun getColumnIndex(columnName: String): Int {
+        return nameToIndexCache[columnName] ?: throw IllegalArgumentException("Column not found: $columnName")
+    }
+
+    fun getOid(index: Int): Int {
+        if (index !in descriptors.indices) throw IllegalArgumentException("Column index out of bounds: $index")
+        return descriptors[index].dataTypeOid
+    }
+}
+
 class OctaviusRow(
     rawData: ByteArray,
     columnOffsets: IntArray,
     columnLengths: IntArray,
-    val descriptors: List<RowDescriptionMessage.FieldDescription>,
+    val metadata: RowMetadata,
     override val typeRegistry: TypeRegistry,
     override val resultMapper: ResultMapper
 ) : Row {
 
-    private val values: List<Any?> = List(descriptors.size) { index ->
+    private val values: List<Any?> = List(metadata.size) { index ->
         val colLength = columnLengths[index]
         if (colLength == -1) null
         else {
             val offset = columnOffsets[index]
-            val oid = descriptors[index].dataTypeOid
+            val oid = metadata.getOid(index)
             if (ContainerCodec.isContainerType(oid, typeRegistry)) {
                 ContainerCodec.parseContainer(rawData, offset, colLength, oid, typeRegistry)
             } else {
@@ -68,18 +96,10 @@ class OctaviusRow(
     }
 
     override val columnNames: List<String>
-        get() = descriptors.map { it.name }
-
-    private val nameToIndexCache: Map<String, Int> by lazy {
-        val map = HashMap<String, Int>()
-        descriptors.forEachIndexed { index, desc ->
-            map.putIfAbsent(desc.name, index)
-        }
-        map
-    }
+        get() = metadata.columnNames
 
     override fun getColumnIndex(columnName: String): Int {
-        return nameToIndexCache[columnName] ?: throw IllegalArgumentException("Column not found: $columnName")
+        return metadata.getColumnIndex(columnName)
     }
 
     override fun getRaw(index: Int): Any? {
@@ -88,7 +108,6 @@ class OctaviusRow(
     }
 
     override fun getOid(index: Int): Int {
-        if (index !in descriptors.indices) throw IllegalArgumentException("Column index out of bounds: $index")
-        return descriptors[index].dataTypeOid
+        return metadata.getOid(index)
     }
 }
