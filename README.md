@@ -7,7 +7,7 @@ A native, high-performance, and lightweight PostgreSQL database driver for Kotli
 
 > **🚧 Work In Progress / Status**
 > 
-> The current version is **0.5.1**. The driver is fully capable of handling most database interactions, including complex types (arrays, composites, json) and integrates smoothly with connection pools like HikariCP, but **there is still a lot of work to do** before it reaches a fully stable 1.0 release. Expect some rough edges.
+> The current version is **0.5.2**. The driver is fully capable of handling most database interactions, including complex types (arrays, composites, json) and integrates smoothly with connection pools like HikariCP, but **there is still a lot of work to do** before it reaches a fully stable 1.0 release. Expect some rough edges.
 
 ## Key Features
 
@@ -35,7 +35,7 @@ Add the Octavius driver to your `build.gradle.kts` dependencies:
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:octavius-driver:0.5.1")
+    implementation("io.github.octavius-framework:driver:0.5.2")
 }
 ```
 
