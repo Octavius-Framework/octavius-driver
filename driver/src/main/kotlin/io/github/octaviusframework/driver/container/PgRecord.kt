@@ -6,9 +6,14 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 
 /**
- * Represents a record structure (e.g. ROW(...) without a specific registered composite type) loaded from the database.
+ * Represents an anonymous record structure (e.g., ROW(...) without a specific registered composite type) loaded from the database.
+ *
+ * @property type The record type definition.
+ * @property fieldOids Array of OIDs corresponding to the fields in this record.
+ * @property fields Array containing the values of the fields in this record.
+ * @property typeRegistry Registry used for resolving types.
  */
-class PgRecord  internal constructor(
+class PgRecord internal constructor(
     val type: PgType.Record,
     val fieldOids: IntArray,
     val fields: Array<Any?>,

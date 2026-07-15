@@ -5,13 +5,25 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 
 /**
- * Reprezentuje pojedynczy wymiar tablicy w Postgresie.
+ * Represents a single dimension of a PostgreSQL array.
+ *
+ * @property size The number of elements in this dimension.
+ * @property lowerBound The starting index of this dimension (usually 1 in PostgreSQL).
  */
 data class ArrayDimension(
     val size: Int,
     val lowerBound: Int
 )
 
+/**
+ * Represents a PostgreSQL array type.
+ *
+ * @property arrayOid OID of the array type.
+ * @property elementOid OID of the elements within the array.
+ * @property dimensions List of dimensions for the array.
+ * @property elements Flat list of elements contained in the array.
+ * @property typeRegistry Registry used for resolving types.
+ */
 class PgArray(
     val arrayOid: Int,
     val elementOid: Int,

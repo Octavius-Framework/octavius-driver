@@ -46,7 +46,7 @@ interface OctaviusSessionOperations {
     fun createNativeQuery(sql: String): NativeQuery
 
     /**
-     * Creates a query with named parameters (e.g., `:name`, `:id`) which will be translated
+     * Creates a query with named parameters (e.g., `@name`, `@id`) which will be translated
      * into positional parameters under the hood.
      *
      * @param sql The SQL statement containing named parameters.

@@ -1,7 +1,11 @@
 package io.github.octaviusframework.driver.container
 
 /**
- * Represents a multirange structure from the database.
+ * Represents a PostgreSQL multirange structure from the database.
+ *
+ * @property multirangeOid OID of the multirange type.
+ * @property rangeOid OID of the base range type contained in this multirange.
+ * @property ranges List of ranges contained in this multirange.
  */
 class PgMultirange internal constructor(
     val multirangeOid: Int,
