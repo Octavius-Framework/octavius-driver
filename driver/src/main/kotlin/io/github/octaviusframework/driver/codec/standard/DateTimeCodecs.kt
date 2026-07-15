@@ -45,7 +45,7 @@ private fun instantToPgMicros(instant: Instant): Long {
     }
 }
 
-internal object InstantCodec : TypeCodec<Instant> {
+internal object TimestamptzCodec : TypeCodec<Instant> {
     override val pgTypeName = "timestamptz"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1184
@@ -70,7 +70,7 @@ internal object InstantCodec : TypeCodec<Instant> {
     }
 }
 
-internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
+internal object TimestampCodec : TypeCodec<LocalDateTime> {
     override val pgTypeName = "timestamp"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1114
@@ -95,7 +95,7 @@ internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
     }
 }
 
-internal object LocalDateCodec : TypeCodec<LocalDate> {
+internal object DateCodec : TypeCodec<LocalDate> {
     override val pgTypeName = "date"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1082
@@ -134,7 +134,7 @@ internal object LocalDateCodec : TypeCodec<LocalDate> {
     }
 }
 
-internal object LocalTimeCodec : TypeCodec<LocalTime> {
+internal object TimeCodec : TypeCodec<LocalTime> {
     override val pgTypeName = "time"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1083

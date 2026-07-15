@@ -20,8 +20,8 @@ internal object NameCodec : TypeCodec<String> {
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 19
     override val kotlinClass = String::class
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
+    override val fromBinary = TextCodec.fromBinary
+    override val toBinary = TextCodec.toBinary
 }
 
 internal object CharCodec : TypeCodec<String> {
@@ -29,6 +29,6 @@ internal object CharCodec : TypeCodec<String> {
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 18
     override val kotlinClass = String::class
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
+    override val fromBinary = TextCodec.fromBinary
+    override val toBinary = TextCodec.toBinary
 }

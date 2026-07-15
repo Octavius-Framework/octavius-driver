@@ -9,7 +9,7 @@ import java.math.BigDecimal
 import java.math.BigInteger
 
 
-internal object ShortCodec : TypeCodec<Short> {
+internal object SmallIntCodec : TypeCodec<Short> {
     override val pgTypeName = "int2"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 21
@@ -29,7 +29,7 @@ internal object IntCodec : TypeCodec<Int> {
     override val toBinary: (Int, PgByteWriter) -> Unit = { value, writer -> writer.writeInt(value) }
 }
 
-internal object LongCodec : TypeCodec<Long> {
+internal object BigIntCodec : TypeCodec<Long> {
     override val pgTypeName = "int8"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 20
@@ -39,7 +39,7 @@ internal object LongCodec : TypeCodec<Long> {
     override val toBinary: (Long, PgByteWriter) -> Unit = { value, writer -> writer.writeLong(value) }
 }
 
-internal object FloatCodec : TypeCodec<Float> {
+internal object RealCodec : TypeCodec<Float> {
     override val pgTypeName = "float4"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 700

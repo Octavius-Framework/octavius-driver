@@ -18,7 +18,7 @@ internal object BooleanCodec : TypeCodec<Boolean> {
 }
 
 
-internal object ByteArrayCodec : TypeCodec<ByteArray> {
+internal object ByteaCodec : TypeCodec<ByteArray> {
     override val pgTypeName = "bytea"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 17
@@ -29,7 +29,7 @@ internal object ByteArrayCodec : TypeCodec<ByteArray> {
     override val toBinary: (ByteArray, PgByteWriter) -> Unit = { value, writer -> writer.writeBytes(value) }
 }
 
-internal object UnitCodec : TypeCodec<Unit> {
+internal object VoidCodec : TypeCodec<Unit> {
     override val pgTypeName = "void"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 2278

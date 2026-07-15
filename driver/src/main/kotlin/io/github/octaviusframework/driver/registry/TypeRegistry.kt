@@ -132,23 +132,23 @@ class TypeRegistry {
         register(NameCodec)
         register(CharCodec)
 
-        register(ShortCodec)
+        register(SmallIntCodec)
         register(IntCodec)
-        register(LongCodec)
-        register(FloatCodec)
+        register(BigIntCodec)
+        register(RealCodec)
         register(DoubleCodec)
         register(BooleanCodec)
-        register(StringCodec)
+        register(TextCodec)
         register(VarcharCodec)
         register(BpcharCodec)
-        register(ByteArrayCodec)
+        register(ByteaCodec)
         register(UnknownCodec)
 
         // DateTime
-        register(InstantCodec)
-        register(LocalDateTimeCodec)
-        register(LocalDateCodec)
-        register(LocalTimeCodec)
+        register(TimestamptzCodec)
+        register(TimestampCodec)
+        register(DateCodec)
+        register(TimeCodec)
 
         // Json
         register(JsonbCodec)
@@ -156,7 +156,7 @@ class TypeRegistry {
 
         register(UuidCodec)
         register(NumericCodec)
-        register(UnitCodec)
+        register(VoidCodec)
     }
 
     /**
