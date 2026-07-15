@@ -32,13 +32,19 @@ class NamedParameterQuery(
     }
 
     fun fetchOne(params: Map<String, Any?>): Row {
-        val rows = fetchAll(params)
+        val (transformedSql, listParams) = prepareNamedQuery(params)
+        val rows = withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
+        }
         check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" }
         return rows.first()
     }
 
     fun fetchOneOrNull(params: Map<String, Any?>): Row? {
-        val rows = fetchAll(params)
+        val (transformedSql, listParams) = prepareNamedQuery(params)
+        val rows = withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
+        }
         check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" }
         return rows.firstOrNull()
     }

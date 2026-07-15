@@ -122,6 +122,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     '1' -> return ParseCompleteMessage
                     '2' -> return BindCompleteMessage
                     'n' -> return NoDataMessage
+                    's' -> return PortalSuspendedMessage
                     'I' -> return EmptyQueryResponseMessage
                     'C' -> {
                         val commandTag = inputStream.readCString()

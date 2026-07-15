@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Test
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class BasicQueryIntegrationTest {
 
@@ -29,5 +30,25 @@ class BasicQueryIntegrationTest {
         assertEquals(1, result2.get(0))
         assertEquals(2.4f, result2.get(1))
         assertEquals(1, result2.get(2))
+    }
+
+    @Test
+    fun testFetchOneWithMultipleRows() {
+        val props = Properties()
+        props.setProperty("user", "postgres")
+        props.setProperty("password", "1234")
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        // Generate 1000 rows. Thanks to maxRows=2 and PortalSuspended, it should fetch exactly 2 rows
+        // and throw IllegalStateException without loading all 1000 rows into memory.
+        val exception = assertFailsWith<IllegalStateException> {
+            session.createNativeQuery("SELECT generate_series(1, 1000)").fetchOne()
+        }
+        
+        assertEquals("Expected exactly one row, but got 2", exception.message)
+
+        // Make sure the connection is in a healthy state and can execute subsequent queries
+        val subsequentResult = session.createNativeQuery("SELECT 42").fetchOne().get<Int>(0)
+        assertEquals(42, subsequentResult)
     }
 }

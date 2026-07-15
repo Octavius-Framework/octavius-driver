@@ -33,3 +33,7 @@ class DataRowMessage(
 ) : BackendMessage {
     override fun toString(): String = "DataRow(columns=${columnOffsets.size})"
 }
+
+internal object PortalSuspendedMessage : BackendMessage {
+    override fun toString(): String = "PortalSuspended"
+}

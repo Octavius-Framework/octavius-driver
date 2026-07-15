@@ -125,9 +125,10 @@ class QueryExecutor(
         sql: String,
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null,
-        mapper: ResultMapper
+        mapper: ResultMapper,
+        maxRows: Int = 0
     ): List<Row> = queryLock.withLock {
-        query(sql, params, parameterSerializer, mapper) { it }
+        query(sql, params, parameterSerializer, mapper, maxRows) { it }
     }
 
     /**
@@ -140,6 +141,7 @@ class QueryExecutor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer?,
         mapper: ResultMapper,
+        maxRows: Int = 0,
         transform: (Row) -> R
     ): List<R> = queryLock.withLock {
         val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
@@ -149,7 +151,7 @@ class QueryExecutor(
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
         stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
         stream.sendMessage(DescribeMessage('P', portalName))
-        stream.sendMessage(ExecuteMessage(portalName, 0))
+        stream.sendMessage(ExecuteMessage(portalName, maxRows))
         stream.sendMessage(SyncMessage())
         
         stream.flush()
@@ -162,7 +164,7 @@ class QueryExecutor(
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
+                is ParseCompleteMessage, is BindCompleteMessage, is PortalSuspendedMessage -> { /* Expected */ }
                 is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
                 is NoDataMessage -> { /* Expected if query returns no rows */ }
                 is DataRowMessage -> {
