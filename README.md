@@ -1,6 +1,6 @@
 # Octavius Driver
 
-![Version](https://img.shields.io/badge/version-0.5.1-blue)
+![Version](https://img.shields.io/badge/version-0.5.2-blue)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 
 A native, high-performance, and lightweight PostgreSQL database driver for Kotlin. It leverages the standard JDBC connection infrastructure (such as `DataSource` and connection pools) but communicates directly with PostgreSQL via the Wire Protocol v3, offering a modern Kotlin API instead of legacy JDBC stateful objects.
