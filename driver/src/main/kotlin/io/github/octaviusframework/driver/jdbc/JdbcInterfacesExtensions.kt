@@ -4,22 +4,35 @@ import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import java.sql.Connection
 import java.sql.DriverManager
-import java.util.*
 import javax.sql.DataSource
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 
 // DriverManager
 /**
- * Establishes a new [OctaviusSession] using the specified [url] and [info] properties.
+ * Establishes a new [OctaviusSession] using the specified [url] and [properties] properties.
  *
  * @param url A database url of the form `jdbc:subprotocol:subname`.
- * @param info A list of arbitrary string tag/value pairs as connection arguments.
+ * @param properties A list of arbitrary string tag/value pairs as connection arguments.
  * @return An [OctaviusSession] instance.
  */
 fun getOctaviusSession(
     url: String,
-    info: Properties
+    properties: OctaviusProperties
 ): OctaviusSession {
-    val conn = DriverManager.getConnection(url, info)
+    val conn = DriverManager.getConnection(url, properties.info)
+    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
+}
+
+/**
+ * Establishes a new [OctaviusSession] using the specified [properties].
+ *
+ * @param properties Connection arguments encapsulated in [OctaviusProperties].
+ * @return An [OctaviusSession] instance.
+ */
+fun getOctaviusSession(
+    properties: OctaviusProperties
+): OctaviusSession {
+    val conn = DriverManager.getConnection(properties.toUrl(), properties.info)
     return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 

@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import java.sql.Connection
 import java.sql.Driver
@@ -29,41 +30,20 @@ class OctaviusDriver : Driver {
     override fun connect(url: String, info: Properties?): Connection? {
         if (!acceptsURL(url)) return null
         
-        val prefix = "jdbc:octavius://"
-        if (!url.startsWith(prefix)) return null
+        val properties = OctaviusProperties.parse(url, info)
         
-        val withoutPrefix = url.substring(prefix.length)
-        val slashIndex = withoutPrefix.indexOf('/')
+        val host = properties.host ?: "localhost"
+        val port = properties.port ?: 5432
+        val database = properties.database ?: "postgres"
         
-        val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
-        val dbPart = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1) else "postgres"
-        val database = dbPart.substringBefore('?')
-        
-        val mergedInfo = Properties()
-        info?.let { mergedInfo.putAll(it) }
-        
-        val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
-        if (query.isNotEmpty()) {
-            query.split("&").forEach {
-                val parts = it.split("=")
-                if (parts.size == 2) {
-                    mergedInfo.setProperty(parts[0], parts[1])
-                }
-            }
-        }
-        
-        val colonIndex = hostPort.indexOf(':')
-        val host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
-        val port = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() ?: 5432 else 5432
-
-        val user = mergedInfo.getProperty("user") ?: "postgres"
-        val password = mergedInfo.getProperty("password")
-        val loginTimeout = mergedInfo.getProperty("loginTimeout")?.toIntOrNull() ?: DriverManager.getLoginTimeout()
+        val user = properties.user ?: "postgres"
+        val password = properties.password
+        val loginTimeout = properties.loginTimeout ?: DriverManager.getLoginTimeout()
 
         val stream = PgStream(host, port, loginTimeout)
         
         val sslNegotiator = SslNegotiator(stream)
-        sslNegotiator.negotiate(host, port, mergedInfo)
+        sslNegotiator.negotiate(host, port, properties.info)
         
         val startupParams = mapOf(
             "user" to user,
@@ -77,7 +57,7 @@ class OctaviusDriver : Driver {
         val authenticator = Authenticator(stream)
         authenticator.authenticate(user, password)
         
-        stream.networkTimeout = mergedInfo.getProperty("socketTimeout")?.toIntOrNull()?.let { it * 1000 } ?: 0
+        stream.networkTimeout = properties.socketTimeout?.let { it * 1000 } ?: 0
         
         val serverVersion = stream.parameters["server_version"]
         if (serverVersion != null) {
