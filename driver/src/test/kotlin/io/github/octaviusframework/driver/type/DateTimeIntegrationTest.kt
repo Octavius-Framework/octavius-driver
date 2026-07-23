@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -16,9 +17,9 @@ class DateTimeIntegrationTest {
 
     @Test
     fun `test DateTime infinity mappings via DB`() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // 1. Test LocalDate mapping
@@ -42,9 +43,9 @@ class DateTimeIntegrationTest {
 
     @Test
     fun `test Date overlap with infinity throws exception via DB`() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val pgEpochDays = 10957L
@@ -52,7 +53,7 @@ class DateTimeIntegrationTest {
         // Date that mathematically converts to Int.MAX_VALUE when mapping to Postgres
         val badFutureDays = Int.MAX_VALUE.toLong() + pgEpochDays
         val badFutureDate = java.time.LocalDate.ofEpochDay(badFutureDays).toKotlinLocalDate()
-        
+
         val exFuture = assertFailsWith<OctaviusTypeException> {
             session.createNativeQuery("SELECT $1").fetchOne(badFutureDate)
         }
@@ -61,7 +62,7 @@ class DateTimeIntegrationTest {
         // Date that mathematically converts to Int.MIN_VALUE when mapping to Postgres
         val badPastDays = Int.MIN_VALUE.toLong() + pgEpochDays
         val badPastDate = java.time.LocalDate.ofEpochDay(badPastDays).toKotlinLocalDate()
-        
+
         val exPast = assertFailsWith<OctaviusTypeException> {
             session.createNativeQuery("SELECT $1").fetchOne(badPastDate)
         }

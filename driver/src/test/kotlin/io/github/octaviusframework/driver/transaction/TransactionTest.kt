@@ -3,6 +3,7 @@ package io.github.octaviusframework.driver.transaction
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -18,9 +19,9 @@ class TransactionTest {
 
     @BeforeEach
     fun setup() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 

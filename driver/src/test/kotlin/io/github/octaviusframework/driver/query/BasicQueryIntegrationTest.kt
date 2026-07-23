@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Test
 import java.util.*
@@ -12,11 +13,11 @@ class BasicQueryIntegrationTest {
     @Test
     fun test() {
         println("Zaczynamy test!")
-        
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
-        
+
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val result = session.createNativeQuery("SELECT 1, 'abc', 4.5::float8").fetchAll()
@@ -34,9 +35,9 @@ class BasicQueryIntegrationTest {
 
     @Test
     fun testFetchOneWithMultipleRows() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // Generate 1000 rows. Thanks to maxRows=2 and PortalSuspended, it should fetch exactly 2 rows
@@ -44,7 +45,7 @@ class BasicQueryIntegrationTest {
         val exception = assertFailsWith<IllegalStateException> {
             session.createNativeQuery("SELECT generate_series(1, 1000)").fetchOne()
         }
-        
+
         assertEquals("Expected exactly one row, but got 2", exception.message)
 
         // Make sure the connection is in a healthy state and can execute subsequent queries

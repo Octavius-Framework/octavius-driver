@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.codec
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -28,9 +29,9 @@ class CodecRegistrationTest {
 
     @Test
     fun `should register codec without oid by resolving it from database`() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
         
