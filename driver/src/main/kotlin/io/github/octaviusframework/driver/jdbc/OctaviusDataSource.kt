@@ -28,8 +28,8 @@ class OctaviusDataSource : DataSource {
         get() = octaviusProperties.serverName
         set(value) { octaviusProperties.serverName = value }
 
-    var portNumber: Int?
-        get() = octaviusProperties.portNumber
+    var portNumber: Int
+        get() = octaviusProperties.portNumber ?: 5432
         set(value) { octaviusProperties.portNumber = value }
 
     var databaseName: String?
@@ -90,11 +90,11 @@ class OctaviusDataSource : DataSource {
     override fun setLogWriter(out: PrintWriter?) {
         logWriter = out
     }
-    
+
     override fun setLoginTimeout(seconds: Int) { // required by Hikari
         octaviusProperties.loginTimeout = seconds
     }
-    
+
     override fun getLoginTimeout(): Int = octaviusProperties.loginTimeout ?: 0
 
     override fun getParentLogger(): Logger = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
