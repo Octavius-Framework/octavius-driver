@@ -32,15 +32,15 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
         val connectTimeoutMs = if (loginTimeoutSecs > 0) loginTimeoutSecs * 1000 else 10000
         socket.connect(InetSocketAddress(host, port), connectTimeoutMs)
         socket.soTimeout = connectTimeoutMs
-        inputStream = PgInputStream(socket.getInputStream().buffered(8192))
-        outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
+        inputStream = PgInputStream(socket.getInputStream())
+        outputStream = PgOutputStream(socket.getOutputStream())
     }
 
     fun upgradeToSSL(host: String, port: Int, config: SslConfiguration) {
         val sslSocket = PgSslUpgrader.upgrade(socket, host, port, config)
         socket = sslSocket
-        inputStream = PgInputStream(socket.getInputStream().buffered(8192))
-        outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
+        inputStream.changeStream(socket.getInputStream())
+        outputStream.changeStream(socket.getOutputStream())
     }
 
 
