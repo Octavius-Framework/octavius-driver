@@ -53,7 +53,7 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
             }
             throw ex
         } finally {
-            DataSourceUtils.doReleaseConnection(con, dataSource)
+            DataSourceUtils.releaseConnection(con, dataSource)
         }
     }
 }
