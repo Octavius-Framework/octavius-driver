@@ -6,8 +6,10 @@ plugins {
 
 dependencies {
     implementation(projects.driver)
+    implementation(spring.spring.boot.starter.jdbc)
     implementation(hikari.hikaricp)
 
+    testImplementation(spring.spring.boot.starter.test)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
 }

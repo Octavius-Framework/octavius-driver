@@ -11,4 +11,4 @@ import java.sql.SQLException
  *
  * @property wrappedException The original [OctaviusException] that is being wrapped.
  */
-internal class SQLExceptionWrapper(val wrappedException: OctaviusException) : SQLException(wrappedException.message, wrappedException.sqlState)
+class SQLExceptionWrapper(val wrappedException: OctaviusException) : SQLException(wrappedException.message, wrappedException.sqlState)

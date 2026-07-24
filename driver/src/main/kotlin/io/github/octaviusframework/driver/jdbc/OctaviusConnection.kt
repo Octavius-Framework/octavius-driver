@@ -32,6 +32,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
     }
 
+    @Volatile
     internal var isClosedFlag: Boolean = false
 
     private inline fun <T> wrapSqlException(block: () -> T): T {
@@ -108,14 +109,15 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
             UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED,
             details = "Executor cannot be null"
         )
+        
+        if (isClosedFlag) return
+        isClosedFlag = true
+
         executor.execute {
-            if (!isClosedFlag) {
-                isClosedFlag = true
-                try {
-                    stream.close()
-                } catch (e: Exception) {
-                    // Ignore
-                }
+            try {
+                stream.close()
+            } catch (e: Exception) {
+                // Ignore
             }
         }
         // Signal for Hikari to evict Connection

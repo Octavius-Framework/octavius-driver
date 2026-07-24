@@ -19,7 +19,7 @@ fun getOctaviusSession(
     properties: OctaviusProperties
 ): OctaviusSession {
     val conn = OctaviusConnectionFactory.createConnection(url, properties)
-    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
+    return OctaviusSessionImpl(conn)
 }
 
 /**
@@ -32,7 +32,7 @@ fun getOctaviusSession(
     properties: OctaviusProperties
 ): OctaviusSession {
     val conn = OctaviusConnectionFactory.createConnection(properties.toUrl(), properties)
-    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
+    return OctaviusSessionImpl(conn)
 }
 
 /**
@@ -51,7 +51,7 @@ fun getOctaviusSession(
     props.user = user
     props.password = password
     val conn = OctaviusConnectionFactory.createConnection(url, props)
-    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
+    return OctaviusSessionImpl(conn)
 }
 
 // DataSource
@@ -80,7 +80,7 @@ inline fun <reified T> DataSource.unwrap(): T {
  */
 fun DataSource.getOctaviusSession(): OctaviusSession {
     val conn = this.getConnection()
-    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
+    return OctaviusSessionImpl(conn)
 }
 
 /**
@@ -92,10 +92,19 @@ fun DataSource.getOctaviusSession(): OctaviusSession {
  */
 fun DataSource.getOctaviusSession(username: String, pass: String): OctaviusSession {
     val conn = this.getConnection(username, pass)
-    return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
+    return OctaviusSessionImpl(conn)
 }
 
 // Connection
+/**
+ * Retrieves a new [OctaviusSession] from this [Connection].
+ *
+ * @return An [OctaviusSession] instance.
+ */
+fun Connection.getOctaviusSession(): OctaviusSession {
+    return OctaviusSessionImpl(this)
+}
+
 /**
  * Unwraps this [Connection] to an instance of the specified type [T].
  *

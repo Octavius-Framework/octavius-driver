@@ -1,0 +1,6 @@
+[versions]
+spring-boot = "4.1.0"
+
+[libraries]
+spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test", version.ref = "spring-boot" }
+spring-boot-starter-jdbc = { group = "org.springframework.boot", name = "spring-boot-starter-jdbc", version.ref = "spring-boot" }

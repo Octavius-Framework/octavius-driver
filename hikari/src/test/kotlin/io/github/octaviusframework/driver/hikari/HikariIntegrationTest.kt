@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.hikari.io.github.octaviusframework.driver.hikari
+package io.github.octaviusframework.driver.hikari
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource

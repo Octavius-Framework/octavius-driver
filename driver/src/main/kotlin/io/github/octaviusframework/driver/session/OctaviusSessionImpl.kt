@@ -11,12 +11,15 @@ import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
 import java.sql.Connection
+import io.github.octaviusframework.driver.jdbc.unwrapToOctavius
 
 
 internal class OctaviusSessionImpl(
-    private val rawConnection: Connection,
-    internal val octaviusConnection: OctaviusConnection
+    private val rawConnection: Connection
 ) : OctaviusSession {
+
+    internal val octaviusConnection: OctaviusConnection
+        get() = rawConnection.unwrapToOctavius()
 
     override val types: TypeManager by lazy {
         TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
