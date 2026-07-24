@@ -47,7 +47,7 @@ fun getOctaviusSession(
     url: String,
     user: String, password: String
 ): OctaviusSession {
-    val props = OctaviusProperties()
+    val props = OctaviusProperties.parse(url)
     props.user = user
     props.password = password
     val conn = OctaviusConnectionFactory.createConnection(url, props)
