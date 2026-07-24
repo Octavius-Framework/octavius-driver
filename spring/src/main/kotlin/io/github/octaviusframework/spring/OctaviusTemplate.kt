@@ -11,8 +11,23 @@ import org.springframework.jdbc.support.SQLExceptionTranslator
 import java.sql.SQLException
 import javax.sql.DataSource
 
+/**
+ * Template class that simplifies executing Octavius operations and provides proper integration
+ * with Spring's transaction management and exception translation mechanism.
+ *
+ * @property dataSource the data source used to obtain connections
+ * @property exceptionTranslator the translator used to convert SQLExceptions into Spring's DataAccessException hierarchy
+ */
 class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslator: SQLExceptionTranslator = OctaviusExceptionTranslator()) {
 
+    /**
+     * Executes the given action within an [OctaviusSession], translating any exceptions thrown.
+     * Connection management and transaction synchronization are handled automatically.
+     *
+     * @param action the action to execute
+     * @return the result of the action
+     * @throws org.springframework.dao.DataAccessException if a database access error occurs or an exception is translated
+     */
     fun <T> execute(action: (OctaviusSession) -> T): T {
         val con = DataSourceUtils.doGetConnection(dataSource)
         try {
