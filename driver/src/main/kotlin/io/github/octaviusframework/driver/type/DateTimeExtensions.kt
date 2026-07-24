@@ -13,21 +13,6 @@ import kotlinx.datetime.toKotlinLocalTime
  * PostgreSQL's DATE, TIMESTAMP, and TIMESTAMPTZ types support special values 'infinity' and '-infinity'
  * to represent unbounded dates. These extensions provide corresponding constants for Kotlin types.
  *
- * ## Usage with PostgreSQL
- *
- * ```kotlin
- * // Insert a contract with no end date
- * dataAccess.insertInto("contracts")
- *     .values(listOf("end_date"))
- *     .execute("end_date" to LocalDate.DISTANT_FUTURE)  // Stored as 'infinity'
- *
- * // Query returns LocalDate.DISTANT_FUTURE for infinity values
- * val contract = dataAccess.select("end_date")
- *     .from("contracts")
- *     .toSingleOf<Contract>()
- *     .getOrThrow()!!
- * ```
- *
  * ## Notes
  *
  * - [kotlinx.datetime.Instant.DISTANT_PAST] and [kotlinx.datetime.Instant.DISTANT_FUTURE] are provided
