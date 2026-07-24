@@ -8,7 +8,6 @@ import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.io.PrintWriter
 import java.sql.Connection
-import java.sql.DriverManager
 import java.util.logging.Logger
 import javax.sql.DataSource
 
@@ -83,7 +82,7 @@ class OctaviusDataSource : DataSource {
         if (username != null) props.user = username
         if (pass != null) props.password = pass
         
-        return DriverManager.getConnection(jdbcUrl, props.info)
+        return OctaviusConnectionFactory.createConnection(jdbcUrl, props)
     }
 
     override fun getLogWriter(): PrintWriter? = logWriter

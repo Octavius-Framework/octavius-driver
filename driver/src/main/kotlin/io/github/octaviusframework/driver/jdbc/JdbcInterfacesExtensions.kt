@@ -3,7 +3,6 @@ package io.github.octaviusframework.driver.jdbc
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import java.sql.Connection
-import java.sql.DriverManager
 import javax.sql.DataSource
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 
@@ -19,7 +18,7 @@ fun getOctaviusSession(
     url: String,
     properties: OctaviusProperties
 ): OctaviusSession {
-    val conn = DriverManager.getConnection(url, properties.info)
+    val conn = OctaviusConnectionFactory.createConnection(url, properties)
     return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 
@@ -32,7 +31,7 @@ fun getOctaviusSession(
 fun getOctaviusSession(
     properties: OctaviusProperties
 ): OctaviusSession {
-    val conn = DriverManager.getConnection(properties.toUrl(), properties.info)
+    val conn = OctaviusConnectionFactory.createConnection(properties.toUrl(), properties)
     return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 
@@ -48,7 +47,10 @@ fun getOctaviusSession(
     url: String,
     user: String, password: String
 ): OctaviusSession {
-    val conn = DriverManager.getConnection(url, user, password)
+    val props = OctaviusProperties()
+    props.user = user
+    props.password = password
+    val conn = OctaviusConnectionFactory.createConnection(url, props)
     return OctaviusSessionImpl(conn, conn.unwrapToOctavius())
 }
 
