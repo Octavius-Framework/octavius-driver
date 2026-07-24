@@ -134,12 +134,10 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
         val dscale = value.scale().coerceAtLeast(0)
 
         if (value.compareTo(BigDecimal.ZERO) == 0) {
-            val bytes = ByteArray(8)
-            bytes.setShortBE(0, 0) // ndigits
-            bytes.setShortBE(2, 0) // weight
-            bytes.setShortBE(4, sign.toShort()) // sign
-            bytes.setShortBE(6, dscale.toShort()) // dscale
-            writer.writeBytes(bytes)
+            writer.writeShort(0) // ndigits
+            writer.writeShort(0) // weight
+            writer.writeShort(sign.toShort()) // sign
+            writer.writeShort(dscale.toShort()) // dscale
         } else {
             var adjusted = value.abs()
             var adjustedScale = adjusted.scale()
@@ -175,18 +173,14 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                 }
                 val ndigits = originalNdigits - startIdx
 
-                val bytes = ByteArray(8 + ndigits * 2)
-                bytes.setShortBE(0, ndigits.toShort())
-                bytes.setShortBE(2, weight.toShort())
-                bytes.setShortBE(4, sign.toShort())
-                bytes.setShortBE(6, dscale.toShort())
+                writer.writeShort(ndigits.toShort())
+                writer.writeShort(weight.toShort())
+                writer.writeShort(sign.toShort())
+                writer.writeShort(dscale.toShort())
 
-                var offset = 8
                 for (i in (originalNdigits - 1) downTo startIdx) {
-                    bytes.setShortBE(offset, temp[i].toShort())
-                    offset += 2
+                    writer.writeShort(temp[i].toShort())
                 }
-                writer.writeBytes(bytes)
             } else {
                 // SLOW PATH: Extremely large BigIntegers become a GC nightmare due to `divideAndRemainder()`.
                 val str = unscaled.toString()
@@ -210,27 +204,21 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
 
                 val ndigits = originalNdigits - trailingZeroChunks
 
-                val bytes = ByteArray(8 + ndigits * 2)
-                bytes.setShortBE(0, ndigits.toShort())
-                bytes.setShortBE(2, weight.toShort())
-                bytes.setShortBE(4, sign.toShort())
-                bytes.setShortBE(6, dscale.toShort())
+                writer.writeShort(ndigits.toShort())
+                writer.writeShort(weight.toShort())
+                writer.writeShort(sign.toShort())
+                writer.writeShort(dscale.toShort())
 
-                var offset = 8
                 for (chunkIdx in (originalNdigits - 1) downTo trailingZeroChunks) {
                     val end = len - chunkIdx * 4
                     val start = maxOf(0, end - 4)
                     var digit = 0
                     for (j in start until end) {
-                        digit = digit * 10 + (str[j] - '0') // lightning fast Int parsing
+                        digit = digit * 10 + (str[j] - '0')
                     }
-                    bytes.setShortBE(offset, digit.toShort())
-                    offset += 2
+                    writer.writeShort(digit.toShort())
                 }
-                writer.writeBytes(bytes)
             }
         }
     }
 }
-
-
