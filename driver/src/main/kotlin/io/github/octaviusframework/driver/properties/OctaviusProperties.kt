@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.properties
 
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.util.Properties
 
 class OctaviusProperties {
@@ -10,10 +11,10 @@ class OctaviusProperties {
     var serverName: String? = null
     var portNumber: Int? = null
     var databaseName: String? = null
-    
+
     var loginTimeout: Int? = null
     var socketTimeout: Int? = null
-    
+
     var ssl: Boolean? = null
     var sslmode: SslMode? = null
     var sslrootcert: String? = null
@@ -68,7 +69,7 @@ class OctaviusProperties {
     companion object {
         fun parse(url: String, info: Properties? = null): OctaviusProperties {
             val octaviusProperties = OctaviusProperties()
-            
+
             info?.forEach { (k, v) ->
                 octaviusProperties.setProperty(k.toString(), v.toString())
             }
@@ -98,10 +99,12 @@ class OctaviusProperties {
 
                 val colonIndex = hostPort.indexOf(':')
                 if (octaviusProperties.serverName == null) {
-                    octaviusProperties.serverName = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
+                    octaviusProperties.serverName =
+                        if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
                 }
                 if (octaviusProperties.portNumber == null) {
-                    octaviusProperties.portNumber = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() else 5432
+                    octaviusProperties.portNumber =
+                        if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() else 5432
                 }
             }
             return octaviusProperties
@@ -126,12 +129,14 @@ class OctaviusProperties {
         sslcert?.let { queryParams["sslcert"] = it }
         sslkey?.let { queryParams["sslkey"] = it }
         sslpassword?.let { queryParams["sslpassword"] = it }
-        
+
         queryParams.putAll(additionalProperties)
 
         if (queryParams.isNotEmpty()) {
             urlBuilder.append("?")
-            val queryString = queryParams.entries.joinToString("&") { "${it.key}=${it.value}" }
+            val queryString = queryParams.entries.joinToString("&") {
+                "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"
+            }
             urlBuilder.append(queryString)
         }
 
