@@ -19,7 +19,7 @@ class OctaviusDataSource : DataSource {
         set(value) {
             if (value != null) {
                 val parsed = OctaviusProperties.parse(value)
-                octaviusProperties.info.putAll(parsed.info)
+                octaviusProperties.merge(parsed)
             }
         }
 
@@ -76,8 +76,7 @@ class OctaviusDataSource : DataSource {
     override fun getConnection(username: String?, pass: String?): Connection {
         val jdbcUrl = url ?: throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_URL, "URL must be set on OctaviusDataSource")
         
-        val props = OctaviusProperties()
-        props.info.putAll(octaviusProperties.info)
+        val props = octaviusProperties.copy()
         
         if (username != null) props.user = username
         if (pass != null) props.password = pass
