@@ -17,10 +17,12 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.net.SocketTimeoutException
+import java.util.concurrent.locks.ReentrantLock
 
 private val logger = KotlinLogging.logger {}
 
 class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : AutoCloseable {
+    val lock = ReentrantLock()
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
     var outputStream: PgOutputStream

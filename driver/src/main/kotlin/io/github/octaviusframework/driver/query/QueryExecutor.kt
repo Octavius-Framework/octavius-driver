@@ -16,8 +16,6 @@ class QueryExecutor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry
 ) {
-    private val queryLock = ReentrantLock()
-
     var transactionStatus: Char = 'I'
         private set
 
@@ -25,7 +23,7 @@ class QueryExecutor(
      * Uses Simple Query Protocol (Q). 
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
-    fun execute(sql: String) = queryLock.withLock {
+    fun execute(sql: String) = stream.lock.withLock {
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -65,7 +63,7 @@ class QueryExecutor(
         sql: String,
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
-    ): Long = queryLock.withLock {
+    ): Long = stream.lock.withLock {
         val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
         val statementName = ""
         val portalName = ""
@@ -127,7 +125,7 @@ class QueryExecutor(
         parameterSerializer: ParameterSerializer? = null,
         mapper: ResultMapper,
         maxRows: Int = 0
-    ): List<Row> = queryLock.withLock {
+    ): List<Row> = stream.lock.withLock {
         query(sql, params, parameterSerializer, mapper, maxRows) { it }
     }
 
@@ -143,7 +141,7 @@ class QueryExecutor(
         mapper: ResultMapper,
         maxRows: Int = 0,
         transform: (Row) -> R
-    ): List<R> = queryLock.withLock {
+    ): List<R> = stream.lock.withLock {
         val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
         val statementName = ""
         val portalName = ""

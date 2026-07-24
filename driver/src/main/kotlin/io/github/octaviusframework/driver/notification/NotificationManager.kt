@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import java.io.IOException
 import java.net.SocketException
 import java.net.SocketTimeoutException
+import kotlin.concurrent.withLock
 
 class NotificationManager internal constructor(private val session: OctaviusSessionImpl) {
 
@@ -31,27 +32,30 @@ class NotificationManager internal constructor(private val session: OctaviusSess
         if (connection.isClosedFlag) return
 
         withContext(dispatcher ?: OctaviusDispatchers.Virtual) {
-            val originalTimeout = connection.stream.networkTimeout
-            try {
-                connection.stream.networkTimeout = pollTimeoutMs
-
-                while (currentCoroutineContext().isActive && !connection.isClosedFlag) {
-                    try {
-                        connection.stream.receiveMessage(isPolling = true)
-                    } catch (e: SocketTimeoutException) {
-                        // Timeout is expected, loop continues and checks isActive
-                    } catch (e: SocketException) {
-                        // Socket was closed from the outside
-                        break
-                    } catch (e: IOException) {
-                        // Connection dropped by network, server, or closed explicitly
-                        break
-                    }
-                }
-            } finally {
+            val context = currentCoroutineContext()
+            connection.stream.lock.withLock {
+                val originalTimeout = connection.stream.networkTimeout
                 try {
-                    if (!connection.isClosedFlag) connection.stream.networkTimeout = originalTimeout
-                } catch (ignore: Exception) {
+                    connection.stream.networkTimeout = pollTimeoutMs
+
+                    while (context.isActive && !connection.isClosedFlag) {
+                        try {
+                            connection.stream.receiveMessage(isPolling = true)
+                        } catch (e: SocketTimeoutException) {
+                            // Timeout is expected, loop continues and checks isActive
+                        } catch (e: SocketException) {
+                            // Socket was closed from the outside
+                            break
+                        } catch (e: IOException) {
+                            // Connection dropped by network, server, or closed explicitly
+                            break
+                        }
+                    }
+                } finally {
+                    try {
+                        if (!connection.isClosedFlag) connection.stream.networkTimeout = originalTimeout
+                    } catch (ignore: Exception) {
+                    }
                 }
             }
         }
@@ -75,21 +79,24 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                 }
             }
 
-            try {
-                connection.stream.networkTimeout = 0
+            val context = currentCoroutineContext()
+            connection.stream.lock.withLock {
+                try {
+                    connection.stream.networkTimeout = 0
 
-                while (currentCoroutineContext().isActive && !connection.isClosedFlag) {
-                    try {
-                        connection.stream.receiveMessage()
-                    } catch (e: SocketException) {
-                        break
-                    } catch (e: IOException) {
-                        break
+                    while (context.isActive && !connection.isClosedFlag) {
+                        try {
+                            connection.stream.receiveMessage()
+                        } catch (e: SocketException) {
+                            break
+                        } catch (e: IOException) {
+                            break
+                        }
                     }
+                } finally {
+                    cancelJob.cancel()
+                    session.abort()
                 }
-            } finally {
-                cancelJob.cancel()
-                session.abort()
             }
         }
     }
