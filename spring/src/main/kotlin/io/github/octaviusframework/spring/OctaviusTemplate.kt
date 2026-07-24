@@ -11,9 +11,7 @@ import org.springframework.jdbc.support.SQLExceptionTranslator
 import java.sql.SQLException
 import javax.sql.DataSource
 
-class OctaviusTemplate(private val dataSource: DataSource) {
-
-    var exceptionTranslator: SQLExceptionTranslator = OctaviusExceptionTranslator()
+class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslator: SQLExceptionTranslator = OctaviusExceptionTranslator()) {
 
     fun <T> execute(action: (OctaviusSession) -> T): T {
         val con = DataSourceUtils.doGetConnection(dataSource)
