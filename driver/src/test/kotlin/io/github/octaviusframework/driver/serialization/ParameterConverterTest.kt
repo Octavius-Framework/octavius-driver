@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.serialization
 
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.session.OctaviusSession
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -21,9 +22,9 @@ class ParameterConverterTest {
 
     @BeforeAll
     fun setup() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
         session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         session.createNativeQuery("DROP TYPE IF EXISTS simple_address CASCADE").execute()

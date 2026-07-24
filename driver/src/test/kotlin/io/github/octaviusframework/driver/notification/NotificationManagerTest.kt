@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.notification
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import org.junit.jupiter.api.Test
@@ -11,9 +12,9 @@ class NotificationManagerTest {
 
     @Test
     fun testPollingListener() = runBlocking {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val listenerSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
         val notifierSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
@@ -47,9 +48,9 @@ class NotificationManagerTest {
 
     @Test
     fun testInterruptibleListener() = runBlocking {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val listenerSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
         val notifierSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)

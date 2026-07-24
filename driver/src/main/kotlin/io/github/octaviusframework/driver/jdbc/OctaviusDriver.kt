@@ -1,13 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.auth.Authenticator
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
-import io.github.octaviusframework.driver.io.PgStream
-import io.github.octaviusframework.driver.message.frontend.StartupMessage
-import io.github.octaviusframework.driver.ssl.SslNegotiator
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import java.sql.Connection
 import java.sql.Driver
 import java.sql.DriverManager
@@ -29,66 +23,7 @@ class OctaviusDriver : Driver {
     override fun connect(url: String, info: Properties?): Connection? {
         if (!acceptsURL(url)) return null
         
-        val prefix = "jdbc:octavius://"
-        if (!url.startsWith(prefix)) return null
-        
-        val withoutPrefix = url.substring(prefix.length)
-        val slashIndex = withoutPrefix.indexOf('/')
-        
-        val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
-        val dbPart = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1) else "postgres"
-        val database = dbPart.substringBefore('?')
-        
-        val mergedInfo = Properties()
-        info?.let { mergedInfo.putAll(it) }
-        
-        val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
-        if (query.isNotEmpty()) {
-            query.split("&").forEach {
-                val parts = it.split("=")
-                if (parts.size == 2) {
-                    mergedInfo.setProperty(parts[0], parts[1])
-                }
-            }
-        }
-        
-        val colonIndex = hostPort.indexOf(':')
-        val host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
-        val port = if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() ?: 5432 else 5432
-
-        val user = mergedInfo.getProperty("user") ?: "postgres"
-        val password = mergedInfo.getProperty("password")
-        val loginTimeout = mergedInfo.getProperty("loginTimeout")?.toIntOrNull() ?: DriverManager.getLoginTimeout()
-
-        val stream = PgStream(host, port, loginTimeout)
-        
-        val sslNegotiator = SslNegotiator(stream)
-        sslNegotiator.negotiate(host, port, mergedInfo)
-        
-        val startupParams = mapOf(
-            "user" to user,
-            "database" to database,
-            "client_encoding" to "UTF8"
-        )
-        
-        stream.sendMessage(StartupMessage(startupParams))
-        stream.flush()
-        
-        val authenticator = Authenticator(stream)
-        authenticator.authenticate(user, password)
-        
-        stream.networkTimeout = mergedInfo.getProperty("socketTimeout")?.toIntOrNull()?.let { it * 1000 } ?: 0
-        
-        val serverVersion = stream.parameters["server_version"]
-        if (serverVersion != null) {
-            val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
-            if (majorVersion < 18) {
-                stream.close()
-                throw OctaviusJdbcException(JdbcExceptionMessage.UNSUPPORTED_SERVER_VERSION, "Octavius JDBC requires PostgreSQL database version 18 or higher. Received version: $serverVersion")
-            }
-        }
-        
-        return OctaviusConnection(stream, url)
+        return OctaviusConnectionFactory.createConnection(url, info)
     }
 
     override fun acceptsURL(url: String): Boolean {
