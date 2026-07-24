@@ -13,3 +13,11 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
 }
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+        }
+    }
+}

@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 rootProject.name = "octavius-driver"
 include("driver")
 include("hikari")
-include("spring")
+include("driver-spring-integration")
