@@ -13,6 +13,7 @@ import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
 import io.github.octaviusframework.driver.session.TransactionState
+import io.github.octaviusframework.driver.transaction.OctaviusSavepointImpl
 import java.sql.*
 import java.util.*
 import java.util.concurrent.Executor
@@ -308,6 +309,40 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         return@wrapSqlException transactionIsolationLevel
     }
 
+    //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
+    private var savepointIdCounter: Int = 1
+
+    override fun setSavepoint(): Savepoint = wrapSqlException {
+        checkClosed()
+        if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        val sp = OctaviusSavepointImpl(savepointIdCounter++)
+        queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        return@wrapSqlException sp
+    }
+
+    override fun setSavepoint(name: String?): Savepoint = wrapSqlException {
+        checkClosed()
+        if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        if (name == null) throw IllegalArgumentException("Savepoint name cannot be null")
+        val sp = OctaviusSavepointImpl(name)
+        queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        return@wrapSqlException sp
+    }
+
+    override fun rollback(savepoint: Savepoint?) = wrapSqlException {
+        checkClosed()
+        if (autoCommitFlag) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepointImpl) throw IllegalArgumentException("Unsupported savepoint")
+        queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
+    }
+
+    override fun releaseSavepoint(savepoint: Savepoint?) = wrapSqlException {
+        checkClosed()
+        if (autoCommitFlag) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepointImpl) throw IllegalArgumentException("Unsupported savepoint")
+        queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
+    }
+
     //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
     override fun setSchema(schema: String?) = wrapSqlException {
         checkClosed()
@@ -324,12 +359,6 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
     override fun getCatalog(): String = wrapSqlException {
         checkClosed(); return@wrapSqlException "octavius"
     }  // required by Hikari
-
-    //-------------------------------------------------SAVEPOINTS-------------------------------------------------------
-    override fun setSavepoint(): Savepoint = unsupported()
-    override fun setSavepoint(name: String?): Savepoint = unsupported()
-    override fun rollback(savepoint: Savepoint?) = unsupported()
-    override fun releaseSavepoint(savepoint: Savepoint?) = unsupported()
 
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)

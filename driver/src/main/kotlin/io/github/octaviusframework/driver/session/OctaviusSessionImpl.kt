@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.session
 
 import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
-import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
@@ -34,34 +33,20 @@ internal class OctaviusSessionImpl(
     override val transactionState: TransactionState
         get() = octaviusConnection.transactionState
 
-    private var savepointIdCounter: Int = 1
-
     override fun setSavepoint(): OctaviusSavepoint {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        val sp = OctaviusSavepoint(savepointIdCounter++)
-        octaviusConnection.queryExecutor.execute("SAVEPOINT ${sp.pgName}")
-        return sp
+        return unwrapSqlException { rawConnection.setSavepoint() as OctaviusSavepoint }
     }
 
     override fun setSavepoint(name: String): OctaviusSavepoint {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        val sp = OctaviusSavepoint(name)
-        octaviusConnection.queryExecutor.execute("SAVEPOINT ${sp.pgName}")
-        return sp
+        return unwrapSqlException { rawConnection.setSavepoint(name) as OctaviusSavepoint }
     }
 
     override fun rollback(savepoint: OctaviusSavepoint) {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
-        octaviusConnection.queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
+        unwrapSqlException { rawConnection.rollback(savepoint as java.sql.Savepoint) }
     }
 
     override fun releaseSavepoint(savepoint: OctaviusSavepoint) {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
-        octaviusConnection.queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
+        unwrapSqlException { rawConnection.releaseSavepoint(savepoint as java.sql.Savepoint) }
     }
 
     override fun reloadTypes() {
