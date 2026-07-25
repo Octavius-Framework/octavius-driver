@@ -23,6 +23,8 @@ import io.github.octaviusframework.driver.converter.result.composite.MapComposit
 import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
+import io.github.octaviusframework.driver.converter.result.range.MultiRangeResultConverter
+import io.github.octaviusframework.driver.converter.result.range.RangeResultConverter
 import io.github.octaviusframework.driver.converter.result.record.MapRecordConverter
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
@@ -50,6 +52,8 @@ class TypeRegistry {
         addConverter(MapRowConverter())
         addConverter(MapRecordConverter())
         addConverter(JsonElementConverter())
+        addConverter(RangeResultConverter())
+        addConverter(MultiRangeResultConverter())
     }
 
     val parameterConverterRegistry = ParameterConverterRegistry().apply {
@@ -78,7 +82,6 @@ class TypeRegistry {
 
     @Volatile
     private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
-
 
 
     @Volatile
@@ -168,7 +171,7 @@ class TypeRegistry {
         val newOidMap = IntObjectMap(codecsByOid)
         val newClassMap = codecsByClass.toMutableMap()
         val newCodecToOid = codecToOid.toMutableMap()
-        
+
         if (codec.isDefaultForKotlinType) {
             newClassMap[codec.kotlinClass] = codec
         }
@@ -225,7 +228,7 @@ class TypeRegistry {
                 newArrayTypesByElementOid[type.elementOid] = type
             }
         }
-        
+
         for ((codec, previousOid) in codecToOid) {
             if (codec.oid == null) {
                 val resolvedOid = resolveOidInternal(
@@ -250,7 +253,14 @@ class TypeRegistry {
                     is PgType.Composite -> DynamicContainerCodec(oid, type.name, type.schema, PgComposite::class, this)
                     is PgType.Record -> DynamicContainerCodec(oid, type.name, type.schema, PgRecord::class, this)
                     is PgType.Range -> DynamicContainerCodec(oid, type.name, type.schema, PgRange::class, this)
-                    is PgType.Multirange -> DynamicContainerCodec(oid, type.name, type.schema, PgMultirange::class, this)
+                    is PgType.Multirange -> DynamicContainerCodec(
+                        oid,
+                        type.name,
+                        type.schema,
+                        PgMultirange::class,
+                        this
+                    )
+
                     else -> null
                 }
                 if (codec != null) {
