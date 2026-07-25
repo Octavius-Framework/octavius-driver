@@ -16,6 +16,8 @@ import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArr
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
+import io.github.octaviusframework.driver.converter.parameter.range.MultiRangeParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.range.RangeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.standard.JsonElementParameterConverter
 import io.github.octaviusframework.driver.converter.result.array.CollectionArrayConverter
 import io.github.octaviusframework.driver.converter.result.array.PrimitiveArrayConverter
@@ -61,6 +63,8 @@ class TypeRegistry {
         addConverter(CollectionArrayParameterConverter())
         addConverter(ReflectionCompositeParameterConverter())
         addConverter(JsonElementParameterConverter())
+        addConverter(RangeParameterConverter())
+        addConverter(MultiRangeParameterConverter())
     }
 
     fun registerResultConverter(converter: ResultConverter<*, *>) {
