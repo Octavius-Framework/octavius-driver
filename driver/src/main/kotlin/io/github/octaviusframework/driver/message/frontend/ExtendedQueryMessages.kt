@@ -3,6 +3,13 @@ package io.github.octaviusframework.driver.message.frontend
 import io.github.octaviusframework.driver.io.PgOutputStream
 import java.nio.charset.StandardCharsets
 
+/**
+ * Message sent to the backend to parse a prepared statement.
+ *
+ * @property statementName The name of the destination prepared statement (empty for unnamed).
+ * @property query The query string to be parsed.
+ * @property parameterTypes List of OIDs of the parameter data types.
+ */
 internal class ParseMessage(
     private val statementName: String,
     private val query: String,
@@ -22,6 +29,16 @@ internal class ParseMessage(
     }
 }
 
+/**
+ * Message sent to the backend to bind a prepared statement to a portal.
+ *
+ * @property portalName The name of the destination portal (empty for unnamed).
+ * @property statementName The name of the source prepared statement (empty for unnamed).
+ * @property parameterCount The number of parameter values.
+ * @property parameterValues Pre-serialized parameter values including their lengths.
+ * @property parameterFormats The format codes for the parameters (0 for text, 1 for binary).
+ * @property resultFormats The format codes for the result columns.
+ */
 internal class BindMessage(
     private val portalName: String,
     private val statementName: String,
@@ -60,7 +77,13 @@ internal class BindMessage(
     }
 }
 
-internal class DescribeMessage(private val targetType: Char /* 'S' dla Statement, 'P' dla Portal */, private val name: String) :
+/**
+ * Message sent to the backend to describe a statement or portal.
+ *
+ * @property targetType The type of object to describe ('S' for Statement, 'P' for Portal).
+ * @property name The name of the statement or portal to describe.
+ */
+internal class DescribeMessage(private val targetType: Char, private val name: String) :
     FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val nameBytes = name.toByteArray(StandardCharsets.UTF_8)
@@ -73,6 +96,12 @@ internal class DescribeMessage(private val targetType: Char /* 'S' dla Statement
     }
 }
 
+/**
+ * Message sent to the backend to execute a portal.
+ *
+ * @property portalName The name of the portal to execute (empty for unnamed).
+ * @property maxRows The maximum number of rows to return (0 for no limit).
+ */
 internal class ExecuteMessage(private val portalName: String, private val maxRows: Int = 0) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val portalBytes = portalName.toByteArray(StandardCharsets.UTF_8)
@@ -85,6 +114,9 @@ internal class ExecuteMessage(private val portalName: String, private val maxRow
     }
 }
 
+/**
+ * Message sent to the backend to synchronize the connection state and signal the end of a sequence of extended query messages.
+ */
 internal class SyncMessage : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         out.writeByte('S'.code.toByte())

@@ -2,6 +2,9 @@ package io.github.octaviusframework.driver.message.frontend
 
 import io.github.octaviusframework.driver.io.PgOutputStream
 
+/**
+ * Base interface for all messages sent to the PostgreSQL backend.
+ */
 internal sealed interface FrontendMessage {
     /**
      * Writes the entire message frame to the stream (including type marker and length).
