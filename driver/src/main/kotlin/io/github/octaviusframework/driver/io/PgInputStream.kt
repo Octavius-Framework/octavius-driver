@@ -67,9 +67,9 @@ class PgInputStream(private var inputStream: InputStream) {
         return ((b1 shl 8) or b2).toShort()
     }
 
-    fun readFully(bytes: ByteArray) {
+    fun readFully(bytes: ByteArray, length: Int = bytes.size) {
         var offset = 0
-        var remaining = bytes.size
+        var remaining = length
         while (remaining > 0) {
             val available = limit - position
             if (available > 0) {
