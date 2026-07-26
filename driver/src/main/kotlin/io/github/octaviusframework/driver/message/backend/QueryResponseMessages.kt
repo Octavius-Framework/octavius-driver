@@ -26,6 +26,13 @@ internal class RowDescriptionMessage(val fields: List<FieldDescription>) : Backe
     override fun toString(): String = "RowDescription(fields=${fields.size})"
 }
 
+/**
+ * Represents a single row of data from a query response.
+ * Note: The underlying arrays (`rawData`, `columnOffsets`, `columnLengths`) may be shared buffers 
+ * reused by the connection to avoid memory allocations. They should be processed synchronously 
+ * (e.g. eagerly deserialized) and not stored for later use, as their contents will be overwritten 
+ * by subsequent rows unless the row data size exceeded the configured `maxCachedRowSize`.
+ */
 class DataRowMessage(
     val rawData: ByteArray,
     val columnOffsets: IntArray,

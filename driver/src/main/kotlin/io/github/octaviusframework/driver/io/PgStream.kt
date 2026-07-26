@@ -29,6 +29,16 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
     var processId: Int = -1
     var secretKey: ByteArray = ByteArray(0)
     var isBroken: Boolean = false
+    var maxCachedRowSize: Int = 65536
+
+    /**
+     * Shared buffers used to reduce memory allocations during 'DataRow' deserialization.
+     * Since 'Row' eagerly parses all values into basic JVM types during initialization,
+     * the underlying byte arrays can be immediately reused for the next row.
+     */
+    private var sharedRowData = ByteArray(1024)
+    private var sharedColumnOffsets = IntArray(16)
+    private var sharedColumnLengths = IntArray(16)
 
     init {
         val connectTimeoutMs = if (loginTimeoutSecs > 0) loginTimeoutSecs * 1000 else 10000
@@ -151,23 +161,42 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                     'D' -> {
                         val numColumns = inputStream.readShort().toInt()
-                        val rawRowData = inputStream.readBytes(payloadLength - 2)
+                        val rowDataSize = payloadLength - 2
+                        
+                        val rowDataBuffer: ByteArray
+                        if (rowDataSize > maxCachedRowSize) { // Don't cache arrays larger than maxCachedRowSize to avoid memory leaks on huge values
+                            rowDataBuffer = ByteArray(rowDataSize)
+                        } else {
+                            if (sharedRowData.size < rowDataSize) {
+                                var newSize = sharedRowData.size * 2
+                                while (newSize < rowDataSize) newSize *= 2
+                                sharedRowData = ByteArray(newSize)
+                            }
+                            rowDataBuffer = sharedRowData
+                        }
 
-                        val columnOffsets = IntArray(numColumns)
-                        val columnLengths = IntArray(numColumns)
+                        if (sharedColumnOffsets.size < numColumns) {
+                            var newSize = sharedColumnOffsets.size * 2
+                            while (newSize < numColumns) newSize *= 2
+                            sharedColumnOffsets = IntArray(newSize)
+                            sharedColumnLengths = IntArray(newSize)
+                        }
+
+                        inputStream.readFully(rowDataBuffer, rowDataSize)
+
                         var offset = 0
                         for (i in 0 until numColumns) {
-                            val colLength = rawRowData.getIntBE(offset)
+                            val colLength = rowDataBuffer.getIntBE(offset)
                             offset += 4
-                            columnLengths[i] = colLength
+                            sharedColumnLengths[i] = colLength
                             if (colLength == -1) {
-                                columnOffsets[i] = -1
+                                sharedColumnOffsets[i] = -1
                             } else {
-                                columnOffsets[i] = offset
+                                sharedColumnOffsets[i] = offset
                                 offset += colLength
                             }
                         }
-                        return DataRowMessage(rawRowData, columnOffsets, columnLengths)
+                        return DataRowMessage(rowDataBuffer, sharedColumnOffsets, sharedColumnLengths)
                     }
                     else -> {
                         val unparsed = inputStream.readBytes(payloadLength)
