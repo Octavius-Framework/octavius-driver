@@ -156,6 +156,7 @@ class TypeRegistry {
         register(TimestampCodec)
         register(DateCodec)
         register(TimeCodec)
+        register(IntervalCodec)
 
         // Json
         register(JsonbCodec)

@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.type.DISTANT_FUTURE
 import io.github.octaviusframework.driver.type.DISTANT_PAST
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.type.PgInterval
 import kotlinx.datetime.*
 import kotlin.time.Instant
 
@@ -164,5 +165,26 @@ internal object TimeCodec : TypeCodec<LocalTime> {
             val micros = value.toSecondOfDay().toLong() * 1000000L + (value.nanosecond / 1000).toLong()
             writer.writeLong(micros)
         }
+    }
+}
+
+internal object IntervalCodec : TypeCodec<PgInterval> {
+    override val pgTypeName = "interval"
+    override val pgSchema = "pg_catalog"
+    override val oid = 1186
+    override val kotlinClass = PgInterval::class
+    override val isDefaultForKotlinType = true
+
+    override val fromBinary: (ByteArray, Int, Int) -> PgInterval = { data, offset, _ ->
+        val time = data.getLongBE(offset)
+        val days = data.getIntBE(offset + 8)
+        val months = data.getIntBE(offset + 12)
+        PgInterval(time, days, months)
+    }
+
+    override val toBinary: (PgInterval, PgByteWriter) -> Unit = { value, writer ->
+        writer.writeLong(value.time)
+        writer.writeInt(value.days)
+        writer.writeInt(value.months)
     }
 }

@@ -15,7 +15,7 @@ import kotlinx.datetime.toKotlinLocalTime
  *
  * ## Notes
  *
- * - [kotlinx.datetime.Instant.DISTANT_PAST] and [kotlinx.datetime.Instant.DISTANT_FUTURE] are provided
+ * - [kotlin.time.Instant.DISTANT_PAST] and [kotlin.time.Instant.DISTANT_FUTURE] are provided
  *   by the Kotlin standard library and map to PostgreSQL TIMESTAMPTZ infinity values.
  */
 
