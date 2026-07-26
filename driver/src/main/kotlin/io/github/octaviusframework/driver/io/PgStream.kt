@@ -29,6 +29,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
     var processId: Int = -1
     var secretKey: ByteArray = ByteArray(0)
     var isBroken: Boolean = false
+    var maxCachedRowSize: Int = 65536
 
     /**
      * Shared buffers used to reduce memory allocations during 'DataRow' deserialization.
@@ -163,7 +164,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                         val rowDataSize = payloadLength - 2
                         
                         val rowDataBuffer: ByteArray
-                        if (rowDataSize > 65536) { // Don't cache arrays larger than 64KB to avoid memory leaks on huge values
+                        if (rowDataSize > maxCachedRowSize) { // Don't cache arrays larger than maxCachedRowSize to avoid memory leaks on huge values
                             rowDataBuffer = ByteArray(rowDataSize)
                         } else {
                             if (sharedRowData.size < rowDataSize) {

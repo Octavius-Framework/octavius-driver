@@ -46,6 +46,7 @@ object OctaviusConnectionFactory {
         authenticator.authenticate(user, password)
 
         stream.networkTimeout = properties.socketTimeout?.let { it * 1000 } ?: 0
+        properties.maxCachedRowSize?.let { stream.maxCachedRowSize = it }
 
         val serverVersion = stream.parameters["server_version"]
         if (serverVersion != null) {

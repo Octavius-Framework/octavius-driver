@@ -14,6 +14,8 @@ class OctaviusProperties {
 
     var loginTimeout: Int? = null
     var socketTimeout: Int? = null
+    
+    var maxCachedRowSize: Int? = null
 
     var ssl: Boolean? = null
     var sslmode: SslMode? = null
@@ -33,6 +35,7 @@ class OctaviusProperties {
             "databasename", "database" -> databaseName = value
             "logintimeout" -> loginTimeout = value.toIntOrNull()
             "sockettimeout" -> socketTimeout = value.toIntOrNull()
+            "maxcachedrowsize" -> maxCachedRowSize = value.toIntOrNull()
             "ssl" -> ssl = value.toBoolean()
             "sslmode" -> sslmode = SslMode.of(value)
             "sslrootcert" -> sslrootcert = value
@@ -51,6 +54,7 @@ class OctaviusProperties {
         other.databaseName?.let { databaseName = it }
         other.loginTimeout?.let { loginTimeout = it }
         other.socketTimeout?.let { socketTimeout = it }
+        other.maxCachedRowSize?.let { maxCachedRowSize = it }
         other.ssl?.let { ssl = it }
         other.sslmode?.let { sslmode = it }
         other.sslrootcert?.let { sslrootcert = it }
@@ -123,6 +127,7 @@ class OctaviusProperties {
         password?.let { queryParams["password"] = it }
         loginTimeout?.let { queryParams["loginTimeout"] = it.toString() }
         socketTimeout?.let { queryParams["socketTimeout"] = it.toString() }
+        maxCachedRowSize?.let { queryParams["maxCachedRowSize"] = it.toString() }
         ssl?.let { queryParams["ssl"] = it.toString() }
         sslmode?.let { queryParams["sslmode"] = it.value }
         sslrootcert?.let { queryParams["sslrootcert"] = it }
