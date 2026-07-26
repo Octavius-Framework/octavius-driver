@@ -3,8 +3,10 @@ package io.github.octaviusframework.driver.type
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
+import kotlinx.datetime.DateTimePeriod
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration
 
 class PgIntervalIntegrationTest {
 
@@ -71,5 +73,93 @@ class PgIntervalIntegrationTest {
 
         assertEquals(PgInterval.Infinity, result.get(0))
         assertEquals(PgInterval.MinusInfinity, result.get(1))
+    }
+
+    @Test
+    fun `test DateTimePeriod to PgInterval roundtrip`() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val period =DateTimePeriod(
+            years = 2,
+            months = 3,
+            days = 10,
+            hours = 14,
+            minutes = 30,
+            seconds = 15,
+            nanoseconds = 500_000_000 // 0.5s
+        )
+        val interval = period.toPgInterval()
+
+        val result = session.createNativeQuery("SELECT $1 as interval")
+            .fetchOne(interval)
+            
+        assertEquals(interval, result.get(0))
+        assertEquals(period, (result.get<PgInterval>(0)).toDateTimePeriod())
+    }
+
+    @Test
+    fun `test Duration exact to PgInterval roundtrip`() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val duration = Duration.parseIsoString("PT45H30M15.123S")
+        val interval = duration.toPgIntervalExact()
+
+        val result = session.createNativeQuery("SELECT $1 as interval")
+            .fetchOne(interval)
+            
+        assertEquals(interval, result.get(0))
+        assertEquals(duration, result.get<PgInterval>(0).toDurationExact())
+    }
+
+    @Test
+    fun `test Duration approximate to PgInterval roundtrip`() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        // 35 days in hours
+        val duration = Duration.parseIsoString("PT840H")
+        val interval = duration.toPgIntervalApproximate()
+
+        val result = session.createNativeQuery("SELECT $1 as interval")
+            .fetchOne(interval)
+            
+        assertEquals(interval, result.get(0))
+        assertEquals(duration, result.get<PgInterval>(0).toDurationApproximate())
+    }
+
+    @Test
+    fun `test edge cases for negative periods and durations`() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val negativePeriod = DateTimePeriod(
+            years = -1,
+            months = -5,
+            days = -10,
+            hours = -2,
+            minutes = -30
+        )
+        val intervalPeriod = negativePeriod.toPgInterval()
+        
+        val negativeDuration = Duration.parseIsoString("-PT15H30M")
+        val intervalDuration = negativeDuration.toPgIntervalExact()
+
+        val result = session.createNativeQuery("SELECT $1 as p1, $2 as d2")
+            .fetchOne(intervalPeriod, intervalDuration)
+            
+        assertEquals(intervalPeriod, result.get(0))
+        assertEquals(intervalDuration, result.get(1))
+        assertEquals(negativePeriod, result.get<PgInterval>(0).toDateTimePeriod())
+        assertEquals(negativeDuration, result.get<PgInterval>(1).toDurationExact())
     }
 }
