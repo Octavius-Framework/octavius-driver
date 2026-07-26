@@ -179,12 +179,38 @@ internal object IntervalCodec : TypeCodec<PgInterval> {
         val time = data.getLongBE(offset)
         val days = data.getIntBE(offset + 8)
         val months = data.getIntBE(offset + 12)
-        PgInterval(time, days, months)
+
+        when {
+            time == Long.MAX_VALUE && days == Int.MAX_VALUE && months == Int.MAX_VALUE ->
+                PgInterval.Infinity
+
+            time == Long.MIN_VALUE && days == Int.MIN_VALUE && months == Int.MIN_VALUE ->
+                PgInterval.MinusInfinity
+
+            else ->
+                PgInterval.Finite(time, days, months)
+        }
     }
 
     override val toBinary: (PgInterval, PgByteWriter) -> Unit = { value, writer ->
-        writer.writeLong(value.time)
-        writer.writeInt(value.days)
-        writer.writeInt(value.months)
+        when (value) {
+            is PgInterval.Finite -> {
+                writer.writeLong(value.time)
+                writer.writeInt(value.days)
+                writer.writeInt(value.months)
+            }
+
+            PgInterval.Infinity -> {
+                writer.writeLong(Long.MAX_VALUE)
+                writer.writeInt(Int.MAX_VALUE)
+                writer.writeInt(Int.MAX_VALUE)
+            }
+
+            PgInterval.MinusInfinity -> {
+                writer.writeLong(Long.MIN_VALUE)
+                writer.writeInt(Int.MIN_VALUE)
+                writer.writeInt(Int.MIN_VALUE)
+            }
+        }
     }
 }
