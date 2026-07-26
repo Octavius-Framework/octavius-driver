@@ -3,13 +3,21 @@ package io.github.octaviusframework.driver.registry
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicDomainCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicEnumCodec
+import io.github.octaviusframework.driver.codec.dynamic.DynamicContainerCodec
 import io.github.octaviusframework.driver.codec.standard.*
+import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.container.PgMultirange
+import io.github.octaviusframework.driver.container.PgRange
+import io.github.octaviusframework.driver.container.PgRecord
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverterRegistry
+import io.github.octaviusframework.driver.converter.parameter.range.MultiRangeParameterConverter
+import io.github.octaviusframework.driver.converter.parameter.range.RangeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.standard.JsonElementParameterConverter
 import io.github.octaviusframework.driver.converter.result.array.CollectionArrayConverter
 import io.github.octaviusframework.driver.converter.result.array.PrimitiveArrayConverter
@@ -17,6 +25,8 @@ import io.github.octaviusframework.driver.converter.result.composite.MapComposit
 import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
+import io.github.octaviusframework.driver.converter.result.range.MultiRangeResultConverter
+import io.github.octaviusframework.driver.converter.result.range.RangeResultConverter
 import io.github.octaviusframework.driver.converter.result.record.MapRecordConverter
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
@@ -26,9 +36,12 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.reflect.KClass
 
 class TypeRegistry {
+    val loadLock = ReentrantLock()
+
     @Volatile
     internal var isLoaded: Boolean = false
 
@@ -41,6 +54,8 @@ class TypeRegistry {
         addConverter(MapRowConverter())
         addConverter(MapRecordConverter())
         addConverter(JsonElementConverter())
+        addConverter(RangeResultConverter())
+        addConverter(MultiRangeResultConverter())
     }
 
     val parameterConverterRegistry = ParameterConverterRegistry().apply {
@@ -48,6 +63,8 @@ class TypeRegistry {
         addConverter(CollectionArrayParameterConverter())
         addConverter(ReflectionCompositeParameterConverter())
         addConverter(JsonElementParameterConverter())
+        addConverter(RangeParameterConverter())
+        addConverter(MultiRangeParameterConverter())
     }
 
     fun registerResultConverter(converter: ResultConverter<*, *>) {
@@ -62,8 +79,13 @@ class TypeRegistry {
     var types: IntObjectMap<PgType> = IntObjectMap()
 
     @Volatile
-    private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
+    var typesByName: Map<String, Map<String, Int>> = emptyMap()
 
+    @Volatile
+    var arrayTypesByElementOid: IntObjectMap<PgType.Array> = IntObjectMap()
+
+    @Volatile
+    private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
 
 
     @Volatile
@@ -106,6 +128,12 @@ class TypeRegistry {
         fun register(codec: TypeCodec<*>) {
             if (codec.isDefaultForKotlinType) {
                 classMap[codec.kotlinClass] = codec
+
+                if (codec.kotlinClass.isSealed) {
+                    codec.kotlinClass.sealedSubclasses.forEach { subclass ->
+                        classMap[subclass] = codec
+                    }
+                }
             }
             if (codec.oid != null) {
                 oidMap[codec.oid!!] = codec
@@ -117,23 +145,24 @@ class TypeRegistry {
         register(NameCodec)
         register(CharCodec)
 
-        register(ShortCodec)
+        register(SmallIntCodec)
         register(IntCodec)
-        register(LongCodec)
-        register(FloatCodec)
+        register(BigIntCodec)
+        register(RealCodec)
         register(DoubleCodec)
         register(BooleanCodec)
-        register(StringCodec)
+        register(TextCodec)
         register(VarcharCodec)
         register(BpcharCodec)
-        register(ByteArrayCodec)
+        register(ByteaCodec)
         register(UnknownCodec)
 
         // DateTime
-        register(InstantCodec)
-        register(LocalDateTimeCodec)
-        register(LocalDateCodec)
-        register(LocalTimeCodec)
+        register(TimestamptzCodec)
+        register(TimestampCodec)
+        register(DateCodec)
+        register(TimeCodec)
+        register(IntervalCodec)
 
         // Json
         register(JsonbCodec)
@@ -141,7 +170,7 @@ class TypeRegistry {
 
         register(UuidCodec)
         register(NumericCodec)
-        register(UnitCodec)
+        register(VoidCodec)
     }
 
     /**
@@ -153,9 +182,14 @@ class TypeRegistry {
         val newOidMap = IntObjectMap(codecsByOid)
         val newClassMap = codecsByClass.toMutableMap()
         val newCodecToOid = codecToOid.toMutableMap()
-        
+
         if (codec.isDefaultForKotlinType) {
             newClassMap[codec.kotlinClass] = codec
+            if (codec.kotlinClass.isSealed) {
+                codec.kotlinClass.sealedSubclasses.forEach { subclass ->
+                    newClassMap[subclass] = codec
+                }
+            }
         }
 
         if (codec.oid != null) {
@@ -186,6 +220,10 @@ class TypeRegistry {
         return codecToOid[codec] ?: codec.oid
     }
 
+    fun getArrayTypeByElementOid(elementOid: Int): PgType.Array? {
+        return arrayTypesByElementOid[elementOid]
+    }
+
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
@@ -193,14 +231,29 @@ class TypeRegistry {
     fun updateTypes(newTypes: Map<Int, PgType>, searchPath: List<String> = emptyList()) {
         val newOidMap = IntObjectMap(codecsByOid)
         val newCodecToOid = codecToOid.toMutableMap()
-        
+
+        // Preallocate to avoid any rehashes during initialization (load factor 0.75)
+        val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
+        val newTypesByName = mutableMapOf<String, MutableMap<String, Int>>()
+        val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
+
+        for ((oid, type) in newTypes) {
+            intMap[oid] = type
+            newTypesByName.getOrPut(type.name) { mutableMapOf() }[type.schema] = oid
+            if (type is PgType.Array) {
+                newArrayTypesByElementOid[type.elementOid] = type
+            }
+        }
+
         for ((codec, previousOid) in codecToOid) {
             if (codec.oid == null) {
-                val resolvedOid = resolveOid(
-                    codec.pgTypeName,
-                    codec.pgSchema,
+                val resolvedOid = resolveOidInternal(
+                    typeName = codec.pgTypeName,
+                    requestedSchema = codec.pgSchema,
+                    isArray = false,
                     searchPath = searchPath,
-                    sourceTypes = newTypes.values
+                    typesByNameMap = newTypesByName,
+                    arrayTypesMap = newArrayTypesByElementOid
                 )
                 newOidMap[resolvedOid] = codec
                 newCodecToOid[codec] = resolvedOid
@@ -208,23 +261,34 @@ class TypeRegistry {
         }
 
         for ((oid, type) in newTypes) {
-            if (type is PgType.Enum && !newOidMap.containsKey(oid)) {
-                val enumCodec = DynamicEnumCodec(oid, type.name, type.schema)
-                newOidMap[oid] = enumCodec
-                newCodecToOid[enumCodec] = oid
-            } else if (type is PgType.Domain && !newOidMap.containsKey(oid)) {
-                val domainCodec = DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, this)
-                newOidMap[oid] = domainCodec
-                newCodecToOid[domainCodec] = oid
+            if (!newOidMap.containsKey(oid)) {
+                val codec = when (type) {
+                    is PgType.Enum -> DynamicEnumCodec(oid, type.name, type.schema)
+                    is PgType.Domain -> DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, this)
+                    is PgType.Array -> DynamicContainerCodec(oid, type.name, type.schema, PgArray::class, this)
+                    is PgType.Composite -> DynamicContainerCodec(oid, type.name, type.schema, PgComposite::class, this)
+                    is PgType.Record -> DynamicContainerCodec(oid, type.name, type.schema, PgRecord::class, this)
+                    is PgType.Range -> DynamicContainerCodec(oid, type.name, type.schema, PgRange::class, this)
+                    is PgType.Multirange -> DynamicContainerCodec(
+                        oid,
+                        type.name,
+                        type.schema,
+                        PgMultirange::class,
+                        this
+                    )
+
+                    else -> null
+                }
+                if (codec != null) {
+                    newOidMap[oid] = codec
+                    newCodecToOid[codec] = oid
+                }
             }
         }
 
-        // Preallocate to avoid any rehashes during initialization (load factor 0.75)
-        val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
-        for ((oid, type) in newTypes) {
-            intMap[oid] = type
-        }
         types = intMap
+        typesByName = newTypesByName
+        arrayTypesByElementOid = newArrayTypesByElementOid
         codecsByOid = newOidMap
         codecToOid = newCodecToOid
     }
@@ -234,16 +298,22 @@ class TypeRegistry {
         typeName: String,
         requestedSchema: String,
         isArray: Boolean = false,
-        searchPath: List<String>,
-        sourceTypes: Iterable<PgType> = types.values
+        searchPath: List<String>
     ): Int {
-        // Find matching types by name
-        val schemasForName = sourceTypes
-            .filter { it.name == typeName }
-            .groupBy { it.schema }
-            .mapValues { it.value.first().oid }
+        return resolveOidInternal(typeName, requestedSchema, isArray, searchPath, typesByName, arrayTypesByElementOid)
+    }
 
-        if (schemasForName.isEmpty()) {
+    private fun resolveOidInternal(
+        typeName: String,
+        requestedSchema: String,
+        isArray: Boolean,
+        searchPath: List<String>,
+        typesByNameMap: Map<String, Map<String, Int>>,
+        arrayTypesMap: IntObjectMap<PgType.Array>
+    ): Int {
+        val schemasForName = typesByNameMap[typeName]
+
+        if (schemasForName.isNullOrEmpty()) {
             throw OctaviusTypeException(
                 messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                 typeName = typeName,
@@ -287,7 +357,7 @@ class TypeRegistry {
         }
 
         if (isArray) {
-            val arrayType = types.values.firstOrNull { it is PgType.Array && it.elementOid == resolvedOid }
+            val arrayType = arrayTypesMap[resolvedOid]
                 ?: throw OctaviusTypeException(
                     messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                     typeName = typeName,

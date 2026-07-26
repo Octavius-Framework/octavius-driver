@@ -72,17 +72,10 @@ object PgSslUpgrader {
             val cf = CertificateFactory.getInstance("X.509")
             val certs = FileInputStream(config.certPath).use { cf.generateCertificates(it) }
             
-            val keyBytes = Files.readAllBytes(Paths.get(config.keyPath))
-            var keyString = String(keyBytes, Charsets.UTF_8)
+            val lines = Files.readAllLines(Paths.get(config.keyPath), Charsets.UTF_8)
+            val base64Content = lines.filter { !it.startsWith("-----") }.joinToString("")
             
-            keyString = keyString
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
-                .replace("-----END RSA PRIVATE KEY-----", "")
-                .replace("\\s+".toRegex(), "")
-                
-            val decoded = Base64.getDecoder().decode(keyString)
+            val decoded = Base64.getDecoder().decode(base64Content)
             
             val keySpec = PKCS8EncodedKeySpec(decoded)
             val kf = KeyFactory.getInstance("RSA")

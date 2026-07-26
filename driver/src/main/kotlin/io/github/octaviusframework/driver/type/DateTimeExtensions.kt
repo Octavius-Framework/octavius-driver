@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.type
 
+import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -13,24 +14,9 @@ import kotlinx.datetime.toKotlinLocalTime
  * PostgreSQL's DATE, TIMESTAMP, and TIMESTAMPTZ types support special values 'infinity' and '-infinity'
  * to represent unbounded dates. These extensions provide corresponding constants for Kotlin types.
  *
- * ## Usage with PostgreSQL
- *
- * ```kotlin
- * // Insert a contract with no end date
- * dataAccess.insertInto("contracts")
- *     .values(listOf("end_date"))
- *     .execute("end_date" to LocalDate.DISTANT_FUTURE)  // Stored as 'infinity'
- *
- * // Query returns LocalDate.DISTANT_FUTURE for infinity values
- * val contract = dataAccess.select("end_date")
- *     .from("contracts")
- *     .toSingleOf<Contract>()
- *     .getOrThrow()!!
- * ```
- *
  * ## Notes
  *
- * - [kotlinx.datetime.Instant.DISTANT_PAST] and [kotlinx.datetime.Instant.DISTANT_FUTURE] are provided
+ * - [kotlin.time.Instant.DISTANT_PAST] and [kotlin.time.Instant.DISTANT_FUTURE] are provided
  *   by the Kotlin standard library and map to PostgreSQL TIMESTAMPTZ infinity values.
  */
 
@@ -81,3 +67,39 @@ val LocalTime.Companion.MIN: LocalTime
  */
 val LocalTime.Companion.MAX: LocalTime
     get() = java.time.LocalTime.MAX.toKotlinLocalTime()
+
+// Kotlinx.Datetime throw exception if years + months overflows Int
+//    require(it / 12 in Int.MIN_VALUE..Int.MAX_VALUE) {
+//        "The total number of years in $years years and $months months overflows an Int"
+// Or nanoseconds overflow Long
+//       } catch (_: ArithmeticException) {
+//        throw IllegalArgumentException("The total number of nanoseconds in $hours hours, $minutes minutes, $seconds seconds, and $nanoseconds nanoseconds overflows a Long")
+//    }
+//
+
+/**
+ * The 'infinity' representation for DateTimePeriod.
+ *
+ * **WARNING:** This is strictly a marker value used for mapping PostgreSQL 'infinity' interval.
+ * Do NOT use it for actual date arithmetic (e.g., `date + DateTimePeriod.INFINITY`),
+ * as it will cause an overflow in kotlinx-datetime.
+ */
+val DateTimePeriod.Companion.INFINITY: DateTimePeriod
+    get() = DateTimePeriod(
+        years = Int.MAX_VALUE,
+        days = Int.MAX_VALUE,
+        nanoseconds = Long.MAX_VALUE
+    )
+
+/**
+ * The '-infinity' representation for DateTimePeriod.
+ *
+ * **WARNING:** This is strictly a marker value used for mapping PostgreSQL '-infinity' interval.
+ * Do NOT use it for actual date arithmetic.
+ */
+val DateTimePeriod.Companion.MINUS_INFINITY: DateTimePeriod
+    get() = DateTimePeriod(
+        years = Int.MIN_VALUE,
+        days = Int.MIN_VALUE,
+        nanoseconds = Long.MIN_VALUE
+    )

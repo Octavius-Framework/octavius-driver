@@ -1,11 +1,12 @@
 package io.github.octaviusframework.driver.io
 
 import io.github.octaviusframework.driver.exception.AuthExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusAuthException
+import io.github.octaviusframework.driver.exception.AuthException
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
 import io.github.octaviusframework.driver.notification.PgNotification
+import io.github.octaviusframework.driver.row.FieldDescription
 import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
 import kotlinx.coroutines.channels.BufferOverflow
@@ -15,30 +16,43 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.net.SocketTimeoutException
+import java.util.concurrent.locks.ReentrantLock
 
 private val logger = KotlinLogging.logger {}
 
 class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : AutoCloseable {
+    val lock = ReentrantLock()
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
     var outputStream: PgOutputStream
     var processId: Int = -1
     var secretKey: ByteArray = ByteArray(0)
     var isBroken: Boolean = false
+    var maxCachedRowSize: Int = 65536
+
+    /**
+     * Shared buffers used to reduce memory allocations during 'DataRow' deserialization.
+     * Since 'Row' eagerly parses all values into basic JVM types during initialization,
+     * the underlying byte arrays can be immediately reused for the next row.
+     */
+    private var sharedRowData = ByteArray(1024)
+    private var sharedColumnOffsets = IntArray(16)
+    private var sharedColumnLengths = IntArray(16)
 
     init {
         val connectTimeoutMs = if (loginTimeoutSecs > 0) loginTimeoutSecs * 1000 else 10000
         socket.connect(InetSocketAddress(host, port), connectTimeoutMs)
         socket.soTimeout = connectTimeoutMs
-        inputStream = PgInputStream(socket.getInputStream().buffered(8192))
-        outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
+        inputStream = PgInputStream(socket.getInputStream())
+        outputStream = PgOutputStream(socket.getOutputStream())
     }
 
     fun upgradeToSSL(host: String, port: Int, config: SslConfiguration) {
         val sslSocket = PgSslUpgrader.upgrade(socket, host, port, config)
         socket = sslSocket
-        inputStream = PgInputStream(socket.getInputStream().buffered(8192))
-        outputStream = PgOutputStream(socket.getOutputStream().buffered(8192))
+        inputStream.changeStream(socket.getInputStream())
+        outputStream.changeStream(socket.getOutputStream())
     }
 
 
@@ -50,7 +64,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
             socket.soTimeout = value
         }
     private val _notifications = MutableSharedFlow<PgNotification>(
-        extraBufferCapacity = 64,
+        extraBufferCapacity = 256,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val notifications: SharedFlow<PgNotification> = _notifications
@@ -73,10 +87,13 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
         }
     }
 
-    internal fun receiveMessage(): BackendMessage {
+    internal fun receiveMessage(isPolling: Boolean = false): BackendMessage {
+        var readingTag = true
         try {
             while (true) {
+                readingTag = true
                 val tag = inputStream.readByte().toInt().toChar()
+                readingTag = false
                 val length = inputStream.readInt()
                 val payloadLength = length - 4
 
@@ -117,6 +134,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     '1' -> return ParseCompleteMessage
                     '2' -> return BindCompleteMessage
                     'n' -> return NoDataMessage
+                    's' -> return PortalSuspendedMessage
                     'I' -> return EmptyQueryResponseMessage
                     'C' -> {
                         val commandTag = inputStream.readCString()
@@ -124,7 +142,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                     'T' -> {
                         val numFields = inputStream.readShort().toInt()
-                        val fields = mutableListOf<RowDescriptionMessage.FieldDescription>()
+                        val fields = mutableListOf<FieldDescription>()
                         for (i in 0 until numFields) {
                             val fieldName = inputStream.readCString()
                             val tableOid = inputStream.readInt()
@@ -134,7 +152,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                             val typeModifier = inputStream.readInt()
                             val formatCode = inputStream.readShort()
                             fields.add(
-                                RowDescriptionMessage.FieldDescription(
+                                FieldDescription(
                                     fieldName, tableOid, columnAttr, dataTypeOid, dataTypeSize, typeModifier, formatCode
                                 )
                             )
@@ -143,23 +161,42 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                     'D' -> {
                         val numColumns = inputStream.readShort().toInt()
-                        val rawRowData = inputStream.readBytes(payloadLength - 2)
+                        val rowDataSize = payloadLength - 2
+                        
+                        val rowDataBuffer: ByteArray
+                        if (rowDataSize > maxCachedRowSize) { // Don't cache arrays larger than maxCachedRowSize to avoid memory leaks on huge values
+                            rowDataBuffer = ByteArray(rowDataSize)
+                        } else {
+                            if (sharedRowData.size < rowDataSize) {
+                                var newSize = sharedRowData.size * 2
+                                while (newSize < rowDataSize) newSize *= 2
+                                sharedRowData = ByteArray(newSize)
+                            }
+                            rowDataBuffer = sharedRowData
+                        }
 
-                        val columnOffsets = IntArray(numColumns)
-                        val columnLengths = IntArray(numColumns)
+                        if (sharedColumnOffsets.size < numColumns) {
+                            var newSize = sharedColumnOffsets.size * 2
+                            while (newSize < numColumns) newSize *= 2
+                            sharedColumnOffsets = IntArray(newSize)
+                            sharedColumnLengths = IntArray(newSize)
+                        }
+
+                        inputStream.readFully(rowDataBuffer, rowDataSize)
+
                         var offset = 0
                         for (i in 0 until numColumns) {
-                            val colLength = rawRowData.getIntBE(offset)
+                            val colLength = rowDataBuffer.getIntBE(offset)
                             offset += 4
-                            columnLengths[i] = colLength
+                            sharedColumnLengths[i] = colLength
                             if (colLength == -1) {
-                                columnOffsets[i] = -1
+                                sharedColumnOffsets[i] = -1
                             } else {
-                                columnOffsets[i] = offset
+                                sharedColumnOffsets[i] = offset
                                 offset += colLength
                             }
                         }
-                        return DataRowMessage(rawRowData, columnOffsets, columnLengths)
+                        return DataRowMessage(rowDataBuffer, sharedColumnOffsets, sharedColumnLengths)
                     }
                     else -> {
                         val unparsed = inputStream.readBytes(payloadLength)
@@ -167,6 +204,12 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                     }
                 }
             }
+        } catch (e: SocketTimeoutException) {
+            if (isPolling && readingTag) {
+                throw e
+            }
+            isBroken = true
+            throw e
         } catch (e: IOException) {
             isBroken = true
             throw e
@@ -198,7 +241,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw OctaviusAuthException(
+            else -> throw AuthException(
                 AuthExceptionMessage.UNSUPPORTED_MECHANISM,
                 details = "Unknown authentication type: $type"
             )

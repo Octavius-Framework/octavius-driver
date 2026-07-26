@@ -1,7 +1,9 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLWarning
@@ -22,14 +24,14 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
 
     override fun execute(sql: String?): Boolean {
         checkClosed()
-        if (sql == null) throw OctaviusJdbcException(JdbcExceptionMessage.NULL_SQL)
+        if (sql == null) throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.NULL_SQL)
         connection.queryExecutor.execute(sql)
         return false // Return true only if the first result is a ResultSet
     }
 
     override fun executeUpdate(sql: String?): Int {
         checkClosed()
-        if (sql == null) throw OctaviusJdbcException(JdbcExceptionMessage.NULL_SQL)
+        if (sql == null) throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.NULL_SQL)
         val affected = connection.queryExecutor.update(sql)
         return affected.toInt()
     }
@@ -44,7 +46,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
 
     // --- Everything else throws SQLFeatureNotSupportedException ---
 
-    private fun unsupported(): Nothing = throw OctaviusJdbcException(JdbcExceptionMessage.FEATURE_NOT_SUPPORTED)
+    private fun unsupported(): Nothing = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     override fun <T> unwrap(iface: Class<T>?): T = unsupported()
     override fun isWrapperFor(iface: Class<*>?): Boolean = unsupported()

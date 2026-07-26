@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.composite
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
 import kotlinx.datetime.LocalDate

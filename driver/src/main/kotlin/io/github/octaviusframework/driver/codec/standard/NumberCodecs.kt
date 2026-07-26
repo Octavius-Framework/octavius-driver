@@ -2,12 +2,14 @@ package io.github.octaviusframework.driver.codec.standard
 
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.*
 import java.math.BigDecimal
 import java.math.BigInteger
 
 
-internal object ShortCodec : TypeCodec<Short> {
+internal object SmallIntCodec : TypeCodec<Short> {
     override val pgTypeName = "int2"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 21
@@ -27,7 +29,7 @@ internal object IntCodec : TypeCodec<Int> {
     override val toBinary: (Int, PgByteWriter) -> Unit = { value, writer -> writer.writeInt(value) }
 }
 
-internal object LongCodec : TypeCodec<Long> {
+internal object BigIntCodec : TypeCodec<Long> {
     override val pgTypeName = "int8"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 20
@@ -37,7 +39,7 @@ internal object LongCodec : TypeCodec<Long> {
     override val toBinary: (Long, PgByteWriter) -> Unit = { value, writer -> writer.writeLong(value) }
 }
 
-internal object FloatCodec : TypeCodec<Float> {
+internal object RealCodec : TypeCodec<Float> {
     override val pgTypeName = "float4"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 700
@@ -67,11 +69,14 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
     override val fromBinary: (ByteArray, Int, Int) -> BigDecimal = { data, offset, _ ->
         val ndigits = data.getShortBE(offset + 0).toInt()
         val weight = data.getShortBE(offset + 2).toInt()
-        val sign = data.getShortBE(offset + 4).toInt()
-        val dscale = data.getShortBE(offset + 6).toInt()
+        val sign = data.getShortBE(offset + 4).toInt() and 0xFFFF
+        val dscale = data.getShortBE(offset + 6).toInt() and 0xFFFF
 
         if (sign == 0xC000) {
-            error("NaN is not supported by java.math.BigDecimal") // :<
+            throw OctaviusTypeException(
+                TypeExceptionMessage.VALUE_OUT_OF_RANGE,
+                details = "NaN is not supported by java.math.BigDecimal"
+            )
         }
 
         if (ndigits == 0) {
@@ -129,12 +134,10 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
         val dscale = value.scale().coerceAtLeast(0)
 
         if (value.compareTo(BigDecimal.ZERO) == 0) {
-            val bytes = ByteArray(8)
-            bytes.setShortBE(0, 0) // ndigits
-            bytes.setShortBE(2, 0) // weight
-            bytes.setShortBE(4, sign.toShort()) // sign
-            bytes.setShortBE(6, dscale.toShort()) // dscale
-            writer.writeBytes(bytes)
+            writer.writeShort(0) // ndigits
+            writer.writeShort(0) // weight
+            writer.writeShort(sign.toShort()) // sign
+            writer.writeShort(dscale.toShort()) // dscale
         } else {
             var adjusted = value.abs()
             var adjustedScale = adjusted.scale()
@@ -170,18 +173,14 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
                 }
                 val ndigits = originalNdigits - startIdx
 
-                val bytes = ByteArray(8 + ndigits * 2)
-                bytes.setShortBE(0, ndigits.toShort())
-                bytes.setShortBE(2, weight.toShort())
-                bytes.setShortBE(4, sign.toShort())
-                bytes.setShortBE(6, dscale.toShort())
+                writer.writeShort(ndigits.toShort())
+                writer.writeShort(weight.toShort())
+                writer.writeShort(sign.toShort())
+                writer.writeShort(dscale.toShort())
 
-                var offset = 8
                 for (i in (originalNdigits - 1) downTo startIdx) {
-                    bytes.setShortBE(offset, temp[i].toShort())
-                    offset += 2
+                    writer.writeShort(temp[i].toShort())
                 }
-                writer.writeBytes(bytes)
             } else {
                 // SLOW PATH: Extremely large BigIntegers become a GC nightmare due to `divideAndRemainder()`.
                 val str = unscaled.toString()
@@ -205,27 +204,21 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
 
                 val ndigits = originalNdigits - trailingZeroChunks
 
-                val bytes = ByteArray(8 + ndigits * 2)
-                bytes.setShortBE(0, ndigits.toShort())
-                bytes.setShortBE(2, weight.toShort())
-                bytes.setShortBE(4, sign.toShort())
-                bytes.setShortBE(6, dscale.toShort())
+                writer.writeShort(ndigits.toShort())
+                writer.writeShort(weight.toShort())
+                writer.writeShort(sign.toShort())
+                writer.writeShort(dscale.toShort())
 
-                var offset = 8
                 for (chunkIdx in (originalNdigits - 1) downTo trailingZeroChunks) {
                     val end = len - chunkIdx * 4
                     val start = maxOf(0, end - 4)
                     var digit = 0
                     for (j in start until end) {
-                        digit = digit * 10 + (str[j] - '0') // lightning fast Int parsing
+                        digit = digit * 10 + (str[j] - '0')
                     }
-                    bytes.setShortBE(offset, digit.toShort())
-                    offset += 2
+                    writer.writeShort(digit.toShort())
                 }
-                writer.writeBytes(bytes)
             }
         }
     }
 }
-
-

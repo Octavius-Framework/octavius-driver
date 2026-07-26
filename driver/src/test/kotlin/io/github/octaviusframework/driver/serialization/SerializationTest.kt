@@ -3,19 +3,16 @@ package io.github.octaviusframework.driver.serialization
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.container.ArrayDimension
-import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.query.ParameterSerializer
-import io.github.octaviusframework.driver.query.get
-import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.container.PgArray
-import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.util.*
 import kotlin.test.assertContentEquals
 import kotlin.test.assertNotNull
 
@@ -24,9 +21,9 @@ class SerializationTest {
 
     @Test
     fun testArraySerialization() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -57,9 +54,9 @@ class SerializationTest {
 
     @Test
     fun testFactoryAndSerializationRoundtrip() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -119,9 +116,9 @@ class SerializationTest {
 
     @Test
     fun testQueryWithParameters() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -138,9 +135,9 @@ class SerializationTest {
 
     @Test
     fun testMultidimensionalArray() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -179,9 +176,9 @@ class SerializationTest {
 
     @Test
     fun testParameterSerializerDatabaseRoundTrip() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -216,9 +213,9 @@ class SerializationTest {
     }
     @Test
     fun testRecordMapSerialization() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -238,9 +235,9 @@ class SerializationTest {
 
     @Test
     fun testUnknownTypeSerialization() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 

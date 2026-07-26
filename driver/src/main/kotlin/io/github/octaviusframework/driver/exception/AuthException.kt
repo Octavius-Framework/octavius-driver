@@ -10,7 +10,7 @@ enum class AuthExceptionMessage {
     UNSUPPORTED_PASSWORD_ENCRYPTION
 }
 
-class OctaviusAuthException(
+class AuthException(
     val messageEnum: AuthExceptionMessage,
     val details: String? = null,
     cause: Throwable? = null,

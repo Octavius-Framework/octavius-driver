@@ -5,7 +5,14 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 
 /**
- * Reprezentuje zakres w bazie PostgreSQL (np. int4range, tsrange).
+ * Represents a PostgreSQL range type (e.g., int4range, tsrange).
+ *
+ * @property rangeOid OID of the range type.
+ * @property elementOid OID of the underlying element type of the range bounds.
+ * @property flags Bitmask flags representing the range properties (e.g., empty, inclusive/exclusive bounds).
+ * @property lowerBound The lower bound value of the range, or null if infinite/unbounded.
+ * @property upperBound The upper bound value of the range, or null if infinite/unbounded.
+ * @property typeRegistry Registry used for resolving types.
  */
 class PgRange internal constructor(
     val rangeOid: Int,

@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
     implementation(projects.driver)
-    implementation(libs.hikaricp)
+    implementation(hikari.hikaricp)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)

@@ -6,9 +6,13 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 
 /**
- * Represents a composite structure (e.g. row of a specific type) loaded from the database.
+ * Represents a composite structure (e.g., row of a specific type) loaded from the database.
+ *
+ * @property type The composite type definition.
+ * @property fields Array containing the values of the fields in this composite structure.
+ * @property typeRegistry Registry used for resolving types.
  */
-class PgComposite(
+class PgComposite internal constructor(
     val type: PgType.Composite,
     val fields: Array<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry

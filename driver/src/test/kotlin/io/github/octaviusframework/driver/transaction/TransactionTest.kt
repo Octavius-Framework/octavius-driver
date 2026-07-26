@@ -3,7 +3,8 @@ package io.github.octaviusframework.driver.transaction
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -18,9 +19,9 @@ class TransactionTest {
 
     @BeforeEach
     fun setup() {
-        val props = Properties()
-        props.setProperty("user", "postgres")
-        props.setProperty("password", "1234")
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
 
         session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
@@ -127,7 +128,7 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager successful block`() {
-        session.transaction {
+        session.transaction.required {
             createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
         }
 
@@ -140,7 +141,7 @@ class TransactionTest {
     @Test
     fun `test transaction manager failing block rolls back`() {
         try {
-            session.transaction {
+            session.transaction.required {
                 createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
                 throw RuntimeException("Simulated error")
             }
@@ -156,11 +157,11 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager nested successful block`() {
-        session.transaction {
-            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.transaction.required {
+            session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
-            transaction {
-                createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+            session.transaction.nested {
+                session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
             }
         }
 
@@ -170,12 +171,12 @@ class TransactionTest {
 
     @Test
     fun `test transaction manager nested failing block rolls back to savepoint`() {
-        session.transaction {
-            createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
+        session.transaction.required {
+            session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (1, 'A')").execute()
 
             try {
-                transaction {
-                    createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
+                session.transaction.nested {
+                    session.createNativeQuery("INSERT INTO test_trx (id, value) VALUES (2, 'B')").execute()
                     throw RuntimeException("Simulated error in savepoint")
                 }
             } catch (e: RuntimeException) {

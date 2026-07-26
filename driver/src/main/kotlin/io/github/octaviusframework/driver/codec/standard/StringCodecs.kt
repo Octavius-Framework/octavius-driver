@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.codec.standard
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 
-internal object StringCodec : TypeCodec<String> {
+internal object TextCodec : TypeCodec<String> {
     override val pgTypeName = "text"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 25
@@ -19,8 +19,8 @@ internal object VarcharCodec : TypeCodec<String> {
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1043
     override val kotlinClass = String::class
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
+    override val fromBinary = TextCodec.fromBinary
+    override val toBinary = TextCodec.toBinary
 }
 
 internal object BpcharCodec : TypeCodec<String> {
@@ -28,8 +28,8 @@ internal object BpcharCodec : TypeCodec<String> {
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1042
     override val kotlinClass = String::class
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
+    override val fromBinary = TextCodec.fromBinary
+    override val toBinary = TextCodec.toBinary
 }
 
 internal object UnknownCodec : TypeCodec<String> {
@@ -37,8 +37,8 @@ internal object UnknownCodec : TypeCodec<String> {
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 705
     override val kotlinClass = String::class
-    override val fromBinary = StringCodec.fromBinary
-    override val toBinary = StringCodec.toBinary
+    override val fromBinary = TextCodec.fromBinary
+    override val toBinary = TextCodec.toBinary
 }
 
 

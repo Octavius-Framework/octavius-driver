@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.Serializati
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.query.get
+import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgComposite
@@ -94,7 +94,7 @@ class ManualCompositeIntegrationTest {
             conn.types.registerResultConverter(PaymentInfoResultConverter())
             conn.types.registerParameterConverter(PaymentInfoParameterConverter())
 
-            conn.transaction {
+            conn.transaction.required {
                 val payment = PaymentInfo(1500, "PLN")
                 
                 // Insert przy użyciu NamedQuery i rzutowania na typ payment_info

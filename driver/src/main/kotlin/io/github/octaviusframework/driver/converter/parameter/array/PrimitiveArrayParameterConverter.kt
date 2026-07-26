@@ -25,7 +25,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
             if (componentType != null) {
                 val elementOid = typeRegistry.getCodecByClass(componentType)?.oid
                 if (elementOid != null) {
-                    typeRegistry.types.values.firstOrNull { it is PgType.Array && it.elementOid == elementOid } as? PgType.Array
+                    typeRegistry.getArrayTypeByElementOid(elementOid)
                 } else null
             } else null
         }

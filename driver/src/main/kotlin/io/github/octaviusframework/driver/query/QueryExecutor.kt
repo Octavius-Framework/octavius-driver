@@ -7,12 +7,15 @@ import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.row.Row
+import io.github.octaviusframework.driver.row.RowMetadata
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 class QueryExecutor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry
 ) {
-
     var transactionStatus: Char = 'I'
         private set
 
@@ -20,7 +23,7 @@ class QueryExecutor(
      * Uses Simple Query Protocol (Q). 
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
-    fun execute(sql: String) = synchronized(stream) {
+    fun execute(sql: String) = stream.lock.withLock {
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -60,8 +63,8 @@ class QueryExecutor(
         sql: String,
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
-    ): Long = synchronized(stream) {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
+    ): Long = stream.lock.withLock {
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
         val statementName = ""
         val portalName = ""
         
@@ -120,9 +123,10 @@ class QueryExecutor(
         sql: String,
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null,
-        mapper: ResultMapper
-    ): List<Row> = synchronized(stream) {
-        query(sql, params, parameterSerializer, mapper) { it }
+        mapper: ResultMapper,
+        maxRows: Int = 0
+    ): List<Row> = stream.lock.withLock {
+        query(sql, params, parameterSerializer, mapper, maxRows) { it }
     }
 
     /**
@@ -135,36 +139,46 @@ class QueryExecutor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer?,
         mapper: ResultMapper,
+        maxRows: Int = 0,
         transform: (Row) -> R
-    ): List<R> = synchronized(stream) {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (emptyList<Int>() to ByteArray(0))
+    ): List<R> = stream.lock.withLock {
+        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
         val statementName = ""
         val portalName = ""
         
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
         stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
         stream.sendMessage(DescribeMessage('P', portalName))
-        stream.sendMessage(ExecuteMessage(portalName, 0))
+        stream.sendMessage(ExecuteMessage(portalName, maxRows))
         stream.sendMessage(SyncMessage())
         
         stream.flush()
         
         val rows = mutableListOf<R>()
-        var rowDescription: RowDescriptionMessage? = null
+        var rowMetadata: RowMetadata? = null
         var errorResponse: ErrorResponseMessage? = null
         var errorMessage: String? = null
         
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
-                is RowDescriptionMessage -> rowDescription = msg
+                is ParseCompleteMessage, is BindCompleteMessage, is PortalSuspendedMessage -> { /* Expected */ }
+                is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
                 is NoDataMessage -> { /* Expected if query returns no rows */ }
                 is DataRowMessage -> {
-                    if (rowDescription == null) {
+                    if (rowMetadata == null) {
                         errorMessage = "Received DataRow before RowDescription"
                     } else {
-                        rows.add(transform(OctaviusRow(msg.rawData, msg.columnOffsets, msg.columnLengths, rowDescription.fields, typeRegistry, mapper)))
+                        rows.add(transform(
+                            Row(
+                                msg.rawData,
+                                msg.columnOffsets,
+                                msg.columnLengths,
+                                rowMetadata,
+                                typeRegistry,
+                                mapper
+                            )
+                        ))
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }

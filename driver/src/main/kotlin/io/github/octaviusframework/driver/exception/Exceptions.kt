@@ -83,19 +83,16 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
 
 enum class JdbcExceptionMessage {
     CONNECTION_CLOSED,
-    UNSUPPORTED_ISOLATION_LEVEL,
     AUTO_COMMIT_VIOLATION,
-    INVALID_TIMEOUT,
-    UNWRAP_ERROR,
-    FEATURE_NOT_SUPPORTED,
     INVALID_URL,
     SSL_ERROR,
     UNSUPPORTED_SERVER_VERSION,
     INVALID_SAVEPOINT,
     STATEMENT_CLOSED,
-    NULL_SQL,
     UNKNOWN_TRANSACTION_STATE
 }
+
+
 
 class OctaviusJdbcException(
     val messageEnum: JdbcExceptionMessage,
@@ -109,22 +106,20 @@ class OctaviusJdbcException(
     }
 }
 
+
 private fun generateDeveloperMessage(messageEnum: JdbcExceptionMessage): String =
     when (messageEnum) {
         JdbcExceptionMessage.CONNECTION_CLOSED -> "Operation cannot be performed because the connection is closed."
-        JdbcExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL -> "The requested transaction isolation level is not supported."
         JdbcExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
-        JdbcExceptionMessage.INVALID_TIMEOUT -> "Timeout value cannot be negative."
-        JdbcExceptionMessage.UNWRAP_ERROR -> "Cannot unwrap the connection/statement to the requested interface."
-        JdbcExceptionMessage.FEATURE_NOT_SUPPORTED -> "This feature is not supported by the Octavius JDBC Driver."
         JdbcExceptionMessage.INVALID_URL -> "Invalid JDBC URL provided."
         JdbcExceptionMessage.SSL_ERROR -> "SSL negotiation failed or is not supported by the server."
         JdbcExceptionMessage.UNSUPPORTED_SERVER_VERSION -> "Unsupported PostgreSQL server version. Octavius requires version 18 or higher."
         JdbcExceptionMessage.INVALID_SAVEPOINT -> "Invalid savepoint operation."
         JdbcExceptionMessage.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
-        JdbcExceptionMessage.NULL_SQL -> "SQL string cannot be null."
         JdbcExceptionMessage.UNKNOWN_TRANSACTION_STATE -> "Unknown transaction state."
     }
+
+
 
 // ------------------- STATEMENT -------------------
 

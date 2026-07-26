@@ -1,29 +1,32 @@
 package io.github.octaviusframework.driver.session
-import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 
+import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
+import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
 import java.sql.Connection
-import java.util.concurrent.Executors
+import io.github.octaviusframework.driver.jdbc.unwrapToOctavius
 
 
 internal class OctaviusSessionImpl(
-    private val poolConnection: Connection,
-    private val octaviusConnection: OctaviusConnection
+    private val rawConnection: Connection
 ) : OctaviusSession {
+
+    internal val octaviusConnection: OctaviusConnection
+        get() = rawConnection.unwrapToOctavius()
 
     override val types: TypeManager by lazy {
         TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
     }
 
     override val notifications: NotificationManager by lazy {
-        NotificationManager(octaviusConnection)
+        NotificationManager(this)
     }
 
     override val transaction: TransactionManager by lazy {
@@ -33,50 +36,20 @@ internal class OctaviusSessionImpl(
     override val transactionState: TransactionState
         get() = octaviusConnection.transactionState
 
-    override var transactionIsolationLevel: Int
-        get() = octaviusConnection.transactionIsolation
-        set(value) {
-            octaviusConnection.transactionIsolation = value
-        }
-
-    override var autoCommit: Boolean
-        get() = octaviusConnection.autoCommit
-        set(value) {
-            octaviusConnection.autoCommit = value
-        }
-
-    override fun commit() = octaviusConnection.commit()
-
-    override fun rollback() = octaviusConnection.rollback()
-
-    private var savepointIdCounter: Int = 1
-
     override fun setSavepoint(): OctaviusSavepoint {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        val sp = OctaviusSavepoint(savepointIdCounter++)
-        octaviusConnection.queryExecutor.execute("SAVEPOINT ${sp.pgName}")
-        return sp
+        return unwrapSqlException { rawConnection.setSavepoint() as OctaviusSavepoint }
     }
 
     override fun setSavepoint(name: String): OctaviusSavepoint {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        val sp = OctaviusSavepoint(name)
-        octaviusConnection.queryExecutor.execute("SAVEPOINT ${sp.pgName}")
-        return sp
+        return unwrapSqlException { rawConnection.setSavepoint(name) as OctaviusSavepoint }
     }
 
     override fun rollback(savepoint: OctaviusSavepoint) {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
-        octaviusConnection.queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
+        unwrapSqlException { rawConnection.rollback(savepoint as java.sql.Savepoint) }
     }
 
     override fun releaseSavepoint(savepoint: OctaviusSavepoint) {
-        octaviusConnection.checkClosed()
-        if (autoCommit) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
-        octaviusConnection.queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
+        unwrapSqlException { rawConnection.releaseSavepoint(savepoint as java.sql.Savepoint) }
     }
 
     override fun reloadTypes() {
@@ -105,33 +78,53 @@ internal class OctaviusSessionImpl(
 
     override fun setSearchPath(vararg schemas: String) = octaviusConnection.setSearchPath(*schemas)
 
-    private fun evictHikariConnection(conn: Connection) {
+    // ------------------------------------------Pool Connection--------------------------------------------------------
+
+    private inline fun <T> unwrapSqlException(block: () -> T): T {
         try {
-            if (conn.javaClass.name.startsWith("com.zaxxer.hikari.pool.HikariProxyConnection")) {
-                val checkExceptionMethod = conn.javaClass.superclass.getDeclaredMethod(
-                    "checkException", java.sql.SQLException::class.java
-                )
-                checkExceptionMethod.isAccessible = true
-                checkExceptionMethod.invoke(
-                    conn,
-                    java.sql.SQLException("Connection aborted by OctaviusSession", "08000")
-                )
-            }
-        } catch (e: Exception) {
-            // Ignore reflection errors silently; it might not be Hikari or the internal structure changed
+            return block()
+        } catch (e: SQLExceptionWrapper) {
+            throw e.wrappedException
         }
     }
 
+    override var autoCommit: Boolean
+        get() = unwrapSqlException { rawConnection.autoCommit }
+        set(value) {
+            unwrapSqlException { rawConnection.autoCommit = value }
+        }
+
+    override var readOnly: Boolean
+        get() = unwrapSqlException { rawConnection.isReadOnly }
+        set(value) {
+            unwrapSqlException { rawConnection.isReadOnly = value }
+        }
+
+    override var transactionIsolationLevel: Int
+        get() = unwrapSqlException { rawConnection.transactionIsolation }
+        set(value) {
+            unwrapSqlException { rawConnection.transactionIsolation = value }
+        }
+
+    override var networkTimeout: Int
+        get() = unwrapSqlException { rawConnection.networkTimeout }
+        set(value) {
+            unwrapSqlException { rawConnection.setNetworkTimeout(OctaviusDispatchers.VirtualExecutor, value) }
+        }
+
+    override fun isValid(timeout: Int): Boolean = rawConnection.isValid(timeout)
+
+    override fun commit() = unwrapSqlException { rawConnection.commit() }
+
+    override fun rollback() = unwrapSqlException { rawConnection.rollback() }
+
+    // -------------------------------------------Close/Abort-----------------------------------------------------------
+
     override fun abort() {
-        evictHikariConnection(poolConnection)
         try {
-            poolConnection.abort(Executors.newVirtualThreadPerTaskExecutor())
+            rawConnection.abort(OctaviusDispatchers.VirtualExecutor)
         } catch (e: Exception) {
-            // Fallback if abort is not supported
-            try {
-                poolConnection.close()
-            } catch (ignored: Exception) {
-            }
+            // Internal exception
         }
     }
 
@@ -142,7 +135,7 @@ internal class OctaviusSessionImpl(
                 // we force an abort on the pool connection to evict it from the pool.
                 abort()
             } else {
-                poolConnection.close()
+                rawConnection.close()
             }
         } catch (ignored: Exception) {
         }

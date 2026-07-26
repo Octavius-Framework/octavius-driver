@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.auth
 
 import io.github.octaviusframework.driver.exception.AuthExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusAuthException
+import io.github.octaviusframework.driver.exception.AuthException
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
@@ -27,7 +27,7 @@ internal class Authenticator(private val stream: PgStream) {
      *
      * @param user The username used for authentication.
      * @param password The password for the user, can be null if not required.
-     * @throws OctaviusAuthException If authentication fails, protocol is violated, or unsupported mechanism is requested.
+     * @throws AuthException If authentication fails, protocol is violated, or unsupported mechanism is requested.
      */
     fun authenticate(user: String, password: String?) {
         while (true) {
@@ -42,7 +42,7 @@ internal class Authenticator(private val stream: PgStream) {
                 is AuthenticationMessage.SASL -> {
                     val mechs = msg.mechanisms
                     if (!mechs.contains("SCRAM-SHA-256")) {
-                        throw OctaviusAuthException(
+                        throw AuthException(
                             AuthExceptionMessage.UNSUPPORTED_MECHANISM, details = "Supported: $mechs"
                         )
                     }
@@ -57,7 +57,7 @@ internal class Authenticator(private val stream: PgStream) {
                     // Waiting for SASLContinue
                     val continueMsg = stream.receiveMessage()
                     if (continueMsg !is AuthenticationMessage.SASLContinue) {
-                        throw OctaviusAuthException(
+                        throw AuthException(
                             AuthExceptionMessage.PROTOCOL_VIOLATION,
                             details = "Expected SASLContinue, got: $continueMsg"
                         )
@@ -69,13 +69,13 @@ internal class Authenticator(private val stream: PgStream) {
                     val parts = serverFirstMessage.split(",")
                     val params = parts.associate { it.substring(0, 1) to it.substring(2) }
 
-                    val serverNonce = params["r"] ?: throw OctaviusAuthException(
+                    val serverNonce = params["r"] ?: throw AuthException(
                         AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing r in serverFirstMessage"
                     )
-                    val saltB64 = params["s"] ?: throw OctaviusAuthException(
+                    val saltB64 = params["s"] ?: throw AuthException(
                         AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing s in serverFirstMessage"
                     )
-                    val iterationsStr = params["i"] ?: throw OctaviusAuthException(
+                    val iterationsStr = params["i"] ?: throw AuthException(
                         AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing i in serverFirstMessage"
                     )
 
@@ -103,7 +103,7 @@ internal class Authenticator(private val stream: PgStream) {
                         throw ExceptionTranslator.translate(finalMsg)
                     }
                     if (finalMsg !is AuthenticationMessage.SASLFinal) {
-                        throw OctaviusAuthException(
+                        throw AuthException(
                             AuthExceptionMessage.PROTOCOL_VIOLATION,
                             details = "Expected SASLFinal, got: $finalMsg"
                         )
@@ -112,12 +112,12 @@ internal class Authenticator(private val stream: PgStream) {
                     val serverFinalMessage = String(finalMsg.data, StandardCharsets.UTF_8)
                     val serverFinalParts = serverFinalMessage.split(",")
                     val serverParams = serverFinalParts.filter { it.length >= 3 }.associate { it.substring(0, 1) to it.substring(2) }
-                    val serverSignature = serverParams["v"] ?: throw OctaviusAuthException(
+                    val serverSignature = serverParams["v"] ?: throw AuthException(
                         AuthExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing v in serverFinalMessage"
                     )
 
                     if (serverSignature != scramResult.expectedServerSignature) {
-                        throw OctaviusAuthException(
+                        throw AuthException(
                             AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS,
                             details = "Invalid server signature"
                         )
@@ -125,14 +125,14 @@ internal class Authenticator(private val stream: PgStream) {
                 }
 
                 is AuthenticationMessage.CleartextPassword -> {
-                    throw OctaviusAuthException(
+                    throw AuthException(
                         AuthExceptionMessage.UNSUPPORTED_PASSWORD_ENCRYPTION,
                         details = "Server requested CleartextPassword, only SCRAM is supported"
                     )
                 }
 
                 is AuthenticationMessage.MD5Password -> {
-                    throw OctaviusAuthException(
+                    throw AuthException(
                         AuthExceptionMessage.UNSUPPORTED_PASSWORD_ENCRYPTION,
                         details = "Server requested MD5Password, only SCRAM is supported"
                     )

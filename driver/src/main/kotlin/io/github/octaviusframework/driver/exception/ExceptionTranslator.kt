@@ -1,8 +1,6 @@
 package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
-import io.github.octaviusframework.driver.exception.OctaviusAuthException
-import io.github.octaviusframework.driver.exception.AuthExceptionMessage
 
 /**
  * A specialized translator that converts low-level database error messages into a structured hierarchy
@@ -27,7 +25,7 @@ object ExceptionTranslator {
             state.startsWith("22") -> OctaviusException("Data Operation Exception (22): $message", sqlState = state) // TODO: DataOperationException(...)
             
             // Class 28 - Invalid Authorization Specification
-            state.startsWith("28") -> OctaviusAuthException(
+            state.startsWith("28") -> AuthException(
                 AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS,
                 details = "Message: $message",
                 sqlState = state

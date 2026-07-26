@@ -4,28 +4,19 @@ import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
-import java.util.*
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 
 class SslNegotiator(private val stream: PgStream) {
 
-    fun negotiate(host: String, port: Int, properties: Properties) {
-        val sslValue = properties.getProperty("ssl")
-        val sslModeValue = properties.getProperty("sslmode")
-        
-        val sslMode = if (sslModeValue != null) {
-            SslMode.of(sslModeValue)
-        } else if (sslValue?.toBoolean() == true) {
-            SslMode.REQUIRE
-        } else {
-            SslMode.PREFER
-        }
+    fun negotiate(host: String, port: Int, properties: OctaviusProperties) {
+        val sslMode = properties.sslmode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER
 
         val config = SslConfiguration(
             mode = sslMode,
-            rootCertPath = properties.getProperty("sslrootcert"),
-            certPath = properties.getProperty("sslcert"),
-            keyPath = properties.getProperty("sslkey"),
-            keyPassword = properties.getProperty("sslpassword")
+            rootCertPath = properties.sslrootcert,
+            certPath = properties.sslcert,
+            keyPath = properties.sslkey,
+            keyPassword = properties.sslpassword
         )
 
         if (config.mode == SslMode.DISABLE) return

@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.type.DISTANT_FUTURE
 import io.github.octaviusframework.driver.type.DISTANT_PAST
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.type.PgInterval
 import kotlinx.datetime.*
 import kotlin.time.Instant
 
@@ -45,7 +46,7 @@ private fun instantToPgMicros(instant: Instant): Long {
     }
 }
 
-internal object InstantCodec : TypeCodec<Instant> {
+internal object TimestamptzCodec : TypeCodec<Instant> {
     override val pgTypeName = "timestamptz"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1184
@@ -70,7 +71,7 @@ internal object InstantCodec : TypeCodec<Instant> {
     }
 }
 
-internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
+internal object TimestampCodec : TypeCodec<LocalDateTime> {
     override val pgTypeName = "timestamp"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1114
@@ -95,7 +96,7 @@ internal object LocalDateTimeCodec : TypeCodec<LocalDateTime> {
     }
 }
 
-internal object LocalDateCodec : TypeCodec<LocalDate> {
+internal object DateCodec : TypeCodec<LocalDate> {
     override val pgTypeName = "date"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1082
@@ -134,7 +135,7 @@ internal object LocalDateCodec : TypeCodec<LocalDate> {
     }
 }
 
-internal object LocalTimeCodec : TypeCodec<LocalTime> {
+internal object TimeCodec : TypeCodec<LocalTime> {
     override val pgTypeName = "time"
     override val pgSchema: String = "pg_catalog"
     override val oid: Int = 1083
@@ -163,6 +164,53 @@ internal object LocalTimeCodec : TypeCodec<LocalTime> {
         } else {
             val micros = value.toSecondOfDay().toLong() * 1000000L + (value.nanosecond / 1000).toLong()
             writer.writeLong(micros)
+        }
+    }
+}
+
+internal object IntervalCodec : TypeCodec<PgInterval> {
+    override val pgTypeName = "interval"
+    override val pgSchema = "pg_catalog"
+    override val oid = 1186
+    override val kotlinClass = PgInterval::class
+    override val isDefaultForKotlinType = true
+
+    override val fromBinary: (ByteArray, Int, Int) -> PgInterval = { data, offset, _ ->
+        val time = data.getLongBE(offset)
+        val days = data.getIntBE(offset + 8)
+        val months = data.getIntBE(offset + 12)
+
+        when {
+            time == Long.MAX_VALUE && days == Int.MAX_VALUE && months == Int.MAX_VALUE ->
+                PgInterval.Infinity
+
+            time == Long.MIN_VALUE && days == Int.MIN_VALUE && months == Int.MIN_VALUE ->
+                PgInterval.MinusInfinity
+
+            else ->
+                PgInterval.Finite(time, days, months)
+        }
+    }
+
+    override val toBinary: (PgInterval, PgByteWriter) -> Unit = { value, writer ->
+        when (value) {
+            is PgInterval.Finite -> {
+                writer.writeLong(value.time)
+                writer.writeInt(value.days)
+                writer.writeInt(value.months)
+            }
+
+            PgInterval.Infinity -> {
+                writer.writeLong(Long.MAX_VALUE)
+                writer.writeInt(Int.MAX_VALUE)
+                writer.writeInt(Int.MAX_VALUE)
+            }
+
+            PgInterval.MinusInfinity -> {
+                writer.writeLong(Long.MIN_VALUE)
+                writer.writeInt(Int.MIN_VALUE)
+                writer.writeInt(Int.MIN_VALUE)
+            }
         }
     }
 }

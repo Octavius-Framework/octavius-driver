@@ -116,14 +116,15 @@ class ParameterSerializer(
      * Each non-null parameter value is prefixed with its 4-byte length.
      * Null parameters are represented by a 4-byte -1 length.
      */
-    fun serializeAll(parameters: List<Any?>): Pair<List<Int>, ByteArray> {
-        val oids = ArrayList<Int>(parameters.size)
+    fun serializeAll(parameters: List<Any?>): Pair<IntArray, ByteArray> {
+        val oids = IntArray(parameters.size)
         val writer = PgByteWriter()
-
+        
+        var i = 0
         for (param in parameters) {
             val marker = writer.reserveLengthInt()
             val result = serializeValue(param, writer)
-            oids.add(result.oid)
+            oids[i++] = result.oid
 
             if (result.isNull) {
                 writer.updatePosition(marker)
