@@ -128,6 +128,12 @@ class TypeRegistry {
         fun register(codec: TypeCodec<*>) {
             if (codec.isDefaultForKotlinType) {
                 classMap[codec.kotlinClass] = codec
+
+                if (codec.kotlinClass.isSealed) {
+                    codec.kotlinClass.sealedSubclasses.forEach { subclass ->
+                        classMap[subclass] = codec
+                    }
+                }
             }
             if (codec.oid != null) {
                 oidMap[codec.oid!!] = codec
@@ -179,6 +185,11 @@ class TypeRegistry {
 
         if (codec.isDefaultForKotlinType) {
             newClassMap[codec.kotlinClass] = codec
+            if (codec.kotlinClass.isSealed) {
+                codec.kotlinClass.sealedSubclasses.forEach { subclass ->
+                    newClassMap[subclass] = codec
+                }
+            }
         }
 
         if (codec.oid != null) {
