@@ -19,10 +19,10 @@ object ExceptionTranslator {
 
         return when {
             // Class 08 — Connection Exception
-            state.startsWith("08") -> OctaviusException("Connection Exception (08): $message", sqlState = state) // TODO: ConnectionException(message)
+            state.startsWith("08") -> NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, details = message, sqlState = state)
 
             // Class 22 — Data Exception (Invalid data provided by the user)
-            state.startsWith("22") -> OctaviusException("Data Operation Exception (22): $message", sqlState = state) // TODO: DataOperationException(...)
+            state.startsWith("22") -> DataOperationException("Data Operation Exception (22): $message", sqlState = state)
             
             // Class 28 - Invalid Authorization Specification
             state.startsWith("28") -> AuthException(
@@ -39,12 +39,12 @@ object ExceptionTranslator {
                 )
 
             // Class 23 — Integrity Constraint Violation
-            state.startsWith("23") -> OctaviusException("Constraint Violation Exception (23): $message", sqlState = state) // TODO: ConstraintViolationException(...)
+            state.startsWith("23") -> ConstraintViolationException("Constraint Violation Exception (23): $message", sqlState = state)
 
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
                 if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or PG 17+ transaction_timeout
-                    OctaviusException("Transaction Timeout Exception (25): $message", sqlState = state) // TODO: TransactionException(TIMEOUT, message)
+                    TransactionException("Transaction Timeout Exception (25): $message", sqlState = state)
                 } else {
                     BadStatementException(
                         BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
@@ -55,12 +55,12 @@ object ExceptionTranslator {
             }
 
             // Class 40 — Transaction Rollback
-            state.startsWith("40") -> OctaviusException("Transaction Rollback Exception (40): $message", sqlState = state) // TODO: TransactionException(...)
+            state.startsWith("40") -> TransactionException("Transaction Rollback Exception (40): $message", sqlState = state)
 
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {
                 if (state == "42501") {
-                    OctaviusException("Permission Denied (42501): $message", sqlState = state) // TODO: DataOperationException(PERMISSION_DENIED)
+                    PermissionDeniedException("Permission Denied (42501): $message", sqlState = state)
                 } else {
                     val messageEnum = when (state) {
                         "42601", "42602", "42622", "42939", "42000" -> BadStatementExceptionMessage.SYNTAX_ERROR
@@ -87,18 +87,18 @@ object ExceptionTranslator {
 
             state.startsWith("55") -> {
                 if (state == "55P03") { // lock_not_available
-                    OctaviusException("Transaction Timeout Exception (55P03): $message", sqlState = state) // TODO: TransactionException(TIMEOUT, ...)
+                    TransactionException("Transaction Timeout Exception (55P03): $message", sqlState = state)
                 } else {
-                    OctaviusException("Database object state error ($state): $message", sqlState = state) // TODO: ConnectionException(...)
+                    DatabaseSystemException("Database object state error ($state): $message", sqlState = state)
                 }
             }
 
-            state == "57014" -> OctaviusException("Transaction Timeout Exception (57014): $message", sqlState = state) // TODO: TransactionException(TIMEOUT, ...)
+            state == "57014" -> TransactionException("Transaction Timeout Exception (57014): $message", sqlState = state)
             state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
-                OctaviusException("Database system error ($state): $message", sqlState = state) // TODO: ConnectionException(...)
+                DatabaseSystemException("Database system error ($state): $message", sqlState = state)
                 
             // Class P0 — PL/pgSQL Error
-            state.startsWith("P0") -> OctaviusException("PL/pgSQL Error ($state): $message", sqlState = state) // TODO: UnknownDatabaseException(...)
+            state.startsWith("P0") -> OctaviusException("PL/pgSQL Error ($state): $message", sqlState = state)
 
             else -> OctaviusException("Unknown database error ($state): $message", sqlState = state)
         }

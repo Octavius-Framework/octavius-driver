@@ -3,6 +3,8 @@ package io.github.octaviusframework.driver.converter.result.array
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.container.PgArray
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -18,7 +20,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
 
     override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
         val pgElementType = source.typeRegistry.types[source.elementOid]
-            ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
+            ?: throw OctaviusTypeException(TypeExceptionMessage.UNKNOWN_OID, oid = source.elementOid)
 
         return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
     }
@@ -67,7 +69,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                         if (kClassForCast != null && kClassForCast.isInstance(value)) {
                             value
                         } else {
-                            throw IllegalArgumentException("No converter found for source ${value::class} and expected type $ktElementType")
+                            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
                         }
                     } else {
                         elementConverter!!.convert(value, ktElementType, context, pgElementType)

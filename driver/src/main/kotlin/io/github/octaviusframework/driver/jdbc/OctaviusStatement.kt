@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.DriverExceptionMessage
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.DriverException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import java.sql.Connection
 import java.sql.ResultSet
@@ -19,7 +19,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
     private var isClosedFlag = false
 
     private fun checkClosed() {
-        if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.STATEMENT_CLOSED)
+        if (isClosedFlag) throw DriverException(DriverExceptionMessage.STATEMENT_CLOSED)
     }
 
     override fun execute(sql: String?): Boolean {

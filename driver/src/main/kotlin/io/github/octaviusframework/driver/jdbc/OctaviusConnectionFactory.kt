@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.DriverExceptionMessage
+import io.github.octaviusframework.driver.exception.DriverException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -54,8 +54,8 @@ object OctaviusConnectionFactory {
             val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
             if (majorVersion < 18) {
                 stream.close()
-                throw OctaviusJdbcException(
-                    JdbcExceptionMessage.UNSUPPORTED_SERVER_VERSION,
+                throw DriverException(
+                    DriverExceptionMessage.UNSUPPORTED_SERVER_VERSION,
                     "Octavius JDBC requires PostgreSQL database version 18 or higher. Received version: $serverVersion"
                 )
             }

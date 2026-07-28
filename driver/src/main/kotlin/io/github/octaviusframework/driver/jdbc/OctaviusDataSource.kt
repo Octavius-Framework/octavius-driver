@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.DriverExceptionMessage
+import io.github.octaviusframework.driver.exception.DriverException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -74,7 +74,7 @@ class OctaviusDataSource : DataSource {
     }
 
     override fun getConnection(username: String?, pass: String?): Connection {
-        val jdbcUrl = url ?: throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_URL, "URL must be set on OctaviusDataSource")
+        val jdbcUrl = url ?: throw DriverException(DriverExceptionMessage.INVALID_URL, "URL must be set on OctaviusDataSource")
         
         val props = octaviusProperties.copy()
         

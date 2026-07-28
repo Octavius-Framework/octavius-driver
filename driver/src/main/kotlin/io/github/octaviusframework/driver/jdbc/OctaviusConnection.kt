@@ -1,9 +1,9 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.DriverExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.DriverException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
@@ -283,13 +283,13 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun commit() = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
+        if (autoCommitFlag) throw DriverException(DriverExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("COMMIT; BEGIN")
     }
 
     override fun rollback() = wrapSqlException { // required by Hikari
         checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
+        if (autoCommitFlag) throw DriverException(DriverExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("ROLLBACK; BEGIN")
     }
 

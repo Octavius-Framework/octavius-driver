@@ -36,6 +36,9 @@ $causeSection
     }
 }
 
+
+
+
 // ------------------- TYPE SYSTEM & CONTAINERS -------------------
 
 enum class TypeExceptionMessage {
@@ -47,7 +50,9 @@ enum class TypeExceptionMessage {
     NOT_ENOUGH_DATA,
     INVALID_PARAMETER_TYPE,
     ANONYMOUS_RECORD_NOT_SUPPORTED,
-    VALUE_OUT_OF_RANGE
+    VALUE_OUT_OF_RANGE,
+    UNKNOWN_OID,
+    UNSUPPORTED_OID
 }
 
 class OctaviusTypeException(
@@ -77,24 +82,25 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
         TypeExceptionMessage.INVALID_PARAMETER_TYPE -> "Invalid parameter type provided for the specified PostgreSQL type (OID)."
         TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED -> "PostgreSQL does not support receiving anonymous composite types (record) as input parameters."
         TypeExceptionMessage.VALUE_OUT_OF_RANGE -> "The value is out of range for the PostgreSQL or Kotlin type."
+        TypeExceptionMessage.UNKNOWN_OID -> "The specified OID is unknown to the TypeRegistry."
+        TypeExceptionMessage.UNSUPPORTED_OID -> "The specified OID is known but not supported."
     }
 
-// ------------------- JDBC SPECIFIC -------------------
+// ------------------- DRIVER SPECIFIC -------------------
 
-enum class JdbcExceptionMessage {
+enum class DriverExceptionMessage {
     AUTO_COMMIT_VIOLATION,
     INVALID_URL,
     SSL_ERROR,
     UNSUPPORTED_SERVER_VERSION,
     INVALID_SAVEPOINT,
-    STATEMENT_CLOSED,
-    UNKNOWN_TRANSACTION_STATE
+    STATEMENT_CLOSED
 }
 
 
 
-class OctaviusJdbcException(
-    val messageEnum: JdbcExceptionMessage,
+class DriverException(
+    val messageEnum: DriverExceptionMessage,
     val details: String? = null,
     cause: Throwable? = null,
     sqlState: String? = null
@@ -106,15 +112,14 @@ class OctaviusJdbcException(
 }
 
 
-private fun generateDeveloperMessage(messageEnum: JdbcExceptionMessage): String =
+private fun generateDeveloperMessage(messageEnum: DriverExceptionMessage): String =
     when (messageEnum) {
-        JdbcExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
-        JdbcExceptionMessage.INVALID_URL -> "Invalid JDBC URL provided."
-        JdbcExceptionMessage.SSL_ERROR -> "SSL negotiation failed or is not supported by the server."
-        JdbcExceptionMessage.UNSUPPORTED_SERVER_VERSION -> "Unsupported PostgreSQL server version. Octavius requires version 18 or higher."
-        JdbcExceptionMessage.INVALID_SAVEPOINT -> "Invalid savepoint operation."
-        JdbcExceptionMessage.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
-        JdbcExceptionMessage.UNKNOWN_TRANSACTION_STATE -> "Unknown transaction state."
+        DriverExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
+        DriverExceptionMessage.INVALID_URL -> "Invalid URL provided."
+        DriverExceptionMessage.SSL_ERROR -> "SSL negotiation failed or is not supported by the server."
+        DriverExceptionMessage.UNSUPPORTED_SERVER_VERSION -> "Unsupported PostgreSQL server version. Octavius requires version 18 or higher."
+        DriverExceptionMessage.INVALID_SAVEPOINT -> "Invalid savepoint operation."
+        DriverExceptionMessage.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
     }
 
 

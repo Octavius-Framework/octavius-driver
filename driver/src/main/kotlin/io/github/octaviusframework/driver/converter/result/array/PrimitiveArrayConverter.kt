@@ -48,7 +48,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             IntArray::class -> {
                 val result = IntArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive IntArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, intKType, pgElementType)
                 }
                 result
@@ -57,7 +57,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             DoubleArray::class -> {
                 val result = DoubleArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive DoubleArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, doubleKType, pgElementType)
                 }
                 result
@@ -65,7 +65,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             FloatArray::class -> {
                 val result = FloatArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive FloatArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, floatKType, pgElementType)
                 }
                 result
@@ -74,7 +74,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             LongArray::class -> {
                 val result = LongArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive LongArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, longKType, pgElementType)
                 }
                 result
@@ -83,7 +83,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             ShortArray::class -> {
                 val result = ShortArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive ShortArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, shortKType, pgElementType)
                 }
                 result
@@ -92,7 +92,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             ByteArray::class -> {
                 val result = ByteArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive ByteArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, byteKType, pgElementType)
                 }
                 result
@@ -101,7 +101,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             BooleanArray::class -> {
                 val result = BooleanArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive BooleanArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, booleanKType, pgElementType)
                 }
                 result
@@ -110,12 +110,12 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
             CharArray::class -> {
                 val result = CharArray(size)
                 for (i in 0 until size) {
-                    val value = elements[i] ?: throw IllegalArgumentException("Null in primitive CharArray")
+                    val value = elements[i]!!
                     result[i] = context.convert(value, charKType, pgElementType)
                 }
                 result
             }
-            else -> throw IllegalArgumentException("Unsupported primitive array type")
+            else -> throw IllegalArgumentException("Unsupported primitive array type") // Impossible
         }
     }
 }
