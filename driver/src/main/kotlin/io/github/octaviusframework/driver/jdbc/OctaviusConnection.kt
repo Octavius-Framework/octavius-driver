@@ -6,6 +6,8 @@ import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionM
 import io.github.octaviusframework.driver.exception.OctaviusJdbcException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
+import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
+import io.github.octaviusframework.driver.exception.NetworkException
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
@@ -48,7 +50,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     internal fun checkClosed() {
-        if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED, "0803")
+        if (isClosedFlag) throw NetworkException(NetworkExceptionMessage.CONNECTION_CLOSED, sqlState = "08003")
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -121,7 +123,11 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
             }
         }
         // Signal for Hikari to evict Connection
-        throw SQLException("Connection explicitly aborted by Octavius", "08000")
+        throw SQLExceptionWrapper(NetworkException(
+            NetworkExceptionMessage.CONNECTION_ABORTED,
+            details = "Connection explicitly aborted by Octavius",
+            sqlState = "08000"
+        ))
     }
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = wrapSqlException { // required by Hikari

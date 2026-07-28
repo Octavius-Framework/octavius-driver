@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.first
 import org.junit.jupiter.api.Test
 import java.util.Properties
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import io.github.octaviusframework.driver.exception.NetworkException
 
 class NotificationManagerTest {
 
@@ -81,5 +83,63 @@ class NotificationManagerTest {
         // startInterruptibleListenerLoop closes the socket upon cancellation, so we shouldn't explicitly close it without expecting errors or it's fine.
         // Session aborts on cancel, so listenerSession might be already closed or aborting.
         notifierSession.close()
+    }
+
+    @Test
+    fun testPollingListenerThrowsOnNetworkError() = runBlocking {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+
+        val listenerSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+        val adminSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val pid = listenerSession.createNativeQuery("SELECT pg_backend_pid()").fetchField<Int>()
+
+        val pollingJob = launch {
+            assertFailsWith<NetworkException> {
+                listenerSession.notifications.startPollingListenerLoop(100)
+            }
+        }
+
+        delay(300)
+
+        // Kill the backend to simulate network error/dropped connection
+        adminSession.createNativeQuery("SELECT pg_terminate_backend($1)").fetchField<Boolean>(pid)
+
+        withTimeout(2000) {
+            pollingJob.join()
+        }
+
+        adminSession.close()
+    }
+
+    @Test
+    fun testInterruptibleListenerThrowsOnNetworkError() = runBlocking {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+
+        val listenerSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+        val adminSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val pid = listenerSession.createNativeQuery("SELECT pg_backend_pid()").fetchField<Int>()
+
+        val listenerJob = launch {
+            assertFailsWith<NetworkException> {
+                listenerSession.notifications.startInterruptibleListenerLoop()
+            }
+        }
+
+        delay(300)
+
+        // Kill the backend to simulate network error/dropped connection
+        adminSession.createNativeQuery("SELECT pg_terminate_backend($1)").fetchField<Boolean>(pid)
+
+        withTimeout(2000) {
+            listenerJob.join()
+        }
+
+        adminSession.close()
     }
 }

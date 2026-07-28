@@ -9,9 +9,12 @@ import io.github.octaviusframework.driver.notification.PgNotification
 import io.github.octaviusframework.driver.row.FieldDescription
 import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
+import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
+import io.github.octaviusframework.driver.exception.NetworkException
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import java.io.EOFException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -74,7 +77,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, noti
             msg.encode(outputStream)
         } catch (e: IOException) {
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
         }
     }
 
@@ -83,11 +86,19 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, noti
             outputStream.flush()
         } catch (e: IOException) {
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
         }
     }
 
-    internal fun receiveMessage(isPolling: Boolean = false): BackendMessage {
+    internal fun receiveMessage(): BackendMessage {
+        return receiveMessageInternal(isPolling = false)!!
+    }
+
+    internal fun pollMessage(): BackendMessage? {
+        return receiveMessageInternal(isPolling = true)
+    }
+
+    internal fun receiveMessageInternal(isPolling: Boolean = false): BackendMessage? {
         var readingTag = true
         try {
             while (true) {
@@ -206,13 +217,16 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, noti
             }
         } catch (e: SocketTimeoutException) {
             if (isPolling && readingTag) {
-                throw e
+                return null
             }
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_TIMEOUT, cause = e)
+        } catch (e: EOFException) {
+            isBroken = true
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_CLOSED_BY_PEER, cause = e)
         } catch (e: IOException) {
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
         }
     }
 

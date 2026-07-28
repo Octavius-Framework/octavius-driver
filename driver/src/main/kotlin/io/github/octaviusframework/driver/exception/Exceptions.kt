@@ -82,7 +82,6 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
 // ------------------- JDBC SPECIFIC -------------------
 
 enum class JdbcExceptionMessage {
-    CONNECTION_CLOSED,
     AUTO_COMMIT_VIOLATION,
     INVALID_URL,
     SSL_ERROR,
@@ -109,7 +108,6 @@ class OctaviusJdbcException(
 
 private fun generateDeveloperMessage(messageEnum: JdbcExceptionMessage): String =
     when (messageEnum) {
-        JdbcExceptionMessage.CONNECTION_CLOSED -> "Operation cannot be performed because the connection is closed."
         JdbcExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
         JdbcExceptionMessage.INVALID_URL -> "Invalid JDBC URL provided."
         JdbcExceptionMessage.SSL_ERROR -> "SSL negotiation failed or is not supported by the server."
@@ -161,4 +159,3 @@ private fun generateDeveloperMessage(messageEnum: BadStatementExceptionMessage):
         BadStatementExceptionMessage.DATA_TYPE_ERROR -> "Data type error in statement."
         BadStatementExceptionMessage.INVALID_TRANSACTION_STATE -> "Invalid transaction state."
     }
-
