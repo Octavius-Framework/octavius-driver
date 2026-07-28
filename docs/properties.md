@@ -15,6 +15,7 @@ Below is the list of supported configuration options:
 * **`logintimeout`** - The time to wait (in seconds) for a successful login.
 * **`sockettimeout`** - The time to wait (in seconds) for a socket read operation (socket timeout).
 * **`maxcachedrowsize`** - The maximum size (in bytes) of a row cached in memory.
+* **`notificationbuffercapacity`** - The maximum capacity of the notification buffer (default: `256`).
 
 ## SSL Configuration
 * **`ssl`** - Whether to use an encrypted connection (`true`/`false`).

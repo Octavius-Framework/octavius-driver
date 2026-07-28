@@ -21,7 +21,7 @@ import java.util.concurrent.locks.ReentrantLock
 
 private val logger = KotlinLogging.logger {}
 
-class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : AutoCloseable {
+class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, notificationBufferCapacity: Int = 256) : AutoCloseable {
     val lock = ReentrantLock()
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
@@ -64,7 +64,7 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
             socket.soTimeout = value
         }
     private val _notifications = MutableSharedFlow<PgNotification>(
-        extraBufferCapacity = 256,
+        extraBufferCapacity = notificationBufferCapacity,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val notifications: SharedFlow<PgNotification> = _notifications

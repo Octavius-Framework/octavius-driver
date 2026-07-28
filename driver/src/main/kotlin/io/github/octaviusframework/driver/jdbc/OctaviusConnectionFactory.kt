@@ -25,8 +25,9 @@ object OctaviusConnectionFactory {
         val user = properties.user ?: "postgres"
         val password = properties.password
         val loginTimeout = properties.loginTimeout ?: DriverManager.getLoginTimeout()
+        val notificationBufferCapacity = properties.notificationBufferCapacity ?: 256
 
-        val stream = PgStream(serverName, portNumber, loginTimeout)
+        val stream = PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity)
 
         val sslNegotiator = SslNegotiator(stream)
         sslNegotiator.negotiate(serverName, portNumber, properties)
