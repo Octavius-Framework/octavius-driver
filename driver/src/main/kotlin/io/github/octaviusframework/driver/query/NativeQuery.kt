@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.typeOf
 
-class NativeQuery(
+class NativeQuery internal constructor(
     sql: String,
     queryExecutor: QueryExecutor,
     typeManager: TypeManager

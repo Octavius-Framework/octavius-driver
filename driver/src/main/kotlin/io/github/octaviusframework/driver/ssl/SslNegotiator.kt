@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 
-class SslNegotiator(private val stream: PgStream) {
+internal class SslNegotiator(private val stream: PgStream) {
 
     fun negotiate(host: String, port: Int, properties: OctaviusProperties) {
         val sslMode = properties.sslmode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER

@@ -12,7 +12,7 @@ import io.github.octaviusframework.driver.row.RowMetadata
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class QueryExecutor(
+class QueryExecutor internal constructor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry
 ) {

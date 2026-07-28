@@ -25,10 +25,10 @@ import java.util.concurrent.Executor
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-class OctaviusConnection(internal val stream: PgStream, internal val url: String) : Connection {
+class OctaviusConnection internal constructor(internal val stream: PgStream, internal val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
 
-    val queryExecutor = QueryExecutor(stream, typeRegistry)
+    internal val queryExecutor = QueryExecutor(stream, typeRegistry)
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())

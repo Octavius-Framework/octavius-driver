@@ -14,7 +14,7 @@ import io.github.octaviusframework.driver.exception.QueryContext
  * Base class for executing queries with parameters.
  */
 @Suppress("UNCHECKED_CAST")
-abstract class OctaviusQuery<T : OctaviusQuery<T>>(
+abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
     @PublishedApi internal val sql: String,
     @PublishedApi internal val queryExecutor: QueryExecutor,
     val typeManager: TypeManager
