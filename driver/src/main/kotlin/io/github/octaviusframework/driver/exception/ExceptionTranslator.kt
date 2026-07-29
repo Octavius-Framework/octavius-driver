@@ -32,9 +32,10 @@ object ExceptionTranslator {
             )
 
             state.startsWith("21") || state.startsWith("0A") || state.startsWith("3D") || state.startsWith("3F") ->
-                BadStatementException(
-                    BadStatementExceptionMessage.INVALID_DEFINITION,
+                StatementException(
+                    StatementExceptionReason.INVALID_DEFINITION,
                     details = "Message: $message",
+                    position = errorMsg.position,
                     sqlState = state
                 )
 
@@ -43,12 +44,13 @@ object ExceptionTranslator {
 
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
-                if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or PG 17+ transaction_timeout
+                if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or transaction_timeout
                     TransactionException("Transaction Timeout Exception (25): $message", sqlState = state)
                 } else {
-                    BadStatementException(
-                        BadStatementExceptionMessage.INVALID_TRANSACTION_STATE,
+                    StatementException(
+                        StatementExceptionReason.INVALID_TRANSACTION_STATE,
                         details = "Message: $message",
+                        position = errorMsg.position,
                         sqlState = state
                     )
                 }
@@ -63,25 +65,27 @@ object ExceptionTranslator {
                     PermissionDeniedException("Permission Denied (42501): $message", sqlState = state)
                 } else {
                     val messageEnum = when (state) {
-                        "42601", "42602", "42622", "42939", "42000" -> BadStatementExceptionMessage.SYNTAX_ERROR
-                        "42703", "42883", "42P01", "42P02", "42704" -> BadStatementExceptionMessage.UNDEFINED_OBJECT
-                        "42701", "42723", "42P03", "42P04", "42P05", "42P06", "42P07", "42712", "42710" -> BadStatementExceptionMessage.DUPLICATE_OBJECT
-                        "42702", "42725", "42P08", "42P09" -> BadStatementExceptionMessage.AMBIGUOUS_OBJECT
-                        "42804", "42P18", "42846", "42P21", "42P22" -> BadStatementExceptionMessage.DATA_TYPE_ERROR
-                        else -> BadStatementExceptionMessage.INVALID_DEFINITION
+                        "42601", "42602", "42622", "42939", "42000" -> StatementExceptionReason.SYNTAX_ERROR
+                        "42703", "42883", "42P01", "42P02", "42704" -> StatementExceptionReason.UNDEFINED_OBJECT
+                        "42701", "42723", "42P03", "42P04", "42P05", "42P06", "42P07", "42712", "42710" -> StatementExceptionReason.DUPLICATE_OBJECT
+                        "42702", "42725", "42P08", "42P09" -> StatementExceptionReason.AMBIGUOUS_OBJECT
+                        "42804", "42P18", "42846", "42P21", "42P22" -> StatementExceptionReason.DATA_TYPE_ERROR
+                        else -> StatementExceptionReason.INVALID_DEFINITION
                     }
-                    BadStatementException(
+                    StatementException(
                         messageEnum,
                         details = "Message: $message",
+                        position = errorMsg.position,
                         sqlState = state
                     )
                 }
             }
 
             state.startsWith("54") ->
-                BadStatementException(
-                    BadStatementExceptionMessage.SYNTAX_ERROR,
+                StatementException(
+                    StatementExceptionReason.SYNTAX_ERROR,
                     details = "Message: $message",
+                    position = errorMsg.position,
                     sqlState = state
                 )
 
