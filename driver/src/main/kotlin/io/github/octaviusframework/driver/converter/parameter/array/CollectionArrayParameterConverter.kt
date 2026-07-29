@@ -47,7 +47,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return arrayDimensions to flatList
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
         val typeRegistry = typeManager.registry
         val (dimensions, list) = getDimensionsAndFlatten(source)
 

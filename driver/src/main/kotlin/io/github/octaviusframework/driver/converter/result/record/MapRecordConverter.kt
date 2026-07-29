@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgRecord
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -24,7 +25,7 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
         }
 
         if (source.fields.size % 2 != 0) {
-            throw IllegalArgumentException("Record fields must be in key-value pairs (even number of fields expected)")
+            throw IllegalArgumentException("Record fields must be in key-value pairs (even number of fields expected)") //TODO proper exception
         }
 
         val result = mutableMapOf<String, Any?>()
@@ -34,9 +35,9 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
             
             val valRaw = source.get<Any?>(i + 1)
             val valOid = source.getAttributeOid(i + 1)
-            val valType = source.typeRegistry.types[valOid]!!
+            val valType = source.typeRegistry.types[valOid] ?: throw OctaviusInternalException()
             
-            result[key] = if (valRaw == null) null else context.convert<Any?>(valRaw, valueType, valType)
+            result[key] = if (valRaw == null) null else context.convert(valRaw, valueType, valType)
         }
         return result
     }

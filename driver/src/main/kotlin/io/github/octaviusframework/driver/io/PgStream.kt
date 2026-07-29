@@ -11,6 +11,7 @@ import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
 import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
 import io.github.octaviusframework.driver.exception.NetworkException
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -307,10 +308,7 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw AuthException(
-                AuthExceptionMessage.UNSUPPORTED_MECHANISM,
-                details = "Unknown authentication type: $type"
-            )
+            else -> throw OctaviusInternalException()
         }
     }
 

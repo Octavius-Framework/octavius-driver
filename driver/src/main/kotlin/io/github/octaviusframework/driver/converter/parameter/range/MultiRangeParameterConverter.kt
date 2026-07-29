@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.converter.parameter.range
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
@@ -13,7 +14,7 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         return source is MultiRange<*>
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
         val multiRange = source as MultiRange<*>
         val typeRegistry = typeManager.registry
 
@@ -42,7 +43,7 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         }
 
         val rangeOid = pgType.rangeOid
-        val rangePgType = typeRegistry.types[rangeOid] as? PgType.Range ?: return null
+        val rangePgType = typeRegistry.types[rangeOid] as? PgType.Range ?: throw OctaviusInternalException()
         val elementOid = rangePgType.subtypeOid
 
         val pgRanges = multiRange.ranges.map { range ->

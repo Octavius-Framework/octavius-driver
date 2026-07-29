@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgRange
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.type.Range
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -21,7 +22,7 @@ class RangeResultConverter : ResultConverter<PgRange, Range<*>> {
         val ktElementType = expectedType.arguments.firstOrNull()?.type 
             ?: typeOf<Any>()
         val pgElementType = source.typeRegistry.types[source.elementOid]
-            ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
+            ?: throw OctaviusInternalException()
 
         val lower = source.lowerBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }
         val upper = source.upperBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }

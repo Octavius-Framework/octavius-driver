@@ -26,8 +26,8 @@ class EnumParameterConverter<T : Enum<T>>(
         return enumClass.isInstance(source)
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
-        return enumToPg[source]
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
+        return enumToPg[source]!!
     }
 }
 
@@ -55,7 +55,7 @@ class EnumResultConverter<T : Enum<T>>(
 
     override fun convert(source: String, expectedType: KType, context: DeserializationContext, sourceType: PgType): T {
         return pgToEnum[source]
-            ?: throw IllegalArgumentException("Unknown enum value: $source for enum ${enumClass.simpleName}")
+            ?: throw IllegalArgumentException("Unknown enum value: $source for enum ${enumClass.simpleName}") //TODO proper Exception
     }
 }
 

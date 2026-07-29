@@ -17,7 +17,7 @@ class NamedParameterQuery internal constructor(
         val parsed = SqlParameterParser.parse(sql)
         val listParams = parsed.paramNames.map {
             if (!params.containsKey(it)) {
-                throw IllegalArgumentException("Missing parameter: $it")
+                throw IllegalArgumentException("Missing parameter: $it") //TODO proper exception
             }
             params[it]
         }
@@ -36,7 +36,7 @@ class NamedParameterQuery internal constructor(
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
         }
-        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" }
+        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
         return rows.first()
     }
 
@@ -45,7 +45,7 @@ class NamedParameterQuery internal constructor(
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
         }
-        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" }
+        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
         return rows.firstOrNull()
     }
 

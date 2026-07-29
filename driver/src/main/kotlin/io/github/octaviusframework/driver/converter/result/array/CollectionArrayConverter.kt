@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -20,7 +21,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
 
     override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
         val pgElementType = source.typeRegistry.types[source.elementOid]
-            ?: throw OctaviusTypeException(TypeExceptionMessage.UNKNOWN_OID, oid = source.elementOid)
+            ?: throw OctaviusInternalException()
 
         return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
     }

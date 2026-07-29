@@ -8,6 +8,7 @@ import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.container.PgRecord
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getIntBE
@@ -41,16 +42,12 @@ internal object ContainerCodec {
      */
     fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.types[oid]) {
-            is PgType.Array -> parsePgArray(data, offset, length, pgType.oid, typeRegistry)
+            is PgType.Array -> parsePgArray(data, offset, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(data, offset, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(data, offset, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(data, offset, pgType.oid, typeRegistry)
             is PgType.Record -> parsePgRecord(data, offset, pgType.oid, typeRegistry)
-            else -> throw OctaviusTypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
-                oid = oid,
-                details = "Expected container type"
-            )
+            else -> throw OctaviusInternalException()
         }
     }
 
@@ -59,17 +56,12 @@ internal object ContainerCodec {
      *
      * @param data The byte array containing the payload.
      * @param offset The starting position in the byte array.
-     * @param length The total length of the array payload.
      * @param oid The OID of the array type.
      * @param typeRegistry Registry to look up types and codecs.
      * @return The parsed [PgArray].
      */
-    fun parsePgArray(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgArray {
+    fun parsePgArray(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgArray {
         var localOffset = offset
-        if (length < 12) throw OctaviusTypeException(
-            TypeExceptionMessage.NOT_ENOUGH_DATA,
-            details = "Not enough data for PgArray (min. 12)"
-        )
 
         val ndims = data.getIntBE(localOffset); localOffset += 4
         localOffset += 4 // hasNullsInt ignored
@@ -105,7 +97,6 @@ internal object ContainerCodec {
      *
      * @param data The byte array containing the payload.
      * @param offset The starting position in the byte array.
-     * @param length The total length of the composite payload.
      * @param oid The OID of the composite type.
      * @param typeRegistry Registry to look up types and codecs.
      * @return The parsed [PgComposite].
@@ -139,7 +130,6 @@ internal object ContainerCodec {
      *
      * @param data The byte array containing the payload.
      * @param offset The starting position in the byte array.
-     * @param length The total length of the record payload.
      * @param oid The OID of the record type.
      * @param typeRegistry Registry to look up types and codecs.
      * @return The parsed [PgRecord].
@@ -178,7 +168,6 @@ internal object ContainerCodec {
      *
      * @param data The byte array containing the payload.
      * @param offset The starting position in the byte array.
-     * @param length The total length of the range payload.
      * @param oid The OID of the range type.
      * @param typeRegistry Registry to look up types and codecs.
      * @return The parsed [PgRange].
@@ -222,7 +211,6 @@ internal object ContainerCodec {
      *
      * @param data The byte array containing the payload.
      * @param offset The starting position in the byte array.
-     * @param length The total length of the multirange payload.
      * @param oid The OID of the multirange type.
      * @param typeRegistry Registry to look up types and codecs.
      * @return The parsed [PgMultirange].

@@ -18,11 +18,11 @@ class RowMetadata(
     }
 
     fun getColumnIndex(columnName: String): Int {
-        return nameToIndexCache[columnName] ?: throw IllegalArgumentException("Column not found: $columnName")
+        return nameToIndexCache[columnName] ?: throw IllegalArgumentException("Column not found: $columnName") //TODO proper exception
     }
 
     fun getOid(index: Int): Int {
-        if (index !in descriptors.indices) throw IllegalArgumentException("Column index out of bounds: $index")
+        if (index !in descriptors.indices) throw IllegalArgumentException("Column index out of bounds: $index") //TODO proper exception
         return descriptors[index].dataTypeOid
     }
 }

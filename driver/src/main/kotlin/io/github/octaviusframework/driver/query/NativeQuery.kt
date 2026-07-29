@@ -22,7 +22,7 @@ class NativeQuery internal constructor(
         val rows = withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
         }
-        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" }
+        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
         return rows.first()
     }
 
@@ -30,7 +30,7 @@ class NativeQuery internal constructor(
         val rows = withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
         }
-        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" }
+        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
         return rows.firstOrNull()
     }
 

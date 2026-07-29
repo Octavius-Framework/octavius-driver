@@ -25,7 +25,7 @@ class MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
             val rawValue = source.get<Any?>(index)
             val oid = source.type.attributeOids.getOrNull(index)!!
             val type = source.typeRegistry.types[oid]!!
-            result[attributeName] = if (rawValue == null) null else context.convert<Any?>(rawValue, valueType, type)
+            result[attributeName] = if (rawValue == null) null else context.convert(rawValue, valueType, type)
         }
         return result
     }

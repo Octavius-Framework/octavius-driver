@@ -23,11 +23,11 @@ inline fun <reified T> Row.get(index: Int): T {
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Row.get(columnName: String, targetType: KType): T {
-    return get<T>(getColumnIndex(columnName), targetType)
+    return get(getColumnIndex(columnName), targetType)
 }
 
 inline fun <reified T> Row.get(columnName: String): T {
-    return get<T>(getColumnIndex(columnName), typeOf<T>())
+    return get(getColumnIndex(columnName), typeOf<T>())
 }
 
 class Row(
@@ -59,7 +59,7 @@ class Row(
     }
 
     fun getRaw(index: Int): Any? {
-        if (index !in values.indices) throw IllegalArgumentException("Column index out of bounds: $index")
+        if (index !in values.indices) throw IllegalArgumentException("Column index out of bounds: $index") //TODO proper exception
         return values[index]
     }
 

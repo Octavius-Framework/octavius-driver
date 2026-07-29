@@ -8,6 +8,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 
 class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
@@ -15,7 +16,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
         return source.javaClass.isArray && source.javaClass.componentType?.isPrimitive == true
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
         val typeRegistry = typeManager.registry
 
         val arrayType = if (expectedOid != null) {
@@ -47,7 +48,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
             is ShortArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
             is BooleanArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
             is CharArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            else -> throw IllegalArgumentException("Unsupported primitive array type")
+            else -> throw OctaviusInternalException()
         }
 
         val dimensions = listOf(ArrayDimension(convertedElements.size, 1))
