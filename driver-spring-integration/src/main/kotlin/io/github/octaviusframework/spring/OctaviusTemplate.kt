@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.session.OctaviusSessionOperations
 import io.github.octaviusframework.spring.exception.OctaviusDataAccessException
 import io.github.octaviusframework.spring.exception.OctaviusExceptionTranslator
 import org.springframework.jdbc.datasource.DataSourceUtils
@@ -28,7 +29,7 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
      * @return the result of the action
      * @throws org.springframework.dao.DataAccessException if a database access error occurs or an exception is translated
      */
-    fun <T> execute(action: (OctaviusSession) -> T): T {
+    fun <T> execute(action: (OctaviusSessionOperations) -> T): T {
         val con = DataSourceUtils.doGetConnection(dataSource)
         try {
             val session = con.getOctaviusSession()
