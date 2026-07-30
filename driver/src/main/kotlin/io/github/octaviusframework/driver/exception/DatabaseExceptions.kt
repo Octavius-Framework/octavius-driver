@@ -10,12 +10,6 @@ class DataOperationException(
     sqlState: String? = null
 ) : OctaviusException(message, cause, sqlState)
 
-class ConstraintViolationException(
-    message: String,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException(message, cause, sqlState)
-
 class TransactionException(
     message: String,
     cause: Throwable? = null,

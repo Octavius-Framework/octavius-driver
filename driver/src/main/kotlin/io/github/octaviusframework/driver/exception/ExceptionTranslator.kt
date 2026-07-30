@@ -40,7 +40,26 @@ object ExceptionTranslator {
                 )
 
             // Class 23 — Integrity Constraint Violation
-            state.startsWith("23") -> ConstraintViolationException("Constraint Violation Exception (23): $message", sqlState = state)
+            state.startsWith("23") -> {
+                val reason = when (state) {
+                    "23505" -> ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION
+                    "23503" -> ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION
+                    "23502" -> ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION
+                    "23514" -> ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION
+                    "23P01" -> ConstraintViolationExceptionMessage.EXCLUSION_CONSTRAINT_VIOLATION
+                    else -> ConstraintViolationExceptionMessage.UNKNOWN
+                }
+                ConstraintViolationException(
+                    reason = reason,
+                    details = "Message: $message",
+                    cause = null,
+                    sqlState = state,
+                    schema = errorMsg.schema,
+                    table = errorMsg.table,
+                    column = errorMsg.column,
+                    constraint = errorMsg.constraint
+                )
+            }
 
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
@@ -57,7 +76,22 @@ object ExceptionTranslator {
             }
 
             // Class 40 — Transaction Rollback
-            state.startsWith("40") -> TransactionException("Transaction Rollback Exception (40): $message", sqlState = state)
+            state.startsWith("40") -> {
+                if (state == "40002") {
+                    ConstraintViolationException(
+                        reason = ConstraintViolationExceptionMessage.UNKNOWN,
+                        details = "Message: $message",
+                        cause = null,
+                        sqlState = state,
+                        schema = errorMsg.schema,
+                        table = errorMsg.table,
+                        column = errorMsg.column,
+                        constraint = errorMsg.constraint
+                    )
+                } else {
+                    TransactionException("Transaction Rollback Exception (40): $message", sqlState = state)
+                }
+            }
 
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {

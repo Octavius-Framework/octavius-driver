@@ -44,7 +44,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
 
     override fun getConnection(): Connection = connection
 
-    // --- Everything else throws SQLFeatureNotSupportedException ---
+    // --- Everything else throws UnsupportedFeatureException ---
 
     private fun unsupported(): Nothing = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
 

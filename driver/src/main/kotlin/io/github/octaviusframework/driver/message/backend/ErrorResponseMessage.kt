@@ -30,8 +30,12 @@ class ErrorResponseMessage(val fields: Map<Char, String>) : BackendMessage {
     val severity: String? get() = fields[SEVERITY]
     val code: String? get() = fields[SQLSTATE]
     val position: Int? get() = fields[POSITION]?.toIntOrNull()
+    val schema: String? get() = fields[SCHEMA]
+    val table: String? get() = fields[TABLE]
+    val column: String? get() = fields[COLUMN]
+    val constraint: String? get() = fields[CONSTRAINT]
 
     override fun toString(): String {
-        return "ErrorResponse(severity=$severity, code=$code, message=$message)"
+        return "ErrorResponse(severity=$severity, code=$code, message=$message, schema=$schema, table=$table, column=$column, constraint=$constraint)"
     }
 }
