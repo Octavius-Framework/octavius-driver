@@ -16,11 +16,7 @@ class TransactionException(
     sqlState: String? = null
 ) : OctaviusException(message, cause, sqlState)
 
-class PermissionDeniedException(
-    message: String,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException(message, cause, sqlState)
+
 
 class DatabaseSystemException(
     message: String,

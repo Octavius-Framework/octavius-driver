@@ -96,7 +96,15 @@ object ExceptionTranslator {
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {
                 if (state == "42501") {
-                    PermissionDeniedException("Permission Denied (42501): $message", sqlState = state)
+                    PermissionDeniedException(
+                        message = "Permission Denied (42501): $message",
+                        sqlState = state,
+                        schema = errorMsg.schema,
+                        table = errorMsg.table,
+                        column = errorMsg.column,
+                        datatype = errorMsg.datatype,
+                        routine = errorMsg.routine
+                    )
                 } else {
                     val messageEnum = when (state) {
                         "42601", "42602", "42622", "42939", "42000" -> StatementExceptionReason.SYNTAX_ERROR
