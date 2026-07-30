@@ -1,6 +1,9 @@
 package io.github.octaviusframework.driver.exception
 
 
+/**
+ * Represents specific types of network-related errors that can occur during database communication.
+ */
 enum class NetworkExceptionMessage {
     CONNECTION_ERROR,
     CONNECTION_TIMEOUT,
@@ -9,6 +12,15 @@ enum class NetworkExceptionMessage {
     CONNECTION_ABORTED
 }
 
+/**
+ * Exception thrown when a network error disrupts communication with the database server.
+ *
+ * This can occur during active queries or while the connection is idle, typically resulting from
+ * broken pipes, connection timeouts, or sudden closures by the server or intermediary network devices.
+ *
+ * @property messageEnum The specific type of network failure.
+ * @property details Additional, human-readable details about the failure.
+ */
 class NetworkException(
     val messageEnum: NetworkExceptionMessage,
     val details: String? = null,

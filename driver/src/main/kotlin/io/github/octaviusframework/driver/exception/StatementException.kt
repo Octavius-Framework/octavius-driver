@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.exception
 
+/**
+ * Represents specific reasons for a SQL statement execution failure.
+ */
 enum class StatementExceptionReason {
     SYNTAX_ERROR,
     UNCLOSED_QUOTE,
@@ -13,6 +16,17 @@ enum class StatementExceptionReason {
     INVALID_TRANSACTION_STATE
 }
 
+/**
+ * Exception thrown when an error occurs during the parsing, planning, or execution of a SQL statement.
+ *
+ * This exception covers various query-related errors such as syntax errors, undefined objects,
+ * ambiguous references, and data type mismatches. If the database provides error positioning, 
+ * this exception will format the original SQL query to visually indicate where the error occurred.
+ *
+ * @property reason The categorized reason for the statement failure.
+ * @property details Additional context or hints provided by the database regarding the error.
+ * @property position The 1-based character position in the SQL string where the error occurred, if available.
+ */
 class StatementException(
     val reason: StatementExceptionReason,
     val details: String? = null,

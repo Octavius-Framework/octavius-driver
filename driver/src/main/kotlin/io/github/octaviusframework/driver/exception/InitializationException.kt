@@ -2,6 +2,9 @@ package io.github.octaviusframework.driver.exception
 
 // ------------------- INITIALIZATION -------------------
 
+/**
+ * Represents the specific reason for an initialization failure during database connection or authentication.
+ */
 enum class InitializationExceptionMessage {
     UNSUPPORTED_MECHANISM,
     PROTOCOL_VIOLATION,
@@ -14,6 +17,15 @@ enum class InitializationExceptionMessage {
     CONNECTION_ERROR
 }
 
+/**
+ * Exception thrown when the driver fails to establish a connection or authenticate with the database server.
+ *
+ * This typically occurs during the initial connection handshake and can be caused by network issues,
+ * invalid credentials, unsupported protocols, or incompatible server versions.
+ *
+ * @property messageEnum The specific type of initialization failure.
+ * @property details Additional, human-readable details about the failure.
+ */
 class InitializationException(
     val messageEnum: InitializationExceptionMessage,
     val details: String? = null,
