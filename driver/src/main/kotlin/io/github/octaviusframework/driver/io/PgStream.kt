@@ -22,8 +22,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import java.net.SocketTimeoutException
 import java.util.concurrent.locks.ReentrantLock
 
-private val logger = KotlinLogging.logger {}
-
 /**
  * Represents a connection stream to a PostgreSQL database.
  * Handles reading and writing of PostgreSQL wire protocol messages.
@@ -34,6 +32,11 @@ private val logger = KotlinLogging.logger {}
  * @param notificationBufferCapacity Capacity of the buffer for asynchronous notifications.
  */
 internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, notificationBufferCapacity: Int = 256) : AutoCloseable {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+        // A specific logger name allows users to filter just notices in logback.xml
+        private val noticeLogger = KotlinLogging.logger("io.github.octaviusframework.driver.Notice")
+    }
     val lock = ReentrantLock()
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
@@ -168,7 +171,14 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                             fields[token] = inputStream.readCString()
                         }
                         val notice = NoticeResponseMessage(fields)
-                        // TODO: eventually a logging system
+                        val logMsg = "[PID: $processId] $notice"
+
+                        when (notice.severity) {
+                            "WARNING" -> noticeLogger.warn { logMsg }
+                            "NOTICE", "INFO", "LOG" -> noticeLogger.info { logMsg }
+                            "DEBUG" -> noticeLogger.debug { logMsg }
+                            else -> noticeLogger.info { logMsg }
+                        }
                     }
                     'A' -> {
                         val pid = inputStream.readInt()
