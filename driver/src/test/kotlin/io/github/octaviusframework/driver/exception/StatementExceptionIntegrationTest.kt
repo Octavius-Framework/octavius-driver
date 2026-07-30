@@ -69,7 +69,7 @@ class StatementExceptionIntegrationTest {
         assertEquals(StatementExceptionReason.UNCLOSED_QUOTE, exception.reason)
         // position is 1-indexed, so 15 + 1 = 16
         assertEquals(16, exception.position)
-        
+
         val ctx = assertNotNull(exception.queryContext)
         assertEquals("SELECT @param, 'unclosed quote test", ctx.sql)
         assertNull(ctx.dbSql)

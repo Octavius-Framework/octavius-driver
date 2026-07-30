@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
-import io.github.octaviusframework.driver.exception.DriverExceptionMessage
-import io.github.octaviusframework.driver.exception.DriverException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
+import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -27,24 +27,25 @@ object OctaviusConnectionFactory {
         val loginTimeout = properties.loginTimeout ?: DriverManager.getLoginTimeout()
         val notificationBufferCapacity = properties.notificationBufferCapacity ?: 256
 
-        val stream = PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity)
+        val stream = try {
+            PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity)
+        } catch (e: Exception) {
+            throw InitializationException(InitializationExceptionMessage.CONNECTION_ERROR, e.message, e)
+        }
 
         val sslNegotiator = SslNegotiator(stream)
         sslNegotiator.negotiate(serverName, portNumber, properties)
 
-        val startupParams = mutableMapOf(
-            "user" to user,
-            "database" to databaseName,
-            "client_encoding" to "UTF8"
-        )
-
-        startupParams.putAll(properties.additionalProperties)
+        val startupParams = properties.additionalProperties
+        startupParams["client_encoding"] = "UTF8"
+        startupParams["user"] = user
+        startupParams["database"] = databaseName
 
         stream.sendMessage(StartupMessage(startupParams))
         stream.flush()
 
         val authenticator = Authenticator(stream)
-        authenticator.authenticate(user, password)
+        authenticator.authenticate(password)
 
         stream.networkTimeout = properties.socketTimeout?.let { it * 1000 } ?: 0
         properties.maxCachedRowSize?.let { stream.maxCachedRowSize = it }
@@ -54,9 +55,9 @@ object OctaviusConnectionFactory {
             val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
             if (majorVersion < 18) {
                 stream.close()
-                throw DriverException(
-                    DriverExceptionMessage.UNSUPPORTED_SERVER_VERSION,
-                    "Octavius JDBC requires PostgreSQL database version 18 or higher. Received version: $serverVersion"
+                throw InitializationException(
+                    InitializationExceptionMessage.UNSUPPORTED_SERVER_VERSION,
+                    "Octavius Driver requires PostgreSQL database version 18 or higher. Received version: $serverVersion"
                 )
             }
         }

@@ -25,8 +25,8 @@ object ExceptionTranslator {
             state.startsWith("22") -> DataOperationException("Data Operation Exception (22): $message", sqlState = state)
             
             // Class 28 - Invalid Authorization Specification
-            state.startsWith("28") -> AuthException(
-                AuthExceptionMessage.SERVER_REJECTED_CREDENTIALS,
+            state.startsWith("28") -> InitializationException(
+                InitializationExceptionMessage.SERVER_REJECTED_CREDENTIALS,
                 details = "Message: $message",
                 sqlState = state
             )

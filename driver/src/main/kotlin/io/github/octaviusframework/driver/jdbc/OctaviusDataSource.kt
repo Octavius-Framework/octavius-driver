@@ -1,7 +1,5 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.DriverExceptionMessage
-import io.github.octaviusframework.driver.exception.DriverException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
 import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -14,13 +12,11 @@ import javax.sql.DataSource
 class OctaviusDataSource : DataSource {
     private val octaviusProperties = OctaviusProperties()
 
-    var url: String?
+    var url: String
         get() = octaviusProperties.toUrl()
         set(value) {
-            if (value != null) {
-                val parsed = OctaviusProperties.parse(value)
-                octaviusProperties.merge(parsed)
-            }
+            val parsed = OctaviusProperties.parse(value)
+            octaviusProperties.merge(parsed)
         }
 
     var serverName: String?
@@ -74,14 +70,13 @@ class OctaviusDataSource : DataSource {
     }
 
     override fun getConnection(username: String?, pass: String?): Connection {
-        val jdbcUrl = url ?: throw DriverException(DriverExceptionMessage.INVALID_URL, "URL must be set on OctaviusDataSource")
-        
+
         val props = octaviusProperties.copy()
         
         if (username != null) props.user = username
         if (pass != null) props.password = pass
         
-        return OctaviusConnectionFactory.createConnection(jdbcUrl, props)
+        return OctaviusConnectionFactory.createConnection(url, props)
     }
 
     override fun getLogWriter(): PrintWriter? = logWriter

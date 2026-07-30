@@ -90,9 +90,6 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
 
 enum class DriverExceptionMessage {
     AUTO_COMMIT_VIOLATION,
-    INVALID_URL,
-    SSL_ERROR,
-    UNSUPPORTED_SERVER_VERSION,
     INVALID_SAVEPOINT,
     STATEMENT_CLOSED
 }
@@ -115,9 +112,6 @@ class DriverException(
 private fun generateDeveloperMessage(messageEnum: DriverExceptionMessage): String =
     when (messageEnum) {
         DriverExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
-        DriverExceptionMessage.INVALID_URL -> "Invalid URL provided."
-        DriverExceptionMessage.SSL_ERROR -> "SSL negotiation failed or is not supported by the server."
-        DriverExceptionMessage.UNSUPPORTED_SERVER_VERSION -> "Unsupported PostgreSQL server version. Octavius requires version 18 or higher."
         DriverExceptionMessage.INVALID_SAVEPOINT -> "Invalid savepoint operation."
         DriverExceptionMessage.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
     }
