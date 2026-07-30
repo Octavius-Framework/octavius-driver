@@ -22,7 +22,6 @@ enum class ConstraintViolationExceptionMessage {
 class ConstraintViolationException(
     val reason: ConstraintViolationExceptionMessage,
     val details: String? = null,
-    cause: Throwable? = null,
     sqlState: String? = null,
     val schema: String? = null,
     val table: String? = null,
@@ -30,7 +29,6 @@ class ConstraintViolationException(
     val constraint: String? = null
 ) : OctaviusException(
     message = reason.name,
-    cause = cause,
     sqlState = sqlState
 ) {
     override fun getDetailedMessage(): String = buildString {

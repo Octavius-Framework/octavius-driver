@@ -18,8 +18,4 @@ class TransactionException(
 
 
 
-class DatabaseSystemException(
-    message: String,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException(message, cause, sqlState)
+

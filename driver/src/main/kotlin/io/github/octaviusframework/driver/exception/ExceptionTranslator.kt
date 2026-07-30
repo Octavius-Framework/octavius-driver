@@ -52,7 +52,6 @@ object ExceptionTranslator {
                 ConstraintViolationException(
                     reason = reason,
                     details = "Message: $message",
-                    cause = null,
                     sqlState = state,
                     schema = errorMsg.schema,
                     table = errorMsg.table,
@@ -81,7 +80,6 @@ object ExceptionTranslator {
                     ConstraintViolationException(
                         reason = ConstraintViolationExceptionMessage.UNKNOWN,
                         details = "Message: $message",
-                        cause = null,
                         sqlState = state,
                         schema = errorMsg.schema,
                         table = errorMsg.table,
