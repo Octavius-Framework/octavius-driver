@@ -139,7 +139,7 @@ class OctaviusProperties {
         sslkey?.let { queryParams["sslkey"] = it }
         sslpassword?.let { queryParams["sslpassword"] = it }
 
-        queryParams.putAll(additionalProperties)
+        queryParams.putAll(additionalProperties.toSortedMap())
 
         if (queryParams.isNotEmpty()) {
             urlBuilder.append("?")
