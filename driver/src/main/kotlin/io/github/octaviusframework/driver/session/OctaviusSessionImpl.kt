@@ -21,17 +21,11 @@ internal class OctaviusSessionImpl(
     internal val octaviusConnection: OctaviusConnection
         get() = rawConnection.unwrapToOctavius()
 
-    override val types: TypeManager by lazy {
-        TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
-    }
+    override val types: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
 
-    override val notifications: NotificationManager by lazy {
-        NotificationManager(this)
-    }
+    override val notifications: NotificationManager = NotificationManager(this)
 
-    override val transaction: TransactionManager by lazy {
-        TransactionManager(this)
-    }
+    override val transaction: TransactionManager = TransactionManager(this)
 
     override val transactionState: TransactionState
         get() = octaviusConnection.transactionState
