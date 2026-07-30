@@ -156,7 +156,23 @@ object ExceptionTranslator {
                 DatabaseSystemException("Database system error ($state): $message", sqlState = state)
                 
             // Class P0 — PL/pgSQL Error
-            state.startsWith("P0") -> OctaviusException("PL/pgSQL Error ($state): $message", sqlState = state)
+            state.startsWith("P0") -> {
+                val reason = when (state) {
+                    "P0001" -> RoutineExecutionExceptionReason.RAISE_EXCEPTION
+                    "P0002" -> RoutineExecutionExceptionReason.NO_DATA_FOUND
+                    "P0003" -> RoutineExecutionExceptionReason.TOO_MANY_ROWS
+                    "P0004" -> RoutineExecutionExceptionReason.ASSERT_FAILURE
+                    else -> RoutineExecutionExceptionReason.UNKNOWN
+                }
+                RoutineExecutionException(
+                    reason = reason, 
+                    details = "Message: $message",
+                    dbDetail = errorMsg.detail,
+                    hint = errorMsg.hint,
+                    whereContext = errorMsg.whereContext,
+                    sqlState = state
+                )
+            }
 
             else -> OctaviusException("Unknown database error ($state): $message", sqlState = state)
         }
