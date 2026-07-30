@@ -11,7 +11,6 @@ import io.github.octaviusframework.driver.exception.BadStatementExceptionMessage
  * which is invalid in PostgreSQL identifiers and will throw a [BadStatementException] if found.
  */
 fun String.quoteAsPgIdentifier(): String {
-    if (this.isBlank()) return ""
     // Always quote the identifier to match pgjdbc behavior and prevent case-folding issues.
     // We add ~10% extra capacity to account for potential escaped quotes.
     val capacity = 2 + (this.length + 10) / 10 * 11
