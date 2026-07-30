@@ -22,7 +22,21 @@ object ExceptionTranslator {
             state.startsWith("08") -> NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, details = message, sqlState = state)
 
             // Class 22 — Data Exception (Invalid data provided by the user)
-            state.startsWith("22") -> DataOperationException("Data Operation Exception (22): $message", sqlState = state)
+            state.startsWith("22") -> {
+                val reason = when (state) {
+                    "22001", "22008", "22015" -> DataExceptionReason.DATA_TRUNCATION
+                    "22003", "22022" -> DataExceptionReason.NUMERIC_OUT_OF_RANGE
+                    "22012" -> DataExceptionReason.DIVISION_BY_ZERO
+                    "22007", "22P02", "22P03", "22018" -> DataExceptionReason.INVALID_FORMAT
+                    "2202E" -> DataExceptionReason.ARRAY_SUBSCRIPT_ERROR
+                    "22004", "22002" -> DataExceptionReason.NULL_VALUE_NOT_ALLOWED
+                    "2201B" -> DataExceptionReason.REGEX_ERROR
+                    "22019", "2200D", "22025", "22P06", "2200C", "2200B" -> DataExceptionReason.ESCAPE_CHARACTER_ERROR
+                    "2200L", "2200M", "2200N", "2200S", "2200T" -> DataExceptionReason.XML_ERROR
+                    else -> if (state.startsWith("2203")) DataExceptionReason.JSON_ERROR else DataExceptionReason.UNKNOWN
+                }
+                DataException(reason, details = "Message: $message", sqlState = state)
+            }
             
             // Class 28 - Invalid Authorization Specification
             state.startsWith("28") -> InitializationException(
