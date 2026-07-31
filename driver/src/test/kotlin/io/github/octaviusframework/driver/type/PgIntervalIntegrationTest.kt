@@ -24,7 +24,7 @@ class PgIntervalIntegrationTest {
         )
 
         val result = session.createNativeQuery("SELECT $1 as interval")
-            .fetchOne(finiteInterval)
+            .fetchOneStrict(finiteInterval)
             
         assertEquals(finiteInterval, result.get(0))
     }
@@ -37,7 +37,7 @@ class PgIntervalIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val result = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(PgInterval.Infinity, PgInterval.MinusInfinity)
+            .fetchOneStrict(PgInterval.Infinity, PgInterval.MinusInfinity)
 
         assertEquals(PgInterval.Infinity, result.get(0))
         assertEquals(PgInterval.MinusInfinity, result.get(1))
@@ -51,7 +51,7 @@ class PgIntervalIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val result = session.createNativeQuery("SELECT '1 year 2 months 15 days 01:00:00.5'::interval")
-            .fetchOne()
+            .fetchOneStrict()
 
         val expected = PgInterval.Finite(
             time = 3600_000_000L + 500_000L, // 1 hour + 0.5 sec
@@ -69,7 +69,7 @@ class PgIntervalIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         val result = session.createNativeQuery("SELECT 'infinity'::interval as f, '-infinity'::interval as p")
-            .fetchOne()
+            .fetchOneStrict()
 
         assertEquals(PgInterval.Infinity, result.get(0))
         assertEquals(PgInterval.MinusInfinity, result.get(1))
@@ -94,7 +94,7 @@ class PgIntervalIntegrationTest {
         val interval = period.toPgInterval()
 
         val result = session.createNativeQuery("SELECT $1 as interval")
-            .fetchOne(interval)
+            .fetchOneStrict(interval)
             
         assertEquals(interval, result.get(0))
         assertEquals(period, (result.get<PgInterval>(0)).toDateTimePeriod())
@@ -111,7 +111,7 @@ class PgIntervalIntegrationTest {
         val interval = duration.toPgIntervalExact()
 
         val result = session.createNativeQuery("SELECT $1 as interval")
-            .fetchOne(interval)
+            .fetchOneStrict(interval)
             
         assertEquals(interval, result.get(0))
         assertEquals(duration, result.get<PgInterval>(0).toDurationExact())
@@ -129,7 +129,7 @@ class PgIntervalIntegrationTest {
         val interval = duration.toPgIntervalApproximate()
 
         val result = session.createNativeQuery("SELECT $1 as interval")
-            .fetchOne(interval)
+            .fetchOneStrict(interval)
             
         assertEquals(interval, result.get(0))
         assertEquals(duration, result.get<PgInterval>(0).toDurationApproximate())
@@ -155,7 +155,7 @@ class PgIntervalIntegrationTest {
         val intervalDuration = negativeDuration.toPgIntervalExact()
 
         val result = session.createNativeQuery("SELECT $1 as p1, $2 as d2")
-            .fetchOne(intervalPeriod, intervalDuration)
+            .fetchOneStrict(intervalPeriod, intervalDuration)
             
         assertEquals(intervalPeriod, result.get(0))
         assertEquals(intervalDuration, result.get(1))

@@ -46,7 +46,7 @@ class CodecRegistrationTest {
         assertEquals(Circle::class, retrievedCodec?.kotlinClass)
 
         // Verify that the codec is used during query execution
-        val row = session.createNativeQuery("SELECT '<(1,2),3>'::circle as circle_test").fetchOne()
+        val row = session.createNativeQuery("SELECT '<(1,2),3>'::circle as circle_test").fetchOneStrict()
         val result = row.get<Circle>("circle_test")
         
         assertNotNull(result)
