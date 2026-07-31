@@ -45,7 +45,8 @@ enum class MappingExceptionMessage {
     NO_CONVERTER_FOUND,
     INVALID_RECORD_FORMAT,
     COLUMN_NOT_FOUND,
-    COLUMN_INDEX_OUT_OF_BOUNDS
+    COLUMN_INDEX_OUT_OF_BOUNDS,
+    USER_CONVERTER_ERROR
 }
 
 class OctaviusMappingException(
@@ -69,6 +70,7 @@ private fun generateDeveloperMessage(messageEnum: MappingExceptionMessage): Stri
         MappingExceptionMessage.INVALID_RECORD_FORMAT -> "The record data is in an invalid format."
         MappingExceptionMessage.COLUMN_NOT_FOUND -> "The requested column was not found in the row metadata."
         MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS -> "The requested column index is out of bounds for the row."
+        MappingExceptionMessage.USER_CONVERTER_ERROR -> "An exception was thrown by a user-provided converter or mapper."
     }
 
 
@@ -86,7 +88,8 @@ enum class TypeExceptionMessage {
     ANONYMOUS_RECORD_NOT_SUPPORTED,
     VALUE_OUT_OF_RANGE,
     UNKNOWN_OID,
-    UNSUPPORTED_OID
+    UNSUPPORTED_OID,
+    USER_CODEC_ERROR
 }
 
 class OctaviusTypeException(
@@ -118,5 +121,6 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
         TypeExceptionMessage.VALUE_OUT_OF_RANGE -> "The value is out of range for the PostgreSQL or Kotlin type."
         TypeExceptionMessage.UNKNOWN_OID -> "The specified OID is unknown to the TypeRegistry."
         TypeExceptionMessage.UNSUPPORTED_OID -> "The specified OID is known but not supported."
+        TypeExceptionMessage.USER_CODEC_ERROR -> "An exception was thrown by a user-provided codec."
     }
 

@@ -77,7 +77,7 @@ object ExceptionTranslator {
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
                 if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or transaction_timeout
-                    TransactionException("Transaction Timeout Exception (25): $message", sqlState = state)
+                    TransactionException(TransactionExceptionReason.TIMEOUT, details = "Message: $message", sqlState = state)
                 } else {
                     StatementException(
                         StatementExceptionReason.INVALID_TRANSACTION_STATE,
@@ -101,7 +101,7 @@ object ExceptionTranslator {
                         constraint = errorMsg.constraint
                     )
                 } else {
-                    TransactionException("Transaction Rollback Exception (40): $message", sqlState = state)
+                    TransactionException(TransactionExceptionReason.ROLLBACK, details = "Message: $message", sqlState = state)
                 }
             }
 
@@ -145,13 +145,13 @@ object ExceptionTranslator {
 
             state.startsWith("55") -> {
                 if (state == "55P03") { // lock_not_available
-                    TransactionException("Transaction Timeout Exception (55P03): $message", sqlState = state)
+                    TransactionException(TransactionExceptionReason.LOCK_NOT_AVAILABLE, details = "Message: $message", sqlState = state)
                 } else {
                     DatabaseSystemException("Database object state error ($state): $message", sqlState = state)
                 }
             }
 
-            state == "57014" -> TransactionException("Transaction Timeout Exception (57014): $message", sqlState = state)
+            state == "57014" -> TransactionException(TransactionExceptionReason.TIMEOUT, details = "Message: $message", sqlState = state)
             state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
                 DatabaseSystemException("Database system error ($state): $message", sqlState = state)
                 
