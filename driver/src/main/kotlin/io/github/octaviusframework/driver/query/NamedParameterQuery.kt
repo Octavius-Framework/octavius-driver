@@ -24,6 +24,8 @@ class NamedParameterQuery internal constructor(
         return Pair(parsed.transformedSql, listParams)
     }
 
+    //--------------------------------------------Row-based Methods-----------------------------------------------------
+
     fun fetchAll(params: Map<String, Any?>): List<Row> {
         val (transformedSql, listParams) = prepareNamedQuery(params)
         return withQueryContext(sql, { params }, { transformedSql }) {
@@ -31,16 +33,9 @@ class NamedParameterQuery internal constructor(
         }
     }
 
-    fun fetchOne(params: Map<String, Any?>): Row {
-        val (transformedSql, listParams) = prepareNamedQuery(params)
-        val rows = withQueryContext(sql, { params }, { transformedSql }) {
-            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
-        }
-        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
-        return rows.first()
-    }
+    fun fetchAll(vararg params: Pair<String, Any?>): List<Row> = fetchAll(params.toMap())
 
-    fun fetchOneOrNull(params: Map<String, Any?>): Row? {
+    fun fetchOne(params: Map<String, Any?>): Row? {
         val (transformedSql, listParams) = prepareNamedQuery(params)
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
@@ -49,26 +44,20 @@ class NamedParameterQuery internal constructor(
         return rows.firstOrNull()
     }
 
-    fun update(params: Map<String, Any?>): Long {
+    fun fetchOne(vararg params: Pair<String, Any?>): Row? = fetchOne(params.toMap())
+
+    fun fetchOneStrict(params: Map<String, Any?>): Row {
         val (transformedSql, listParams) = prepareNamedQuery(params)
-        return withQueryContext(sql, { params }, { transformedSql }) {
-            queryExecutor.update(transformedSql, listParams, parameterSerializer)
+        val rows = withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
         }
+        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
+        return rows.first()
     }
 
-    fun fetchAll(vararg params: Pair<String, Any?>): List<Row> = fetchAll(params.toMap())
+    fun fetchOneStrict(vararg params: Pair<String, Any?>): Row = fetchOneStrict(params.toMap())
 
-    fun fetchOne(vararg params: Pair<String, Any?>): Row = fetchOne(params.toMap())
-
-    fun fetchOneOrNull(vararg params: Pair<String, Any?>): Row? = fetchOneOrNull(params.toMap())
-
-    fun update(vararg params: Pair<String, Any?>): Long = update(params.toMap())
-    
-    fun execute() {
-        withQueryContext(sql, { emptyMap() }) {
-            queryExecutor.execute(sql)
-        }
-    }
+    //----------------------------------------Object Mapping Methods----------------------------------------------------
 
     inline fun <reified T : Any> fetchListOf(params: Map<String, Any?>): List<T> {
         val (transformedSql, listParams) = prepareNamedQuery(params)
@@ -81,19 +70,24 @@ class NamedParameterQuery internal constructor(
         }
     }
 
-    inline fun <reified T : Any> fetchSingleOf(params: Map<String, Any?>): T {
-        val row = fetchOne(params)
-        return row.resultMapper.deserialize(row, typeOf<T>(), PgType.Record)
+    inline fun <reified T : Any> fetchListOf(vararg params: Pair<String, Any?>): List<T> = fetchListOf(params.toMap())
+
+    inline fun <reified T> fetchSingleOf(params: Map<String, Any?>): T {
+        val (transformedSql, listParams) = prepareNamedQuery(params)
+        val targetType = typeOf<T>()
+        val recordType = PgType.Record
+        val rows = withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
+                resultMapper.deserialize<T>(it, targetType, recordType)
+            }
+        }
+        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
+        return rows.firstOrNull() as T //TODO proper exception
     }
 
-    inline fun <reified T : Any> fetchSingleOfOrNull(params: Map<String, Any?>): T? {
-        val row = fetchOneOrNull(params) ?: return null
-        return resultMapper.deserialize(row, typeOf<T>(), PgType.Record)
-    }
+    inline fun <reified T> fetchSingleOf(vararg params: Pair<String, Any?>): T = fetchSingleOf(params.toMap())
 
-    inline fun <reified T> fetchField(params: Map<String, Any?>): T {
-        return fetchOne(params).get<T>(0)
-    }
+    //-----------------------------------------Single Column Methods----------------------------------------------------
 
     inline fun <reified T> fetchColumn(params: Map<String, Any?>): List<T> {
         val (transformedSql, listParams) = prepareNamedQuery(params)
@@ -103,13 +97,49 @@ class NamedParameterQuery internal constructor(
         }
     }
 
-    inline fun <reified T : Any> fetchListOf(vararg params: Pair<String, Any?>): List<T> = fetchListOf(params.toMap())
-
-    inline fun <reified T : Any> fetchSingleOf(vararg params: Pair<String, Any?>): T = fetchSingleOf(params.toMap())
-
-    inline fun <reified T : Any> fetchSingleOfOrNull(vararg params: Pair<String, Any?>): T? = fetchSingleOfOrNull(params.toMap())
-
-    inline fun <reified T> fetchField(vararg params: Pair<String, Any?>): T = fetchField(params.toMap())
-
     inline fun <reified T> fetchColumn(vararg params: Pair<String, Any?>): List<T> = fetchColumn(params.toMap())
+
+    inline fun <reified T> fetchField(params: Map<String, Any?>): T? {
+        val (transformedSql, listParams) = prepareNamedQuery(params)
+        val targetType = typeOf<T>()
+        val rows = withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) { it.get<T>(0, targetType) }
+        }
+        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
+        return rows.firstOrNull()
+    }
+
+    inline fun <reified T> fetchField(vararg params: Pair<String, Any?>): T? = fetchField(params.toMap())
+
+    inline fun <reified T> fetchFieldStrict(params: Map<String, Any?>): T {
+        val (transformedSql, listParams) = prepareNamedQuery(params)
+        val targetType = typeOf<T>()
+        val rows = withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) { it.get<T>(0, targetType) }
+        }
+        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
+        return rows.first()
+    }
+
+    inline fun <reified T> fetchFieldStrict(vararg params: Pair<String, Any?>): T = fetchFieldStrict(params.toMap())
+
+
+
+    fun update(params: Map<String, Any?>): Long {
+        val (transformedSql, listParams) = prepareNamedQuery(params)
+        return withQueryContext(sql, { params }, { transformedSql }) {
+            queryExecutor.update(transformedSql, listParams, parameterSerializer)
+        }
+    }
+
+
+    fun update(vararg params: Pair<String, Any?>): Long = update(params.toMap())
+
+    fun execute() {
+        withQueryContext(sql, { emptyMap() }) {
+            queryExecutor.execute(sql)
+        }
+    }
+
+
 }

@@ -287,7 +287,7 @@ class DeserializationIntegrationTest {
             assertEquals("Kraków", parsedUser.address.city)
 
             // Test serialization
-            val resBack = session.createNativeQuery($$"SELECT $1 AS usr_back")
+            val resBack = session.createNativeQuery("SELECT $1 AS usr_back")
                 .fetchOne(parsedUser)
 
             val usrBack = resBack.get<MapKeyIntegrationUser>("usr_back")
