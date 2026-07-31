@@ -27,28 +27,28 @@ class NativeQuery internal constructor(
     }
 
     fun fetchOne(vararg params: Any?): Row? {
-        val rows = withQueryContext(
+        return withQueryContext(
             sql,
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
+            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
+            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 0 or 1, got at least two rows.")
+            rows.firstOrNull()
         }
-        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 0 or 1, got at least two rows.")
-        return rows.firstOrNull()
     }
 
     fun fetchOneStrict(vararg params: Any?): Row {
-        val rows = withQueryContext(
+        return withQueryContext(
             sql,
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
+            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
+            if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
+            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
+            rows.first()
         }
-        if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
-        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
-        return rows.first()
     }
 
     //----------------------------------------Object Mapping Methods----------------------------------------------------
@@ -70,18 +70,18 @@ class NativeQuery internal constructor(
     inline fun <reified T> fetchSingleOf(vararg params: Any?): T {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        val rows = withQueryContext(
+        return withQueryContext(
             sql,
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
+            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
+            if (rows.isEmpty() && !targetType.isMarkedNullable) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
+            rows.firstOrNull() as T
         }
-        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
-        if (rows.isEmpty() && !targetType.isMarkedNullable) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
-        return rows.firstOrNull() as T
     }
 
     //-----------------------------------------Single Column Methods----------------------------------------------------
@@ -99,39 +99,39 @@ class NativeQuery internal constructor(
 
     inline fun <reified T> fetchField(vararg params: Any?): T? {
         val targetType = typeOf<T>()
-        val rows = withQueryContext(
+        return withQueryContext(
             sql,
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
                 it.get<T>(
                     0,
                     targetType
                 )
             }
+            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least 2 rows.")
+            rows.firstOrNull()
         }
-        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least 2 rows.")
-        return rows.firstOrNull()
     }
 
     inline fun <reified T> fetchFieldStrict(vararg params: Any?): T {
         val targetType = typeOf<T>()
-        val rows = withQueryContext(
+        return withQueryContext(
             sql,
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
                 it.get<T>(
                     0,
                     targetType
                 )
             }
+            if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
+            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
+            rows.first()
         }
-        if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
-        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
-        return rows.first()
     }
 
     //------------------------------------------Modification methods----------------------------------------------------
