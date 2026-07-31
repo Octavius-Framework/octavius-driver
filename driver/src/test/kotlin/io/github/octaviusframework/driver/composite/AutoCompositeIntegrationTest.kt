@@ -91,7 +91,7 @@ class AutoCompositeIntegrationTest {
                 availableDays = availableDays
             )
 
-            val query = $$"SELECT $1 AS emp"
+            val query = "SELECT $1 AS emp"
             println("Sending EmployeeData Native: $emp")
             val resultRow = session.createNativeQuery(query).fetchOne(emp)
             println("Result Row Native: $resultRow")
