@@ -14,7 +14,8 @@ enum class StatementExceptionReason {
     AMBIGUOUS_OBJECT,
     DATA_TYPE_ERROR,
     INVALID_TRANSACTION_STATE,
-    MISSING_NAMED_PARAMETER
+    MISSING_NAMED_PARAMETER,
+    INCORRECT_RESULT_SIZE
 }
 
 /**
@@ -72,4 +73,5 @@ private fun generateDeveloperMessage(reason: StatementExceptionReason): String =
         StatementExceptionReason.DATA_TYPE_ERROR -> "Data type error in statement."
         StatementExceptionReason.INVALID_TRANSACTION_STATE -> "Invalid transaction state."
         StatementExceptionReason.MISSING_NAMED_PARAMETER -> "A required named parameter is missing."
+        StatementExceptionReason.INCORRECT_RESULT_SIZE -> "The query returned an unexpected number of rows."
     }

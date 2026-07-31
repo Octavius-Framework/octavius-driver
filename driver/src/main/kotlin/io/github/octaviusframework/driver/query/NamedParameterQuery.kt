@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.exception.IncorrectResultSizeException
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 
@@ -44,7 +43,7 @@ class NamedParameterQuery internal constructor(
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
         }
-        if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
+        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 0 or 1, got at least two rows.")
         return rows.firstOrNull()
     }
 
@@ -55,7 +54,8 @@ class NamedParameterQuery internal constructor(
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
         }
-        if (rows.size != 1) throw IncorrectResultSizeException(1, rows.size)
+        if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
+        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
         return rows.first()
     }
 
@@ -85,8 +85,8 @@ class NamedParameterQuery internal constructor(
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
         }
-        if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
-        if (rows.isEmpty() && !targetType.isMarkedNullable) throw IncorrectResultSizeException(1, 0)
+        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
+        if (rows.isEmpty() && !targetType.isMarkedNullable) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
         return rows.firstOrNull() as T
     }
 
@@ -115,7 +115,7 @@ class NamedParameterQuery internal constructor(
                 )
             }
         }
-        if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
+        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least 2 rows.")
         return rows.firstOrNull()
     }
 
@@ -132,7 +132,8 @@ class NamedParameterQuery internal constructor(
                 )
             }
         }
-        if (rows.size != 1) throw IncorrectResultSizeException(1, rows.size)
+        if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
+        if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
         return rows.first()
     }
 
@@ -154,6 +155,4 @@ class NamedParameterQuery internal constructor(
             queryExecutor.execute(sql)
         }
     }
-
-
 }

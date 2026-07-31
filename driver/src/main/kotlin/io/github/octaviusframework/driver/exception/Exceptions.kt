@@ -36,17 +36,6 @@ $causeSection
     }
 }
 
-// ------------------- RESULT SIZE -------------------
-
-class IncorrectResultSizeException(
-    val expectedSize: Int,
-    val actualSize: Int,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("Expected $expectedSize row(s), but got $actualSize", cause, sqlState) {
-    override fun getDetailedMessage(): String = "The query returned an unexpected number of rows. Expected $expectedSize, but actual result size is $actualSize."
-}
-
 // ------------------- MAPPING & REFLECTION -------------------
 
 enum class MappingExceptionMessage {
