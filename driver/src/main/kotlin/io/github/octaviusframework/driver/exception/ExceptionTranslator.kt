@@ -56,12 +56,12 @@ object ExceptionTranslator {
             // Class 23 — Integrity Constraint Violation
             state.startsWith("23") -> {
                 val reason = when (state) {
-                    "23505" -> ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION
-                    "23503" -> ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION
-                    "23502" -> ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION
-                    "23514" -> ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION
-                    "23P01" -> ConstraintViolationExceptionMessage.EXCLUSION_CONSTRAINT_VIOLATION
-                    else -> ConstraintViolationExceptionMessage.UNKNOWN
+                    "23505" -> ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION
+                    "23503" -> ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION
+                    "23502" -> ConstraintViolationExceptionReason.NOT_NULL_VIOLATION
+                    "23514" -> ConstraintViolationExceptionReason.CHECK_CONSTRAINT_VIOLATION
+                    "23P01" -> ConstraintViolationExceptionReason.EXCLUSION_CONSTRAINT_VIOLATION
+                    else -> ConstraintViolationExceptionReason.UNKNOWN
                 }
                 ConstraintViolationException(
                     reason = reason,
@@ -92,7 +92,7 @@ object ExceptionTranslator {
             state.startsWith("40") -> {
                 if (state == "40002") {
                     ConstraintViolationException(
-                        reason = ConstraintViolationExceptionMessage.UNKNOWN,
+                        reason = ConstraintViolationExceptionReason.UNKNOWN,
                         details = "Message: $message",
                         sqlState = state,
                         schema = errorMsg.schema,

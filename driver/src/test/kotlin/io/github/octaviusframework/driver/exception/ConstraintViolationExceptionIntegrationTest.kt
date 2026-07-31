@@ -46,7 +46,7 @@ class ConstraintViolationExceptionIntegrationTest {
             session.createNativeQuery("INSERT INTO parent_table (id) VALUES (1)").execute()
         }
         
-        assertEquals(ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION, exception.reason)
+        assertEquals(ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION, exception.reason)
         assertEquals("parent_table", exception.table)
         assertNotNull(exception.constraint) // Usually parent_table_pkey
         assertEquals("public", exception.schema)
@@ -60,7 +60,7 @@ class ConstraintViolationExceptionIntegrationTest {
             session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, 999, 'test', 5)").execute()
         }
         
-        assertEquals(ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION, exception.reason)
+        assertEquals(ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION, exception.reason)
         assertEquals("constraint_test_table", exception.table)
         assertNotNull(exception.constraint)
         assertEquals("public", exception.schema)
@@ -74,7 +74,7 @@ class ConstraintViolationExceptionIntegrationTest {
             session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, NULL, 5)").execute()
         }
         
-        assertEquals(ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION, exception.reason)
+        assertEquals(ConstraintViolationExceptionReason.NOT_NULL_VIOLATION, exception.reason)
         assertEquals("constraint_test_table", exception.table)
         assertEquals("not_null_col", exception.column)
         assertEquals("public", exception.schema)
@@ -88,7 +88,7 @@ class ConstraintViolationExceptionIntegrationTest {
             session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, 'test', 0)").execute()
         }
         
-        assertEquals(ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION, exception.reason)
+        assertEquals(ConstraintViolationExceptionReason.CHECK_CONSTRAINT_VIOLATION, exception.reason)
         assertEquals("constraint_test_table", exception.table)
         assertNotNull(exception.constraint)
         assertEquals("public", exception.schema)

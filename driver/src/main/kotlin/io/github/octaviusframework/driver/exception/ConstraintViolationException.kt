@@ -6,7 +6,7 @@ package io.github.octaviusframework.driver.exception
  * This enum categorizes standard constraint violation errors (such as unique, foreign key, or not-null violations)
  * allowing the application to handle specific constraint errors programmatically without parsing SQL error codes manually.
  */
-enum class ConstraintViolationExceptionMessage {
+enum class ConstraintViolationExceptionReason {
     /** A duplicate value was provided for a unique column or index (PostgreSQL 23505). */
     UNIQUE_CONSTRAINT_VIOLATION,
 
@@ -46,7 +46,7 @@ enum class ConstraintViolationExceptionMessage {
  * @property constraint The specific name of the constraint that was violated, if available.
  */
 class ConstraintViolationException(
-    val reason: ConstraintViolationExceptionMessage,
+    val reason: ConstraintViolationExceptionReason,
     val details: String? = null,
     sqlState: String? = null,
     val schema: String? = null,
@@ -67,12 +67,12 @@ class ConstraintViolationException(
     }
 }
 
-private fun generateDeveloperMessage(messageEnum: ConstraintViolationExceptionMessage): String =
+private fun generateDeveloperMessage(messageEnum: ConstraintViolationExceptionReason): String =
     when (messageEnum) {
-        ConstraintViolationExceptionMessage.UNIQUE_CONSTRAINT_VIOLATION -> "A duplicate value was provided for a unique column or index (PostgreSQL 23505)."
-        ConstraintViolationExceptionMessage.FOREIGN_KEY_VIOLATION -> "A value was provided that does not exist in the referenced table (PostgreSQL 23503)."
-        ConstraintViolationExceptionMessage.NOT_NULL_VIOLATION -> "A null value was provided for a non-nullable column (PostgreSQL 23502)."
-        ConstraintViolationExceptionMessage.CHECK_CONSTRAINT_VIOLATION -> "A value was provided that fails a CHECK constraint (PostgreSQL 23514)."
-        ConstraintViolationExceptionMessage.EXCLUSION_CONSTRAINT_VIOLATION -> "Exclusion constraint violations (PostgreSQL 23P01)."
-        ConstraintViolationExceptionMessage.UNKNOWN -> "Unknown constraint violation."
+        ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION -> "A duplicate value was provided for a unique column or index (PostgreSQL 23505)."
+        ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION -> "A value was provided that does not exist in the referenced table (PostgreSQL 23503)."
+        ConstraintViolationExceptionReason.NOT_NULL_VIOLATION -> "A null value was provided for a non-nullable column (PostgreSQL 23502)."
+        ConstraintViolationExceptionReason.CHECK_CONSTRAINT_VIOLATION -> "A value was provided that fails a CHECK constraint (PostgreSQL 23514)."
+        ConstraintViolationExceptionReason.EXCLUSION_CONSTRAINT_VIOLATION -> "Exclusion constraint violations (PostgreSQL 23P01)."
+        ConstraintViolationExceptionReason.UNKNOWN -> "Unknown constraint violation."
     }
