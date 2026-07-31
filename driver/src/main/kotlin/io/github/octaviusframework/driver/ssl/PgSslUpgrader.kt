@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.ssl
 
+import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import java.io.FileInputStream
 import java.net.Socket
 import java.nio.file.Files
@@ -91,7 +93,11 @@ object PgSslUpgrader {
             kmf.init(keyStore, password)
             return kmf.keyManagers
         } catch (e: Exception) {
-            throw RuntimeException("Failed to load client certificate or private key. Ensure the key is in PKCS8 format without password, or use a supported format.", e) //TODO proper exception
+            throw InitializationException(
+                InitializationExceptionMessage.SSL_ERROR,
+                "Failed to load client certificate or private key. Ensure the key is in PKCS8 format without password, or use a supported format.",
+                e
+            )
         }
     }
 }
