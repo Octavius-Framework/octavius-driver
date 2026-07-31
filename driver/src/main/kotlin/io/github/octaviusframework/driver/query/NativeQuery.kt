@@ -52,7 +52,11 @@ class NativeQuery internal constructor(
     inline fun <reified T : Any> fetchListOf(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+        return withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) {
                 resultMapper.deserialize(it, targetType, recordType)
             }
@@ -62,7 +66,11 @@ class NativeQuery internal constructor(
     inline fun <reified T> fetchSingleOf(vararg params: Any?): T {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        val rows = withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+        val rows = withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
@@ -75,15 +83,28 @@ class NativeQuery internal constructor(
 
     inline fun <reified T> fetchColumn(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
-        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+        return withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) { it.get(0, targetType) }
         }
     }
 
     inline fun <reified T> fetchField(vararg params: Any?): T? {
         val targetType = typeOf<T>()
-        val rows = withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) { it.get<T>(0, targetType) }
+        val rows = withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
+            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+                it.get<T>(
+                    0,
+                    targetType
+                )
+            }
         }
         check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
         return rows.firstOrNull()
@@ -91,8 +112,17 @@ class NativeQuery internal constructor(
 
     inline fun <reified T> fetchFieldStrict(vararg params: Any?): T {
         val targetType = typeOf<T>()
-        val rows = withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) { it.get<T>(0, targetType) }
+        val rows = withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
+            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+                it.get<T>(
+                    0,
+                    targetType
+                )
+            }
         }
         check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
         return rows.first()
@@ -101,7 +131,11 @@ class NativeQuery internal constructor(
     //------------------------------------------Modification methods----------------------------------------------------
 
     fun update(vararg params: Any?): Long {
-        return withQueryContext(sql, { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() }, { sql }, { params.toList() }) {
+        return withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
             queryExecutor.update(sql, params.toList(), parameterSerializer)
         }
     }

@@ -103,7 +103,12 @@ class NamedParameterQuery internal constructor(
         val (transformedSql, listParams) = prepareNamedQuery(params)
         val targetType = typeOf<T>()
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
-            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) { it.get<T>(0, targetType) }
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
+                it.get<T>(
+                    0,
+                    targetType
+                )
+            }
         }
         check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
         return rows.firstOrNull()
@@ -115,14 +120,18 @@ class NamedParameterQuery internal constructor(
         val (transformedSql, listParams) = prepareNamedQuery(params)
         val targetType = typeOf<T>()
         val rows = withQueryContext(sql, { params }, { transformedSql }) {
-            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) { it.get<T>(0, targetType) }
+            queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
+                it.get<T>(
+                    0,
+                    targetType
+                )
+            }
         }
         check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
         return rows.first()
     }
 
     inline fun <reified T> fetchFieldStrict(vararg params: Pair<String, Any?>): T = fetchFieldStrict(params.toMap())
-
 
 
     fun update(params: Map<String, Any?>): Long {
