@@ -21,7 +21,7 @@ class StatementExceptionIntegrationTest {
 
         val exception = assertFailsWith<StatementException> {
             // Error at 'FRO', which is at index 9, position 10
-            session.createNativeQuery("SELECT * FRO test_table").fetchOne()
+            session.createNativeQuery("SELECT * FRO test_table").fetchOneStrict()
         }
 
         assertEquals(StatementExceptionReason.SYNTAX_ERROR, exception.reason)

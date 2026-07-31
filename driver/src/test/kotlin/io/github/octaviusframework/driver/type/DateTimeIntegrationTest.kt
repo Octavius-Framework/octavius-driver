@@ -24,19 +24,19 @@ class DateTimeIntegrationTest {
 
         // 1. Test LocalDate mapping
         val dateResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST)
+            .fetchOneStrict(LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST)
         assertEquals(LocalDate.DISTANT_FUTURE, dateResult.get(0))
         assertEquals(LocalDate.DISTANT_PAST, dateResult.get(1))
 
         // 2. Test LocalDateTime mapping
         val dateTimeResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST)
+            .fetchOneStrict(LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST)
         assertEquals(LocalDateTime.DISTANT_FUTURE, dateTimeResult.get(0))
         assertEquals(LocalDateTime.DISTANT_PAST, dateTimeResult.get(1))
 
         // 3. Test Instant (timestamptz) mapping
         val instantResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
+            .fetchOneStrict(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
         assertEquals(Instant.DISTANT_FUTURE, instantResult.get(0))
         assertEquals(Instant.DISTANT_PAST, instantResult.get(1))
     }

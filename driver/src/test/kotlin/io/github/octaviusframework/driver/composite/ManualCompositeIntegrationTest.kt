@@ -103,7 +103,7 @@ class ManualCompositeIntegrationTest {
 
                 // Pobieramy wewnątrz transakcji
                 val selectQuery = "SELECT payment FROM orders WHERE id = 1"
-                val resultRow = conn.createNativeQuery(selectQuery).fetchOne()
+                val resultRow = conn.createNativeQuery(selectQuery).fetchOneStrict()
                 assertNotNull(resultRow)
 
                 val fetchedPayment = resultRow.get<PaymentInfo>("payment")
@@ -112,7 +112,7 @@ class ManualCompositeIntegrationTest {
             }
             
             // Sprawdzenie poza transakcją
-            val countRows = conn.createNativeQuery("SELECT COUNT(*) FROM orders").fetchOne().get<Long>(0)
+            val countRows = conn.createNativeQuery("SELECT COUNT(*) FROM orders").fetchOneStrict().get<Long>(0)
             assertEquals(1L, countRows)
 
         } finally {

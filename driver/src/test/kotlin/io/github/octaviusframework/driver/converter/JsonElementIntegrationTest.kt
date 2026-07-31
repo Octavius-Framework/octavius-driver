@@ -121,7 +121,7 @@ class JsonElementIntegrationTest {
                 .update(mapOf("id" to 1, "data" to inputJson))
 
             val row = conn.createNamedQuery("SELECT data FROM test_json_elements WHERE id = @id")
-                .fetchOne(mapOf("id" to 1))
+                .fetchOneStrict(mapOf("id" to 1))
 
             val outputJson = row.get<JsonElement>("data")
             assertTrue(outputJson is JsonObject)
@@ -148,7 +148,7 @@ class JsonElementIntegrationTest {
             val holder = MetadataHolder(100, inputJson)
 
             val row = conn.createNamedQuery("SELECT @holder as res")
-                .fetchOne("holder" to holder)
+                .fetchOneStrict("holder" to holder)
 
             val outputHolder = row.get<MetadataHolder>("res")
             assertEquals(100, outputHolder.id)
@@ -170,7 +170,7 @@ class JsonElementIntegrationTest {
 
             // Przekazujemy listę bez jawnego typu, powinno zostać wywnioskowane jako jsonb[]
             val row = conn.createNamedQuery("SELECT @list as res")
-                .fetchOne("list" to list)
+                .fetchOneStrict("list" to list)
 
             val outputList = row.get<List<JsonElement>>("res")
             assertEquals(2, outputList.size)
@@ -190,7 +190,7 @@ class JsonElementIntegrationTest {
             }
 
             val row = conn.createNamedQuery("SELECT pg_typeof(@data)::text as type_name, @data as res")
-                .fetchOne("data" to inputJson.withPgType(PgStandardType.JSON))
+                .fetchOneStrict("data" to inputJson.withPgType(PgStandardType.JSON))
 
             val typeName = row.get<String>("type_name")
             assertEquals("json", typeName)
