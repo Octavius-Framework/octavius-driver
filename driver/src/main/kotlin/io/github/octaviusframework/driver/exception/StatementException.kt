@@ -13,7 +13,8 @@ enum class StatementExceptionReason {
     DUPLICATE_OBJECT,
     AMBIGUOUS_OBJECT,
     DATA_TYPE_ERROR,
-    INVALID_TRANSACTION_STATE
+    INVALID_TRANSACTION_STATE,
+    MISSING_NAMED_PARAMETER
 }
 
 /**
@@ -70,4 +71,5 @@ private fun generateDeveloperMessage(reason: StatementExceptionReason): String =
         StatementExceptionReason.AMBIGUOUS_OBJECT -> "The referenced object is ambiguous."
         StatementExceptionReason.DATA_TYPE_ERROR -> "Data type error in statement."
         StatementExceptionReason.INVALID_TRANSACTION_STATE -> "Invalid transaction state."
+        StatementExceptionReason.MISSING_NAMED_PARAMETER -> "A required named parameter is missing."
     }

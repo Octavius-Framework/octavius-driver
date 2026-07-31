@@ -331,7 +331,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
     override fun setSavepoint(name: String?): Savepoint = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        if (name == null) throw IllegalArgumentException("Savepoint name cannot be null") //TODO proper exception
+        if (name == null) throw DriverException(DriverExceptionMessage.INVALID_SAVEPOINT, "Savepoint name cannot be null")
         val sp = OctaviusSavepointImpl(name)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return@wrapSqlException sp
@@ -340,14 +340,14 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
     override fun rollback(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepointImpl) throw IllegalArgumentException("Unsupported savepoint") //TODO proper exception
+        if (savepoint !is OctaviusSavepointImpl) throw DriverException(DriverExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
     }
 
     override fun releaseSavepoint(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepointImpl) throw IllegalArgumentException("Unsupported savepoint") //TODO proper exception
+        if (savepoint !is OctaviusSavepointImpl) throw DriverException(DriverExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 

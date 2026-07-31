@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.converter.result.row
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusMappingException
+
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
@@ -47,7 +50,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw IllegalArgumentException("Null value for non-nullable attribute '$columnName' for class $kClass") //TODO proper exception
+                        throw OctaviusMappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null value for non-nullable attribute '$columnName' for class $kClass")
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
@@ -58,7 +61,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
                 }
             } else {
                 if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw IllegalArgumentException("Missing non-nullable attribute '$columnName' in row for class $kClass") //TODO proper exception
+                    throw OctaviusMappingException(MappingExceptionMessage.MISSING_ATTRIBUTE, "Missing non-nullable attribute '$columnName' in row for class $kClass")
                 }
                 if (!param.isOptional) {
                     constructorArgs[param] = null

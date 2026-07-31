@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.row
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusMappingException
+
 class RowMetadata(
     val descriptors: List<FieldDescription>
 ) {
@@ -18,11 +21,11 @@ class RowMetadata(
     }
 
     fun getColumnIndex(columnName: String): Int {
-        return nameToIndexCache[columnName] ?: throw IllegalArgumentException("Column not found: $columnName") //TODO proper exception
+        return nameToIndexCache[columnName] ?: throw OctaviusMappingException(MappingExceptionMessage.COLUMN_NOT_FOUND, "Column not found: $columnName")
     }
 
     fun getOid(index: Int): Int {
-        if (index !in descriptors.indices) throw IllegalArgumentException("Column index out of bounds: $index") //TODO proper exception
+        if (index !in descriptors.indices) throw OctaviusMappingException(MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS, "Column index out of bounds: $index")
         return descriptors[index].dataTypeOid
     }
 }

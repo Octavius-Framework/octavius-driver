@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.row
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.OctaviusMappingException
+
 // Removed ByteArrayWindow import
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
@@ -59,7 +62,7 @@ class Row(
     }
 
     fun getRaw(index: Int): Any? {
-        if (index !in values.indices) throw IllegalArgumentException("Column index out of bounds: $index") //TODO proper exception
+        if (index !in values.indices) throw OctaviusMappingException(MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS, "Column index out of bounds: $index")
         return values[index]
     }
 

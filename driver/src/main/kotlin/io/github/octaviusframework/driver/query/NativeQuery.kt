@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.exception.IncorrectResultSizeException
+
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgType
@@ -31,7 +33,7 @@ class NativeQuery internal constructor(
             { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
         }
-        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
+        if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
         return rows.firstOrNull()
     }
 
@@ -43,7 +45,7 @@ class NativeQuery internal constructor(
             { params.toList() }) {
             queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
         }
-        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
+        if (rows.size != 1) throw IncorrectResultSizeException(1, rows.size)
         return rows.first()
     }
 
@@ -75,8 +77,8 @@ class NativeQuery internal constructor(
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
         }
-        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
-        return rows.firstOrNull() as T //TODO proper exception
+        if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
+        return rows.firstOrNull() as T
     }
 
     //-----------------------------------------Single Column Methods----------------------------------------------------
@@ -106,7 +108,7 @@ class NativeQuery internal constructor(
                 )
             }
         }
-        check(rows.size <= 1) { "Expected 0 or 1 row, but got ${rows.size}" } //TODO proper exception
+        if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
         return rows.firstOrNull()
     }
 
@@ -124,7 +126,7 @@ class NativeQuery internal constructor(
                 )
             }
         }
-        check(rows.size == 1) { "Expected exactly one row, but got ${rows.size}" } //TODO proper exception
+        if (rows.size != 1) throw IncorrectResultSizeException(1, rows.size)
         return rows.first()
     }
 
