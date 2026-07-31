@@ -1,10 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.DriverExceptionMessage
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
-import io.github.octaviusframework.driver.exception.DriverException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
+import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
 import io.github.octaviusframework.driver.exception.NetworkException
@@ -58,7 +56,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
+        throw InvalidOperationException(InvalidOperationExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
@@ -81,7 +79,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
-        if (timeout < 0) throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT)
+        if (timeout < 0) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_TIMEOUT)
         if (isClosedFlag) return false
 
         val originalTimeout = stream.networkTimeout
@@ -107,8 +105,8 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
 
     override fun abort(executor: Executor?) {
-        if (executor == null) throw UnsupportedFeatureException(
-            UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED,
+        if (executor == null) throw InvalidOperationException(
+            InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED,
             details = "Executor cannot be null"
         )
         
@@ -132,8 +130,8 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = wrapSqlException { // required by Hikari
         checkClosed()
-        if (milliseconds < 0) throw UnsupportedFeatureException(
-            UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT,
+        if (milliseconds < 0) throw InvalidOperationException(
+            InvalidOperationExceptionMessage.INVALID_TIMEOUT,
             details = "Network timeout cannot be negative"
         )
         stream.networkTimeout = milliseconds
@@ -283,13 +281,13 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun commit() = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw DriverException(DriverExceptionMessage.AUTO_COMMIT_VIOLATION)
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("COMMIT; BEGIN")
     }
 
     override fun rollback() = wrapSqlException { // required by Hikari
         checkClosed()
-        if (autoCommitFlag) throw DriverException(DriverExceptionMessage.AUTO_COMMIT_VIOLATION)
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("ROLLBACK; BEGIN")
     }
 
@@ -300,7 +298,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
             Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
             Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
             Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
-            else -> throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
+            else -> throw InvalidOperationException(InvalidOperationExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
         }
         val query = buildString {
             append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
@@ -331,7 +329,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
     override fun setSavepoint(name: String?): Savepoint = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        if (name == null) throw DriverException(DriverExceptionMessage.INVALID_SAVEPOINT, "Savepoint name cannot be null")
+        if (name == null) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Savepoint name cannot be null")
         val sp = OctaviusSavepointImpl(name)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return@wrapSqlException sp
@@ -340,14 +338,14 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
     override fun rollback(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepointImpl) throw DriverException(DriverExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
+        if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
     }
 
     override fun releaseSavepoint(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
         if (autoCommitFlag) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepointImpl) throw DriverException(DriverExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
+        if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 
@@ -387,7 +385,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing =
-        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
+        throw InvalidOperationException(InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     // Replaced by typeManager
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()

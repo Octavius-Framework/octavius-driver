@@ -131,32 +131,3 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
         TypeExceptionMessage.UNSUPPORTED_OID -> "The specified OID is known but not supported."
     }
 
-// ------------------- DRIVER SPECIFIC -------------------
-
-enum class DriverExceptionMessage {
-    AUTO_COMMIT_VIOLATION,
-    INVALID_SAVEPOINT,
-    STATEMENT_CLOSED
-}
-
-
-
-class DriverException(
-    val messageEnum: DriverExceptionMessage,
-    val details: String? = null,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException(messageEnum.name, cause, sqlState) {
-    override fun getDetailedMessage(): String = buildString {
-        appendLine("message: ${generateDeveloperMessage(messageEnum)}")
-        if (details != null) appendLine("Details: $details")
-    }
-}
-
-
-private fun generateDeveloperMessage(messageEnum: DriverExceptionMessage): String =
-    when (messageEnum) {
-        DriverExceptionMessage.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
-        DriverExceptionMessage.INVALID_SAVEPOINT -> "Invalid savepoint operation."
-        DriverExceptionMessage.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
-    }
