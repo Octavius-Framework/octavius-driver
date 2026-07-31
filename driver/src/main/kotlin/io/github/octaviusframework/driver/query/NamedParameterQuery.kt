@@ -86,6 +86,7 @@ class NamedParameterQuery internal constructor(
             }
         }
         if (rows.size > 1) throw IncorrectResultSizeException(1, rows.size)
+        if (rows.isEmpty() && !targetType.isMarkedNullable) throw IncorrectResultSizeException(1, 0)
         return rows.firstOrNull() as T
     }
 
