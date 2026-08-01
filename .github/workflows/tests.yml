@@ -2,13 +2,13 @@ name: Build and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
     paths-ignore:
       - '**.md'
       - '.github/**'
       - 'docs/**'
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 jobs:

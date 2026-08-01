@@ -133,8 +133,7 @@ class NamedParameterQuery internal constructor(
     }
 
     inline fun <reified T: Any> fetchObjectStrict(vararg params: Pair<String, Any?>): T = fetchObjectStrict(params.toMap())
-
-
+    
     //-----------------------------------------Single Column Methods----------------------------------------------------
 
     inline fun <reified T> fetchFields(params: Map<String, Any?>): List<T> {
