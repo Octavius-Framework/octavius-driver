@@ -17,6 +17,7 @@ class PgComposite internal constructor(
     val fields: Array<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
+    override val containerOid: Int get() = type.oid
     val attributeNames: List<String>
         get() = type.attributeNames
 

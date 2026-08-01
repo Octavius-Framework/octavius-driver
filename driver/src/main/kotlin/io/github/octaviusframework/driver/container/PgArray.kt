@@ -31,7 +31,7 @@ class PgArray(
     val elements: MutableList<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
-
+    override val containerOid: Int get() = arrayOid
     val totalElements: Int
         get() = elements.size
 

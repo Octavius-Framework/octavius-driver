@@ -19,6 +19,8 @@ class PgRecord internal constructor(
     val fields: Array<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
+    override val containerOid: Int get() = type.oid
+
     inline fun <reified T> get(index: Int): T {
         val value = fields[index]
 
