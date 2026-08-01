@@ -47,7 +47,8 @@ enum class TypeExceptionMessage {
     NOT_ENOUGH_DATA,
     INVALID_PARAMETER_TYPE,
     ANONYMOUS_RECORD_NOT_SUPPORTED,
-    VALUE_OUT_OF_RANGE
+    VALUE_OUT_OF_RANGE,
+    NESTED_PGTYPED_NOT_ALLOWED
 }
 
 class OctaviusTypeException(
@@ -77,6 +78,7 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
         TypeExceptionMessage.INVALID_PARAMETER_TYPE -> "Invalid parameter type provided for the specified PostgreSQL type (OID)."
         TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED -> "PostgreSQL does not support receiving anonymous composite types (record) as input parameters."
         TypeExceptionMessage.VALUE_OUT_OF_RANGE -> "The value is out of range for the PostgreSQL or Kotlin type."
+        TypeExceptionMessage.NESTED_PGTYPED_NOT_ALLOWED -> "Nested PgTyped is not allowed. You cannot wrap a PgTyped instance within another PgTyped."
     }
 
 // ------------------- JDBC SPECIFIC -------------------
