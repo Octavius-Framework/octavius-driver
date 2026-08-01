@@ -17,7 +17,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
     private var isClosedFlag = false
 
     private fun checkClosed() {
-        if (isClosedFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.STATEMENT_CLOSED)
+        if (isClosedFlag || connection.isClosed) throw InvalidOperationException(InvalidOperationExceptionMessage.STATEMENT_CLOSED)
     }
 
     override fun execute(sql: String?): Boolean {

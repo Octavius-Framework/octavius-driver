@@ -49,6 +49,10 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     internal fun checkClosed() {
         if (isClosedFlag) throw NetworkException(NetworkExceptionMessage.CONNECTION_CLOSED, sqlState = "08003")
+        if (stream.isBroken) {
+            isClosedFlag = true
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, details = "Underlying stream is broken", sqlState = "08006")
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -70,7 +74,10 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
         }
     }
 
-    override fun isClosed(): Boolean = isClosedFlag // required by Hikari
+    override fun isClosed(): Boolean {
+        if (stream.isBroken) isClosedFlag = true
+        return isClosedFlag
+    }
 
     override fun getMetaData(): DatabaseMetaData = unsupported()
 
@@ -80,7 +87,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
         if (timeout < 0) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_TIMEOUT)
-        if (isClosedFlag) return false
+        if (isClosed()) return false
 
         val originalTimeout = stream.networkTimeout
         return try {
