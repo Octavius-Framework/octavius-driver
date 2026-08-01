@@ -11,7 +11,7 @@ class ParameterConverterRegistry(
         converters.add(0, converter)
     }
 
-    fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
+    fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
         for (i in 0 until converters.size) {
             val converter = converters[i]
             if (converter.canConvert(source, expectedOid, typeManager)) {
@@ -23,7 +23,7 @@ class ParameterConverterRegistry(
         return parent?.convert(source, expectedOid, context, typeManager) ?: source
     }
 
-    fun findConverter(source: Any, expectedOid: Int?, typeManager: TypeManager): ParameterConverter<Any>? {
+    fun findConverter(source: Any, expectedOid: Int, typeManager: TypeManager): ParameterConverter<Any>? {
         for (i in 0 until converters.size) {
             val converter = converters[i]
             if (converter.canConvert(source, expectedOid, typeManager)) {

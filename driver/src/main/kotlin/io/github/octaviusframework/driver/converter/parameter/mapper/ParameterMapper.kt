@@ -1,12 +1,15 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
+
 import io.github.octaviusframework.driver.type.TypeManager
 
 class ParameterMapper(
     private val registry: ParameterConverterRegistry,
     private val typeManager: TypeManager
 ) {
-    fun convert(source: Any?, expectedOid: Int? = null): Any? {
+    fun convert(source: Any?, expectedOid: Int): Any? {
         if (source == null) return null
         val context = DefaultSerializationContext(registry, typeManager)
         return context.convert(source, expectedOid)
@@ -17,11 +20,11 @@ internal class DefaultSerializationContext(
     private val registry: ParameterConverterRegistry,
     private val typeManager: TypeManager
 ) : SerializationContext {
-    override fun convert(source: Any, expectedOid: Int?): Any? {
+    override fun convert(source: Any, expectedOid: Int): Any? {
         return registry.convert(source, expectedOid, this, typeManager)
     }
 
-    override fun findConverter(source: Any, expectedOid: Int?): ParameterConverter<Any>? {
+    override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? {
         return registry.findConverter(source, expectedOid, typeManager)
     }
 }

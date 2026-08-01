@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.converter.parameter.array
 
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
+
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.OctaviusTypeException
@@ -11,7 +14,7 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
         return source is Collection<*> || source is Array<*>
     }
 
@@ -47,17 +50,17 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return arrayDimensions to flatList
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
         val typeRegistry = typeManager.registry
         val (dimensions, list) = getDimensionsAndFlatten(source)
 
-        val arrayType = if (expectedOid != null) {
+        val arrayType = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as? PgType.Array
         } else {
             // Try to infer from first non-null element
             val firstNonNull = list.firstOrNull { it != null }
             if (firstNonNull != null) {
-                val converted = context.convert(firstNonNull, null)
+                val converted = context.convert(firstNonNull, UNRESOLVED_OID)
                 val elementOid = if (converted is PgTyped) {
                     typeManager.resolveOid(
                         converted.pgType.name,

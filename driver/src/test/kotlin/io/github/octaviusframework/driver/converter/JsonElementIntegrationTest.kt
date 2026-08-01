@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.converter
 
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
+
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
@@ -57,18 +60,18 @@ class JsonElementIntegrationTest {
     }
 
     class MetadataHolderParameterConverter : ParameterConverter<MetadataHolder> {
-        override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
             return source is MetadataHolder
         }
 
         override fun convert(
             source: Any,
-            expectedOid: Int?,
+            expectedOid: Int,
             context: SerializationContext,
             typeManager: TypeManager
         ): Any {
             val holder = source as MetadataHolder
-            val composite = if (expectedOid != null) {
+            val composite = if (expectedOid.isKnownOid) {
                 typeManager.createComposite(expectedOid)
             } else {
                 typeManager.createComposite("metadata_holder")

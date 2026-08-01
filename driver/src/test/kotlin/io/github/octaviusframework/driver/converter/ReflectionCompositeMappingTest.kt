@@ -84,8 +84,8 @@ class ReflectionCompositeMappingTest {
         val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
         val converter = ReflectionCompositeParameterConverter()
         val context = object : SerializationContext {
-            override fun convert(source: Any, expectedOid: Int?): Any? = source
-            override fun findConverter(source: Any, expectedOid: Int?): ParameterConverter<Any>? = null
+            override fun convert(source: Any, expectedOid: Int): Any? = source
+            override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
         }
 
         val person = Person("Jane", "Smith", 28)

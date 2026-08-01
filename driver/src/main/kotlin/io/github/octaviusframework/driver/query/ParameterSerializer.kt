@@ -8,6 +8,8 @@ import io.github.octaviusframework.driver.exception.OctaviusTypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
 
 class ParameterSerializer(
     private val typeManager: TypeManager,
@@ -29,7 +31,7 @@ class ParameterSerializer(
     }
 
     private fun serializeValue(parameter: Any?, writer: PgByteWriter, marker: Int): Int {
-        var oid = 0
+        var oid = UNRESOLVED_OID
         var value = parameter
 
         if (value is PgTyped) {
@@ -41,7 +43,7 @@ class ParameterSerializer(
             return writeKnown(value, value.containerOid, writer, marker)
         }
 
-        value = parameterMapper.convert(value, if (oid == 0) null else oid)
+        value = parameterMapper.convert(value, oid)
 
         if (value is PgTyped) {
             oid = typeManager.resolveOid(value.pgType.name, value.pgType.schema, value.pgType.isArray)
@@ -58,7 +60,7 @@ class ParameterSerializer(
             return writeKnown(value, value.containerOid, writer, marker)
         }
 
-        return if (oid != 0) {
+        return if (oid.isKnownOid) {
             writeKnown(value, oid, writer, marker)
         } else {
             writeStandard(value, writer, marker)
@@ -90,6 +92,6 @@ class ParameterSerializer(
         (codec as TypeCodec<Any>).toBinary(value, writer)
         writer.fillLengthInt(marker)
 
-        return typeRegistry.getOidForCodec(codec) ?: 0
+        return typeRegistry.getOidForCodec(codec) ?: UNRESOLVED_OID
     }
 }
