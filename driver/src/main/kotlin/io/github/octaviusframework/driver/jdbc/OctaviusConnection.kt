@@ -320,7 +320,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun setSavepoint(): Savepoint = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot set a savepoint when auto-commit is enabled")
         val sp = OctaviusSavepointImpl(savepointIdCounter++)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return@wrapSqlException sp
@@ -328,7 +328,7 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun setSavepoint(name: String?): Savepoint = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot set a savepoint when auto-commit is enabled")
         if (name == null) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Savepoint name cannot be null")
         val sp = OctaviusSavepointImpl(name)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
@@ -337,14 +337,14 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
 
     override fun rollback(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot rollback to a savepoint when auto-commit is enabled")
         if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
     }
 
     override fun releaseSavepoint(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot release a savepoint when auto-commit is enabled")
         if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
