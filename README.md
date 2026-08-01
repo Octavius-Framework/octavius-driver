@@ -58,7 +58,7 @@ val session = dataSource.getOctaviusSession()
 
 // 2. Execute a query with named parameters
 val row = session.createNamedQuery("SELECT id, name FROM users WHERE id = @id")
-    .fetchOne("id" to 1)
+    .fetchRow("id" to 1)
 
 // 3. Strongly typed data extraction without ResultSet legacy
 val id: Int = row.get("id")
