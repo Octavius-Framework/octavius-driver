@@ -74,7 +74,7 @@ open class SimpleDataBenchmark {
     @Benchmark
     fun octavius_simpleData(): Int {
         var count = 0
-        val rows = octaviusQuery.fetchListOf<SimpleData>()
+        val rows = octaviusQuery.fetchObjects<SimpleData>()
         for (data in rows) {
             count += data.i + (if(data.b) 1 else 0) + data.s.length + data.d.toInt()
         }

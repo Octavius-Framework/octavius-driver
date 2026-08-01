@@ -64,7 +64,7 @@ open class SimpleTypeBenchmark {
     @Benchmark
     fun octavius_simpleTypes(): Int {
         var count = 0
-        val rows = octaviusQuery.fetchAll()
+        val rows = octaviusQuery.fetchRows()
         for (row in rows) {
             val i = row.get<Int>(0)
             val s = row.get<String>(1)

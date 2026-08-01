@@ -62,7 +62,7 @@ open class ArrayTypeBenchmark {
     @Benchmark
     fun octavius_arrays(): Int {
         var count = 0
-        val rows = octaviusQuery.fetchAll()
+        val rows = octaviusQuery.fetchRows()
         for (row in rows) {
             val intArray = row.get<List<Int>>(0)
             val textArray = row.get<List<String>>(1)

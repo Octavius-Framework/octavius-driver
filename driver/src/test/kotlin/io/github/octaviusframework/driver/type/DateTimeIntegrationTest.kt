@@ -23,19 +23,19 @@ class DateTimeIntegrationTest {
 
         // 1. Test LocalDate mapping
         val dateResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOneStrict(LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST)
+            .fetchRowStrict(LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST)
         assertEquals(LocalDate.DISTANT_FUTURE, dateResult.get(0))
         assertEquals(LocalDate.DISTANT_PAST, dateResult.get(1))
 
         // 2. Test LocalDateTime mapping
         val dateTimeResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOneStrict(LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST)
+            .fetchRowStrict(LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST)
         assertEquals(LocalDateTime.DISTANT_FUTURE, dateTimeResult.get(0))
         assertEquals(LocalDateTime.DISTANT_PAST, dateTimeResult.get(1))
 
         // 3. Test Instant (timestamptz) mapping
         val instantResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOneStrict(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
+            .fetchRowStrict(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
         assertEquals(Instant.DISTANT_FUTURE, instantResult.get(0))
         assertEquals(Instant.DISTANT_PAST, instantResult.get(1))
     }
@@ -54,7 +54,7 @@ class DateTimeIntegrationTest {
         val badFutureDate = java.time.LocalDate.ofEpochDay(badFutureDays).toKotlinLocalDate()
 
         val exFuture = assertFailsWith<TypeException> {
-            session.createNativeQuery("SELECT $1").fetchOne(badFutureDate)
+            session.createNativeQuery("SELECT $1").fetchRow(badFutureDate)
         }
         assertEquals(true, exFuture.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))
 
@@ -63,7 +63,7 @@ class DateTimeIntegrationTest {
         val badPastDate = java.time.LocalDate.ofEpochDay(badPastDays).toKotlinLocalDate()
 
         val exPast = assertFailsWith<TypeException> {
-            session.createNativeQuery("SELECT $1").fetchOne(badPastDate)
+            session.createNativeQuery("SELECT $1").fetchRow(badPastDate)
         }
         assertEquals(true, exPast.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))
     }

@@ -21,7 +21,7 @@ class StatementExceptionIntegrationTest {
 
         val exception = assertFailsWith<StatementException> {
             // Error at 'FRO', which is at index 9, position 10
-            session.createNativeQuery("SELECT * FRO test_table").fetchOneStrict()
+            session.createNativeQuery("SELECT * FRO test_table").fetchRowStrict()
         }
 
         assertEquals(StatementExceptionReason.SYNTAX_ERROR, exception.reason)
@@ -43,7 +43,7 @@ class StatementExceptionIntegrationTest {
             // into "SELECT $1 FRO test_table"
             // The position from DB will be for the transformed query ("SELECT $1 FRO test_table").
             session.createNamedQuery("SELECT @param FRO test_table")
-                .fetchOne("param" to 1)
+                .fetchRow("param" to 1)
         }
 
         assertEquals(StatementExceptionReason.SYNTAX_ERROR, exception.reason)
@@ -63,7 +63,7 @@ class StatementExceptionIntegrationTest {
         val exception = assertFailsWith<StatementException> {
             // The unclosed quote starts at index 15
             session.createNamedQuery("SELECT @param, 'unclosed quote test")
-                .fetchOne("param" to 1)
+                .fetchRow("param" to 1)
         }
 
         assertEquals(StatementExceptionReason.UNCLOSED_QUOTE, exception.reason)
@@ -80,7 +80,7 @@ class StatementExceptionIntegrationTest {
         val session = getSession()
 
         val exception = assertFailsWith<StatementException> {
-            session.createNativeQuery("SELECT * FROM some_non_existent_table").fetchAll()
+            session.createNativeQuery("SELECT * FROM some_non_existent_table").fetchRows()
         }
 
         assertEquals(StatementExceptionReason.UNDEFINED_OBJECT, exception.reason)
@@ -96,7 +96,7 @@ class StatementExceptionIntegrationTest {
         val exception = assertFailsWith<StatementException> {
             // The unclosed comment starts at index 14
             session.createNamedQuery("SELECT @param /* unclosed comment")
-                .fetchOne("param" to 1)
+                .fetchRow("param" to 1)
         }
 
         assertEquals(StatementExceptionReason.UNCLOSED_COMMENT, exception.reason)
@@ -129,7 +129,7 @@ class StatementExceptionIntegrationTest {
 
         val exception = assertFailsWith<StatementException> {
             // Trigger 42804 datatype_mismatch
-            session.createNativeQuery("SELECT 1 UNION SELECT current_date").fetchAll()
+            session.createNativeQuery("SELECT 1 UNION SELECT current_date").fetchRows()
         }
 
         assertEquals(StatementExceptionReason.DATA_TYPE_ERROR, exception.reason)

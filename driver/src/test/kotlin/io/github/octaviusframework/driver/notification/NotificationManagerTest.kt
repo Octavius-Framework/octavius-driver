@@ -5,7 +5,6 @@ import io.github.octaviusframework.driver.properties.OctaviusProperties
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import org.junit.jupiter.api.Test
-import java.util.Properties
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import io.github.octaviusframework.driver.exception.NetworkException

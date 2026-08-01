@@ -27,7 +27,7 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchOneStrict()
+        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchRowStrict()
 
         val array = row.get<PgArray>("my_arr")
         assertNotNull(array)
@@ -43,7 +43,7 @@ class SerializationTest {
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
-        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchOneStrict()
+        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchRowStrict()
         val expectedArray = expectedRow.get<PgArray>(0)
         val writer3 = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writer3, row.typeRegistry)
@@ -64,7 +64,7 @@ class SerializationTest {
         session.createNativeQuery("CREATE TYPE ser_test_composite AS (id int, name text)").execute()
         session.reloadTypes()
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchOneStrict()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchRowStrict()
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
@@ -78,7 +78,7 @@ class SerializationTest {
 
         // Porównanie z bazą
         val expectedCompositeRow =
-            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchOneStrict()
+            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchRowStrict()
         val expectedComposite = expectedCompositeRow.get<PgComposite>(0)
         val writerComp = PgByteWriter()
         ContainerCodec.serializeContainer(expectedComposite, writerComp, typeRegistry)
@@ -102,7 +102,7 @@ class SerializationTest {
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
         val builtArrayBytes = writer2.toByteArray()
 
-        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchOneStrict()
+        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchRowStrict()
         val expectedArray = expectedArrayRow.get<PgArray>(0)
         val writerArr = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writerArr, typeRegistry)
@@ -124,7 +124,7 @@ class SerializationTest {
 
         val array = listOf(10, 20, 30)
 
-        val rows = session.createNativeQuery("SELECT $1::int[] as test_col").fetchAll(array)
+        val rows = session.createNativeQuery("SELECT $1::int[] as test_col").fetchRows(array)
 
         val returnedArray = rows.first().get<PgArray>("test_col")
         assertNotNull(returnedArray)
@@ -141,7 +141,7 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchOneStrict()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchRowStrict()
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
         val multiArray = PgArray(
@@ -161,7 +161,7 @@ class SerializationTest {
 
         val rows = session.createNativeQuery(
             "SELECT ARRAY[[1, 2, 3], [4, 5, 6]]::int[] as test_col"
-        ).fetchAll()
+        ).fetchRows()
 
         val expectedArray = rows.first().get<PgArray>(0)
         val writerArr = PgByteWriter()
@@ -184,27 +184,27 @@ class SerializationTest {
 
         // 1. Integer Round Trip
         val intVal = 424242
-        val rowsInt = session.createNativeQuery("SELECT $1 as res").fetchAll(intVal)
+        val rowsInt = session.createNativeQuery("SELECT $1 as res").fetchRows(intVal)
         assertEquals(intVal, rowsInt.first().get<Int>("res"))
 
         // 2. String Round Trip
         val strVal = "Zażółć gęślą jaźń"
-        val rowsStr = session.createNativeQuery("SELECT $1 as res").fetchAll(strVal)
+        val rowsStr = session.createNativeQuery("SELECT $1 as res").fetchRows(strVal)
         assertEquals(strVal, rowsStr.first().get<String>("res"))
 
         // 3. Boolean Round Trip
         val boolVal = true
-        val rowsBool = session.createNativeQuery("SELECT $1 as res").fetchAll(boolVal)
+        val rowsBool = session.createNativeQuery("SELECT $1 as res").fetchRows(boolVal)
         assertEquals(boolVal, rowsBool.first().get<Boolean>("res"))
 
         // 4. Double Round Trip
         val doubleVal = 3.14159
-        val rowsDouble = session.createNativeQuery("SELECT $1 as res").fetchAll(doubleVal)
+        val rowsDouble = session.createNativeQuery("SELECT $1 as res").fetchRows(doubleVal)
         assertEquals(doubleVal, rowsDouble.first().get<Double>("res"))
 
         val arrayVal = listOf(10, 20, 30)
 
-        val rowsArray = session.createNativeQuery("SELECT $1 as res").fetchAll(arrayVal)
+        val rowsArray = session.createNativeQuery("SELECT $1 as res").fetchRows(arrayVal)
         val returnedArray = rowsArray.first().get<PgArray>("res")
         assertNotNull(returnedArray)
         assertEquals(10, returnedArray.get<Int>(0))
@@ -226,7 +226,7 @@ class SerializationTest {
         )
 
         val exception = assertThrows<TypeException> {
-            session.createNativeQuery("SELECT $1 as res").fetchAll(recordMap)
+            session.createNativeQuery("SELECT $1 as res").fetchRows(recordMap)
         }
         
         assertEquals(TypeExceptionMessage.MISSING_CODEC, exception.messageEnum)

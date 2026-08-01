@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.converter
 
-import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
@@ -124,7 +123,7 @@ class JsonElementIntegrationTest {
                 .update(mapOf("id" to 1, "data" to inputJson))
 
             val row = conn.createNamedQuery("SELECT data FROM test_json_elements WHERE id = @id")
-                .fetchOneStrict(mapOf("id" to 1))
+                .fetchRowStrict(mapOf("id" to 1))
 
             val outputJson = row.get<JsonElement>("data")
             assertTrue(outputJson is JsonObject)
@@ -151,7 +150,7 @@ class JsonElementIntegrationTest {
             val holder = MetadataHolder(100, inputJson)
 
             val row = conn.createNamedQuery("SELECT @holder as res")
-                .fetchOneStrict("holder" to holder)
+                .fetchRowStrict("holder" to holder)
 
             val outputHolder = row.get<MetadataHolder>("res")
             assertEquals(100, outputHolder.id)
@@ -173,7 +172,7 @@ class JsonElementIntegrationTest {
 
             // Przekazujemy listę bez jawnego typu, powinno zostać wywnioskowane jako jsonb[]
             val row = conn.createNamedQuery("SELECT @list as res")
-                .fetchOneStrict("list" to list)
+                .fetchRowStrict("list" to list)
 
             val outputList = row.get<List<JsonElement>>("res")
             assertEquals(2, outputList.size)
@@ -193,7 +192,7 @@ class JsonElementIntegrationTest {
             }
 
             val row = conn.createNamedQuery("SELECT pg_typeof(@data)::text as type_name, @data as res")
-                .fetchOneStrict("data" to inputJson.withPgType(PgStandardType.JSON))
+                .fetchRowStrict("data" to inputJson.withPgType(PgStandardType.JSON))
 
             val typeName = row.get<String>("type_name")
             assertEquals("json", typeName)
