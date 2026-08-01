@@ -93,7 +93,7 @@ class AutoCompositeIntegrationTest {
 
             val query = "SELECT $1 AS emp"
             println("Sending EmployeeData Native: $emp")
-            val resultRow = session.createNativeQuery(query).fetchOneStrict(emp)
+            val resultRow = session.createNativeQuery(query).fetchRowStrict(emp)
             println("Result Row Native: $resultRow")
 
             val parsedEmp = resultRow.get<EmployeeData>("emp")
@@ -153,7 +153,7 @@ class AutoCompositeIntegrationTest {
             )
 
             val query = "SELECT @employee AS emp"
-            val resultRow = session.createNamedQuery(query).fetchOneStrict("employee" to emp)
+            val resultRow = session.createNamedQuery(query).fetchRowStrict("employee" to emp)
 
             val parsedEmp = resultRow.get<EmployeeData>("emp")
 

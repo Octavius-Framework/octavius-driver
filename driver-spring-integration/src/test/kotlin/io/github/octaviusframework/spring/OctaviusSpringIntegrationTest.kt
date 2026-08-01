@@ -1,6 +1,5 @@
 package io.github.octaviusframework.spring
 
-import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -9,12 +8,7 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
-import org.springframework.jdbc.datasource.DataSourceTransactionManager
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.Transactional
-import javax.sql.DataSource
 import org.springframework.transaction.annotation.Propagation
 
 @SpringBootTest(classes = [TestApplication::class, OctaviusSpringAutoConfiguration::class, DataSourceAutoConfiguration::class], properties = [
@@ -34,7 +28,7 @@ class OctaviusSpringIntegrationTest {
     @Test
     fun `should autoconfigure OctaviusTemplate`() {
         assertNotNull(octaviusTemplate)
-        val row = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT 1 as num").fetchOneStrict() }
+        val row = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT 1 as num").fetchRowStrict() }
         assertEquals(1, row.get<Int>("num"))
     }
 
@@ -48,11 +42,11 @@ class OctaviusSpringIntegrationTest {
             // expected
         }
 
-        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchOneStrict().get<Long>("c") }
+        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(0L, count)
         
         testService.insertWithCommit()
-        val countAfterCommit = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchOneStrict().get<Long>("c") }
+        val countAfterCommit = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(1L, countAfterCommit)
     }
     
@@ -66,7 +60,7 @@ class OctaviusSpringIntegrationTest {
             // expected
         }
         
-        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchOneStrict().get<Long>("c") }
+        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(1L, count) // Outer insert should be there, nested should be rolled back
     }
 }

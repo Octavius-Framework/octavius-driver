@@ -44,38 +44,47 @@ class NamedParameterQuery internal constructor(
 
     //--------------------------------------------Row-based Methods-----------------------------------------------------
 
-    fun fetchAll(params: Map<String, Any?>): List<Row> {
+    fun fetchRows(params: Map<String, Any?>): List<Row> {
         return withPreparedQuery(params) { transformedSql, listParams ->
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper)
         }
     }
 
-    fun fetchAll(vararg params: Pair<String, Any?>): List<Row> = fetchAll(params.toMap())
+    fun fetchRows(vararg params: Pair<String, Any?>): List<Row> = fetchRows(params.toMap())
 
-    fun fetchOne(params: Map<String, Any?>): Row? {
+    fun fetchRow(params: Map<String, Any?>): Row? {
         return withPreparedQuery(params) { transformedSql, listParams ->
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
-            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 0 or 1, got at least two rows.")
+            if (rows.size > 1) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 0 or 1, got at least 2 rows."
+            )
             rows.firstOrNull()
         }
     }
 
-    fun fetchOne(vararg params: Pair<String, Any?>): Row? = fetchOne(params.toMap())
+    fun fetchRow(vararg params: Pair<String, Any?>): Row? = fetchRow(params.toMap())
 
-    fun fetchOneStrict(params: Map<String, Any?>): Row {
+    fun fetchRowStrict(params: Map<String, Any?>): Row {
         return withPreparedQuery(params) { transformedSql, listParams ->
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
-            if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
-            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
+            if (rows.isEmpty()) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 1, got 0 rows."
+            )
+            if (rows.size > 1) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 1, got at least 2 rows."
+            )
             rows.first()
         }
     }
 
-    fun fetchOneStrict(vararg params: Pair<String, Any?>): Row = fetchOneStrict(params.toMap())
+    fun fetchRowStrict(vararg params: Pair<String, Any?>): Row = fetchRowStrict(params.toMap())
 
     //----------------------------------------Object Mapping Methods----------------------------------------------------
 
-    inline fun <reified T : Any> fetchListOf(params: Map<String, Any?>): List<T> {
+    inline fun <reified T : Any> fetchObjects(params: Map<String, Any?>): List<T> {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
         return withPreparedQuery(params) { transformedSql, listParams ->
@@ -85,33 +94,57 @@ class NamedParameterQuery internal constructor(
         }
     }
 
-    inline fun <reified T : Any> fetchListOf(vararg params: Pair<String, Any?>): List<T> = fetchListOf(params.toMap())
+    inline fun <reified T : Any> fetchObjects(vararg params: Pair<String, Any?>): List<T> = fetchObjects(params.toMap())
 
-    inline fun <reified T> fetchSingleOf(params: Map<String, Any?>): T {
+    inline fun <reified T: Any> fetchObject(params: Map<String, Any?>): T? {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
         return withPreparedQuery(params) { transformedSql, listParams ->
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
-            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
-            if (rows.isEmpty() && !targetType.isMarkedNullable) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
-            rows.firstOrNull() as T
+            if (rows.size > 1) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 0 or 1, got at least 2 rows."
+            )
+            rows.firstOrNull()
         }
     }
 
-    inline fun <reified T> fetchSingleOf(vararg params: Pair<String, Any?>): T = fetchSingleOf(params.toMap())
+    inline fun <reified T: Any> fetchObject(vararg params: Pair<String, Any?>): T? = fetchObject(params.toMap())
+
+    inline fun <reified T : Any> fetchObjectStrict(params: Map<String, Any?>): T {
+        val targetType = typeOf<T>()
+        val recordType = PgType.Record
+        return withPreparedQuery(params) { transformedSql, listParams ->
+            val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
+                resultMapper.deserialize<T>(it, targetType, recordType)
+            }
+            if (rows.size > 1) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 1, got at least 2 rows."
+            )
+            if (rows.isEmpty()) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 1, got 0 rows."
+            )
+            rows.first()
+        }
+    }
+
+    inline fun <reified T: Any> fetchObjectStrict(vararg params: Pair<String, Any?>): T = fetchObjectStrict(params.toMap())
+
 
     //-----------------------------------------Single Column Methods----------------------------------------------------
 
-    inline fun <reified T> fetchColumn(params: Map<String, Any?>): List<T> {
+    inline fun <reified T> fetchFields(params: Map<String, Any?>): List<T> {
         val targetType = typeOf<T>()
         return withPreparedQuery(params) { transformedSql, listParams ->
             queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper) { it.get(0, targetType) }
         }
     }
 
-    inline fun <reified T> fetchColumn(vararg params: Pair<String, Any?>): List<T> = fetchColumn(params.toMap())
+    inline fun <reified T> fetchFields(vararg params: Pair<String, Any?>): List<T> = fetchFields(params.toMap())
 
     inline fun <reified T> fetchField(params: Map<String, Any?>): T? {
         val targetType = typeOf<T>()
@@ -122,7 +155,10 @@ class NamedParameterQuery internal constructor(
                     targetType
                 )
             }
-            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least 2 rows.")
+            if (rows.size > 1) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 0 or 1, got at least 2 rows."
+            )
             rows.firstOrNull()
         }
     }
@@ -138,8 +174,14 @@ class NamedParameterQuery internal constructor(
                     targetType
                 )
             }
-            if (rows.isEmpty()) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got 0 rows.")
-            if (rows.size > 1) throw StatementException(StatementExceptionReason.INCORRECT_RESULT_SIZE, details = "Expected 1, got at least two rows.")
+            if (rows.isEmpty()) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 1, got 0 rows."
+            )
+            if (rows.size > 1) throw StatementException(
+                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+                details = "Expected 1, got at least two rows."
+            )
             rows.first()
         }
     }

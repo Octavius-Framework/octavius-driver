@@ -24,7 +24,7 @@ class RangeIntegrationTest {
     fun testRangeSelect() {
         val session = getSession()
 
-        val rangeResult = session.createNativeQuery("SELECT '[10,20)'::int4range").fetchOneStrict()
+        val rangeResult = session.createNativeQuery("SELECT '[10,20)'::int4range").fetchRowStrict()
         val range = rangeResult.get<Range<Int>>(0)
         assertNotNull(range)
         assertEquals(10, range.lowerBound)
@@ -37,7 +37,7 @@ class RangeIntegrationTest {
     fun testMultiRangeSelect() {
         val session = getSession()
 
-        val multiRangeResult = session.createNativeQuery("SELECT '{[1,5], [10,20)}'::int4multirange").fetchOneStrict()
+        val multiRangeResult = session.createNativeQuery("SELECT '{[1,5], [10,20)}'::int4multirange").fetchRowStrict()
         val multiRange = multiRangeResult.get<MultiRange<Int>>(0)
         assertNotNull(multiRange)
         assertEquals(2, multiRange.ranges.size)
@@ -61,7 +61,7 @@ class RangeIntegrationTest {
 
         val inputRange = Range(lowerBound = 5, upperBound = 15, isLowerInclusive = true, isUpperInclusive = true)
 
-        val result = session.createNativeQuery("SELECT $1::int4range").fetchOneStrict(inputRange)
+        val result = session.createNativeQuery("SELECT $1::int4range").fetchRowStrict(inputRange)
         val rangeBack = result.get<Range<Int>>(0)
 
         assertNotNull(rangeBack)
@@ -82,7 +82,7 @@ class RangeIntegrationTest {
             )
         )
 
-        val result = session.createNativeQuery("SELECT $1::int4multirange").fetchOneStrict(inputMultiRange)
+        val result = session.createNativeQuery("SELECT $1::int4multirange").fetchRowStrict(inputMultiRange)
         val multiRangeBack = result.get<MultiRange<Int>>(0)
 
         assertNotNull(multiRangeBack)

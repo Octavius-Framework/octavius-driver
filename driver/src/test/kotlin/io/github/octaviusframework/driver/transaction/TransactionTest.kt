@@ -9,7 +9,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import io.github.octaviusframework.driver.exception.OctaviusException
-import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -37,7 +36,7 @@ class TransactionTest {
     }
 
     private fun countRows(): Long {
-        val rows = session.createNativeQuery("SELECT COUNT(*) FROM test_trx").fetchAll()
+        val rows = session.createNativeQuery("SELECT COUNT(*) FROM test_trx").fetchRows()
         return rows[0].get<Long>(0)
     }
 

@@ -6,7 +6,6 @@ import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
-import java.util.Properties
 import kotlin.reflect.KClass
 
 data class Circle(val info: String)
@@ -46,7 +45,7 @@ class CodecRegistrationTest {
         assertEquals(Circle::class, retrievedCodec?.kotlinClass)
 
         // Verify that the codec is used during query execution
-        val row = session.createNativeQuery("SELECT '<(1,2),3>'::circle as circle_test").fetchOneStrict()
+        val row = session.createNativeQuery("SELECT '<(1,2),3>'::circle as circle_test").fetchRowStrict()
         val result = row.get<Circle>("circle_test")
         
         assertNotNull(result)

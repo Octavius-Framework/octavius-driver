@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.composite
 
-import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
@@ -106,7 +105,7 @@ class ManualCompositeIntegrationTest {
 
                 // Pobieramy wewnątrz transakcji
                 val selectQuery = "SELECT payment FROM orders WHERE id = 1"
-                val resultRow = conn.createNativeQuery(selectQuery).fetchOneStrict()
+                val resultRow = conn.createNativeQuery(selectQuery).fetchRowStrict()
                 assertNotNull(resultRow)
 
                 val fetchedPayment = resultRow.get<PaymentInfo>("payment")
@@ -115,7 +114,7 @@ class ManualCompositeIntegrationTest {
             }
             
             // Sprawdzenie poza transakcją
-            val countRows = conn.createNativeQuery("SELECT COUNT(*) FROM orders").fetchOneStrict().get<Long>(0)
+            val countRows = conn.createNativeQuery("SELECT COUNT(*) FROM orders").fetchRowStrict().get<Long>(0)
             assertEquals(1L, countRows)
 
         } finally {

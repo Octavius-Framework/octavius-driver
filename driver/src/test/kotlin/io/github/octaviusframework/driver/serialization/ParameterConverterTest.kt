@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParameterConverterTest {
@@ -44,8 +43,7 @@ class ParameterConverterTest {
         val user = ComplexUser(42, "Kacper", address, listOf("developer", "kotlin"))
 
         val returnedUser = session.createNativeQuery("SELECT ($1).*")
-            .fetchSingleOf<ComplexUser>(user)
-        assertNotNull(returnedUser)
+            .fetchObjectStrict<ComplexUser>(user)
         assertEquals(42, returnedUser.id)
         assertEquals("Kacper", returnedUser.name)
         assertEquals("Warsaw", returnedUser.address.city)
@@ -59,7 +57,7 @@ class ParameterConverterTest {
     fun testSimpleListConversion() {
         val list = listOf("one", "two", "three")
         val returnedArray = session.createNativeQuery("SELECT $1 as res")
-            .fetchAll(list)
+            .fetchRows(list)
             .first()
             .get<PgArray>("res")
         assertNotNull(returnedArray)
