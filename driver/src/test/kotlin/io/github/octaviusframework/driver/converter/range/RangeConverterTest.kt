@@ -15,6 +15,8 @@ import io.github.octaviusframework.driver.type.MultiRange
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.type.Range
+import io.github.octaviusframework.driver.type.rangeOf
+import io.github.octaviusframework.driver.type.multiRangeOf
 import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -125,7 +127,7 @@ class RangeConverterTest {
             ): ParameterConverter<Any>? = null
         }
 
-        val range = Range(
+        val range = rangeOf(
             lowerBound = 5,
             upperBound = 15,
             isLowerInclusive = true,
@@ -157,10 +159,10 @@ class RangeConverterTest {
             ): ParameterConverter<Any>? = null
         }
 
-        val multiRange = MultiRange(
+        val multiRange = multiRangeOf(
             listOf(
-                Range(lowerBound = 1, upperBound = 5, isLowerInclusive = true, isUpperInclusive = false),
-                Range(lowerBound = 10, upperBound = null, isLowerInclusive = false, isUpperInfinite = true)
+                rangeOf(lowerBound = 1, upperBound = 5, isLowerInclusive = true, isUpperInclusive = false),
+                rangeOf(lowerBound = 10, upperBound = null, isLowerInclusive = false, isUpperInfinite = true)
             )
         )
 
