@@ -1,0 +1,83 @@
+package io.github.octaviusframework.driver.benchmarks
+
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.query.NativeQuery
+import io.github.octaviusframework.driver.row.Row
+import io.github.octaviusframework.driver.row.get
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
+import io.github.octaviusframework.driver.type.PgType
+import kotlin.reflect.KType
+import org.openjdk.jmh.annotations.*
+import java.sql.Connection
+import java.sql.DriverManager
+import java.sql.PreparedStatement
+import java.util.concurrent.TimeUnit
+import java.util.Properties
+
+data class SimpleData(val i: Int, val s: String, val b: Boolean, val d: Double)
+
+@State(Scope.Benchmark)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@BenchmarkMode(Mode.Throughput)
+open class SimpleDataBenchmark {
+
+    private lateinit var pgConnection: Connection
+    private lateinit var pgStatement: PreparedStatement
+
+    private lateinit var octaviusSession: OctaviusSession
+    private lateinit var octaviusQuery: NativeQuery
+
+    @Setup(Level.Trial)
+    fun setup() {
+        Class.forName("org.postgresql.Driver")
+        Class.forName("io.github.octaviusframework.driver.jdbc.OctaviusDriver")
+
+        val props = Properties()
+        props["user"] = "postgres"
+        props["password"] = "1234"
+
+        pgConnection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/octavius_test", props)
+        val query = "SELECT i::int4, 'hello world ' || i::text, (i % 2 = 0)::boolean, (i * 3.14)::float8 FROM generate_series(1, 10000) AS i"
+        pgStatement = pgConnection.prepareStatement(query)
+
+        octaviusSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
+        octaviusQuery = octaviusSession.createNativeQuery(query).registerResultConverter(object : ResultConverter<Row, SimpleData> {
+            override val supportedSourceClass = Row::class
+            override fun canConvert(source: Row, expectedType: KType, sourceType: PgType) = expectedType.classifier == SimpleData::class
+            override fun convert(source: Row, expectedType: KType, context: DeserializationContext, sourceType: PgType): SimpleData {
+                return SimpleData(source.get(0), source.get(1), source.get(2), source.get(3))
+            }
+        })
+    }
+
+    @TearDown(Level.Trial)
+    fun tearDown() {
+        pgStatement.close()
+        pgConnection.close()
+        octaviusSession.close()
+    }
+
+    @Benchmark
+    fun pgjdbc_simpleData(): Int {
+        var count = 0
+        pgStatement.executeQuery().use { rs ->
+            while (rs.next()) {
+                val data = SimpleData(rs.getInt(1), rs.getString(2), rs.getBoolean(3), rs.getDouble(4))
+                count += data.i + (if(data.b) 1 else 0) + data.s.length + data.d.toInt()
+            }
+        }
+        return count
+    }
+
+    @Benchmark
+    fun octavius_simpleData(): Int {
+        var count = 0
+        val rows = octaviusQuery.fetchListOf<SimpleData>()
+        for (data in rows) {
+            count += data.i + (if(data.b) 1 else 0) + data.s.length + data.d.toInt()
+        }
+        return count
+    }
+}
