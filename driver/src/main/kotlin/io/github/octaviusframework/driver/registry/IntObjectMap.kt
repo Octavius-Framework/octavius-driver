@@ -130,4 +130,16 @@ class IntObjectMap<V> {
     operator fun set(key: Int, value: V) {
         put(key, value)
     }
+
+    fun forEach(action: (key: Int, value: V) -> Unit) {
+        val ks = keys
+        val vs = _values
+        for (i in ks.indices) {
+            val k = ks[i]
+            if (k != 0) {
+                @Suppress("UNCHECKED_CAST")
+                action(k, vs[i] as V)
+            }
+        }
+    }
 }

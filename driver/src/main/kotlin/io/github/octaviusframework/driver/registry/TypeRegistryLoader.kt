@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.type.PgType
 
 object TypeRegistryLoader {
 
-    fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor, searchPath: List<String>) {
+    fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor) {
         // typtype is b for a base type, c for a composite type (e.g., a table's row type), d for a domain, e for an enum type, p for a pseudo-type, r for a range type, or m for a multirange type.
         val typesSql = """
             SELECT 
@@ -121,7 +121,7 @@ object TypeRegistryLoader {
             newTypes[oid] = pgType
         }
 
-        typeRegistry.updateTypes(newTypes, searchPath)
+        typeRegistry.updateTypes(newTypes)
     }
 }
 

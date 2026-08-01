@@ -56,7 +56,7 @@ class TypeManager(
      *
      * @param codec The codec instance to register.
      */
-    fun registerCodec(codec: TypeCodec<*>) = registry.registerCodec(codec, searchPathProvider())
+    fun registerCodec(codec: TypeCodec<*>) = registry.registerCodec(codec)
 
     /**
      * Registers a composite type with the given configuration using reflection.
