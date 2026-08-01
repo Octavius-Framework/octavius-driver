@@ -2,8 +2,8 @@ package io.github.octaviusframework.driver.composite
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.row.get
-import io.github.octaviusframework.driver.container.PgMultirange
-import io.github.octaviusframework.driver.container.PgRange
+import io.github.octaviusframework.driver.type.MultiRange
+import io.github.octaviusframework.driver.type.Range
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll
@@ -20,9 +20,9 @@ class AutoCompositeIntegrationTest {
     data class EmployeeData(
         val profile: PersonProfile,
         val roles: List<String>,
-        val activePeriod: PgRange,
-        val scheduleShifts: List<PgRange>,
-        val availableDays: PgMultirange
+        val activePeriod: Range<LocalDate>,
+        val scheduleShifts: List<Range<LocalDateTime>>,
+        val availableDays: MultiRange<LocalDate>
     )
 
     @BeforeAll
@@ -64,29 +64,23 @@ class AutoCompositeIntegrationTest {
             session.types.registerAutoComposite<PersonProfile>("person_profile")
             session.types.registerAutoComposite<EmployeeData>("employee_data")
 
-            val activePeriod = session.types.createRange(
-                "daterange",
-                lower = LocalDate(2023, 1, 1),
-                upper = LocalDate(2023, 12, 31)
+            val activePeriod = Range(
+                lowerBound = LocalDate(2023, 1, 1),
+                upperBound = LocalDate(2023, 12, 31)
             )
 
-            val shift1 = session.types.createRange(
-                "tsrange",
-                lower = LocalDateTime(2023, 5, 1, 8, 0),
-                upper = LocalDateTime(2023, 5, 1, 16, 0)
+            val shift1 = Range(
+                lowerBound = LocalDateTime(2023, 5, 1, 8, 0),
+                upperBound = LocalDateTime(2023, 5, 1, 16, 0)
             )
-            val shift2 = session.types.createRange(
-                "tsrange",
-                lower = LocalDateTime(2023, 5, 2, 9, 0),
-                upper = LocalDateTime(2023, 5, 2, 17, 0)
+            val shift2 = Range(
+                lowerBound = LocalDateTime(2023, 5, 2, 9, 0),
+                upperBound = LocalDateTime(2023, 5, 2, 17, 0)
             )
 
-            val availableDays = session.types.createMultirange(
-                "datemultirange",
-                ranges = arrayOf(
-                    session.types.createRange("daterange", lower = LocalDate(2023, 6, 1), upper = LocalDate(2023, 6, 10)),
-                    session.types.createRange("daterange", lower = LocalDate(2023, 7, 1), upper = LocalDate(2023, 7, 15))
-                )
+            val availableDays = MultiRange(
+                Range(lowerBound = LocalDate(2023, 6, 1), upperBound = LocalDate(2023, 6, 10)),
+                Range(lowerBound = LocalDate(2023, 7, 1), upperBound = LocalDate(2023, 7, 15))
             )
 
             val emp = EmployeeData(
@@ -97,9 +91,9 @@ class AutoCompositeIntegrationTest {
                 availableDays = availableDays
             )
 
-            val query = $$"SELECT $1 AS emp"
+            val query = "SELECT $1 AS emp"
             println("Sending EmployeeData Native: $emp")
-            val resultRow = session.createNativeQuery(query).fetchOne(emp)
+            val resultRow = session.createNativeQuery(query).fetchOneStrict(emp)
             println("Result Row Native: $resultRow")
 
             val parsedEmp = resultRow.get<EmployeeData>("emp")
@@ -109,14 +103,14 @@ class AutoCompositeIntegrationTest {
             assertEquals("Kowalski", parsedEmp.profile.lastName)
             assertEquals(listOf("admin", "user"), parsedEmp.roles)
             
-            assertEquals(LocalDate(2023, 1, 1), parsedEmp.activePeriod.lowerBound<LocalDate>())
-            assertEquals(LocalDate(2023, 12, 31), parsedEmp.activePeriod.upperBound<LocalDate>())
+            assertEquals(LocalDate(2023, 1, 1), parsedEmp.activePeriod.lowerBound)
+            assertEquals(LocalDate(2023, 12, 31), parsedEmp.activePeriod.upperBound)
 
             assertEquals(2, parsedEmp.scheduleShifts.size)
-            assertEquals(LocalDateTime(2023, 5, 1, 8, 0), parsedEmp.scheduleShifts[0].lowerBound<LocalDateTime>())
+            assertEquals(LocalDateTime(2023, 5, 1, 8, 0), parsedEmp.scheduleShifts[0].lowerBound)
             
             assertEquals(2, parsedEmp.availableDays.ranges.size)
-            assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound<LocalDate>())
+            assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound)
 
         } finally {
             session.close()
@@ -131,29 +125,23 @@ class AutoCompositeIntegrationTest {
             session.types.registerAutoComposite<PersonProfile>("person_profile")
             session.types.registerAutoComposite<EmployeeData>("employee_data")
 
-            val activePeriod = session.types.createRange(
-                "daterange",
-                lower = LocalDate(2023, 1, 1),
-                upper = LocalDate(2023, 12, 31)
+            val activePeriod = Range(
+                lowerBound = LocalDate(2023, 1, 1),
+                upperBound = LocalDate(2023, 12, 31)
             )
 
-            val shift1 = session.types.createRange(
-                "tsrange",
-                lower = LocalDateTime(2023, 5, 1, 8, 0),
-                upper = LocalDateTime(2023, 5, 1, 16, 0)
+            val shift1 = Range(
+                lowerBound = LocalDateTime(2023, 5, 1, 8, 0),
+                upperBound = LocalDateTime(2023, 5, 1, 16, 0)
             )
-            val shift2 = session.types.createRange(
-                "tsrange",
-                lower = LocalDateTime(2023, 5, 2, 9, 0),
-                upper = LocalDateTime(2023, 5, 2, 17, 0)
+            val shift2 = Range(
+                lowerBound = LocalDateTime(2023, 5, 2, 9, 0),
+                upperBound = LocalDateTime(2023, 5, 2, 17, 0)
             )
 
-            val availableDays = session.types.createMultirange(
-                "datemultirange",
-                ranges = arrayOf(
-                    session.types.createRange("daterange", lower = LocalDate(2023, 6, 1), upper = LocalDate(2023, 6, 10)),
-                    session.types.createRange("daterange", lower = LocalDate(2023, 7, 1), upper = LocalDate(2023, 7, 15))
-                )
+            val availableDays = MultiRange(
+                Range(lowerBound = LocalDate(2023, 6, 1), upperBound = LocalDate(2023, 6, 10)),
+                Range(lowerBound = LocalDate(2023, 7, 1), upperBound = LocalDate(2023, 7, 15))
             )
 
             val emp = EmployeeData(
@@ -165,7 +153,7 @@ class AutoCompositeIntegrationTest {
             )
 
             val query = "SELECT @employee AS emp"
-            val resultRow = session.createNamedQuery(query).fetchOne("employee" to emp)
+            val resultRow = session.createNamedQuery(query).fetchOneStrict("employee" to emp)
 
             val parsedEmp = resultRow.get<EmployeeData>("emp")
 
@@ -173,14 +161,14 @@ class AutoCompositeIntegrationTest {
             assertEquals("Kowalski", parsedEmp.profile.lastName)
             assertEquals(listOf("admin", "user"), parsedEmp.roles)
             
-            assertEquals(LocalDate(2023, 1, 1), parsedEmp.activePeriod.lowerBound<LocalDate>())
-            assertEquals(LocalDate(2023, 12, 31), parsedEmp.activePeriod.upperBound<LocalDate>())
+            assertEquals(LocalDate(2023, 1, 1), parsedEmp.activePeriod.lowerBound)
+            assertEquals(LocalDate(2023, 12, 31), parsedEmp.activePeriod.upperBound)
 
             assertEquals(2, parsedEmp.scheduleShifts.size)
-            assertEquals(LocalDateTime(2023, 5, 1, 8, 0), parsedEmp.scheduleShifts[0].lowerBound<LocalDateTime>())
+            assertEquals(LocalDateTime(2023, 5, 1, 8, 0), parsedEmp.scheduleShifts[0].lowerBound)
             
             assertEquals(2, parsedEmp.availableDays.ranges.size)
-            assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound<LocalDate>())
+            assertEquals(LocalDate(2023, 6, 1), parsedEmp.availableDays.ranges[0].lowerBound)
             
         } finally {
             session.close()

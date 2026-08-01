@@ -14,7 +14,7 @@ class JsonElementConverter : ResultConverter<String, JsonElement> {
     override fun canConvert(source: String, expectedType: KType, sourceType: PgType): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (kClass == JsonElement::class) return true
-        if (kClass == Any::class && (sourceType.name == "json" || sourceType.name == "jsonb")) return true
+        if (kClass == Any::class && (sourceType.schema == "pg_catalog" && (sourceType.name == "json" || sourceType.name == "jsonb"))) return true
         return false
     }
 

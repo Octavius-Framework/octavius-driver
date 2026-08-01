@@ -1,12 +1,13 @@
 package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.PgType
 
 object TypeRegistryLoader {
 
-    fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor, searchPath: List<String>) {
+    fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor) {
         // typtype is b for a base type, c for a composite type (e.g., a table's row type), d for a domain, e for an enum type, p for a pseudo-type, r for a range type, or m for a multirange type.
         val typesSql = """
             SELECT 
@@ -91,37 +92,46 @@ object TypeRegistryLoader {
 
         // Final construction of correct instance objects for each detected type
         for ((oid, info) in parsedTypes) {
-            val pgType = try {
+            val pgType =
                 when {
                     info.typtype == 'e' -> PgType.Enum(oid, info.name, info.schema, enumMap[oid] ?: emptyList())
                     info.typtype == 'd' -> PgType.Domain(oid, info.name, info.schema, info.typbasetype)
-                    info.typtype == 'r' -> PgType.Range(oid, info.name, info.schema, rangeMap[oid] ?: error("Missing rangeMap for oid $oid"))
-                    info.typtype == 'm' -> PgType.Multirange(oid, info.name, info.schema, multirangeMap[oid] ?: error("Missing multirangeMap for oid $oid"))
+                    info.typtype == 'r' -> PgType.Range(
+                        oid,
+                        info.name,
+                        info.schema,
+                        rangeMap[oid] ?: error("Missing rangeMap for oid $oid")
+                    )
+
+                    info.typtype == 'm' -> PgType.Multirange(
+                        oid,
+                        info.name,
+                        info.schema,
+                        multirangeMap[oid] ?: error("Missing multirangeMap for oid $oid")
+                    )
+
                     info.typtype == 'c' -> {
                         val attrs = attrMap[oid] ?: LinkedHashMap()
                         PgType.Composite(oid, info.name, info.schema, attrs)
                     }
 
-                info.typtype == 'p' -> {
-                    when (info.name) {
-                        "record" -> PgType.Record
-                        "void" -> PgType.Void
-                        "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
-                        else -> error("Unreachable code: unexpected pseudo-type ${info.name}")
+                    info.typtype == 'p' -> {
+                        when (info.name) {
+                            "record" -> PgType.Record
+                            "void" -> PgType.Void
+                            "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
+                            else -> throw OctaviusInternalException()
+                        }
                     }
-                }
 
-                info.typelem != 0 && info.typarray == 0 -> PgType.Array(oid, info.name, info.schema, info.typelem)
-                else -> PgType.Base(oid, info.name, info.schema)
-            }
-            } catch (e: Exception) {
-                throw IllegalStateException("Failed to parse type ${info.name} (oid $oid, typtype ${info.typtype})", e)
-            }
+                    info.typelem != 0 && info.typarray == 0 -> PgType.Array(oid, info.name, info.schema, info.typelem)
+                    else -> PgType.Base(oid, info.name, info.schema)
+                }
 
             newTypes[oid] = pgType
         }
 
-        typeRegistry.updateTypes(newTypes, searchPath)
+        typeRegistry.updateTypes(newTypes)
     }
 }
 

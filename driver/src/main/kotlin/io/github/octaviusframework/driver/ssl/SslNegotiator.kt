@@ -1,12 +1,12 @@
 package io.github.octaviusframework.driver.ssl
 
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
+import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 
-class SslNegotiator(private val stream: PgStream) {
+internal class SslNegotiator(private val stream: PgStream) {
 
     fun negotiate(host: String, port: Int, properties: OctaviusProperties) {
         val sslMode = properties.sslmode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER
@@ -29,12 +29,12 @@ class SslNegotiator(private val stream: PgStream) {
             'N' -> {
                 if (config.mode == SslMode.REQUIRE || config.mode == SslMode.VERIFY_CA || config.mode == SslMode.VERIFY_FULL) {
                     stream.close()
-                    throw OctaviusJdbcException(JdbcExceptionMessage.SSL_ERROR, "Server does not support SSL, but sslmode=${config.mode.value} was specified.")
+                    throw InitializationException(InitializationExceptionMessage.SSL_ERROR, "Server does not support SSL, but sslmode=${config.mode.value} was specified.")
                 }
             }
             else -> {
                 stream.close()
-                throw OctaviusJdbcException(JdbcExceptionMessage.SSL_ERROR, "Unexpected SSL negotiation response: $response")
+                throw InitializationException(InitializationExceptionMessage.SSL_ERROR, "Unexpected SSL negotiation response: $response")
             }
         }
     }

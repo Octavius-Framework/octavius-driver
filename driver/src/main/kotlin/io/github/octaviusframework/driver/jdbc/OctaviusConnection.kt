@@ -1,11 +1,11 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
+import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
+import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
+import io.github.octaviusframework.driver.exception.NetworkException
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
@@ -23,10 +23,10 @@ import java.util.concurrent.Executor
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-class OctaviusConnection(internal val stream: PgStream, internal val url: String) : Connection {
+class OctaviusConnection internal constructor(internal val stream: PgStream, internal val url: String) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
 
-    val queryExecutor = QueryExecutor(stream, typeRegistry)
+    internal val queryExecutor = QueryExecutor(stream, typeRegistry)
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
@@ -48,7 +48,11 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     internal fun checkClosed() {
-        if (isClosedFlag) throw OctaviusJdbcException(JdbcExceptionMessage.CONNECTION_CLOSED, "0803")
+        if (isClosedFlag) throw NetworkException(NetworkExceptionMessage.CONNECTION_CLOSED, sqlState = "08003")
+        if (stream.isBroken) {
+            isClosedFlag = true
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, details = "Underlying stream is broken", sqlState = "08006")
+        }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -56,7 +60,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
+        throw InvalidOperationException(InvalidOperationExceptionMessage.UNWRAP_ERROR, details = "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)
@@ -70,7 +74,10 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
         }
     }
 
-    override fun isClosed(): Boolean = isClosedFlag // required by Hikari
+    override fun isClosed(): Boolean {
+        if (stream.isBroken) isClosedFlag = true
+        return isClosedFlag
+    }
 
     override fun getMetaData(): DatabaseMetaData = unsupported()
 
@@ -79,8 +86,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
-        if (timeout < 0) throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT)
-        if (isClosedFlag) return false
+        if (timeout < 0) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_TIMEOUT)
+        if (isClosed()) return false
 
         val originalTimeout = stream.networkTimeout
         return try {
@@ -105,8 +112,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
 
     override fun abort(executor: Executor?) {
-        if (executor == null) throw UnsupportedFeatureException(
-            UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED,
+        if (executor == null) throw InvalidOperationException(
+            InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED,
             details = "Executor cannot be null"
         )
         
@@ -121,13 +128,17 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
             }
         }
         // Signal for Hikari to evict Connection
-        throw SQLException("Connection explicitly aborted by Octavius", "08000")
+        throw SQLExceptionWrapper(NetworkException(
+            NetworkExceptionMessage.CONNECTION_ABORTED,
+            details = "Connection explicitly aborted by Octavius",
+            sqlState = "08000"
+        ))
     }
 
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = wrapSqlException { // required by Hikari
         checkClosed()
-        if (milliseconds < 0) throw UnsupportedFeatureException(
-            UnsupportedFeatureExceptionMessage.INVALID_TIMEOUT,
+        if (milliseconds < 0) throw InvalidOperationException(
+            InvalidOperationExceptionMessage.INVALID_TIMEOUT,
             details = "Network timeout cannot be negative"
         )
         stream.networkTimeout = milliseconds
@@ -277,13 +288,13 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     override fun commit() = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("COMMIT; BEGIN")
     }
 
     override fun rollback() = wrapSqlException { // required by Hikari
         checkClosed()
-        if (autoCommitFlag) throw OctaviusJdbcException(JdbcExceptionMessage.AUTO_COMMIT_VIOLATION)
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("ROLLBACK; BEGIN")
     }
 
@@ -294,7 +305,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
             Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
             Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
             Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
-            else -> throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
+            else -> throw InvalidOperationException(InvalidOperationExceptionMessage.UNSUPPORTED_ISOLATION_LEVEL)
         }
         val query = buildString {
             append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
@@ -316,7 +327,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     override fun setSavepoint(): Savepoint = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot set a savepoint when auto-commit is enabled")
         val sp = OctaviusSavepointImpl(savepointIdCounter++)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return@wrapSqlException sp
@@ -324,8 +335,8 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     override fun setSavepoint(name: String?): Savepoint = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot set a savepoint when auto-commit is enabled")
-        if (name == null) throw IllegalArgumentException("Savepoint name cannot be null")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot set a savepoint when auto-commit is enabled")
+        if (name == null) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Savepoint name cannot be null")
         val sp = OctaviusSavepointImpl(name)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
         return@wrapSqlException sp
@@ -333,15 +344,15 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     override fun rollback(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot rollback to a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepointImpl) throw IllegalArgumentException("Unsupported savepoint")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot rollback to a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
     }
 
     override fun releaseSavepoint(savepoint: Savepoint?) = wrapSqlException {
         checkClosed()
-        if (autoCommitFlag) throw OctaviusException("Cannot release a savepoint when auto-commit is enabled")
-        if (savepoint !is OctaviusSavepointImpl) throw IllegalArgumentException("Unsupported savepoint")
+        if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionMessage.AUTO_COMMIT_VIOLATION, "Cannot release a savepoint when auto-commit is enabled")
+        if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
     }
 
@@ -381,7 +392,7 @@ class OctaviusConnection(internal val stream: PgStream, internal val url: String
 
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing =
-        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
+        throw InvalidOperationException(InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     // Replaced by typeManager
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()

@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.converter
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingException
+
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
@@ -22,12 +25,12 @@ class EnumParameterConverter<T : Enum<T>>(
         CaseConverter.convert(it.name, kotlinConvention, pgConvention)
     }
 
-    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
         return enumClass.isInstance(source)
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any? {
-        return enumToPg[source]
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
+        return enumToPg[source]!!
     }
 }
 
@@ -55,7 +58,7 @@ class EnumResultConverter<T : Enum<T>>(
 
     override fun convert(source: String, expectedType: KType, context: DeserializationContext, sourceType: PgType): T {
         return pgToEnum[source]
-            ?: throw IllegalArgumentException("Unknown enum value: $source for enum ${enumClass.simpleName}")
+            ?: throw MappingException(MappingExceptionMessage.UNKNOWN_ENUM_VALUE, "Unknown enum value: $source for enum ${enumClass.simpleName}")
     }
 }
 

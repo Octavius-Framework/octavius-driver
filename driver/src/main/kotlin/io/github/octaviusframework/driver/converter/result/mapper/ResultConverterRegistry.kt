@@ -19,7 +19,7 @@ class ResultConverterRegistry(
     fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
         val sourceClass = source::class
         
-        val specificConverters = converters[sourceClass]
+        val specificConverters: List<ResultConverter<*,*>>? = converters[sourceClass]
         if (specificConverters != null) {
             for (i in 0 until specificConverters.size) {
                 @Suppress("UNCHECKED_CAST")
@@ -30,7 +30,7 @@ class ResultConverterRegistry(
             }
         }
 
-        val anyConverters = converters[Any::class]
+        val anyConverters: List<ResultConverter<*,*>>? = converters[Any::class]
         if (anyConverters != null) {
             for (i in 0 until anyConverters.size) {
                 @Suppress("UNCHECKED_CAST")

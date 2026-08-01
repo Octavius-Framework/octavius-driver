@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import java.sql.Connection
 import java.sql.Driver
 import java.sql.DriverManager
@@ -37,6 +37,6 @@ class OctaviusDriver : Driver {
     override fun getMajorVersion(): Int = 0
     override fun getMinorVersion(): Int = 5
     override fun jdbcCompliant(): Boolean = false
-    override fun getParentLogger(): Logger = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
+    override fun getParentLogger(): Logger = throw InvalidOperationException(InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED)
 }
 

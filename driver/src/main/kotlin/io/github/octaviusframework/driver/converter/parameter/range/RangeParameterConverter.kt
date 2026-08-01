@@ -1,28 +1,31 @@
 package io.github.octaviusframework.driver.converter.parameter.range
 
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
+
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.Range
 
 class RangeParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
         return source is Range<*>
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         val range = source as Range<*>
         val typeRegistry = typeManager.registry
 
-        val pgType = if (expectedOid != null) {
+        val pgType = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as? PgType.Range
         } else {
             val nonNullBound = range.lowerBound ?: range.upperBound
             if (nonNullBound != null) {
-                val converted = context.convert(nonNullBound, null)
+                val converted = context.convert(nonNullBound, UNRESOLVED_OID)
                 val elementOid = typeRegistry.getCodecByClass(converted?.let { it::class } ?: Any::class)?.oid
                 if (elementOid != null) {
                     typeRegistry.types.values.firstOrNull { it is PgType.Range && it.subtypeOid == elementOid } as? PgType.Range
@@ -31,7 +34,7 @@ class RangeParameterConverter : ParameterConverter<Any> {
         }
 
         if (pgType == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 details = "Cannot infer range type. The range is empty or bounds are null. Use explicit typing (e.g. .withPgType(...))."
             )

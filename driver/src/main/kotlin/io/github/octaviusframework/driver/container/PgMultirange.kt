@@ -12,6 +12,8 @@ class PgMultirange internal constructor(
     val rangeOid: Int,
     val ranges: List<PgRange>
 ) : PgContainer {
+    override val containerOid: Int get() = multirangeOid
+
     val size: Int get() = ranges.size
 
     operator fun get(index: Int): PgRange = ranges[index]

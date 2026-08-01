@@ -31,16 +31,17 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.reflect.KClass
 
 class TypeRegistry {
-    val loadLock = ReentrantLock()
+    val lock = ReentrantLock()
 
     @Volatile
     internal var isLoaded: Boolean = false
@@ -95,6 +96,9 @@ class TypeRegistry {
     private var codecToOid: Map<TypeCodec<*>, Int> = emptyMap()
 
     @Volatile
+    private var customDynamicCodecs: List<TypeCodec<*>> = emptyList()
+
+    @Volatile
     var registeredComposites: Map<KClass<*>, CompositeRegistration> = emptyMap()
 
     inline fun <reified T : Any> registerAutoCompositeType(
@@ -102,7 +106,7 @@ class TypeRegistry {
         schema: String = "",
         pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
         kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
-    ) {
+    ) = lock.withLock {
         val newMap = registeredComposites.toMutableMap()
         newMap[T::class] = CompositeRegistration(QualifiedName(schema, name), pgConvention, kotlinConvention)
         registeredComposites = newMap
@@ -174,11 +178,10 @@ class TypeRegistry {
     }
 
     /**
-     * Registers a custom codec. If OID is unknown (dynamic type),
-     * it will be matched by name immediately, and also remembered during
-     * subsequent dictionary reloads (reloadTypes).
+     * Registers a custom codec. If OID and schema are missing (dynamic type in multi-schema),
+     * it will be mapped globally for deserialization but resolved in-flight for serialization.
      */
-    fun registerCodec(codec: TypeCodec<*>, searchPath: List<String> = emptyList()) {
+    fun registerCodec(codec: TypeCodec<*>) = lock.withLock {
         val newOidMap = IntObjectMap(codecsByOid)
         val newClassMap = codecsByClass.toMutableMap()
         val newCodecToOid = codecToOid.toMutableMap()
@@ -195,10 +198,18 @@ class TypeRegistry {
         if (codec.oid != null) {
             newOidMap[codec.oid!!] = codec
             newCodecToOid[codec] = codec.oid!!
-        } else {
-            val resolvedOid = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = searchPath)
+        } else if (codec.pgSchema.isNotBlank()) {
+            val resolvedOid = resolveOid(codec.pgTypeName, codec.pgSchema, searchPath = emptyList())
             newOidMap[resolvedOid] = codec
             newCodecToOid[codec] = resolvedOid
+        } else {
+            customDynamicCodecs = customDynamicCodecs + codec
+
+            types.forEach { oid, type ->
+                if (type.name == codec.pgTypeName) {
+                    newOidMap[oid] = codec
+                }
+            }
         }
 
         codecsByOid = newOidMap
@@ -217,7 +228,7 @@ class TypeRegistry {
     }
 
     fun getOidForCodec(codec: TypeCodec<*>): Int? {
-        return codecToOid[codec] ?: codec.oid
+        return codecToOid[codec]
     }
 
     fun getArrayTypeByElementOid(elementOid: Int): PgType.Array? {
@@ -228,7 +239,7 @@ class TypeRegistry {
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
      */
-    fun updateTypes(newTypes: Map<Int, PgType>, searchPath: List<String> = emptyList()) {
+    fun updateTypes(newTypes: Map<Int, PgType>) {
         val newOidMap = IntObjectMap(codecsByOid)
         val newCodecToOid = codecToOid.toMutableMap()
 
@@ -245,18 +256,11 @@ class TypeRegistry {
             }
         }
 
-        for ((codec, previousOid) in codecToOid) {
-            if (codec.oid == null) {
-                val resolvedOid = resolveOidInternal(
-                    typeName = codec.pgTypeName,
-                    requestedSchema = codec.pgSchema,
-                    isArray = false,
-                    searchPath = searchPath,
-                    typesByNameMap = newTypesByName,
-                    arrayTypesMap = newArrayTypesByElementOid
-                )
-                newOidMap[resolvedOid] = codec
-                newCodecToOid[codec] = resolvedOid
+        for (codec in customDynamicCodecs) {
+            for ((oid, type) in newTypes) {
+                if (type.name == codec.pgTypeName && (codec.pgSchema.isEmpty() || codec.pgSchema == type.schema)) {
+                    newOidMap[oid] = codec
+                }
             }
         }
 
@@ -276,7 +280,6 @@ class TypeRegistry {
                         PgMultirange::class,
                         this
                     )
-
                     else -> null
                 }
                 if (codec != null) {
@@ -312,29 +315,17 @@ class TypeRegistry {
         arrayTypesMap: IntObjectMap<PgType.Array>
     ): Int {
         val schemasForName = typesByNameMap[typeName]
-
-        if (schemasForName.isNullOrEmpty()) {
-            throw OctaviusTypeException(
-                messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
-                typeName = typeName,
-                details = "Type '$typeName' not found in any scanned schemas"
-            )
-        }
+            ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
 
         var resolvedOid: Int? = null
-
         // 1. If schema is explicitly requested
-        if (requestedSchema.isNotBlank()) {
+        if (requestedSchema.isNotEmpty()) {
             resolvedOid = schemasForName[requestedSchema]
-                ?: throw OctaviusTypeException(
-                    messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
-                    typeName = typeName,
-                    details = "Type '$typeName' not found in requested schema '$requestedSchema'"
-                )
+                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
         } else {
             // 2. If schema is empty, look in search_path (first match wins)
-            for (schema in searchPath) {
-                val oid = schemasForName[schema]
+            for (i in 0 until searchPath.size) {
+                val oid = schemasForName[searchPath[i]]
                 if (oid != null) {
                     resolvedOid = oid
                     break
@@ -344,29 +335,18 @@ class TypeRegistry {
             // 3. If not in search_path, check for unambiguous match
             if (resolvedOid == null) {
                 if (schemasForName.size == 1) {
-                    val entry = schemasForName.entries.first()
-                    resolvedOid = entry.value
+                    resolvedOid = schemasForName.values.first()
                 } else {
-                    throw OctaviusTypeException(
-                        messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
-                        typeName = typeName,
-                        details = "Type '$typeName' is ambiguous. Found in schemas: ${schemasForName.keys.joinToString()}. Please specify schema."
-                    )
+                    throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
                 }
             }
         }
 
-        if (isArray) {
-            val arrayType = arrayTypesMap[resolvedOid]
-                ?: throw OctaviusTypeException(
-                    messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
-                    typeName = typeName,
-                    details = "Array type for '$typeName' not found in registry"
-                )
-            return arrayType.oid
+        return if (isArray) {
+            arrayTypesMap[resolvedOid]?.oid
+                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
+        } else {
+            resolvedOid
         }
-
-        return resolvedOid
     }
 }
-

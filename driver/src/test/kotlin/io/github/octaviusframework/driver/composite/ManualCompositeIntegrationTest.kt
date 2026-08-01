@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.composite
 
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
+
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
@@ -37,15 +40,15 @@ class ManualCompositeIntegrationTest {
     }
 
     class PaymentInfoParameterConverter : ParameterConverter<PaymentInfo> {
-        override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
             return source is PaymentInfo
         }
 
-        override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
+        override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
             val payment = source as PaymentInfo
             
             // Tworzenie kompozytu jest znacznie czystsze z użyciem TypeManager
-            val composite = if (expectedOid != null) {
+            val composite = if (expectedOid.isKnownOid) {
                 typeManager.createComposite(expectedOid)
             } else {
                 typeManager.createComposite("payment_info")
@@ -103,7 +106,7 @@ class ManualCompositeIntegrationTest {
 
                 // Pobieramy wewnątrz transakcji
                 val selectQuery = "SELECT payment FROM orders WHERE id = 1"
-                val resultRow = conn.createNativeQuery(selectQuery).fetchOne()
+                val resultRow = conn.createNativeQuery(selectQuery).fetchOneStrict()
                 assertNotNull(resultRow)
 
                 val fetchedPayment = resultRow.get<PaymentInfo>("payment")
@@ -112,7 +115,7 @@ class ManualCompositeIntegrationTest {
             }
             
             // Sprawdzenie poza transakcją
-            val countRows = conn.createNativeQuery("SELECT COUNT(*) FROM orders").fetchOne().get<Long>(0)
+            val countRows = conn.createNativeQuery("SELECT COUNT(*) FROM orders").fetchOneStrict().get<Long>(0)
             assertEquals(1L, countRows)
 
         } finally {

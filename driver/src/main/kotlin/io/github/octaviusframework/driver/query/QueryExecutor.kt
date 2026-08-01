@@ -6,13 +6,15 @@ import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.RowMetadata
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class QueryExecutor(
+class QueryExecutor internal constructor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry
 ) {
@@ -28,7 +30,7 @@ class QueryExecutor(
         stream.flush()
 
         var errorResponse: ErrorResponseMessage? = null
-        var errorMessage: String? = null
+        var executionError: OctaviusException? = null
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
@@ -38,8 +40,11 @@ class QueryExecutor(
                     break
                 }
                 is RowDescriptionMessage, is DataRowMessage -> {
-                    if (errorResponse == null && errorMessage == null) {
-                        errorMessage = "Method execute() received result rows. Use query() for DQL queries."
+                    if (errorResponse == null && executionError == null) {
+                        executionError = InvalidOperationException(
+                            InvalidOperationExceptionMessage.UNEXPECTED_RESULT,
+                            "Method execute() received result rows. Use query() for DQL queries."
+                        )
                     }
                 }
                 is CommandCompleteMessage, is EmptyQueryResponseMessage -> { /* Ignore - expected */ }
@@ -49,8 +54,8 @@ class QueryExecutor(
 
         if (errorResponse != null) {
             throw ExceptionTranslator.translate(errorResponse)
-        } else if (errorMessage != null) {
-            throw OctaviusException("Database error during query execution: $errorMessage")
+        } else if (executionError != null) {
+            throw executionError
         }
     }
 
@@ -78,7 +83,7 @@ class QueryExecutor(
         
         var rowsAffected = 0L
         var errorResponse: ErrorResponseMessage? = null
-        var errorMessage: String? = null
+        var executionError: OctaviusException? = null
         
         while (true) {
             val msg = stream.receiveMessage()
@@ -92,7 +97,12 @@ class QueryExecutor(
                     }
                 }
                 is DataRowMessage, is RowDescriptionMessage -> {
-                    if (errorResponse == null && errorMessage == null) errorMessage = "Method update() received result rows. Use query() for DQL queries."
+                    if (errorResponse == null && executionError == null) {
+                        executionError = InvalidOperationException(
+                            InvalidOperationExceptionMessage.UNEXPECTED_RESULT,
+                            "Method update() received result rows. Use query() for DQL queries."
+                        )
+                    }
                 }
                 is ErrorResponseMessage -> {
                     if (errorResponse == null) errorResponse = msg
@@ -107,8 +117,8 @@ class QueryExecutor(
 
         if (errorResponse != null) {
             throw ExceptionTranslator.translate(errorResponse)
-        } else if (errorMessage != null) {
-            throw OctaviusException(errorMessage)
+        } else if (executionError != null) {
+            throw executionError
         }
         
         return rowsAffected
@@ -157,7 +167,7 @@ class QueryExecutor(
         val rows = mutableListOf<R>()
         var rowMetadata: RowMetadata? = null
         var errorResponse: ErrorResponseMessage? = null
-        var errorMessage: String? = null
+        var executionError: OctaviusException? = null
         
         while (true) {
             val msg = stream.receiveMessage()
@@ -167,7 +177,9 @@ class QueryExecutor(
                 is NoDataMessage -> { /* Expected if query returns no rows */ }
                 is DataRowMessage -> {
                     if (rowMetadata == null) {
-                        errorMessage = "Received DataRow before RowDescription"
+                        if (executionError == null) {
+                            executionError = OctaviusInternalException("Received DataRow before RowDescription")
+                        }
                     } else {
                         rows.add(transform(
                             Row(
@@ -195,8 +207,8 @@ class QueryExecutor(
         
         if (errorResponse != null) {
             throw ExceptionTranslator.translate(errorResponse)
-        } else if (errorMessage != null) {
-            throw OctaviusException(errorMessage)
+        } else if (executionError != null) {
+            throw executionError
         }
 
         return rows

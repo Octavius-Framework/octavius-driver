@@ -35,7 +35,7 @@ class DeserializationIntegrationTest {
             session.types.registerAutoComposite<IntegrationAddress>("integ_address")
             session.types.registerAutoComposite<IntegrationUser>("integ_user")
 
-            val result = session.createNativeQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchOne()
+            val result = session.createNativeQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchOneStrict()
             
             // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
             val parsedUser = result.get<IntegrationUser>("usr")
@@ -67,7 +67,7 @@ class DeserializationIntegrationTest {
             session.reloadTypes()
             session.types.registerAutoComposite<IntegrationAddress>("integ_address")
 
-            val result = session.createNativeQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchOne()
+            val result = session.createNativeQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchOneStrict()
 
             // Oczekujemy, że mechanizm automatycznie użyje domyślnego deserializera zaimplementowanego w Row.get
             val parsedList = result.get<List<IntegrationAddress>>("addresses")
@@ -91,7 +91,7 @@ class DeserializationIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
 
         try {
-            val result = session.createNativeQuery("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").fetchOne()
+            val result = session.createNativeQuery("SELECT '{\"key\": \"value1\"}'::json AS js, '{\"key2\": \"value2\"}'::jsonb AS jsb").fetchOneStrict()
 
             val js = result.get<JsonElement>("js")
             val jsb = result.get<JsonElement>("jsb")
@@ -179,7 +179,7 @@ class DeserializationIntegrationTest {
             // Zbudowanie zapytania, w którym tworzymy nasz kompozyt testowy
             val result = session.createNativeQuery(
                 "SELECT ROW('ACTIVE'::test_status_enum, ROW('CD123', 'INACTIVE')::test_user_data)::test_root_composite AS my_map"
-            ).fetchOne()
+            ).fetchOneStrict()
 
             // Odbieramy kolumnę 'my_map' jako Map<String, Any?>
             val mappedResult = result.get<Map<String, Any?>>("my_map")
@@ -222,16 +222,16 @@ class DeserializationIntegrationTest {
             session.types.registerAutoComposite<DomainUser>("domain_user")
 
             // Test deserialization of pure domain
-            val res1 = session.createNativeQuery("SELECT 42::positive_int AS num").fetchOne()
+            val res1 = session.createNativeQuery("SELECT 42::positive_int AS num").fetchOneStrict()
             assertEquals(42, res1.get<Int>("num"))
 
             // Test deserialization of array of domains
-            val res2 = session.createNativeQuery("SELECT ARRAY[10, 20]::positive_int[] AS nums").fetchOne()
+            val res2 = session.createNativeQuery("SELECT ARRAY[10, 20]::positive_int[] AS nums").fetchOneStrict()
             val list = res2.get<List<Int>>("nums")
             assertEquals(listOf(10, 20), list)
 
             // Test deserialization of composite with domains
-            val res3 = session.createNativeQuery("SELECT ROW(1, 25)::domain_user AS usr").fetchOne()
+            val res3 = session.createNativeQuery("SELECT ROW(1, 25)::domain_user AS usr").fetchOneStrict()
             val usr = res3.get<DomainUser>("usr")
             assertEquals(1, usr.id)
             assertEquals(25, usr.age)
@@ -239,7 +239,7 @@ class DeserializationIntegrationTest {
             // Test serialization of domains (implicit, mapped as underlying type since JDBC sends parameters with matching format/Oid if we specify it or just sends integer)
             // If we send it via composite
             val res4 = session.createNativeQuery("SELECT $1 AS usr_back")
-                .fetchOne(DomainUser(100, 30).withPgType("domain_user"))
+                .fetchOneStrict(DomainUser(100, 30).withPgType("domain_user"))
             
             val usrBack = res4.get<DomainUser>("usr_back")
             assertEquals(100, usrBack.id)
@@ -276,7 +276,7 @@ class DeserializationIntegrationTest {
             session.types.registerAutoComposite<MapKeyIntegrationUser>("integ_user_mapkey")
 
             // Test deserialization
-            val result = session.createNativeQuery("SELECT ROW(15, 'Anna Nowak', ROW('Mickiewicza', 'Kraków')::integ_address)::integ_user_mapkey AS usr").fetchOne()
+            val result = session.createNativeQuery("SELECT ROW(15, 'Anna Nowak', ROW('Mickiewicza', 'Kraków')::integ_address)::integ_user_mapkey AS usr").fetchOneStrict()
             
             val parsedUser = result.get<MapKeyIntegrationUser>("usr")
 
@@ -287,8 +287,8 @@ class DeserializationIntegrationTest {
             assertEquals("Kraków", parsedUser.address.city)
 
             // Test serialization
-            val resBack = session.createNativeQuery($$"SELECT $1 AS usr_back")
-                .fetchOne(parsedUser)
+            val resBack = session.createNativeQuery("SELECT $1 AS usr_back")
+                .fetchOneStrict(parsedUser)
 
             val usrBack = resBack.get<MapKeyIntegrationUser>("usr_back")
             assertEquals(15, usrBack.id)
@@ -309,7 +309,7 @@ class DeserializationIntegrationTest {
     fun testRecordTypeHandling() {
         getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234").use { session ->
             val result =
-                session.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchOne()
+                session.createNativeQuery("SELECT ROW('a', ROW('b', 1), 'c', '[\"b\",\"c\"]'::json) AS rec").fetchOneStrict()
 
             val map = result.get<Map<String, Any?>>("rec")
             assertNotNull(map)

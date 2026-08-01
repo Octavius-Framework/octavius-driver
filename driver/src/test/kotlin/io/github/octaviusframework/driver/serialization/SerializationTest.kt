@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -27,7 +27,7 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchOne()
+        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchOneStrict()
 
         val array = row.get<PgArray>("my_arr")
         assertNotNull(array)
@@ -43,7 +43,7 @@ class SerializationTest {
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
 
-        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchOne()
+        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchOneStrict()
         val expectedArray = expectedRow.get<PgArray>(0)
         val writer3 = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writer3, row.typeRegistry)
@@ -64,7 +64,7 @@ class SerializationTest {
         session.createNativeQuery("CREATE TYPE ser_test_composite AS (id int, name text)").execute()
         session.reloadTypes()
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchOne()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchOneStrict()
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
@@ -78,7 +78,7 @@ class SerializationTest {
 
         // Porównanie z bazą
         val expectedCompositeRow =
-            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchOne()
+            session.createNativeQuery("SELECT ROW(777, 'factory_test')::ser_test_composite as my_comp").fetchOneStrict()
         val expectedComposite = expectedCompositeRow.get<PgComposite>(0)
         val writerComp = PgByteWriter()
         ContainerCodec.serializeContainer(expectedComposite, writerComp, typeRegistry)
@@ -102,7 +102,7 @@ class SerializationTest {
         ContainerCodec.serializeContainer(array, writer2, typeRegistry)
         val builtArrayBytes = writer2.toByteArray()
 
-        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchOne()
+        val expectedArrayRow = session.createNativeQuery("SELECT ARRAY[10, 20, 30]::int[]").fetchOneStrict()
         val expectedArray = expectedArrayRow.get<PgArray>(0)
         val writerArr = PgByteWriter()
         ContainerCodec.serializeContainer(expectedArray, writerArr, typeRegistry)
@@ -141,7 +141,7 @@ class SerializationTest {
 
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchOne()
+        val dummyRow = session.createNativeQuery("SELECT 1").fetchOneStrict()
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
         val multiArray = PgArray(
@@ -225,7 +225,7 @@ class SerializationTest {
             "int_key" to 12345
         )
 
-        val exception = assertThrows<OctaviusTypeException> {
+        val exception = assertThrows<TypeException> {
             session.createNativeQuery("SELECT $1 as res").fetchAll(recordMap)
         }
         

@@ -1,13 +1,11 @@
 package io.github.octaviusframework.driver.notification
 
 import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
+import io.github.octaviusframework.driver.exception.NetworkException
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
-import java.io.IOException
-import java.net.SocketException
-import java.net.SocketTimeoutException
 import kotlin.concurrent.withLock
 
 class NotificationManager internal constructor(private val session: OctaviusSessionImpl) {
@@ -40,15 +38,15 @@ class NotificationManager internal constructor(private val session: OctaviusSess
 
                     while (context.isActive && !connection.isClosedFlag) {
                         try {
-                            connection.stream.receiveMessage(isPolling = true)
-                        } catch (e: SocketTimeoutException) {
-                            // Timeout is expected, loop continues and checks isActive
-                        } catch (e: SocketException) {
-                            // Socket was closed from the outside
-                            break
-                        } catch (e: IOException) {
-                            // Connection dropped by network, server, or closed explicitly
-                            break
+                            connection.stream.pollMessage()
+                        } catch (e: NetworkException) {
+                            if (connection.isClosedFlag || !context.isActive) {
+                                // Connection closed explicitly or coroutine cancelled
+                                break
+                            } else {
+                                // Connection dropped by network or server
+                                throw e
+                            }
                         }
                     }
                 } finally {
@@ -87,10 +85,12 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                     while (context.isActive && !connection.isClosedFlag) {
                         try {
                             connection.stream.receiveMessage()
-                        } catch (e: SocketException) {
-                            break
-                        } catch (e: IOException) {
-                            break
+                        } catch (e: NetworkException) {
+                            if (connection.isClosedFlag || !context.isActive) {
+                                break
+                            } else {
+                                throw e
+                            }
                         }
                     }
                 } finally {

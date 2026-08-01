@@ -116,8 +116,8 @@ class RangeConverterTest {
         val converter = RangeParameterConverter()
         
         val context = object : SerializationContext {
-            override fun convert(source: Any, expectedOid: Int?): Any? = source
-            override fun findConverter(source: Any, expectedOid: Int?): ParameterConverter<Any>? = null
+            override fun convert(source: Any, expectedOid: Int): Any? = source
+            override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
         }
 
         val range = Range(
@@ -144,8 +144,8 @@ class RangeConverterTest {
         val converter = MultiRangeParameterConverter()
         
         val context = object : SerializationContext {
-            override fun convert(source: Any, expectedOid: Int?): Any? = source
-            override fun findConverter(source: Any, expectedOid: Int?): ParameterConverter<Any>? = null
+            override fun convert(source: Any, expectedOid: Int): Any? = source
+            override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
         }
 
         val multiRange = MultiRange(

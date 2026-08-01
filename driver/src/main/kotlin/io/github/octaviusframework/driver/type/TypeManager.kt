@@ -1,8 +1,6 @@
 package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.codec.TypeCodec
-import io.github.octaviusframework.driver.container.ArrayDimension
-import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
@@ -10,7 +8,7 @@ import io.github.octaviusframework.driver.converter.EnumParameterConverter
 import io.github.octaviusframework.driver.converter.EnumResultConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
@@ -56,7 +54,7 @@ class TypeManager(
      *
      * @param codec The codec instance to register.
      */
-    fun registerCodec(codec: TypeCodec<*>) = registry.registerCodec(codec, searchPathProvider())
+    fun registerCodec(codec: TypeCodec<*>) = registry.registerCodec(codec)
 
     /**
      * Registers a composite type with the given configuration using reflection.
@@ -125,7 +123,7 @@ class TypeManager(
      */
     fun createComposite(oid: Int): PgComposite {
         val pgType = registry.types[oid] as? PgType.Composite
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
+            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
         val fields = Array<Any?>(pgType.attributes.size) { null }
         return PgComposite(pgType, fields, registry)
     }
@@ -182,7 +180,7 @@ class TypeManager(
         isUpperNull: Boolean = false
     ): PgRange {
         val rangeType = registry.types[oid] as? PgType.Range
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
+            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
             
         return PgRange.create(
             rangeOid = rangeType.oid,
@@ -212,7 +210,7 @@ class TypeManager(
      */
     fun createEmptyRange(oid: Int): PgRange {
         val rangeType = registry.types[oid] as? PgType.Range
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
+            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
         return PgRange.empty(rangeType.oid, rangeType.subtypeOid, registry)
     }
 
@@ -238,7 +236,7 @@ class TypeManager(
      */
     fun createMultirange(oid: Int, vararg ranges: PgRange): PgMultirange {
         val multirangeType = registry.types[oid] as? PgType.Multirange
-            ?: throw OctaviusTypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange or does not exist in TypeRegistry")
+            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange or does not exist in TypeRegistry")
         return PgMultirange(multirangeType.oid, multirangeType.rangeOid, ranges.toList())
     }
 }

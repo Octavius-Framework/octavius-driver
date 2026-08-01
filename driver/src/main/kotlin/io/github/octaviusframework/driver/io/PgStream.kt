@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.io
 
-import io.github.octaviusframework.driver.exception.AuthExceptionMessage
-import io.github.octaviusframework.driver.exception.AuthException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
+import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
@@ -9,9 +9,13 @@ import io.github.octaviusframework.driver.notification.PgNotification
 import io.github.octaviusframework.driver.row.FieldDescription
 import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
+import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
+import io.github.octaviusframework.driver.exception.NetworkException
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import java.io.EOFException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -19,9 +23,21 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import java.net.SocketTimeoutException
 import java.util.concurrent.locks.ReentrantLock
 
-private val logger = KotlinLogging.logger {}
-
-class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : AutoCloseable {
+/**
+ * Represents a connection stream to a PostgreSQL database.
+ * Handles reading and writing of PostgreSQL wire protocol messages.
+ *
+ * @property host The hostname or IP address of the PostgreSQL server.
+ * @property port The port number of the PostgreSQL server.
+ * @param loginTimeoutSecs Timeout in seconds for the initial connection and login process.
+ * @param notificationBufferCapacity Capacity of the buffer for asynchronous notifications.
+ */
+internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, notificationBufferCapacity: Int = 256) : AutoCloseable {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+        // A specific logger name allows users to filter just notices in logback.xml
+        private val noticeLogger = KotlinLogging.logger("io.github.octaviusframework.driver.Notice")
+    }
     val lock = ReentrantLock()
     private var socket: Socket = Socket()
     var inputStream: PgInputStream
@@ -48,6 +64,13 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
         outputStream = PgOutputStream(socket.getOutputStream())
     }
 
+    /**
+     * Upgrades the current connection to use SSL/TLS.
+     *
+     * @param host The hostname to verify against the SSL certificate.
+     * @param port The port number.
+     * @param config The SSL configuration to use.
+     */
     fun upgradeToSSL(host: String, port: Int, config: SslConfiguration) {
         val sslSocket = PgSslUpgrader.upgrade(socket, host, port, config)
         socket = sslSocket
@@ -64,30 +87,67 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
             socket.soTimeout = value
         }
     private val _notifications = MutableSharedFlow<PgNotification>(
-        extraBufferCapacity = 256,
+        extraBufferCapacity = notificationBufferCapacity,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val notifications: SharedFlow<PgNotification> = _notifications
 
-    internal fun sendMessage(msg: FrontendMessage) {
+    /**
+     * Sends a frontend message to the PostgreSQL server.
+     *
+     * @param msg The frontend message to send.
+     * @throws NetworkException if a network error occurs during transmission.
+     */
+    fun sendMessage(msg: FrontendMessage) {
         try {
             msg.encode(outputStream)
         } catch (e: IOException) {
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
         }
     }
 
+    /**
+     * Flushes the underlying output stream, forcing any buffered bytes to be written out.
+     *
+     * @throws NetworkException if a network error occurs during flush.
+     */
     fun flush() {
         try {
             outputStream.flush()
         } catch (e: IOException) {
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
         }
     }
 
-    internal fun receiveMessage(isPolling: Boolean = false): BackendMessage {
+    /**
+     * Receives a single backend message synchronously, blocking until data is available.
+     *
+     * @return The parsed backend message.
+     * @throws NetworkException if a network error occurs.
+     */
+    fun receiveMessage(): BackendMessage {
+        return receiveMessageInternal(isPolling = false)!!
+    }
+
+    /**
+     * Attempts to receive a backend message if one is immediately available or within the timeout.
+     * Returns null if no message is available (e.g. timeout reached while polling).
+     *
+     * @return The parsed backend message, or null if a timeout occurs before receiving the tag.
+     */
+    fun pollMessage(): BackendMessage? {
+        return receiveMessageInternal(isPolling = true)
+    }
+
+    /**
+     * Internal function to receive a backend message, optionally handling timeouts gracefully if polling.
+     *
+     * @param isPolling If true, a read timeout when reading the initial message tag will return null instead of throwing an exception.
+     * @return The parsed backend message, or null if polling and a timeout occurs.
+     */
+    private fun receiveMessageInternal(isPolling: Boolean = false): BackendMessage? {
         var readingTag = true
         try {
             while (true) {
@@ -112,7 +172,14 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                             fields[token] = inputStream.readCString()
                         }
                         val notice = NoticeResponseMessage(fields)
-                        // TODO: eventually a logging system
+                        val logMsg = "[PID: $processId] $notice"
+
+                        when (notice.severity) {
+                            "WARNING" -> noticeLogger.warn { logMsg }
+                            "NOTICE", "INFO", "LOG" -> noticeLogger.info { logMsg }
+                            "DEBUG" -> noticeLogger.debug { logMsg }
+                            else -> noticeLogger.info { logMsg }
+                        }
                     }
                     'A' -> {
                         val pid = inputStream.readInt()
@@ -206,16 +273,26 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
             }
         } catch (e: SocketTimeoutException) {
             if (isPolling && readingTag) {
-                throw e
+                return null
             }
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_TIMEOUT, cause = e)
+        } catch (e: EOFException) {
+            isBroken = true
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_CLOSED_BY_PEER, cause = e)
         } catch (e: IOException) {
             isBroken = true
-            throw e
+            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
         }
     }
 
+    /**
+     * Parses an authentication request message from the backend.
+     *
+     * @param payloadLength The length of the message payload.
+     * @return The parsed AuthenticationMessage.
+     * @throws InitializationException if the authentication mechanism is unsupported.
+     */
     private fun parseAuthentication(payloadLength: Int): BackendMessage {
         return when (val type = inputStream.readInt()) {
             0 -> AuthenticationMessage.Ok
@@ -241,13 +318,19 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw AuthException(
-                AuthExceptionMessage.UNSUPPORTED_MECHANISM,
+            else -> throw InitializationException(
+                InitializationExceptionMessage.UNSUPPORTED_MECHANISM,
                 details = "Unknown authentication type: $type"
             )
         }
     }
 
+    /**
+     * Parses an error response message from the backend.
+     *
+     * @param payloadLength The length of the message payload.
+     * @return The parsed ErrorResponseMessage.
+     */
     private fun parseErrorResponse(payloadLength: Int): BackendMessage {
         val fields = mutableMapOf<Char, String>()
         while (true) {
@@ -259,17 +342,20 @@ class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10) : Au
         return ErrorResponseMessage(fields)
     }
 
+    /**
+     * Closes the connection stream, sending a Terminate message if the socket is still open.
+     */
     override fun close() {
         if (!socket.isClosed) {
             try {
                 sendMessage(TerminateMessage())
                 flush()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignoring errors during close
             }
             try {
                 socket.close()
-            } catch (ignore: Exception) {
+            } catch (_: Exception) {
             }
         }
     }

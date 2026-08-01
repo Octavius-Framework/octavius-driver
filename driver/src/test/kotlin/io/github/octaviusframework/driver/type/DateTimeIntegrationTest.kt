@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -8,7 +8,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toKotlinLocalDate
 import org.junit.jupiter.api.Test
-import java.util.Properties
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.time.Instant
@@ -24,19 +23,19 @@ class DateTimeIntegrationTest {
 
         // 1. Test LocalDate mapping
         val dateResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST)
+            .fetchOneStrict(LocalDate.DISTANT_FUTURE, LocalDate.DISTANT_PAST)
         assertEquals(LocalDate.DISTANT_FUTURE, dateResult.get(0))
         assertEquals(LocalDate.DISTANT_PAST, dateResult.get(1))
 
         // 2. Test LocalDateTime mapping
         val dateTimeResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST)
+            .fetchOneStrict(LocalDateTime.DISTANT_FUTURE, LocalDateTime.DISTANT_PAST)
         assertEquals(LocalDateTime.DISTANT_FUTURE, dateTimeResult.get(0))
         assertEquals(LocalDateTime.DISTANT_PAST, dateTimeResult.get(1))
 
         // 3. Test Instant (timestamptz) mapping
         val instantResult = session.createNativeQuery("SELECT $1 as f, $2 as p")
-            .fetchOne(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
+            .fetchOneStrict(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
         assertEquals(Instant.DISTANT_FUTURE, instantResult.get(0))
         assertEquals(Instant.DISTANT_PAST, instantResult.get(1))
     }
@@ -54,7 +53,7 @@ class DateTimeIntegrationTest {
         val badFutureDays = Int.MAX_VALUE.toLong() + pgEpochDays
         val badFutureDate = java.time.LocalDate.ofEpochDay(badFutureDays).toKotlinLocalDate()
 
-        val exFuture = assertFailsWith<OctaviusTypeException> {
+        val exFuture = assertFailsWith<TypeException> {
             session.createNativeQuery("SELECT $1").fetchOne(badFutureDate)
         }
         assertEquals(true, exFuture.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))
@@ -63,7 +62,7 @@ class DateTimeIntegrationTest {
         val badPastDays = Int.MIN_VALUE.toLong() + pgEpochDays
         val badPastDate = java.time.LocalDate.ofEpochDay(badPastDays).toKotlinLocalDate()
 
-        val exPast = assertFailsWith<OctaviusTypeException> {
+        val exPast = assertFailsWith<TypeException> {
             session.createNativeQuery("SELECT $1").fetchOne(badPastDate)
         }
         assertEquals(true, exPast.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))

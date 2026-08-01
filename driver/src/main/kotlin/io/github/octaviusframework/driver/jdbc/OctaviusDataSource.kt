@@ -1,9 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.JdbcExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusJdbcException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureException
-import io.github.octaviusframework.driver.exception.UnsupportedFeatureExceptionMessage
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.io.PrintWriter
@@ -14,13 +12,11 @@ import javax.sql.DataSource
 class OctaviusDataSource : DataSource {
     private val octaviusProperties = OctaviusProperties()
 
-    var url: String?
+    var url: String
         get() = octaviusProperties.toUrl()
         set(value) {
-            if (value != null) {
-                val parsed = OctaviusProperties.parse(value)
-                octaviusProperties.merge(parsed)
-            }
+            val parsed = OctaviusProperties.parse(value)
+            octaviusProperties.merge(parsed)
         }
 
     var serverName: String?
@@ -74,14 +70,13 @@ class OctaviusDataSource : DataSource {
     }
 
     override fun getConnection(username: String?, pass: String?): Connection {
-        val jdbcUrl = url ?: throw OctaviusJdbcException(JdbcExceptionMessage.INVALID_URL, "URL must be set on OctaviusDataSource")
-        
+
         val props = octaviusProperties.copy()
         
         if (username != null) props.user = username
         if (pass != null) props.password = pass
         
-        return OctaviusConnectionFactory.createConnection(jdbcUrl, props)
+        return OctaviusConnectionFactory.createConnection(url, props)
     }
 
     override fun getLogWriter(): PrintWriter? = logWriter
@@ -95,14 +90,14 @@ class OctaviusDataSource : DataSource {
 
     override fun getLoginTimeout(): Int = octaviusProperties.loginTimeout ?: 0
 
-    override fun getParentLogger(): Logger = throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.FEATURE_NOT_SUPPORTED)
+    override fun getParentLogger(): Logger = throw InvalidOperationException(InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED)
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw UnsupportedFeatureException(UnsupportedFeatureExceptionMessage.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
+        throw InvalidOperationException(InvalidOperationExceptionMessage.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)

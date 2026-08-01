@@ -33,9 +33,9 @@ class SqlParameterParserTest {
 
     @Test
     fun testParseDollarQuotes() {
-        val sql = "SELECT $$@notParam$$, ${'$'}tag${'$'}@notParam2${'$'}tag${'$'} WHERE id = @id"
+        val sql = $$$"SELECT $$@notParam$$, $tag$@notParam2$tag$ WHERE id = @id"
         val parsed = SqlParameterParser.parse(sql)
-        val expected = "SELECT $$@notParam$$, ${'$'}tag${'$'}@notParam2${'$'}tag${'$'} WHERE id = $1"
+        val expected = $$$"SELECT $$@notParam$$, $tag$@notParam2$tag$ WHERE id = $1"
 
         assertEquals(expected, parsed.transformedSql)
         assertEquals(listOf("id"), parsed.paramNames)

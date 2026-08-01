@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -27,7 +28,7 @@ class BasicQueryIntegrationTest {
         assertEquals(4.5, row.get(2))
 
         val result2 = session.createNativeQuery("SELECT $1 as test_int, $2 as test_float, $1 as test_int2")
-            .fetchOne(1, 2.4f)
+            .fetchOneStrict(1, 2.4f)
         assertEquals(1, result2.get(0))
         assertEquals(2.4f, result2.get(1))
         assertEquals(1, result2.get(2))
@@ -41,15 +42,15 @@ class BasicQueryIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
 
         // Generate 1000 rows. Thanks to maxRows=2 and PortalSuspended, it should fetch exactly 2 rows
-        // and throw IllegalStateException without loading all 1000 rows into memory.
-        val exception = assertFailsWith<IllegalStateException> {
-            session.createNativeQuery("SELECT generate_series(1, 1000)").fetchOne()
+        // and throw StatementException without loading all 1000 rows into memory.
+        val exception = assertFailsWith<StatementException> {
+            session.createNativeQuery("SELECT generate_series(1, 1000)").fetchOneStrict()
         }
 
-        assertEquals("Expected exactly one row, but got 2", exception.message)
+        assertEquals("INCORRECT_RESULT_SIZE", exception.message)
 
         // Make sure the connection is in a healthy state and can execute subsequent queries
-        val subsequentResult = session.createNativeQuery("SELECT 42").fetchOne().get<Int>(0)
+        val subsequentResult = session.createNativeQuery("SELECT 42").fetchOneStrict().get<Int>(0)
         assertEquals(42, subsequentResult)
     }
 }

@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.container
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
@@ -19,6 +19,8 @@ class PgRecord internal constructor(
     val fields: Array<Any?>,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
+    override val containerOid: Int get() = type.oid
+
     inline fun <reified T> get(index: Int): T {
         val value = fields[index]
 
@@ -27,14 +29,14 @@ class PgRecord internal constructor(
         }
 
         if (value == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
                 details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
-        throw OctaviusTypeException(
+        throw TypeException(
             TypeExceptionMessage.CASTING_ERROR,
             typeName = T::class.simpleName,
             details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
@@ -46,7 +48,7 @@ class PgRecord internal constructor(
         
         val oid = fieldOids[index]
         return typeRegistry.types[oid]
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 oid = oid,
                 details = "Nie znaleziono typu w rejestrze"

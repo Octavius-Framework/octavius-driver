@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgInterval.Finite
 import io.github.octaviusframework.driver.type.PgInterval.Infinity
@@ -74,7 +74,7 @@ fun PgInterval.toDateTimePeriod(): DateTimePeriod = when (this) {
  * Converts a Kotlinx [DateTimePeriod] to a [PgInterval].
  *
  * @return The equivalent [PgInterval].
- * @throws OctaviusTypeException if the calendar fields or time units overflow during conversion.
+ * @throws TypeException if the calendar fields or time units overflow during conversion.
  */
 fun DateTimePeriod.toPgInterval(): PgInterval = when (this) {
     DateTimePeriod.INFINITY -> Infinity
@@ -83,7 +83,7 @@ fun DateTimePeriod.toPgInterval(): PgInterval = when (this) {
         val pgMonths = try {
             Math.addExact(Math.multiplyExact(years, 12), months)
         } catch (e: ArithmeticException) {
-            throw OctaviusTypeException(TypeExceptionMessage.VALUE_OUT_OF_RANGE, details = "Months overflow in DateTimePeriod to PgInterval conversion")
+            throw TypeException(TypeExceptionMessage.VALUE_OUT_OF_RANGE, details = "Months overflow in DateTimePeriod to PgInterval conversion")
         }
 
         val pgTime = try {
@@ -93,7 +93,7 @@ fun DateTimePeriod.toPgInterval(): PgInterval = when (this) {
             t = Math.addExact(t, nanoseconds / 1000L)
             t
         } catch (e: ArithmeticException) {
-            throw OctaviusTypeException(TypeExceptionMessage.VALUE_OUT_OF_RANGE, details = "Time overflow in DateTimePeriod to PgInterval conversion")
+            throw TypeException(TypeExceptionMessage.VALUE_OUT_OF_RANGE, details = "Time overflow in DateTimePeriod to PgInterval conversion")
         }
 
         Finite(
@@ -117,7 +117,7 @@ fun PgInterval.toDurationExact(): Duration = when (this) {
     MinusInfinity -> -Duration.INFINITE
     is Finite -> {
         if (days != 0 || months != 0) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 messageEnum = TypeExceptionMessage.CASTING_ERROR,
                 details = "Cannot convert PgInterval to exact Duration because it contains variable-length calendar units (days: $days, months: $months)."
             )
@@ -162,7 +162,7 @@ fun PgInterval.toDurationApproximate(): Duration = when (this) {
             m = Math.addExact(m, time)
             m
         } catch (e: ArithmeticException) {
-            throw OctaviusTypeException(TypeExceptionMessage.VALUE_OUT_OF_RANGE, details = "Microseconds overflow in PgInterval to Duration conversion")
+            throw TypeException(TypeExceptionMessage.VALUE_OUT_OF_RANGE, details = "Microseconds overflow in PgInterval to Duration conversion")
         }
         totalMicros.microseconds
     }
