@@ -28,16 +28,14 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         val pgType = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as? PgType.Multirange
         } else {
-            val firstRange = multiRange.ranges.firstOrNull { it.lowerBound != null || it.upperBound != null }
-            val nonNullBound = firstRange?.lowerBound ?: firstRange?.upperBound
-            if (nonNullBound != null) {
-                val converted = context.convert(nonNullBound, UNRESOLVED_OID)
-                val elementOid = typeRegistry.getCodecByClass(converted?.let { it::class } ?: Any::class)?.oid
-                if (elementOid != null) {
-                    val rangeType = typeRegistry.types.values.firstOrNull { it is PgType.Range && it.subtypeOid == elementOid } as? PgType.Range
-                    if (rangeType != null) {
-                        typeRegistry.types.values.firstOrNull { it is PgType.Multirange && it.rangeOid == rangeType.oid } as? PgType.Multirange
-                    } else null
+            val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultOid(typeManager)
+                ?.takeIf { it.isKnownOid }
+                ?: typeRegistry.getCodecByClass(multiRange.elementClass)?.let { typeRegistry.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
+
+            if (elementOid != null && elementOid.isKnownOid) {
+                val rangeType = typeRegistry.types.values.firstOrNull { it is PgType.Range && it.subtypeOid == elementOid } as? PgType.Range
+                if (rangeType != null) {
+                    typeRegistry.types.values.firstOrNull { it is PgType.Multirange && it.rangeOid == rangeType.oid } as? PgType.Multirange
                 } else null
             } else null
         }
@@ -52,10 +50,11 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         val rangeOid = pgType.rangeOid
         val rangePgType = typeRegistry.types[rangeOid] as? PgType.Range ?: throw OctaviusInternalException()
         val elementOid = rangePgType.subtypeOid
+        val boundConverter = context.findConverterByClass(multiRange.elementClass, elementOid)
 
         val pgRanges = multiRange.ranges.map { range ->
-            val convertedLower = range.lowerBound?.let { context.convert(it, elementOid) }
-            val convertedUpper = range.upperBound?.let { context.convert(it, elementOid) }
+            val convertedLower = range.lowerBound?.let { boundConverter?.convert(it, elementOid, context, typeManager) ?: it }
+            val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context, typeManager) ?: it }
 
             if (range.isEmpty) {
                 typeManager.createEmptyRange(rangeOid)

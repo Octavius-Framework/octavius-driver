@@ -17,6 +17,7 @@ import kotlin.reflect.KType
 
 class EnumParameterConverter<T : Enum<T>>(
     private val enumClass: KClass<T>,
+    private val qualifiedName: QualifiedName,
     private val pgConvention: CaseConvention,
     private val kotlinConvention: CaseConvention
 ) : ParameterConverter<T> {
@@ -33,6 +34,10 @@ class EnumParameterConverter<T : Enum<T>>(
 
     override fun convert(source: T, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         return enumToPg[source]!!
+    }
+
+    override fun getDefaultOid(typeManager: TypeManager): Int {
+        return typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
     }
 }
 

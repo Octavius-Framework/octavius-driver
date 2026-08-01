@@ -27,13 +27,12 @@ class RangeParameterConverter : ParameterConverter<Any> {
         val pgType = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as? PgType.Range
         } else {
-            val nonNullBound = range.lowerBound ?: range.upperBound
-            if (nonNullBound != null) {
-                val converted = context.convert(nonNullBound, UNRESOLVED_OID)
-                val elementOid = typeRegistry.getCodecByClass(converted?.let { it::class } ?: Any::class)?.oid
-                if (elementOid != null) {
-                    typeRegistry.types.values.firstOrNull { it is PgType.Range && it.subtypeOid == elementOid } as? PgType.Range
-                } else null
+            val elementOid = context.findConverterByClass(range.elementClass, UNRESOLVED_OID)?.getDefaultOid(typeManager)
+                ?.takeIf { it.isKnownOid }
+                ?: typeRegistry.getCodecByClass(range.elementClass)?.let { typeRegistry.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
+
+            if (elementOid != null && elementOid.isKnownOid) {
+                typeRegistry.types.values.firstOrNull { it is PgType.Range && it.subtypeOid == elementOid } as? PgType.Range
             } else null
         }
 
@@ -45,9 +44,10 @@ class RangeParameterConverter : ParameterConverter<Any> {
         }
 
         val elementOid = pgType.subtypeOid
+        val boundConverter = context.findConverterByClass(range.elementClass, elementOid)
 
-        val convertedLower = range.lowerBound?.let { context.convert(it, elementOid) }
-        val convertedUpper = range.upperBound?.let { context.convert(it, elementOid) }
+        val convertedLower = range.lowerBound?.let { boundConverter?.convert(it, elementOid, context, typeManager) ?: it }
+        val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context, typeManager) ?: it }
 
         if (range.isEmpty) {
             return typeManager.createEmptyRange(pgType.oid)
