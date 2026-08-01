@@ -31,7 +31,7 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
@@ -315,14 +315,15 @@ class TypeRegistry {
         arrayTypesMap: IntObjectMap<PgType.Array>
     ): Int {
         val schemasForName = typesByNameMap[typeName]
-            ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
+            ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
 
         var resolvedOid: Int? = null
-
+        // 1. If schema is explicitly requested
         if (requestedSchema.isNotEmpty()) {
             resolvedOid = schemasForName[requestedSchema]
-                ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
+                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
         } else {
+            // 2. If schema is empty, look in search_path (first match wins)
             for (i in 0 until searchPath.size) {
                 val oid = schemasForName[searchPath[i]]
                 if (oid != null) {
@@ -331,18 +332,19 @@ class TypeRegistry {
                 }
             }
 
+            // 3. If not in search_path, check for unambiguous match
             if (resolvedOid == null) {
                 if (schemasForName.size == 1) {
                     resolvedOid = schemasForName.values.first()
                 } else {
-                    throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
+                    throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
                 }
             }
         }
 
         return if (isArray) {
             arrayTypesMap[resolvedOid]?.oid
-                ?: throw OctaviusTypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
+                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
         } else {
             resolvedOid
         }

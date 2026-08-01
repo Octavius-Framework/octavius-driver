@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.type.isKnownOid
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.PgTyped
@@ -50,7 +50,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return arrayDimensions to flatList
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         val typeRegistry = typeManager.registry
         val (dimensions, list) = getDimensionsAndFlatten(source)
 
@@ -78,7 +78,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         }
 
         if (arrayType == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 details = "Cannot infer array type for the collection. The collection is empty, contains only nulls, or the element type is unknown. Use explicit typing (e.g. .withPgType(...))."
             )

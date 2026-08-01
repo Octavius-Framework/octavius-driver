@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
@@ -69,10 +69,10 @@ class ParameterSerializer(
 
     private fun writeKnown(value: Any, oid: Int, writer: PgByteWriter, marker: Int): Int {
         val codec = typeRegistry.getCodecByOid<Any>(oid)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Codec not found")
+            ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Codec not found")
 
         if (!codec.kotlinClass.isInstance(value)) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                 oid = oid,
                 details = "Type mismatch: ${value::class.qualifiedName} != ${codec.kotlinClass.qualifiedName}"
@@ -86,7 +86,7 @@ class ParameterSerializer(
 
     private fun writeStandard(value: Any, writer: PgByteWriter, marker: Int): Int {
         val codec = typeRegistry.getCodecByClass(value::class)
-            ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, details = "Codec not found for: ${value::class.qualifiedName}")
+            ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, details = "Codec not found for: ${value::class.qualifiedName}")
 
         @Suppress("UNCHECKED_CAST")
         (codec as TypeCodec<Any>).toBinary(value, writer)

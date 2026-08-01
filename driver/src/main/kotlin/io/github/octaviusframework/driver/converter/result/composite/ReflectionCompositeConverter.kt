@@ -1,10 +1,14 @@
 package io.github.octaviusframework.driver.converter.result.composite
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingException
+
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
@@ -19,11 +23,10 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
     }
 
     override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
-        val composite = source
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
-        val registration = composite.typeRegistry.registeredComposites[kClass]
-            ?: throw IllegalArgumentException("Composite not registered for $kClass")
+        val registration = source.typeRegistry.registeredComposites[kClass]
+            ?: throw OctaviusInternalException()
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
             kClass,
@@ -36,16 +39,16 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         for (meta in metadata.constructorProperties) {
             val param = meta.parameter
             val columnName = meta.keyName
-            val index = composite.type.nameToIndex[columnName] ?: -1
+            val index = source.type.nameToIndex[columnName] ?: -1
 
             if (index != -1) {
-                val rawValue = composite.get<Any?>(index)
-                val oid = composite.type.attributeOids[index]
-                val type = composite.typeRegistry.types[oid]!!
+                val rawValue = source.get<Any?>(index)
+                val oid = source.type.attributeOids[index]
+                val type = source.typeRegistry.types[oid] ?: throw OctaviusInternalException()
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw IllegalArgumentException("Null value for non-nullable attribute '$columnName' for class $kClass")
+                        throw MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null value for non-nullable attribute '$columnName' for class $kClass")
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
@@ -56,7 +59,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
                 }
             } else {
                 if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw IllegalArgumentException("Missing non-nullable attribute '$columnName' in composite for class $kClass")
+                    throw MappingException(MappingExceptionMessage.MISSING_ATTRIBUTE, "Missing non-nullable attribute '$columnName' in composite for class $kClass")
                 }
                 if (!param.isOptional) {
                     constructorArgs[param] = null

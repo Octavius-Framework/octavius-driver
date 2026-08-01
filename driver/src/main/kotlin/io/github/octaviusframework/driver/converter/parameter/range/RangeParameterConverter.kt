@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.type.isKnownOid
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
@@ -34,7 +34,7 @@ class RangeParameterConverter : ParameterConverter<Any> {
         }
 
         if (pgType == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 details = "Cannot infer range type. The range is empty or bounds are null. Use explicit typing (e.g. .withPgType(...))."
             )

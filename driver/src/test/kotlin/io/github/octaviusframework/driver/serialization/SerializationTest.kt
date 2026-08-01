@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -225,7 +225,7 @@ class SerializationTest {
             "int_key" to 12345
         )
 
-        val exception = assertThrows<OctaviusTypeException> {
+        val exception = assertThrows<TypeException> {
             session.createNativeQuery("SELECT $1 as res").fetchAll(recordMap)
         }
         

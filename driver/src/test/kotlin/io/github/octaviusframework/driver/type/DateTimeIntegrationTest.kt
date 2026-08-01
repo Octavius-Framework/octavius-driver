@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -8,7 +8,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toKotlinLocalDate
 import org.junit.jupiter.api.Test
-import java.util.Properties
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.time.Instant
@@ -54,7 +53,7 @@ class DateTimeIntegrationTest {
         val badFutureDays = Int.MAX_VALUE.toLong() + pgEpochDays
         val badFutureDate = java.time.LocalDate.ofEpochDay(badFutureDays).toKotlinLocalDate()
 
-        val exFuture = assertFailsWith<OctaviusTypeException> {
+        val exFuture = assertFailsWith<TypeException> {
             session.createNativeQuery("SELECT $1").fetchOne(badFutureDate)
         }
         assertEquals(true, exFuture.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))
@@ -63,7 +62,7 @@ class DateTimeIntegrationTest {
         val badPastDays = Int.MIN_VALUE.toLong() + pgEpochDays
         val badPastDate = java.time.LocalDate.ofEpochDay(badPastDays).toKotlinLocalDate()
 
-        val exPast = assertFailsWith<OctaviusTypeException> {
+        val exPast = assertFailsWith<TypeException> {
             session.createNativeQuery("SELECT $1").fetchOne(badPastDate)
         }
         assertEquals(true, exPast.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))

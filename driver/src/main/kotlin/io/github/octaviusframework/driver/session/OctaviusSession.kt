@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.session
 
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 
 import io.github.octaviusframework.driver.notification.NotificationManager
@@ -192,7 +193,7 @@ enum class TransactionState {
             'I' -> IDLE
             'T' -> IN_TRANSACTION
             'E' -> FAILED
-            else -> throw IllegalArgumentException("Unknown transaction state: $c")
+            else -> throw OctaviusInternalException("Unknown transaction state: $c")
         }
     }
 }

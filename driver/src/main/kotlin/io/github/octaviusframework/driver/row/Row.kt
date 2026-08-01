@@ -1,9 +1,12 @@
 package io.github.octaviusframework.driver.row
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingException
+
 // Removed ByteArrayWindow import
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
@@ -23,11 +26,11 @@ inline fun <reified T> Row.get(index: Int): T {
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Row.get(columnName: String, targetType: KType): T {
-    return get<T>(getColumnIndex(columnName), targetType)
+    return get(getColumnIndex(columnName), targetType)
 }
 
 inline fun <reified T> Row.get(columnName: String): T {
-    return get<T>(getColumnIndex(columnName), typeOf<T>())
+    return get(getColumnIndex(columnName), typeOf<T>())
 }
 
 class Row(
@@ -46,7 +49,7 @@ class Row(
             val offset = columnOffsets[index]
             val oid = metadata.getOid(index)
             val codec = typeRegistry.getCodecByOid<Any>(oid)
-                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
+                ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
             codec.fromBinary(rawData, offset, colLength)
         }
     }
@@ -59,7 +62,7 @@ class Row(
     }
 
     fun getRaw(index: Int): Any? {
-        if (index !in values.indices) throw IllegalArgumentException("Column index out of bounds: $index")
+        if (index !in values.indices) throw MappingException(MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS, "Column index out of bounds: $index")
         return values[index]
     }
 

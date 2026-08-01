@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgMultirange
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.type.MultiRange
 import io.github.octaviusframework.driver.type.Range
 import kotlin.reflect.KClass
@@ -29,7 +30,7 @@ class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
         val typeRegistry = source.ranges.first().typeRegistry
         val elementOid = source.ranges.first().elementOid
         val pgElementType = typeRegistry.types[elementOid]
-            ?: throw IllegalStateException("Type not found for element OID: $elementOid")
+            ?: throw OctaviusInternalException()
 
         val convertedRanges = source.ranges.map { pgRange ->
             val lower = pgRange.lowerBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }

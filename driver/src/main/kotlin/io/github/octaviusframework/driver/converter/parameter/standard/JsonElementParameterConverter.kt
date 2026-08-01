@@ -15,7 +15,7 @@ class JsonElementParameterConverter : ParameterConverter<JsonElement> {
         return source is JsonElement
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         val element = source as JsonElement
         val str = element.toString()
         if (!expectedOid.isKnownOid) {

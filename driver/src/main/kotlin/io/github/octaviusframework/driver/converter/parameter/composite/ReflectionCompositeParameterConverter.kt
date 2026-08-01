@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.Serializati
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgComposite
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
 
@@ -27,20 +28,15 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         return false
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         val typeRegistry = typeManager.registry
-        val registration = typeRegistry.registeredComposites[source::class]
+        val registration = typeRegistry.registeredComposites[source::class] ?: throw OctaviusInternalException()
 
         val type = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as PgType.Composite
         } else {
-            if (registration == null) return null
             val qName = registration.qualifiedName
             typeRegistry.types[typeManager.resolveOid(qName.name, qName.schema)] as PgType.Composite
-        }
-
-        if (registration == null) {
-            throw IllegalArgumentException("Composite not registered for ${source::class}")
         }
 
         @Suppress("UNCHECKED_CAST")

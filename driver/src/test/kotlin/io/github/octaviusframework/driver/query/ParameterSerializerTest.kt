@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import org.junit.jupiter.api.Test
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.withPgType
 import kotlin.test.assertEquals
@@ -134,7 +134,7 @@ class ParameterSerializerTest {
         class CustomUnsupportedClass(val data: String)
         val unsupported = CustomUnsupportedClass("test")
         
-        assertFailsWith<OctaviusTypeException>("Should fail when codec is missing") {
+        assertFailsWith<TypeException>("Should fail when codec is missing") {
             serializer.serializeAll(listOf(unsupported))
         }
     }

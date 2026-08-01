@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.converter.result.row
 
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingException
+
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
@@ -19,11 +22,10 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
     }
 
     override fun convert(source: Row, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
-        val row = source
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
 
-        val registration = row.typeRegistry.registeredComposites[kClass]
+        val registration = source.typeRegistry.registeredComposites[kClass]
         val pgConvention = registration?.pgConvention ?: CaseConvention.SNAKE_CASE_LOWER
         val kotlinConvention = registration?.kotlinConvention ?: CaseConvention.CAMEL_CASE
 
@@ -39,16 +41,16 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
             val param = meta.parameter
             val columnName = meta.keyName
             
-            val index = row.columnNames.indexOf(columnName)
+            val index = source.columnNames.indexOf(columnName)
 
             if (index != -1) {
-                val rawValue = row.getRaw(index)
-                val oid = row.getOid(index)
-                val type = row.typeRegistry.types[oid]!!
+                val rawValue = source.getRaw(index)
+                val oid = source.getOid(index)
+                val type = source.typeRegistry.types[oid]!!
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw IllegalArgumentException("Null value for non-nullable attribute '$columnName' for class $kClass")
+                        throw MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null value for non-nullable attribute '$columnName' for class $kClass")
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
@@ -59,7 +61,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
                 }
             } else {
                 if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw IllegalArgumentException("Missing non-nullable attribute '$columnName' in row for class $kClass")
+                    throw MappingException(MappingExceptionMessage.MISSING_ATTRIBUTE, "Missing non-nullable attribute '$columnName' in row for class $kClass")
                 }
                 if (!param.isOptional) {
                     constructorArgs[param] = null

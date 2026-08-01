@@ -5,7 +5,8 @@ import io.github.octaviusframework.driver.type.isKnownOid
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
@@ -16,7 +17,7 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         return source is MultiRange<*>
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         val multiRange = source as MultiRange<*>
         val typeRegistry = typeManager.registry
 
@@ -38,14 +39,14 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         }
 
         if (pgType == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 details = "Cannot infer multirange type. The multirange is empty or bounds are null. Use explicit typing (e.g. .withPgType(...))."
             )
         }
 
         val rangeOid = pgType.rangeOid
-        val rangePgType = typeRegistry.types[rangeOid] as? PgType.Range ?: return null
+        val rangePgType = typeRegistry.types[rangeOid] as? PgType.Range ?: throw OctaviusInternalException()
         val elementOid = rangePgType.subtypeOid
 
         val pgRanges = multiRange.ranges.map { range ->

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.io
 
-import io.github.octaviusframework.driver.exception.AuthExceptionMessage
-import io.github.octaviusframework.driver.exception.AuthException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
+import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
@@ -11,6 +11,7 @@ import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
 import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
 import io.github.octaviusframework.driver.exception.NetworkException
+import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -290,7 +291,7 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
      *
      * @param payloadLength The length of the message payload.
      * @return The parsed AuthenticationMessage.
-     * @throws AuthException if the authentication mechanism is unsupported.
+     * @throws InitializationException if the authentication mechanism is unsupported.
      */
     private fun parseAuthentication(payloadLength: Int): BackendMessage {
         return when (val type = inputStream.readInt()) {
@@ -317,8 +318,8 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                 val data = inputStream.readBytes(payloadLength - 4)
                 AuthenticationMessage.SASLFinal(data)
             }
-            else -> throw AuthException(
-                AuthExceptionMessage.UNSUPPORTED_MECHANISM,
+            else -> throw InitializationException(
+                InitializationExceptionMessage.UNSUPPORTED_MECHANISM,
                 details = "Unknown authentication type: $type"
             )
         }

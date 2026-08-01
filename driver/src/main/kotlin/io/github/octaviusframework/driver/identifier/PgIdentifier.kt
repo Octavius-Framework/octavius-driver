@@ -1,14 +1,14 @@
 package io.github.octaviusframework.driver.identifier
 
-import io.github.octaviusframework.driver.exception.BadStatementException
-import io.github.octaviusframework.driver.exception.BadStatementExceptionMessage
+import io.github.octaviusframework.driver.exception.StatementException
+import io.github.octaviusframework.driver.exception.StatementExceptionReason
 
 /**
  * Escapes a PostgreSQL identifier (e.g. table name, type name, channel name) by wrapping it in double quotes
  * and escaping any internal double quotes if it contains special characters.
  *
  * Also performs validation to ensure the identifier does not contain the NUL (\0) character,
- * which is invalid in PostgreSQL identifiers and will throw a [BadStatementException] if found.
+ * which is invalid in PostgreSQL identifiers and will throw a [StatementException] if found.
  */
 fun String.quoteAsPgIdentifier(): String {
     // Always quote the identifier to match pgjdbc behavior and prevent case-folding issues.
@@ -19,8 +19,8 @@ fun String.quoteAsPgIdentifier(): String {
         append('"')
         for (c in this@quoteAsPgIdentifier) {
             if (c == '\u0000') {
-                throw BadStatementException(
-                    BadStatementExceptionMessage.SYNTAX_ERROR,
+                throw StatementException(
+                    StatementExceptionReason.SYNTAX_ERROR,
                     cause = IllegalArgumentException("PostgreSQL identifiers cannot contain the NUL (\\0) character.")
                 )
             }
