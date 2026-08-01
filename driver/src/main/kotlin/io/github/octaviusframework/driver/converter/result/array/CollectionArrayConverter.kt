@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.converter.result.array
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
@@ -70,7 +70,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                         if (kClassForCast != null && kClassForCast.isInstance(value)) {
                             value
                         } else {
-                            throw OctaviusTypeException(TypeExceptionMessage.CASTING_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
+                            throw TypeException(TypeExceptionMessage.CASTING_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
                         }
                     } else {
                         elementConverter!!.convert(value, ktElementType, context, pgElementType)

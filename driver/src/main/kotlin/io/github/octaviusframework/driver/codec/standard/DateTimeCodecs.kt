@@ -7,7 +7,7 @@ import io.github.octaviusframework.driver.io.getLongBE
 import io.github.octaviusframework.driver.type.MAX
 import io.github.octaviusframework.driver.type.DISTANT_FUTURE
 import io.github.octaviusframework.driver.type.DISTANT_PAST
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgInterval
 import kotlinx.datetime.*
@@ -38,7 +38,7 @@ private fun instantToPgMicros(instant: Instant): Long {
         }
         return pgMicros
     } catch (e: ArithmeticException) {
-        throw OctaviusTypeException(
+        throw TypeException(
             messageEnum = TypeExceptionMessage.VALUE_OUT_OF_RANGE,
             details = "Instant is out of range for PostgreSQL timestamp",
             cause = e
@@ -124,7 +124,7 @@ internal object DateCodec : TypeCodec<LocalDate> {
                     }
                     writer.writeInt(pgDays)
                 } catch (e: ArithmeticException) {
-                    throw OctaviusTypeException(
+                    throw TypeException(
                         messageEnum = TypeExceptionMessage.VALUE_OUT_OF_RANGE,
                         details = "LocalDate is out of range for PostgreSQL date",
                         cause = e

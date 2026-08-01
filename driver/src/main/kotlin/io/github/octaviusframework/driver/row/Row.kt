@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.exception.OctaviusMappingException
 // Removed ByteArrayWindow import
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
@@ -49,7 +49,7 @@ class Row(
             val offset = columnOffsets[index]
             val oid = metadata.getOid(index)
             val codec = typeRegistry.getCodecByOid<Any>(oid)
-                ?: throw OctaviusTypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
+                ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
             codec.fromBinary(rawData, offset, colLength)
         }
     }

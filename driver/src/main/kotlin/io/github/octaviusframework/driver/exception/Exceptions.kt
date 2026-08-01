@@ -92,7 +92,7 @@ enum class TypeExceptionMessage {
     USER_CODEC_ERROR
 }
 
-class OctaviusTypeException(
+class TypeException(
     val messageEnum: TypeExceptionMessage,
     val oid: Int? = null,
     val typeName: String? = null,

@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.converter.parameter.array
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
@@ -32,7 +32,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
         }
 
         if (arrayType == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 details = "Cannot infer array type for the primitive array. The array is empty, or the element type is unknown. Use explicit typing (e.g. .withPgType(...))."
             )

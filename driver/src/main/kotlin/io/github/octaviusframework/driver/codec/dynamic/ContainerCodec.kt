@@ -9,7 +9,7 @@ import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.container.PgRecord
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.registry.TypeRegistry
@@ -29,7 +29,7 @@ internal object ContainerCodec {
      */
     private fun parseField(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): Any {
         val codec = typeRegistry.getCodecByOid<Any>(oid)
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.MISSING_CODEC,
                 oid = oid,
                 details = "Parsing field of oid $oid"
@@ -103,7 +103,7 @@ internal object ContainerCodec {
      */
     fun parsePgComposite(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.types[oid] as? PgType.Composite
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Composite type"
@@ -136,7 +136,7 @@ internal object ContainerCodec {
      */
     fun parsePgRecord(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
         val pgType = typeRegistry.types[oid] as? PgType.Record
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Record type"
@@ -174,7 +174,7 @@ internal object ContainerCodec {
      */
     fun parsePgRange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.types[oid] as? PgType.Range
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Range type"
@@ -217,7 +217,7 @@ internal object ContainerCodec {
      */
     fun parsePgMultirange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.types[oid] as? PgType.Multirange
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Multirange type"
@@ -248,7 +248,7 @@ internal object ContainerCodec {
             is PgRange -> serializePgRange(container, writer, typeRegistry)
             is PgMultirange -> serializePgMultirange(container, writer, typeRegistry)
             is PgRecord -> serializePgRecord()
-            else -> throw OctaviusTypeException(
+            else -> throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 typeName = container::class.simpleName,
                 details = "Unknown container type"
@@ -272,13 +272,13 @@ internal object ContainerCodec {
         }
 
         val codec = typeRegistry.getCodecByOid<Any>(expectedOid)
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.MISSING_CODEC,
                 oid = expectedOid,
                 details = "Serializing value: $value"
             )
         if (!codec.kotlinClass.isInstance(value)) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                 oid = expectedOid,
                 details = "Type mismatch. Expected ${codec.kotlinClass.qualifiedName}, got ${value::class.qualifiedName}"
@@ -335,7 +335,7 @@ internal object ContainerCodec {
      * since PostgreSQL does not accept anonymous records as bound parameters.
      */
     fun serializePgRecord() {
-        throw OctaviusTypeException(
+        throw TypeException(
             TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED,
             oid = 2249,
             details = "Postgres cannot accept 'record' type directly as a bound parameter. Use a registered composite type instead."

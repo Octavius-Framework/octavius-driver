@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.container
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
@@ -28,14 +28,14 @@ class PgComposite internal constructor(
         }
 
         if (value == null) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
                 details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
-        throw OctaviusTypeException(
+        throw TypeException(
             TypeExceptionMessage.CASTING_ERROR,
             typeName = T::class.simpleName,
             details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
@@ -44,7 +44,7 @@ class PgComposite internal constructor(
 
     fun getColumnIndex(columnName: String): Int {
         val index = type.nameToIndex[columnName] ?: -1
-        if (index == -1) throw OctaviusTypeException(
+        if (index == -1) throw TypeException(
             TypeExceptionMessage.ATTRIBUTE_NOT_FOUND,
             details = "Atrybut: $columnName"
         )
@@ -61,7 +61,7 @@ class PgComposite internal constructor(
 
     inline fun <reified T> get(name: String): T {
         val index = type.nameToIndex[name] ?: -1
-        if (index == -1) throw OctaviusTypeException(
+        if (index == -1) throw TypeException(
             TypeExceptionMessage.ATTRIBUTE_NOT_FOUND,
             details = "Atrybut '$name' w kompozycie '${type.name}'"
         )
@@ -71,7 +71,7 @@ class PgComposite internal constructor(
     fun getAttributeType(index: Int): PgType {
         val oid = type.attributeOids[index]
         return typeRegistry.types[oid]
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.TYPE_NOT_FOUND,
                 oid = oid,
                 details = "Nie znaleziono typu w rejestrze"

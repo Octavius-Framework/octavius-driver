@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.container
 
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 
@@ -33,7 +33,7 @@ class PgRange internal constructor(
     inline fun <reified T> lowerBound(): T {
         if (isEmpty || isLowerInfinite || isLowerNull) {
             if (null is T) return null as T
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
                 details = "Lower bound is null or infinite (missing) but requested type is non-nullable"
@@ -41,7 +41,7 @@ class PgRange internal constructor(
         }
         val value = lowerBound
         if (value is T) return value
-        throw OctaviusTypeException(
+        throw TypeException(
             TypeExceptionMessage.CASTING_ERROR,
             typeName = T::class.simpleName,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
@@ -51,7 +51,7 @@ class PgRange internal constructor(
     inline fun <reified T> upperBound(): T {
         if (isEmpty || isUpperInfinite || isUpperNull) {
             if (null is T) return null as T
-            throw OctaviusTypeException(
+            throw TypeException(
                 TypeExceptionMessage.CASTING_ERROR,
                 typeName = T::class.simpleName,
                 details = "Upper bound is null or infinite (missing) but requested type is non-nullable"
@@ -59,7 +59,7 @@ class PgRange internal constructor(
         }
         val value = upperBound
         if (value is T) return value
-        throw OctaviusTypeException(
+        throw TypeException(
             TypeExceptionMessage.CASTING_ERROR,
             typeName = T::class.simpleName,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"

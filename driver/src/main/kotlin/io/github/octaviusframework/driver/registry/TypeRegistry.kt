@@ -31,7 +31,7 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
@@ -314,7 +314,7 @@ class TypeRegistry {
         val schemasForName = typesByNameMap[typeName]
 
         if (schemasForName.isNullOrEmpty()) {
-            throw OctaviusTypeException(
+            throw TypeException(
                 messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                 typeName = typeName,
                 details = "Type '$typeName' not found in any scanned schemas"
@@ -326,7 +326,7 @@ class TypeRegistry {
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotBlank()) {
             resolvedOid = schemasForName[requestedSchema]
-                ?: throw OctaviusTypeException(
+                ?: throw TypeException(
                     messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                     typeName = typeName,
                     details = "Type '$typeName' not found in requested schema '$requestedSchema'"
@@ -347,7 +347,7 @@ class TypeRegistry {
                     val entry = schemasForName.entries.first()
                     resolvedOid = entry.value
                 } else {
-                    throw OctaviusTypeException(
+                    throw TypeException(
                         messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                         typeName = typeName,
                         details = "Type '$typeName' is ambiguous. Found in schemas: ${schemasForName.keys.joinToString()}. Please specify schema."
@@ -358,7 +358,7 @@ class TypeRegistry {
 
         if (isArray) {
             val arrayType = arrayTypesMap[resolvedOid]
-                ?: throw OctaviusTypeException(
+                ?: throw TypeException(
                     messageEnum = TypeExceptionMessage.TYPE_NOT_FOUND,
                     typeName = typeName,
                     details = "Array type for '$typeName' not found in registry"

@@ -10,7 +10,7 @@ import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.container.PgRecord
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
-import io.github.octaviusframework.driver.exception.OctaviusTypeException
+import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
@@ -55,7 +55,7 @@ class ParameterSerializer(
             val codec = typeRegistry.getCodecByOid<Any>(resolvedOid)
             if (codec != null) {
                 if (!codec.kotlinClass.isInstance(convertedValue)) {
-                    throw OctaviusTypeException(
+                    throw TypeException(
                         TypeExceptionMessage.INVALID_PARAMETER_TYPE,
                         oid = resolvedOid,
                         details = "Type mismatch. Attempting to serialize value of type ${convertedValue::class.qualifiedName} using codec for ${codec.kotlinClass.qualifiedName}"
@@ -84,7 +84,7 @@ class ParameterSerializer(
         }
 
         val codec = typeRegistry.getCodecByClass(convertedParameter::class)
-            ?: throw OctaviusTypeException(
+            ?: throw TypeException(
                 TypeExceptionMessage.MISSING_CODEC,
                 details = "Nie znaleziono serializatora (codecu) dla typu: ${convertedParameter::class.qualifiedName}"
             )
