@@ -11,9 +11,13 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.Range
 
+import kotlin.reflect.KClass
+
 class RangeParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-        return source is Range<*>
+    override val supportedClass: KClass<Any> = Any::class
+
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+        return Range::class.java.isAssignableFrom(sourceClass.java)
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {

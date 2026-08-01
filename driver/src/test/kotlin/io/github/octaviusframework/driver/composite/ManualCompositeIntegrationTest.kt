@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -39,13 +40,9 @@ class ManualCompositeIntegrationTest {
     }
 
     class PaymentInfoParameterConverter : ParameterConverter<PaymentInfo> {
-        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-            return source is PaymentInfo
-        }
+        override val supportedClass = PaymentInfo::class
 
-        override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
-            val payment = source as PaymentInfo
-            
+        override fun convert(source: PaymentInfo, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
             // Tworzenie kompozytu jest znacznie czystsze z użyciem TypeManager
             val composite = if (expectedOid.isKnownOid) {
                 typeManager.createComposite(expectedOid)
@@ -54,8 +51,8 @@ class ManualCompositeIntegrationTest {
             }
             
             // Do atrybutów odwołujemy się po nazwie
-            composite["amount"] = payment.amount
-            composite["currency"] = payment.currency
+            composite["amount"] = source.amount
+            composite["currency"] = source.currency
             
             return composite
         }

@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
 import io.github.octaviusframework.driver.type.TypeManager
+import kotlin.reflect.KClass
 
 class ParameterConverterRegistry(
     private val parent: ParameterConverterRegistry? = null
@@ -14,9 +15,10 @@ class ParameterConverterRegistry(
     fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
         for (i in 0 until converters.size) {
             val converter = converters[i]
-            if (converter.canConvert(source, expectedOid, typeManager)) {
-                val result = converter.convert(source, expectedOid, context, typeManager)
-                if (result != null) return result
+            if (converter.canConvert(source::class, expectedOid, typeManager)) {
+                @Suppress("UNCHECKED_CAST")
+                val result = (converter as ParameterConverter<Any>).convert(source, expectedOid, context, typeManager)
+                return result
             }
         }
 
@@ -24,13 +26,17 @@ class ParameterConverterRegistry(
     }
 
     fun findConverter(source: Any, expectedOid: Int, typeManager: TypeManager): ParameterConverter<Any>? {
+        return findConverterByClass(source::class, expectedOid, typeManager)
+    }
+
+    fun findConverterByClass(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): ParameterConverter<Any>? {
         for (i in 0 until converters.size) {
             val converter = converters[i]
-            if (converter.canConvert(source, expectedOid, typeManager)) {
+            if (converter.canConvert(sourceClass, expectedOid, typeManager)) {
                 @Suppress("UNCHECKED_CAST")
                 return converter as ParameterConverter<Any>
             }
         }
-        return parent?.findConverter(source, expectedOid, typeManager)
+        return parent?.findConverterByClass(sourceClass, expectedOid, typeManager)
     }
 }

@@ -18,6 +18,7 @@ import io.github.octaviusframework.driver.type.Range
 import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
 
 class RangeConverterTest {
@@ -116,8 +117,12 @@ class RangeConverterTest {
         val converter = RangeParameterConverter()
         
         val context = object : SerializationContext {
-            override fun convert(source: Any, expectedOid: Int): Any? = source
+            override fun convert(source: Any, expectedOid: Int): Any = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
+            override fun findConverterByClass(
+                sourceClass: KClass<*>,
+                expectedOid: Int
+            ): ParameterConverter<Any>? = null
         }
 
         val range = Range(
@@ -127,7 +132,7 @@ class RangeConverterTest {
             isUpperInclusive = true
         )
 
-        assertTrue(converter.canConvert(range, rangeOid, typeManager))
+        assertTrue(converter.canConvert(range::class, rangeOid, typeManager))
 
         val serialized = converter.convert(range, rangeOid, context, typeManager) as PgRange
         assertNotNull(serialized)
@@ -142,10 +147,14 @@ class RangeConverterTest {
     @Test
     fun `test MultiRangeParameterConverter serialization`() {
         val converter = MultiRangeParameterConverter()
-        
+
         val context = object : SerializationContext {
-            override fun convert(source: Any, expectedOid: Int): Any? = source
+            override fun convert(source: Any, expectedOid: Int): Any = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
+            override fun findConverterByClass(
+                sourceClass: KClass<*>,
+                expectedOid: Int
+            ): ParameterConverter<Any>? = null
         }
 
         val multiRange = MultiRange(
@@ -155,7 +164,7 @@ class RangeConverterTest {
             )
         )
 
-        assertTrue(converter.canConvert(multiRange, multiRangeOid, typeManager))
+        assertTrue(converter.canConvert(multiRange::class, multiRangeOid, typeManager))
 
         val serialized = converter.convert(multiRange, multiRangeOid, context, typeManager) as PgMultirange
         assertNotNull(serialized)

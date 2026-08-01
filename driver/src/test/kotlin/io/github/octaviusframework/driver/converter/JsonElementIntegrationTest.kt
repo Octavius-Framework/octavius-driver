@@ -59,24 +59,21 @@ class JsonElementIntegrationTest {
     }
 
     class MetadataHolderParameterConverter : ParameterConverter<MetadataHolder> {
-        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-            return source is MetadataHolder
-        }
+        override val supportedClass = MetadataHolder::class
 
         override fun convert(
-            source: Any,
+            source: MetadataHolder,
             expectedOid: Int,
             context: SerializationContext,
             typeManager: TypeManager
         ): Any {
-            val holder = source as MetadataHolder
             val composite = if (expectedOid.isKnownOid) {
                 typeManager.createComposite(expectedOid)
             } else {
                 typeManager.createComposite("metadata_holder")
             }
-            composite["id"] = holder.id
-            composite["metadata"] = context.convert(holder.metadata, composite.getAttributeOid("metadata"))
+            composite["id"] = source.id
+            composite["metadata"] = context.convert(source.metadata, composite.getAttributeOid("metadata"))
             return composite
         }
     }

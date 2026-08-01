@@ -13,10 +13,14 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 
+import kotlin.reflect.KClass
+
 class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-        if (source is ByteArray) return false
-        return source.javaClass.isArray && source.javaClass.componentType?.isPrimitive == true
+    override val supportedClass: KClass<Any> = Any::class
+
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+        if (sourceClass == ByteArray::class) return false
+        return sourceClass.java.isArray && sourceClass.java.componentType?.isPrimitive == true
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {

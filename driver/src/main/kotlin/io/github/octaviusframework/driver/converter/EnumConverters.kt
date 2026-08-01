@@ -25,11 +25,13 @@ class EnumParameterConverter<T : Enum<T>>(
         CaseConverter.convert(it.name, kotlinConvention, pgConvention)
     }
 
-    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-        return enumClass.isInstance(source)
+    override val supportedClass: KClass<T> = enumClass
+
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+        return enumClass.java.isAssignableFrom(sourceClass.java)
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
+    override fun convert(source: T, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         return enumToPg[source]!!
     }
 }

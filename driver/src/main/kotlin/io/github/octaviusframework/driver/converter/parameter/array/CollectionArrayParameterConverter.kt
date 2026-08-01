@@ -14,9 +14,14 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgContainer
 
+import kotlin.reflect.KClass
+
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-        return source is Collection<*> || source is Array<*>
+    override val supportedClass: KClass<Any> = Any::class
+
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+        return Collection::class.java.isAssignableFrom(sourceClass.java) ||
+               (sourceClass.java.isArray && sourceClass.java.componentType?.isPrimitive == false)
     }
 
     private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, MutableList<Any?>> {
