@@ -8,7 +8,8 @@ enum class InvalidOperationExceptionMessage {
     INVALID_TIMEOUT,
     UNWRAP_ERROR,
     FEATURE_NOT_SUPPORTED,
-    NULL_SQL
+    NULL_SQL,
+    UNEXPECTED_RESULT
 }
 
 class InvalidOperationException(
@@ -33,4 +34,5 @@ private fun generateDeveloperMessage(messageEnum: InvalidOperationExceptionMessa
         InvalidOperationExceptionMessage.UNWRAP_ERROR -> "Cannot unwrap the connection/statement to the requested interface."
         InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED -> "This feature is not supported by the Octavius Driver."
         InvalidOperationExceptionMessage.NULL_SQL -> "SQL string cannot be null."
+        InvalidOperationExceptionMessage.UNEXPECTED_RESULT -> "Execution returned a result set (rows) when none were expected. Use query() for DQL statements like SELECT."
     }
