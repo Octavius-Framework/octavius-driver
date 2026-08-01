@@ -12,6 +12,7 @@ import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.container.PgContainer
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
     override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
@@ -67,6 +68,8 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
                         converted.pgType.schema,
                         converted.pgType.isArray
                     )
+                } else if (converted is PgContainer) {
+                    converted.containerOid
                 } else if (converted != null) {
                     typeRegistry.getCodecByClass(converted::class)?.oid
                 } else null
