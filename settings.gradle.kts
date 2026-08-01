@@ -15,3 +15,4 @@ rootProject.name = "octavius-driver"
 include("driver")
 include("hikari")
 include("driver-spring-integration")
+include("benchmarks")
