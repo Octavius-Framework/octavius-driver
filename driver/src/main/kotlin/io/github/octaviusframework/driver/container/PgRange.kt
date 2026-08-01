@@ -22,6 +22,8 @@ class PgRange internal constructor(
     val upperBound: Any?,
     @PublishedApi internal val typeRegistry: TypeRegistry
 ) : PgContainer {
+    override val containerOid: Int get() = rangeOid
+
     val isEmpty: Boolean get() = (flags.toInt() and 0x01) != 0
     val isLowerInclusive: Boolean get() = (flags.toInt() and 0x02) != 0
     val isUpperInclusive: Boolean get() = (flags.toInt() and 0x04) != 0

@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.converter.parameter.array
 
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
+
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.TypeException
@@ -11,15 +14,15 @@ import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 
 class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int?, typeManager: TypeManager): Boolean {
+    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
         if (source is ByteArray) return false
         return source.javaClass.isArray && source.javaClass.componentType?.isPrimitive == true
     }
 
-    override fun convert(source: Any, expectedOid: Int?, context: SerializationContext, typeManager: TypeManager): Any {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
         val typeRegistry = typeManager.registry
 
-        val arrayType = if (expectedOid != null) {
+        val arrayType = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as? PgType.Array
         } else {
             val componentType = source.javaClass.componentType?.kotlin

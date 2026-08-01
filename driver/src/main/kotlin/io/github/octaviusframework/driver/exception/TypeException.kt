@@ -12,7 +12,8 @@ enum class TypeExceptionMessage {
     VALUE_OUT_OF_RANGE,
     UNKNOWN_OID,
     UNSUPPORTED_OID,
-    USER_CODEC_ERROR
+    USER_CODEC_ERROR,
+    NESTED_PGTYPED_NOT_ALLOWED
 }
 
 class TypeException(
@@ -45,5 +46,5 @@ private fun generateDeveloperMessage(messageEnum: TypeExceptionMessage): String 
         TypeExceptionMessage.UNKNOWN_OID -> "The specified OID is unknown to the TypeRegistry."
         TypeExceptionMessage.UNSUPPORTED_OID -> "The specified OID is known but not supported."
         TypeExceptionMessage.USER_CODEC_ERROR -> "An exception was thrown by a user-provided codec."
+        TypeExceptionMessage.NESTED_PGTYPED_NOT_ALLOWED -> "Nested PgTyped is not allowed. You cannot wrap a PgTyped instance within another PgTyped."
     }
-
