@@ -12,7 +12,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.exception.OctaviusMappingException
+import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -144,7 +144,7 @@ class DeserializationTest {
 
         val composite = createComposite(mapOf("street" to "Baker St")) // Missing 'city'
 
-        val ex = assertThrows(OctaviusMappingException::class.java) {
+        val ex = assertThrows(MappingException::class.java) {
             deserializer.deserialize<Address>(composite, typeOf<Address>(), composite.type)
         }
         assertTrue(ex.message!!.contains("MISSING_ATTRIBUTE"))

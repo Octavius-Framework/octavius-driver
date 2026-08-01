@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.result.mapper
 
 import io.github.octaviusframework.driver.exception.MappingExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusMappingException
+import io.github.octaviusframework.driver.exception.MappingException
 
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
@@ -42,7 +42,7 @@ internal class DefaultDeserializationContext(
             return source as T
         }
 
-        throw OctaviusMappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
+        throw MappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
     }
 
     override fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
