@@ -37,10 +37,10 @@ object GlobalTypeRegistry {
         if (registry.isLoaded) return
 
         // Only one thread at a time can enter this block for a given registry
-        registry.loadLock.withLock {
+        registry.lock.withLock {
             if (!registry.isLoaded) {
                 logger.trace { "Thread ${Thread.currentThread().name} loading types from database for URL: $url..." }
-                TypeRegistryLoader.load(registry, executor, searchPath)
+                TypeRegistryLoader.load(registry, executor)
                 registry.isLoaded = true
             }
         }
@@ -67,9 +67,9 @@ object GlobalTypeRegistry {
      */
     internal fun reload(url: String, executor: QueryExecutor, searchPath: List<String>) {
         val registry = getRegistry(url)
-        registry.loadLock.withLock {
+        registry.lock.withLock {
             logger.trace { "Explicit reload of type dictionary for URL: $url..." }
-            TypeRegistryLoader.load(registry, executor, searchPath)
+            TypeRegistryLoader.load(registry, executor)
         }
     }
 }

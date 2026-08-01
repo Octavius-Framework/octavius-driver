@@ -92,6 +92,6 @@ class ParameterSerializer(
         (codec as TypeCodec<Any>).toBinary(value, writer)
         writer.fillLengthInt(marker)
 
-        return typeRegistry.getOidForCodec(codec) ?: UNRESOLVED_OID
+        return typeRegistry.getOidForCodec(codec) ?: typeManager.resolveOid(codec.pgTypeName, codec.pgSchema)
     }
 }
