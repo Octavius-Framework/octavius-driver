@@ -1,36 +1,34 @@
 package io.github.octaviusframework.driver.converter.parameter.range
 
-import io.github.octaviusframework.driver.type.UNRESOLVED_OID
-import io.github.octaviusframework.driver.type.isKnownOid
-
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.MultiRange
-
+import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 
 class MultiRangeParameterConverter : ParameterConverter<Any> {
+
     override val supportedClass: KClass<Any> = Any::class
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
         return MultiRange::class.java.isAssignableFrom(sourceClass.java)
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
         val multiRange = source as MultiRange<*>
-        val typeRegistry = typeManager.registry
+        val typeRegistry = context.typeManager.registry
 
         val pgType = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as? PgType.Multirange
         } else {
-            val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultOid(typeManager)
+            val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultOid(context)
                 ?.takeIf { it.isKnownOid }
-                ?: typeRegistry.getCodecByClass(multiRange.elementClass)?.let { typeRegistry.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
+                ?: typeRegistry.getCodecByClass(multiRange.elementClass)?.let { typeRegistry.getOidForCodec(it) ?: context.typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
 
             if (elementOid != null && elementOid.isKnownOid) {
                 val rangeType = typeRegistry.types.values.firstOrNull { it is PgType.Range && it.subtypeOid == elementOid } as? PgType.Range
@@ -53,13 +51,13 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         val boundConverter = context.findConverterByClass(multiRange.elementClass, elementOid)
 
         val pgRanges = multiRange.ranges.map { range ->
-            val convertedLower = range.lowerBound?.let { boundConverter?.convert(it, elementOid, context, typeManager) ?: it }
-            val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context, typeManager) ?: it }
+            val convertedLower = range.lowerBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
+            val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
 
             if (range.isEmpty) {
-                typeManager.createEmptyRange(rangeOid)
+                context.typeManager.createEmptyRange(rangeOid)
             } else {
-                typeManager.createRange(
+                context.typeManager.createRange(
                     oid = rangeOid,
                     lower = convertedLower,
                     upper = convertedUpper,
@@ -73,6 +71,6 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
             }
         }
 
-        return typeManager.createMultirange(pgType.oid, *pgRanges.toTypedArray())
+        return context.typeManager.createMultirange(pgType.oid, *pgRanges.toTypedArray())
     }
 }

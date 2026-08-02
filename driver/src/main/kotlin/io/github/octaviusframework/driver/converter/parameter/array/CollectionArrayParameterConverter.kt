@@ -1,25 +1,23 @@
 package io.github.octaviusframework.driver.converter.parameter.array
 
-import io.github.octaviusframework.driver.type.UNRESOLVED_OID
-import io.github.octaviusframework.driver.type.isKnownOid
-
+import io.github.octaviusframework.driver.container.ArrayDimension
+import io.github.octaviusframework.driver.container.PgArray
+import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.PgTyped
-import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.container.ArrayDimension
-import io.github.octaviusframework.driver.container.PgArray
-import io.github.octaviusframework.driver.container.PgContainer
-
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 
 class CollectionArrayParameterConverter : ParameterConverter<Any> {
+
     override val supportedClass: KClass<Any> = Any::class
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
         return Collection::class.java.isAssignableFrom(sourceClass.java) ||
                (sourceClass.java.isArray && sourceClass.java.componentType?.isPrimitive == false)
     }
@@ -56,8 +54,8 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
         return arrayDimensions to flatList
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
-        val typeRegistry = typeManager.registry
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
+        val typeRegistry = context.typeManager.registry
         val (dimensions, list) = getDimensionsAndFlatten(source)
 
         val arrayType = if (expectedOid.isKnownOid) {
@@ -68,7 +66,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             if (firstNonNull != null) {
                 val converted = context.convert(firstNonNull, UNRESOLVED_OID)
                 val elementOid = if (converted is PgTyped) {
-                    typeManager.resolveOid(
+                    context.typeManager.resolveOid(
                         converted.pgType.name,
                         converted.pgType.schema,
                         converted.pgType.isArray
