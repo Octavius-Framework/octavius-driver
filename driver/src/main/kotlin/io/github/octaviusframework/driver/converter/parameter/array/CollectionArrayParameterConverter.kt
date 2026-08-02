@@ -102,8 +102,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            elements = convertedElements.toMutableList(),
-            typeRegistry = typeRegistry
+            elements = convertedElements.toMutableList()
         )
     }
 }

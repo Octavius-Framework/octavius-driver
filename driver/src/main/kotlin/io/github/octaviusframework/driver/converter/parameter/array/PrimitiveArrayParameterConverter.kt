@@ -61,8 +61,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            elements = convertedElements,
-            typeRegistry = typeRegistry
+            elements = convertedElements
         )
     }
 }

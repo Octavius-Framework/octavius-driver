@@ -22,14 +22,12 @@ data class ArrayDimension(
  * @property elementOid OID of the elements within the array.
  * @property dimensions List of dimensions for the array.
  * @property elements Flat list of elements contained in the array.
- * @property typeRegistry Registry used for resolving types.
  */
 class PgArray(
     val arrayOid: Int,
     val elementOid: Int,
     val dimensions: List<ArrayDimension>,
-    val elements: MutableList<Any?>,
-    @PublishedApi internal val typeRegistry: TypeRegistry
+    val elements: MutableList<Any?>
 ) : PgContainer {
     override val containerOid: Int get() = arrayOid
     val totalElements: Int

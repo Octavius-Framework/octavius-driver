@@ -45,8 +45,7 @@ class DeserializationTest {
             arrayOid = 2,
             elementOid = 1,
             dimensions = listOf(ArrayDimension(elements.size, 1)),
-            elements = elements.toMutableList(),
-            typeRegistry = dummyRegistry
+            elements = elements.toMutableList()
         )
     }
 
