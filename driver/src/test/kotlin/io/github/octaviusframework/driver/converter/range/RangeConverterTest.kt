@@ -45,7 +45,9 @@ class RangeConverterTest {
     fun `test RangeResultConverter deserialization`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(RangeResultConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            typeManager
+        )
 
         val pgRange = PgRange.create(
             rangeOid = rangeOid,
@@ -76,7 +78,9 @@ class RangeConverterTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(RangeResultConverter())
         registry.addConverter(MultiRangeResultConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            typeManager
+        )
 
         val pgRange1 = PgRange.create(
             rangeOid = rangeOid,
@@ -119,6 +123,7 @@ class RangeConverterTest {
         val converter = RangeParameterConverter()
         
         val context = object : SerializationContext {
+            override val typeManager = this@RangeConverterTest.typeManager
             override fun convert(source: Any, expectedOid: Int): Any = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
             override fun findConverterByClass(
@@ -134,9 +139,9 @@ class RangeConverterTest {
             isUpperInclusive = true
         )
 
-        assertTrue(converter.canConvert(range::class, rangeOid, typeManager))
+        assertTrue(converter.canConvert(range::class, rangeOid, context))
 
-        val serialized = converter.convert(range, rangeOid, context, typeManager) as PgRange
+        val serialized = converter.convert(range, rangeOid, context) as PgRange
         assertNotNull(serialized)
         assertEquals(rangeOid, serialized.rangeOid)
         assertEquals(baseOid, serialized.elementOid)
@@ -151,6 +156,7 @@ class RangeConverterTest {
         val converter = MultiRangeParameterConverter()
 
         val context = object : SerializationContext {
+            override val typeManager = this@RangeConverterTest.typeManager
             override fun convert(source: Any, expectedOid: Int): Any = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
             override fun findConverterByClass(
@@ -166,9 +172,9 @@ class RangeConverterTest {
             )
         )
 
-        assertTrue(converter.canConvert(multiRange::class, multiRangeOid, typeManager))
+        assertTrue(converter.canConvert(multiRange::class, multiRangeOid, context))
 
-        val serialized = converter.convert(multiRange, multiRangeOid, context, typeManager) as PgMultirange
+        val serialized = converter.convert(multiRange, multiRangeOid, context) as PgMultirange
         assertNotNull(serialized)
         assertEquals(multiRangeOid, serialized.multirangeOid)
         assertEquals(rangeOid, serialized.rangeOid)

@@ -89,7 +89,7 @@ internal object ContainerCodec {
             }
         }
 
-        return PgArray(oid, elementOid, dimensions, elements, typeRegistry)
+        return PgArray(oid, elementOid, dimensions, elements)
     }
 
     /**

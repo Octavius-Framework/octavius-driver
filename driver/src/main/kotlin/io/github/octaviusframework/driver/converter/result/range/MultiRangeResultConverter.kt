@@ -12,26 +12,26 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
+
     override val supportedSourceClass = PgMultirange::class
 
-    override fun canConvert(source: PgMultirange, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == MultiRange::class || kClass == Any::class
     }
 
-    override fun convert(source: PgMultirange, expectedType: KType, context: DeserializationContext, sourceType: PgType): MultiRange<*> {
+    override fun convert(source: PgMultirange, expectedType: KType, sourceType: PgType, context: DeserializationContext): MultiRange<*> {
         val ktElementType = expectedType.arguments.firstOrNull()?.type 
             ?: typeOf<Any>()
         @Suppress("UNCHECKED_CAST")
-        val elementClass = (ktElementType.classifier as? KClass<Any>) ?: Any::class as KClass<Any>
+        val elementClass = (ktElementType.classifier as? KClass<Any>) ?: Any::class
 
         if (source.ranges.isEmpty()) {
             return MultiRange(elementClass, emptyList())
         }
 
-        val typeRegistry = source.ranges.first().typeRegistry
         val elementOid = source.ranges.first().elementOid
-        val pgElementType = typeRegistry.types[elementOid]
+        val pgElementType = context.typeManager.registry.types[elementOid]
             ?: throw OctaviusInternalException()
 
         val convertedRanges = source.ranges.map { pgRange ->

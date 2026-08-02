@@ -1,24 +1,22 @@
 package io.github.octaviusframework.driver.converter.parameter.composite
 
-import io.github.octaviusframework.driver.type.UNRESOLVED_OID
-import io.github.octaviusframework.driver.type.isKnownOid
-
+import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
 
 class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
+
     override val supportedClass: KClass<Any> = Any::class
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
         if (!sourceClass.isData) return false
-        val typeRegistry = typeManager.registry
+        val typeRegistry = context.typeManager.registry
 
         val registration = typeRegistry.registeredComposites[sourceClass]
         if (registration != null) return true
@@ -30,15 +28,15 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         return false
     }
 
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
-        val typeRegistry = typeManager.registry
+    override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
+        val typeRegistry = context.typeManager.registry
         val registration = typeRegistry.registeredComposites[source::class] ?: throw OctaviusInternalException()
 
         val type = if (expectedOid.isKnownOid) {
             typeRegistry.types[expectedOid] as PgType.Composite
         } else {
             val qName = registration.qualifiedName
-            typeRegistry.types[typeManager.resolveOid(qName.name, qName.schema)] as PgType.Composite
+            typeRegistry.types[context.typeManager.resolveOid(qName.name, qName.schema)] as PgType.Composite
         }
 
         @Suppress("UNCHECKED_CAST")

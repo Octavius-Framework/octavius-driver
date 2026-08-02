@@ -13,14 +13,15 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
+
     override val supportedSourceClass = PgRecord::class
 
-    override fun canConvert(source: PgRecord, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Map::class || expectedType.classifier == Any::class
     }
 
-    override fun convert(source: PgRecord, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
+    override fun convert(source: PgRecord, expectedType: KType, sourceType: PgType, context: DeserializationContext): Map<String, Any?> {
         val valueType = if (expectedType.classifier == Map::class) {
             expectedType.arguments.getOrNull(1)?.type ?: typeOf<Any?>()
         } else {
@@ -38,7 +39,7 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
             
             val valRaw = source.get<Any?>(i + 1)
             val valOid = source.getAttributeOid(i + 1)
-            val valType = source.typeRegistry.types[valOid] ?: throw OctaviusInternalException()
+            val valType = context.typeManager.registry.types[valOid] ?: throw OctaviusInternalException()
             
             result[key] = if (valRaw == null) null else context.convert(valRaw, valueType, valType)
         }
