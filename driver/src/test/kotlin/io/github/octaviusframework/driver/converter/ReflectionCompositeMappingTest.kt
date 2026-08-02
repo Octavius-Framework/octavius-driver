@@ -43,6 +43,8 @@ class ReflectionCompositeMappingTest {
             put(3, type)
         }
     }
+    
+    private val dummyTypeManager = TypeManager(dummyRegistry)
 
     private fun registerPersonComposite(
         pgConvention: CaseConvention,
@@ -66,7 +68,7 @@ class ReflectionCompositeMappingTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            dummyTypeManager
         )
 
         val composite = createComposite(type, mapOf(

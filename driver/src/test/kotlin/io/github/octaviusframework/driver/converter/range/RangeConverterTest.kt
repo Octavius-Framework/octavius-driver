@@ -46,7 +46,7 @@ class RangeConverterTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(RangeResultConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            typeManager
         )
 
         val pgRange = PgRange.create(
@@ -79,7 +79,7 @@ class RangeConverterTest {
         registry.addConverter(RangeResultConverter())
         registry.addConverter(MultiRangeResultConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            typeManager
         )
 
         val pgRange1 = PgRange.create(

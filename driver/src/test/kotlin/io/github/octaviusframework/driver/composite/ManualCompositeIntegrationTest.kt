@@ -25,12 +25,7 @@ class ManualCompositeIntegrationTest {
 
     class PaymentInfoResultConverter : ResultConverter<PgComposite, PaymentInfo> {
         override val supportedSourceClass = PgComposite::class
-        override fun canConvert(
-            source: PgComposite,
-            expectedType: KType,
-            sourceType: PgType,
-            context: DeserializationContext
-        ): Boolean {
+        override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
             return expectedType.classifier == PaymentInfo::class && sourceType is PgType.Composite && sourceType.name == "payment_info"
         }
 

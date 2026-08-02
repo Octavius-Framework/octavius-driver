@@ -33,12 +33,7 @@ class JsonElementIntegrationTest {
 
     class MetadataHolderResultConverter : ResultConverter<PgComposite, MetadataHolder> {
         override val supportedSourceClass = PgComposite::class
-        override fun canConvert(
-            source: PgComposite,
-            expectedType: KType,
-            sourceType: PgType,
-            context: DeserializationContext
-        ): Boolean {
+        override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
             return expectedType.classifier == MetadataHolder::class
         }
 

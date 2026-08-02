@@ -137,12 +137,7 @@ class DeserializationIntegrationTest {
             // Rejestracja własnych, jawnych konwerterów
             session.types.registerResultConverter(object : ResultConverter<Any, TestStatus> {
                 override val supportedSourceClass = Any::class
-                override fun canConvert(
-                    source: Any,
-                    expectedType: KType,
-                    sourceType: PgType,
-                    context: DeserializationContext
-                ): Boolean {
+                override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
                 }
                 override fun convert(
@@ -158,12 +153,7 @@ class DeserializationIntegrationTest {
             
             session.types.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
                 override val supportedSourceClass = PgComposite::class
-                override fun canConvert(
-                    source: PgComposite,
-                    expectedType: KType,
-                    sourceType: PgType,
-                    context: DeserializationContext
-                ): Boolean {
+                override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
                     return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
                 }
                 override fun convert(

@@ -58,7 +58,7 @@ class DeserializationTest {
     fun `test simple composite reflection mapping`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(registry, TypeManager(TypeRegistry()))
+        val deserializer = ResultMapper(registry, TypeManager(dummyRegistry))
 
         val composite = createComposite(mapOf("street" to "Baker St", "city" to "London"))
 
@@ -73,7 +73,7 @@ class DeserializationTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         val addressComposite = createComposite(mapOf("street" to "Wall St", "city" to "NY"))
@@ -93,7 +93,7 @@ class DeserializationTest {
         registry.addConverter(ReflectionCompositeConverter())
         registry.addConverter(CollectionArrayConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         val p1 = createComposite(
@@ -128,7 +128,7 @@ class DeserializationTest {
         registry.addConverter(ReflectionCompositeConverter())
         registry.addConverter(MapCompositeConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         val composite = createComposite(mapOf("key1" to "value1", "key2" to 42))
@@ -147,7 +147,7 @@ class DeserializationTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         val composite = createComposite(mapOf("street" to "Baker St")) // Missing 'city'
@@ -163,7 +163,7 @@ class DeserializationTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         val deserializer = ResultMapper(registry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         val composite = createComposite(mapOf("id" to 10)) // missing name (has default), missing desc (nullable)
@@ -180,7 +180,7 @@ class DeserializationTest {
         val globalRegistry = ResultConverterRegistry()
         globalRegistry.addConverter(ReflectionCompositeConverter())
         val deserializer = ResultMapper(globalRegistry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         val composite = createComposite(mapOf("street" to "Global", "city" to "City"))
@@ -188,12 +188,7 @@ class DeserializationTest {
         // Define a custom converter for Address
         val localConverter = object : ResultConverter<Any, Address> {
             override val supportedSourceClass = Any::class
-            override fun canConvert(
-                source: Any,
-                expectedType: KType,
-                sourceType: PgType,
-                context: DeserializationContext
-            ) =
+            override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext) =
                 expectedType.classifier == Address::class
 
             override fun convert(
@@ -210,7 +205,7 @@ class DeserializationTest {
         localRegistry.addConverter(localConverter)
 
         val localDeserializer = ResultMapper(localRegistry,
-            TypeManager(TypeRegistry())
+            TypeManager(dummyRegistry)
         )
 
         // Using local registry
