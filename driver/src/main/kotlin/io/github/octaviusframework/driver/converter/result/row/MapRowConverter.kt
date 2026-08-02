@@ -9,21 +9,22 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class MapRowConverter : ResultConverter<Row, Map<String, Any?>> {
+
     override val supportedSourceClass = Row::class
 
-    override fun canConvert(source: Row, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(source: Row, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Map::class
     }
 
-    override fun convert(source: Row, expectedType: KType, context: DeserializationContext, sourceType: PgType): Map<String, Any?> {
+    override fun convert(source: Row, expectedType: KType, sourceType: PgType, context: DeserializationContext): Map<String, Any?> {
         val valueType = expectedType.arguments.getOrNull(1)?.type ?: typeOf<Any?>()
 
         val result = mutableMapOf<String, Any?>()
         for ((index, columnName) in source.columnNames.withIndex()) {
             val rawValue = source.getRaw(index)
             val oid = source.getOid(index)
-            val type = source.typeRegistry.types[oid]!!
+            val type = context.typeManager.registry.types[oid]!!
             result[columnName] = if (rawValue == null) null else context.convert<Any>(rawValue, valueType, type)
         }
         return result

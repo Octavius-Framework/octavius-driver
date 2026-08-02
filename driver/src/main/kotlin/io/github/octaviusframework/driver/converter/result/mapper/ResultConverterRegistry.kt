@@ -16,7 +16,7 @@ class ResultConverterRegistry(
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
+    fun findConverter(source: Any, expectedType: KType, sourceType: PgType, context: DeserializationContext): ResultConverter<Any, *>? {
         val sourceClass = source::class
         
         val specificConverters: List<ResultConverter<*,*>>? = converters[sourceClass]
@@ -24,7 +24,7 @@ class ResultConverterRegistry(
             for (i in 0 until specificConverters.size) {
                 @Suppress("UNCHECKED_CAST")
                 val converter = specificConverters[i] as ResultConverter<Any, *>
-                if (converter.canConvert(source, expectedType, sourceType)) {
+                if (converter.canConvert(source, expectedType, sourceType, context)) {
                     return converter
                 }
             }
@@ -35,12 +35,12 @@ class ResultConverterRegistry(
             for (i in 0 until anyConverters.size) {
                 @Suppress("UNCHECKED_CAST")
                 val converter = anyConverters[i] as ResultConverter<Any, *>
-                if (converter.canConvert(source, expectedType, sourceType)) {
+                if (converter.canConvert(source, expectedType, sourceType, context)) {
                     return converter
                 }
             }
         }
 
-        return parent?.findConverter(source, expectedType, sourceType)
+        return parent?.findConverter(source, expectedType, sourceType, context)
     }
 }

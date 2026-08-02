@@ -9,9 +9,10 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 class JsonElementConverter : ResultConverter<String, JsonElement> {
+
     override val supportedSourceClass = String::class
 
-    override fun canConvert(source: String, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(source: String, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (kClass == JsonElement::class) return true
         if (kClass == Any::class && (sourceType.schema == "pg_catalog" && (sourceType.name == "json" || sourceType.name == "jsonb"))) return true
@@ -21,8 +22,8 @@ class JsonElementConverter : ResultConverter<String, JsonElement> {
     override fun convert(
         source: String,
         expectedType: KType,
-        context: DeserializationContext,
-        sourceType: PgType
+        sourceType: PgType,
+        context: DeserializationContext
     ): JsonElement {
         return Json.parseToJsonElement(source)
     }

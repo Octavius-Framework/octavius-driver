@@ -7,17 +7,21 @@ import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
+import io.github.octaviusframework.driver.type.TypeManager
+
 class ResultMapper(
-    registry: ResultConverterRegistry
+    registry: ResultConverterRegistry,
+    typeManager: TypeManager
 ) {
-    internal val context = DefaultDeserializationContext(registry)
+    internal val context = DefaultDeserializationContext(registry, typeManager)
     fun <T> deserialize(source: Any?, expectedType: KType, sourceType: PgType): T {
         return context.convert(source, expectedType, sourceType)
     }
 }
 
 internal class DefaultDeserializationContext(
-    private val registry: ResultConverterRegistry
+    private val registry: ResultConverterRegistry,
+    override val typeManager: TypeManager
 ) : DeserializationContext {
     override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType): T {
         if (source == null) {
@@ -28,10 +32,10 @@ internal class DefaultDeserializationContext(
             return null as T
         }
 
-        val converter = registry.findConverter(source, expectedType, sourceType)
+        val converter = registry.findConverter(source, expectedType, sourceType, this)
         if (converter != null) {
             @Suppress("UNCHECKED_CAST")
-            return converter.convert(source, expectedType, this, sourceType) as T
+            return converter.convert(source, expectedType, sourceType, this) as T
         }
 
         // Fallback: if the source is already of the appropriate type, just cast it
@@ -46,6 +50,6 @@ internal class DefaultDeserializationContext(
     }
 
     override fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
-        return registry.findConverter(source, expectedType, sourceType)
+        return registry.findConverter(source, expectedType, sourceType, this)
     }
 }
