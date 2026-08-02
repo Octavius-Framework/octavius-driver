@@ -32,7 +32,7 @@ internal class DefaultDeserializationContext(
             return null as T
         }
 
-        val converter = registry.findConverter(source, expectedType, sourceType, this)
+        val converter = registry.findConverter(source::class, expectedType, sourceType, this)
         if (converter != null) {
             @Suppress("UNCHECKED_CAST")
             return converter.convert(source, expectedType, sourceType, this) as T
@@ -49,7 +49,7 @@ internal class DefaultDeserializationContext(
         throw MappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
     }
 
-    override fun findConverter(source: Any, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
-        return registry.findConverter(source, expectedType, sourceType, this)
+    override fun findConverter(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {
+        return registry.findConverter(sourceClass, expectedType, sourceType, this)
     }
 }

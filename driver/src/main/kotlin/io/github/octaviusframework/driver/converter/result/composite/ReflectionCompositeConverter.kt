@@ -17,12 +17,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
     override val supportedSourceClass = PgComposite::class
 
-    override fun canConvert(
-        source: PgComposite,
-        expectedType: KType,
-        sourceType: PgType,
-        context: DeserializationContext
-    ): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (!kClass.isData) return false
         return context.typeManager.registry.registeredComposites.containsKey(kClass)

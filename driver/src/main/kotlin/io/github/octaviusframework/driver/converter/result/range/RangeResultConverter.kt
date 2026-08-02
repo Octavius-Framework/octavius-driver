@@ -14,7 +14,7 @@ class RangeResultConverter : ResultConverter<PgRange, Range<*>> {
 
     override val supportedSourceClass = PgRange::class
 
-    override fun canConvert(source: PgRange, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Range::class || kClass == Any::class
     }

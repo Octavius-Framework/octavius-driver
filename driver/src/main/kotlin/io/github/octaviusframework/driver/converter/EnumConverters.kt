@@ -53,7 +53,7 @@ class EnumResultConverter<T : Enum<T>>(
 
     override val supportedSourceClass = String::class
 
-    override fun canConvert(source: String, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         if (expectedType.classifier != enumClass) return false
         if (sourceType !is PgType.Enum) return false
 

@@ -17,7 +17,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
 
     override val supportedSourceClass = Row::class
 
-    override fun canConvert(source: Row, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass.isData
     }

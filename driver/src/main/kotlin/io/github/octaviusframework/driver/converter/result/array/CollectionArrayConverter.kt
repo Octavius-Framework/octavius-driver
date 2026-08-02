@@ -15,7 +15,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
 
     override val supportedSourceClass = PgArray::class
 
-    override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
     }
@@ -63,7 +63,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                     null
                 } else {
                     if (!converterSearched) {
-                        elementConverter = context.findConverter(value, ktElementType, pgElementType)
+                        elementConverter = context.findConverter(value::class, ktElementType, pgElementType)
                         if (elementConverter == null) isFallbackCast = true
                         converterSearched = true
                     }

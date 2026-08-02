@@ -12,7 +12,7 @@ class JsonElementConverter : ResultConverter<String, JsonElement> {
 
     override val supportedSourceClass = String::class
 
-    override fun canConvert(source: String, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (kClass == JsonElement::class) return true
         if (kClass == Any::class && (sourceType.schema == "pg_catalog" && (sourceType.name == "json" || sourceType.name == "jsonb"))) return true

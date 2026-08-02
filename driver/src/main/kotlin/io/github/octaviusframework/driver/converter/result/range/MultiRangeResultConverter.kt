@@ -15,12 +15,7 @@ class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
 
     override val supportedSourceClass = PgMultirange::class
 
-    override fun canConvert(
-        source: PgMultirange,
-        expectedType: KType,
-        sourceType: PgType,
-        context: DeserializationContext
-    ): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == MultiRange::class || kClass == Any::class
     }

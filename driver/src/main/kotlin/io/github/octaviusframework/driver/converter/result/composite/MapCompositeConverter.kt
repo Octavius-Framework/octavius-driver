@@ -13,12 +13,7 @@ class MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
 
     override val supportedSourceClass = PgComposite::class
 
-    override fun canConvert(
-        source: PgComposite,
-        expectedType: KType,
-        sourceType: PgType,
-        context: DeserializationContext
-    ): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Map::class
     }

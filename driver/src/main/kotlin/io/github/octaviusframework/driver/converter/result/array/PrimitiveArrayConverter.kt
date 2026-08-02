@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultConverte
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
@@ -21,7 +22,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
     private val booleanKType = typeOf<Boolean>()
     private val charKType = typeOf<Char>()
 
-    override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val classifier = expectedType.classifier
         return classifier == IntArray::class ||
                classifier == DoubleArray::class ||
