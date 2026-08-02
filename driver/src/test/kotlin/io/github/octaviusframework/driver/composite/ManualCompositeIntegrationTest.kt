@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -32,9 +31,8 @@ class ManualCompositeIntegrationTest {
         }
 
         override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): PaymentInfo {
-            val composite = source
-            val amount = composite.get<Int>("amount")
-            val currency = composite.get<String>("currency")
+            val amount = source.get<Int>("amount")
+            val currency = source.get<String>("currency")
             return PaymentInfo(amount, currency)
         }
     }

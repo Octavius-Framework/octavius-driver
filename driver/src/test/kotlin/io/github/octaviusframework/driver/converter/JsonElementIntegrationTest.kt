@@ -46,13 +46,12 @@ class JsonElementIntegrationTest {
             context: DeserializationContext,
             sourceType: PgType
         ): MetadataHolder {
-            val composite = source
             return MetadataHolder(
-                id = composite.get("id"),
+                id = source.get("id"),
                 metadata = context.convert(
-                    composite.get("metadata"),
+                    source.get("metadata"),
                     jsonElementType,
-                    composite.getAttributeType("metadata")
+                    source.getAttributeType("metadata")
                 )
             )
         }
