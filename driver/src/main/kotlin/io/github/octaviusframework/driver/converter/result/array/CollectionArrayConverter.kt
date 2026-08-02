@@ -17,7 +17,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
 
     override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
-        return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
+        return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class || kClass == Any::class
     }
 
     override fun convert(source: PgArray, expectedType: KType, sourceType: PgType, context: DeserializationContext): Collection<*> {
