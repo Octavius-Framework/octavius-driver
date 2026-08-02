@@ -11,23 +11,28 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class RangeResultConverter : ResultConverter<PgRange, Range<*>> {
+
     override val supportedSourceClass = PgRange::class
 
-    override fun canConvert(source: PgRange, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == Range::class || kClass == Any::class
     }
 
-    override fun convert(source: PgRange, expectedType: KType, context: DeserializationContext, sourceType: PgType): Range<*> {
+    override fun convert(source: PgRange, expectedType: KType, sourceType: PgType, context: DeserializationContext): Range<*> {
         val ktElementType = expectedType.arguments.firstOrNull()?.type 
             ?: typeOf<Any>()
-        val pgElementType = source.typeRegistry.types[source.elementOid]
+        @Suppress("UNCHECKED_CAST")
+        val elementClass = (ktElementType.classifier as? KClass<Any>) ?: Any::class
+        
+        val pgElementType = context.typeManager.registry.types[source.elementOid]
             ?: throw OctaviusInternalException()
 
         val lower = source.lowerBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }
         val upper = source.upperBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }
 
         return Range(
+            elementClass = elementClass,
             lowerBound = lower,
             upperBound = upper,
             isLowerInclusive = source.isLowerInclusive,

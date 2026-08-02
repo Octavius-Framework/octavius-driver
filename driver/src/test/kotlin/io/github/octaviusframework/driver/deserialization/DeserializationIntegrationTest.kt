@@ -137,10 +137,15 @@ class DeserializationIntegrationTest {
             // Rejestracja własnych, jawnych konwerterów
             session.types.registerResultConverter(object : ResultConverter<Any, TestStatus> {
                 override val supportedSourceClass = Any::class
-                override fun canConvert(source: Any, expectedType: KType, sourceType: PgType): Boolean {
+                override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
                 }
-                override fun convert(source: Any, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestStatus {
+                override fun convert(
+                    source: Any,
+                    expectedType: KType,
+                    sourceType: PgType,
+                    context: DeserializationContext
+                ): TestStatus {
                     val str = source.toString()
                     return TestStatus.entries.find { it.name.equals(str, ignoreCase = true) } ?: TestStatus.UNKNOWN
                 }
@@ -148,10 +153,15 @@ class DeserializationIntegrationTest {
             
             session.types.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
                 override val supportedSourceClass = PgComposite::class
-                override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
+                override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
                     return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
                 }
-                override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): TestUserData {
+                override fun convert(
+                    source: PgComposite,
+                    expectedType: KType,
+                    sourceType: PgType,
+                    context: DeserializationContext
+                ): TestUserData {
                     val code = source.get<String>("code")
                     val statusRaw = source.get<Any?>("status")
                     val statusType = source.typeRegistry.types[source.type.attributes["status"]!!]!!

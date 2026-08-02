@@ -15,6 +15,7 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
 
 class ReflectionCompositeMappingTest {
@@ -42,6 +43,8 @@ class ReflectionCompositeMappingTest {
             put(3, type)
         }
     }
+    
+    private val dummyTypeManager = TypeManager(dummyRegistry)
 
     private fun registerPersonComposite(
         pgConvention: CaseConvention,
@@ -64,7 +67,9 @@ class ReflectionCompositeMappingTest {
 
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            dummyTypeManager
+        )
 
         val composite = createComposite(type, mapOf(
             "first_name" to "John",
@@ -83,17 +88,23 @@ class ReflectionCompositeMappingTest {
     fun `test serialization with MapKey and conventions`() {
         val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
         val converter = ReflectionCompositeParameterConverter()
+        val dummyTypeManager = TypeManager(dummyRegistry)
         val context = object : SerializationContext {
+            override val typeManager = dummyTypeManager
             override fun convert(source: Any, expectedOid: Int): Any? = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
+            override fun findConverterByClass(
+                sourceClass: KClass<*>,
+                expectedOid: Int
+            ): ParameterConverter<Any>? = null
         }
 
         val person = Person("Jane", "Smith", 28)
 
-        val dummyTypeManager = TypeManager(dummyRegistry)
-        assertTrue(converter.canConvert(person, type.oid, dummyTypeManager))
+        
+        assertTrue(converter.canConvert(person::class, type.oid, context))
 
-        val serialized = converter.convert(person, type.oid, context, dummyTypeManager) as PgComposite
+        val serialized = converter.convert(person, type.oid, context) as PgComposite
 
         assertNotNull(serialized)
         assertEquals(type, serialized.type)

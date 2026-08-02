@@ -14,18 +14,19 @@ import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
 class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
+
     override val supportedSourceClass = PgComposite::class
 
-    override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (!kClass.isData) return false
-        return source.typeRegistry.registeredComposites.containsKey(kClass)
+        return context.typeManager.registry.registeredComposites.containsKey(kClass)
     }
 
-    override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
+    override fun convert(source: PgComposite, expectedType: KType, sourceType: PgType, context: DeserializationContext): Any {
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
-        val registration = source.typeRegistry.registeredComposites[kClass]
+        val registration = context.typeManager.registry.registeredComposites[kClass]
             ?: throw OctaviusInternalException()
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
@@ -43,8 +44,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
             if (index != -1) {
                 val rawValue = source.get<Any?>(index)
-                val oid = source.type.attributeOids[index]
-                val type = source.typeRegistry.types[oid] ?: throw OctaviusInternalException()
+                val type = source.getAttributeType(index)
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {

@@ -14,14 +14,15 @@ import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
 class ReflectionRowConverter : ResultConverter<Row, Any> {
+
     override val supportedSourceClass = Row::class
 
-    override fun canConvert(source: Row, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass.isData
     }
 
-    override fun convert(source: Row, expectedType: KType, context: DeserializationContext, sourceType: PgType): Any {
+    override fun convert(source: Row, expectedType: KType, sourceType: PgType, context: DeserializationContext): Any {
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
 
@@ -46,7 +47,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
             if (index != -1) {
                 val rawValue = source.getRaw(index)
                 val oid = source.getOid(index)
-                val type = source.typeRegistry.types[oid]!!
+                val type = context.typeManager.registry.types[oid]!!
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {

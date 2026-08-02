@@ -99,8 +99,8 @@ class TypeManager(
 
         val actualSchema = schema.takeIf { it.isNotEmpty() } ?: ""
         val qualifiedName = QualifiedName(actualSchema, actualTypeName)
-        registry.registerParameterConverter(EnumParameterConverter(enumClass, pgConvention, kotlinConvention))
-        registry.registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention, this))
+        registry.registerParameterConverter(EnumParameterConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
+        registry.registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
     }
 
     /**

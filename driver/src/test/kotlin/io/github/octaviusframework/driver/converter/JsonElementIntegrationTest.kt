@@ -10,7 +10,6 @@ import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.type.withPgType
 import kotlinx.serialization.json.JsonElement
@@ -34,7 +33,7 @@ class JsonElementIntegrationTest {
 
     class MetadataHolderResultConverter : ResultConverter<PgComposite, MetadataHolder> {
         override val supportedSourceClass = PgComposite::class
-        override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
+        override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
             return expectedType.classifier == MetadataHolder::class
         }
 
@@ -43,40 +42,35 @@ class JsonElementIntegrationTest {
         override fun convert(
             source: PgComposite,
             expectedType: KType,
-            context: DeserializationContext,
-            sourceType: PgType
+            sourceType: PgType,
+            context: DeserializationContext
         ): MetadataHolder {
-            val composite = source
             return MetadataHolder(
-                id = composite.get("id"),
+                id = source.get("id"),
                 metadata = context.convert(
-                    composite.get("metadata"),
+                    source.get("metadata"),
                     jsonElementType,
-                    composite.getAttributeType("metadata")
+                    source.getAttributeType("metadata")
                 )
             )
         }
     }
 
     class MetadataHolderParameterConverter : ParameterConverter<MetadataHolder> {
-        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-            return source is MetadataHolder
-        }
+        override val supportedClass = MetadataHolder::class
 
         override fun convert(
-            source: Any,
+            source: MetadataHolder,
             expectedOid: Int,
-            context: SerializationContext,
-            typeManager: TypeManager
+            context: SerializationContext
         ): Any {
-            val holder = source as MetadataHolder
             val composite = if (expectedOid.isKnownOid) {
-                typeManager.createComposite(expectedOid)
+                context.typeManager.createComposite(expectedOid)
             } else {
-                typeManager.createComposite("metadata_holder")
+                context.typeManager.createComposite("metadata_holder")
             }
-            composite["id"] = holder.id
-            composite["metadata"] = context.convert(holder.metadata, composite.getAttributeOid("metadata"))
+            composite["id"] = source.id
+            composite["metadata"] = context.convert(source.metadata, composite.getAttributeOid("metadata"))
             return composite
         }
     }

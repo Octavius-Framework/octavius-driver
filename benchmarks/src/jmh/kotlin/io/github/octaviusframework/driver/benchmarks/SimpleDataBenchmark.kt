@@ -15,6 +15,7 @@ import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.util.concurrent.TimeUnit
 import java.util.Properties
+import kotlin.reflect.KClass
 
 data class SimpleData(val i: Int, val s: String, val b: Boolean, val d: Double)
 
@@ -39,17 +40,30 @@ open class SimpleDataBenchmark {
         props["password"] = "1234"
 
         pgConnection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/octavius_test", props)
-        val query = "SELECT i::int4, 'hello world ' || i::text, (i % 2 = 0)::boolean, (i * 3.14)::float8 FROM generate_series(1, 10000) AS i"
+        val query =
+            "SELECT i::int4, 'hello world ' || i::text, (i % 2 = 0)::boolean, (i * 3.14)::float8 FROM generate_series(1, 10000) AS i"
         pgStatement = pgConnection.prepareStatement(query)
 
         octaviusSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
-        octaviusQuery = octaviusSession.createNativeQuery(query).registerResultConverter(object : ResultConverter<Row, SimpleData> {
-            override val supportedSourceClass = Row::class
-            override fun canConvert(source: Row, expectedType: KType, sourceType: PgType) = expectedType.classifier == SimpleData::class
-            override fun convert(source: Row, expectedType: KType, context: DeserializationContext, sourceType: PgType): SimpleData {
-                return SimpleData(source.get(0), source.get(1), source.get(2), source.get(3))
-            }
-        })
+        octaviusQuery =
+            octaviusSession.createNativeQuery(query).registerResultConverter(object : ResultConverter<Row, SimpleData> {
+                override val supportedSourceClass = Row::class
+                override fun canConvert(
+                    sourceClass: KClass<*>,
+                    expectedType: KType,
+                    sourceType: PgType,
+                    context: DeserializationContext
+                ): Boolean = expectedType.classifier == SimpleData::class
+
+                override fun convert(
+                    source: Row,
+                    expectedType: KType,
+                    sourceType: PgType,
+                    context: DeserializationContext
+                ): SimpleData {
+                    return SimpleData(source.get(0), source.get(1), source.get(2), source.get(3))
+                }
+            })
     }
 
     @TearDown(Level.Trial)

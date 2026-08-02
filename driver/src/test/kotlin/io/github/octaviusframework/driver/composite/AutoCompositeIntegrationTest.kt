@@ -4,6 +4,8 @@ import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.MultiRange
 import io.github.octaviusframework.driver.type.Range
+import io.github.octaviusframework.driver.type.rangeOf
+import io.github.octaviusframework.driver.type.multiRangeOf
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll
@@ -64,23 +66,23 @@ class AutoCompositeIntegrationTest {
             session.types.registerAutoComposite<PersonProfile>("person_profile")
             session.types.registerAutoComposite<EmployeeData>("employee_data")
 
-            val activePeriod = Range(
+            val activePeriod = rangeOf(
                 lowerBound = LocalDate(2023, 1, 1),
                 upperBound = LocalDate(2023, 12, 31)
             )
 
-            val shift1 = Range(
+            val shift1 = rangeOf(
                 lowerBound = LocalDateTime(2023, 5, 1, 8, 0),
                 upperBound = LocalDateTime(2023, 5, 1, 16, 0)
             )
-            val shift2 = Range(
+            val shift2 = rangeOf(
                 lowerBound = LocalDateTime(2023, 5, 2, 9, 0),
                 upperBound = LocalDateTime(2023, 5, 2, 17, 0)
             )
 
-            val availableDays = MultiRange(
-                Range(lowerBound = LocalDate(2023, 6, 1), upperBound = LocalDate(2023, 6, 10)),
-                Range(lowerBound = LocalDate(2023, 7, 1), upperBound = LocalDate(2023, 7, 15))
+            val availableDays = multiRangeOf(
+                rangeOf(lowerBound = LocalDate(2023, 6, 1), upperBound = LocalDate(2023, 6, 10)),
+                rangeOf(lowerBound = LocalDate(2023, 7, 1), upperBound = LocalDate(2023, 7, 15))
             )
 
             val emp = EmployeeData(
@@ -125,23 +127,23 @@ class AutoCompositeIntegrationTest {
             session.types.registerAutoComposite<PersonProfile>("person_profile")
             session.types.registerAutoComposite<EmployeeData>("employee_data")
 
-            val activePeriod = Range(
+            val activePeriod = rangeOf(
                 lowerBound = LocalDate(2023, 1, 1),
                 upperBound = LocalDate(2023, 12, 31)
             )
 
-            val shift1 = Range(
+            val shift1 = rangeOf(
                 lowerBound = LocalDateTime(2023, 5, 1, 8, 0),
                 upperBound = LocalDateTime(2023, 5, 1, 16, 0)
             )
-            val shift2 = Range(
+            val shift2 = rangeOf(
                 lowerBound = LocalDateTime(2023, 5, 2, 9, 0),
                 upperBound = LocalDateTime(2023, 5, 2, 17, 0)
             )
 
-            val availableDays = MultiRange(
-                Range(lowerBound = LocalDate(2023, 6, 1), upperBound = LocalDate(2023, 6, 10)),
-                Range(lowerBound = LocalDate(2023, 7, 1), upperBound = LocalDate(2023, 7, 15))
+            val availableDays = multiRangeOf(
+                rangeOf(lowerBound = LocalDate(2023, 6, 1), upperBound = LocalDate(2023, 6, 10)),
+                rangeOf(lowerBound = LocalDate(2023, 7, 1), upperBound = LocalDate(2023, 7, 15))
             )
 
             val emp = EmployeeData(

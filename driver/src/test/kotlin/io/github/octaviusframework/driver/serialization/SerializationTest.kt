@@ -94,8 +94,7 @@ class SerializationTest {
             arrayOid = 1007,
             elementOid = 23,
             dimensions = listOf(ArrayDimension(3, 1)),
-            elements = mutableListOf(10, 20, 30),
-            typeRegistry = typeRegistry
+            elements = mutableListOf(10, 20, 30)
         )
 
         val writer2 = PgByteWriter()
@@ -151,8 +150,7 @@ class SerializationTest {
                 ArrayDimension(2, 1),
                 ArrayDimension(3, 1)
             ),
-            elements = mutableListOf(1, 2, 3, 4, 5, 6),
-            typeRegistry = dummyRow.typeRegistry
+            elements = mutableListOf(1, 2, 3, 4, 5, 6)
         )
 
         val writer = PgByteWriter()

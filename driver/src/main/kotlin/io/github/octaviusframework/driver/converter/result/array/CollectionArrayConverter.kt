@@ -12,15 +12,16 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
+
     override val supportedSourceClass = PgArray::class
 
-    override fun canConvert(source: PgArray, expectedType: KType, sourceType: PgType): Boolean {
+    override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class
     }
 
-    override fun convert(source: PgArray, expectedType: KType, context: DeserializationContext, sourceType: PgType): Collection<*> {
-        val pgElementType = source.typeRegistry.types[source.elementOid]
+    override fun convert(source: PgArray, expectedType: KType, sourceType: PgType, context: DeserializationContext): Collection<*> {
+        val pgElementType = context.typeManager.registry.types[source.elementOid]
             ?: throw OctaviusInternalException()
 
         return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
@@ -62,7 +63,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                     null
                 } else {
                     if (!converterSearched) {
-                        elementConverter = context.findConverter(value, ktElementType, pgElementType)
+                        elementConverter = context.findConverter(value::class, ktElementType, pgElementType)
                         if (elementConverter == null) isFallbackCast = true
                         converterSearched = true
                     }
@@ -73,7 +74,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                             throw TypeException(TypeExceptionMessage.CASTING_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
                         }
                     } else {
-                        elementConverter!!.convert(value, ktElementType, context, pgElementType)
+                        elementConverter!!.convert(value, ktElementType, pgElementType, context)
                     }
                 }
             }

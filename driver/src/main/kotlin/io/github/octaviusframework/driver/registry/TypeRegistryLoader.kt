@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeManager
 
 object TypeRegistryLoader {
 
@@ -26,7 +27,8 @@ object TypeRegistryLoader {
             ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
 
-        val resultMapper = ResultMapper(typeRegistry.converterRegistry)
+        val typeManager = TypeManager(typeRegistry) // Use only codecs for internal postgres types
+        val resultMapper = ResultMapper(typeRegistry.converterRegistry, typeManager)
         val result = queryExecutor.query(typesSql, mapper = resultMapper)
 
         val enumMap = mutableMapOf<Int, MutableList<String>>()

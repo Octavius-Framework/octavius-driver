@@ -9,7 +9,6 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultConverte
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgComposite
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -26,36 +25,36 @@ class ManualCompositeIntegrationTest {
 
     class PaymentInfoResultConverter : ResultConverter<PgComposite, PaymentInfo> {
         override val supportedSourceClass = PgComposite::class
-        override fun canConvert(source: PgComposite, expectedType: KType, sourceType: PgType): Boolean {
+        override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
             return expectedType.classifier == PaymentInfo::class && sourceType is PgType.Composite && sourceType.name == "payment_info"
         }
 
-        override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): PaymentInfo {
-            val composite = source
-            val amount = composite.get<Int>("amount")
-            val currency = composite.get<String>("currency")
+        override fun convert(
+            source: PgComposite,
+            expectedType: KType,
+            sourceType: PgType,
+            context: DeserializationContext
+        ): PaymentInfo {
+            val amount = source.get<Int>("amount")
+            val currency = source.get<String>("currency")
             return PaymentInfo(amount, currency)
         }
     }
 
     class PaymentInfoParameterConverter : ParameterConverter<PaymentInfo> {
-        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-            return source is PaymentInfo
-        }
+        override val supportedClass = PaymentInfo::class
 
-        override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
-            val payment = source as PaymentInfo
-            
+        override fun convert(source: PaymentInfo, expectedOid: Int, context: SerializationContext): Any {
             // Tworzenie kompozytu jest znacznie czystsze z użyciem TypeManager
             val composite = if (expectedOid.isKnownOid) {
-                typeManager.createComposite(expectedOid)
+                context.typeManager.createComposite(expectedOid)
             } else {
-                typeManager.createComposite("payment_info")
+                context.typeManager.createComposite("payment_info")
             }
             
             // Do atrybutów odwołujemy się po nazwie
-            composite["amount"] = payment.amount
-            composite["currency"] = payment.currency
+            composite["amount"] = source.amount
+            composite["currency"] = source.currency
             
             return composite
         }

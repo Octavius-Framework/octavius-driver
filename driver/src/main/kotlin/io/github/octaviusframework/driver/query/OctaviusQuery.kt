@@ -22,7 +22,7 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
     val typeRegistry = typeManager.registry
     val resultConverterRegistry = ResultConverterRegistry(parent = typeRegistry.converterRegistry)
     val parameterConverterRegistry = ParameterConverterRegistry(parent = typeRegistry.parameterConverterRegistry)
-    @PublishedApi internal val resultMapper = ResultMapper(resultConverterRegistry)
+    @PublishedApi internal val resultMapper = ResultMapper(resultConverterRegistry, typeManager)
     protected val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
     @PublishedApi internal val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
 

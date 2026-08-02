@@ -1,6 +1,9 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.identifier.QualifiedName
+import io.github.octaviusframework.driver.type.PgTyped
+import io.github.octaviusframework.driver.type.isKnownOid
+import kotlin.reflect.KClass
 
 class ParameterConverterRegistry(
     private val parent: ParameterConverterRegistry? = null
@@ -11,26 +14,40 @@ class ParameterConverterRegistry(
         converters.add(0, converter)
     }
 
-    fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any? {
+    fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
         for (i in 0 until converters.size) {
             val converter = converters[i]
-            if (converter.canConvert(source, expectedOid, typeManager)) {
-                val result = converter.convert(source, expectedOid, context, typeManager)
-                if (result != null) return result
+            if (converter.canConvert(source::class, expectedOid, context)) {
+                @Suppress("UNCHECKED_CAST")
+                var result = (converter as ParameterConverter<Any>).convert(source, expectedOid, context)
+                if (result !is PgTyped && !expectedOid.isKnownOid) {
+                    val defaultOid = converter.getDefaultOid(context)
+                    if (defaultOid.isKnownOid) {
+                        val type = context.typeManager.registry.types[defaultOid]
+                        if (type != null) {
+                            result = PgTyped(result, QualifiedName(type.schema, type.name, false))
+                        }
+                    }
+                }
+                return result
             }
         }
 
-        return parent?.convert(source, expectedOid, context, typeManager) ?: source
+        return parent?.convert(source, expectedOid, context) ?: source
     }
 
-    fun findConverter(source: Any, expectedOid: Int, typeManager: TypeManager): ParameterConverter<Any>? {
+    fun findConverter(source: Any, expectedOid: Int, context: SerializationContext): ParameterConverter<Any>? {
+        return findConverterByClass(source::class, expectedOid, context)
+    }
+
+    fun findConverterByClass(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): ParameterConverter<Any>? {
         for (i in 0 until converters.size) {
             val converter = converters[i]
-            if (converter.canConvert(source, expectedOid, typeManager)) {
+            if (converter.canConvert(sourceClass, expectedOid, context)) {
                 @Suppress("UNCHECKED_CAST")
                 return converter as ParameterConverter<Any>
             }
         }
-        return parent?.findConverter(source, expectedOid, typeManager)
+        return parent?.findConverterByClass(sourceClass, expectedOid, context)
     }
 }

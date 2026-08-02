@@ -6,6 +6,6 @@ import kotlin.reflect.KType
 
 interface ResultConverter<S : Any, T : Any> {
     val supportedSourceClass: KClass<S>
-    fun canConvert(source: S, expectedType: KType, sourceType: PgType): Boolean
-    fun convert(source: S, expectedType: KType, context: DeserializationContext, sourceType: PgType): T
+    fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean
+    fun convert(source: S, expectedType: KType, sourceType: PgType, context: DeserializationContext): T
 }
