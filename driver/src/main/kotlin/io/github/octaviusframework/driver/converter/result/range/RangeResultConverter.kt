@@ -21,6 +21,9 @@ class RangeResultConverter : ResultConverter<PgRange, Range<*>> {
     override fun convert(source: PgRange, expectedType: KType, context: DeserializationContext, sourceType: PgType): Range<*> {
         val ktElementType = expectedType.arguments.firstOrNull()?.type 
             ?: typeOf<Any>()
+        @Suppress("UNCHECKED_CAST")
+        val elementClass = (ktElementType.classifier as? KClass<Any>) ?: Any::class as KClass<Any>
+        
         val pgElementType = source.typeRegistry.types[source.elementOid]
             ?: throw OctaviusInternalException()
 
@@ -28,6 +31,7 @@ class RangeResultConverter : ResultConverter<PgRange, Range<*>> {
         val upper = source.upperBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }
 
         return Range(
+            elementClass = elementClass,
             lowerBound = lower,
             upperBound = upper,
             isLowerInclusive = source.isLowerInclusive,

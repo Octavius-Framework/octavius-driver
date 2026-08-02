@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.converter.range
 
 import io.github.octaviusframework.driver.type.MultiRange
 import io.github.octaviusframework.driver.type.Range
+import io.github.octaviusframework.driver.type.rangeOf
+import io.github.octaviusframework.driver.type.multiRangeOf
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -59,7 +61,7 @@ class RangeIntegrationTest {
     fun testRangeParameter() {
         val session = getSession()
 
-        val inputRange = Range(lowerBound = 5, upperBound = 15, isLowerInclusive = true, isUpperInclusive = true)
+        val inputRange = rangeOf(lowerBound = 5, upperBound = 15, isLowerInclusive = true, isUpperInclusive = true)
 
         val result = session.createNativeQuery("SELECT $1::int4range").fetchRowStrict(inputRange)
         val rangeBack = result.get<Range<Int>>(0)
@@ -75,10 +77,10 @@ class RangeIntegrationTest {
     fun testMultiRangeParameter() {
         val session = getSession()
 
-        val inputMultiRange = MultiRange(
+        val inputMultiRange = multiRangeOf(
             listOf(
-                Range(lowerBound = 1, upperBound = 5, isLowerInclusive = true, isUpperInclusive = false),
-                Range(lowerBound = 10, upperBound = null, isLowerInclusive = false, isUpperInfinite = true)
+                rangeOf(lowerBound = 1, upperBound = 5, isLowerInclusive = true, isUpperInclusive = false),
+                rangeOf(lowerBound = 10, upperBound = null, isLowerInclusive = false, isUpperInfinite = true)
             )
         )
 

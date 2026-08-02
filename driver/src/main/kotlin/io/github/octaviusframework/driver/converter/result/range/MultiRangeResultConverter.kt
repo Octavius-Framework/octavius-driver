@@ -22,9 +22,11 @@ class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
     override fun convert(source: PgMultirange, expectedType: KType, context: DeserializationContext, sourceType: PgType): MultiRange<*> {
         val ktElementType = expectedType.arguments.firstOrNull()?.type 
             ?: typeOf<Any>()
+        @Suppress("UNCHECKED_CAST")
+        val elementClass = (ktElementType.classifier as? KClass<Any>) ?: Any::class as KClass<Any>
 
         if (source.ranges.isEmpty()) {
-            return MultiRange<Any>(emptyList())
+            return MultiRange(elementClass, emptyList())
         }
 
         val typeRegistry = source.ranges.first().typeRegistry
@@ -37,6 +39,7 @@ class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
             val upper = pgRange.upperBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }
 
             Range(
+                elementClass = elementClass,
                 lowerBound = lower,
                 upperBound = upper,
                 isLowerInclusive = pgRange.isLowerInclusive,
@@ -49,6 +52,6 @@ class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
             )
         }
 
-        return MultiRange(convertedRanges)
+        return MultiRange(elementClass, convertedRanges)
     }
 }

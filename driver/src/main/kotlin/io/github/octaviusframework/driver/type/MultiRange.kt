@@ -1,20 +1,33 @@
 package io.github.octaviusframework.driver.type
 
+import kotlin.reflect.KClass
+
 /**
  * Represents a generic, user-friendly PostgreSQL multirange.
  * This class is designed to be used in application code, mapping directly to/from [io.github.octaviusframework.driver.container.PgMultirange].
  *
  * @param T The type of the range bounds.
  */
-data class MultiRange<T>(
+data class MultiRange<T : Any>(
+    val elementClass: KClass<T>,
     val ranges: List<Range<T>>
 ) {
-    constructor(vararg ranges: Range<T>) : this(ranges.toList())
+    constructor(elementClass: KClass<T>, vararg ranges: Range<T>) : this(elementClass, ranges.toList())
 
     companion object {
         /**
          * Creates an empty multirange.
          */
-        fun <T> empty(): MultiRange<T> = MultiRange(emptyList())
+        inline fun <reified T : Any> empty(): MultiRange<T> = MultiRange(T::class, emptyList())
     }
 }
+
+/**
+ * Creates a multirange.
+ */
+inline fun <reified T : Any> multiRangeOf(vararg ranges: Range<T>): MultiRange<T> = MultiRange(T::class, ranges.toList())
+
+/**
+ * Creates a multirange.
+ */
+inline fun <reified T : Any> multiRangeOf(ranges: List<Range<T>>): MultiRange<T> = MultiRange(T::class, ranges)

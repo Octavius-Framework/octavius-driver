@@ -31,21 +31,16 @@ class ManualCompositeIntegrationTest {
         }
 
         override fun convert(source: PgComposite, expectedType: KType, context: DeserializationContext, sourceType: PgType): PaymentInfo {
-            val composite = source
-            val amount = composite.get<Int>("amount")
-            val currency = composite.get<String>("currency")
+            val amount = source.get<Int>("amount")
+            val currency = source.get<String>("currency")
             return PaymentInfo(amount, currency)
         }
     }
 
     class PaymentInfoParameterConverter : ParameterConverter<PaymentInfo> {
-        override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-            return source is PaymentInfo
-        }
+        override val supportedClass = PaymentInfo::class
 
-        override fun convert(source: Any, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
-            val payment = source as PaymentInfo
-            
+        override fun convert(source: PaymentInfo, expectedOid: Int, context: SerializationContext, typeManager: TypeManager): Any {
             // Tworzenie kompozytu jest znacznie czystsze z użyciem TypeManager
             val composite = if (expectedOid.isKnownOid) {
                 typeManager.createComposite(expectedOid)
@@ -54,8 +49,8 @@ class ManualCompositeIntegrationTest {
             }
             
             // Do atrybutów odwołujemy się po nazwie
-            composite["amount"] = payment.amount
-            composite["currency"] = payment.currency
+            composite["amount"] = source.amount
+            composite["currency"] = source.currency
             
             return composite
         }

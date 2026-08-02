@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 
 import io.github.octaviusframework.driver.type.TypeManager
+import kotlin.reflect.KClass
 
 class ParameterMapper(
     private val registry: ParameterConverterRegistry,
@@ -26,6 +27,10 @@ internal class DefaultSerializationContext(
 
     override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? {
         return registry.findConverter(source, expectedOid, typeManager)
+    }
+
+    override fun findConverterByClass(sourceClass: KClass<*>, expectedOid: Int): ParameterConverter<Any>? {
+        return registry.findConverterByClass(sourceClass, expectedOid, typeManager)
     }
 }
 

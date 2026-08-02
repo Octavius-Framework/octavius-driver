@@ -14,11 +14,13 @@ import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
 
 class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
-    override fun canConvert(source: Any, expectedOid: Int, typeManager: TypeManager): Boolean {
-        if (!source::class.isData) return false
+    override val supportedClass: KClass<Any> = Any::class
+
+    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, typeManager: TypeManager): Boolean {
+        if (!sourceClass.isData) return false
         val typeRegistry = typeManager.registry
 
-        val registration = typeRegistry.registeredComposites[source::class]
+        val registration = typeRegistry.registeredComposites[sourceClass]
         if (registration != null) return true
 
         if (expectedOid.isKnownOid) {

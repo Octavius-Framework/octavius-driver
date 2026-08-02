@@ -15,6 +15,7 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
 
 class ReflectionCompositeMappingTest {
@@ -86,12 +87,16 @@ class ReflectionCompositeMappingTest {
         val context = object : SerializationContext {
             override fun convert(source: Any, expectedOid: Int): Any? = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
+            override fun findConverterByClass(
+                sourceClass: KClass<*>,
+                expectedOid: Int
+            ): ParameterConverter<Any>? = null
         }
 
         val person = Person("Jane", "Smith", 28)
 
         val dummyTypeManager = TypeManager(dummyRegistry)
-        assertTrue(converter.canConvert(person, type.oid, dummyTypeManager))
+        assertTrue(converter.canConvert(person::class, type.oid, dummyTypeManager))
 
         val serialized = converter.convert(person, type.oid, context, dummyTypeManager) as PgComposite
 
