@@ -14,6 +14,7 @@ import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.registry.IntObjectMap
+import io.github.octaviusframework.driver.type.TypeManager
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KType
@@ -58,7 +59,7 @@ class DeserializationTest {
     fun `test simple composite reflection mapping`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry, TypeManager(TypeRegistry()))
 
         val composite = createComposite(mapOf("street" to "Baker St", "city" to "London"))
 
@@ -72,7 +73,9 @@ class DeserializationTest {
     fun `test nested composite reflection mapping`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            TypeManager(TypeRegistry())
+        )
 
         val addressComposite = createComposite(mapOf("street" to "Wall St", "city" to "NY"))
         val personComposite = createComposite(mapOf("name" to "John", "age" to 30, "address" to addressComposite))
@@ -90,7 +93,9 @@ class DeserializationTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         registry.addConverter(CollectionArrayConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            TypeManager(TypeRegistry())
+        )
 
         val p1 = createComposite(
             mapOf(
@@ -123,7 +128,9 @@ class DeserializationTest {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
         registry.addConverter(MapCompositeConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            TypeManager(TypeRegistry())
+        )
 
         val composite = createComposite(mapOf("key1" to "value1", "key2" to 42))
 
@@ -140,7 +147,9 @@ class DeserializationTest {
     fun `test missing non-nullable field throws exception`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            TypeManager(TypeRegistry())
+        )
 
         val composite = createComposite(mapOf("street" to "Baker St")) // Missing 'city'
 
@@ -154,7 +163,9 @@ class DeserializationTest {
     fun `test optional parameters and nulls are handled correctly`() {
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(registry)
+        val deserializer = ResultMapper(registry,
+            TypeManager(TypeRegistry())
+        )
 
         val composite = createComposite(mapOf("id" to 10)) // missing name (has default), missing desc (nullable)
 
@@ -169,21 +180,28 @@ class DeserializationTest {
     fun `test local registry overrides global registry`() {
         val globalRegistry = ResultConverterRegistry()
         globalRegistry.addConverter(ReflectionCompositeConverter())
-        val deserializer = ResultMapper(globalRegistry)
+        val deserializer = ResultMapper(globalRegistry,
+            TypeManager(TypeRegistry())
+        )
 
         val composite = createComposite(mapOf("street" to "Global", "city" to "City"))
 
         // Define a custom converter for Address
         val localConverter = object : ResultConverter<Any, Address> {
             override val supportedSourceClass = Any::class
-            override fun canConvert(source: Any, expectedType: KType, sourceType: PgType) =
+            override fun canConvert(
+                source: Any,
+                expectedType: KType,
+                sourceType: PgType,
+                context: DeserializationContext
+            ) =
                 expectedType.classifier == Address::class
 
             override fun convert(
                 source: Any,
                 expectedType: KType,
-                context: DeserializationContext,
-                sourceType: PgType
+                sourceType: PgType,
+                context: DeserializationContext
             ): Address {
                 return Address("LocalOverride", "LocalCity")
             }
@@ -192,7 +210,9 @@ class DeserializationTest {
         val localRegistry = ResultConverterRegistry(globalRegistry)
         localRegistry.addConverter(localConverter)
 
-        val localDeserializer = ResultMapper(localRegistry)
+        val localDeserializer = ResultMapper(localRegistry,
+            TypeManager(TypeRegistry())
+        )
 
         // Using local registry
         val address: Address? = localDeserializer.deserialize(composite, typeOf<Address>(), composite.type)
