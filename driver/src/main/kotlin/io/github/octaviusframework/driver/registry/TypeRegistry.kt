@@ -86,6 +86,12 @@ class TypeRegistry {
     var arrayTypesByElementOid: IntObjectMap<PgType.Array> = IntObjectMap()
 
     @Volatile
+    var rangeTypesByElementOid: IntObjectMap<PgType.Range> = IntObjectMap()
+
+    @Volatile
+    var multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange> = IntObjectMap()
+
+    @Volatile
     private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
 
 
@@ -243,6 +249,14 @@ class TypeRegistry {
         return arrayTypesByElementOid[elementOid]
     }
 
+    fun getRangeTypeByElementOid(elementOid: Int): PgType.Range? {
+        return rangeTypesByElementOid[elementOid]
+    }
+
+    fun getMultirangeTypeByRangeOid(rangeOid: Int): PgType.Multirange? {
+        return multirangeTypesByRangeOid[rangeOid]
+    }
+
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
@@ -255,12 +269,17 @@ class TypeRegistry {
         val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
         val newTypesByName = mutableMapOf<String, MutableMap<String, Int>>()
         val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
+        val newRangeTypesByElementOid = IntObjectMap<PgType.Range>()
+        val newMultirangeTypesByRangeOid = IntObjectMap<PgType.Multirange>()
 
         for ((oid, type) in newTypes) {
             intMap[oid] = type
             newTypesByName.getOrPut(type.name) { mutableMapOf() }[type.schema] = oid
-            if (type is PgType.Array) {
-                newArrayTypesByElementOid[type.elementOid] = type
+            when (type) {
+                is PgType.Array -> newArrayTypesByElementOid[type.elementOid] = type
+                is PgType.Range -> newRangeTypesByElementOid[type.subtypeOid] = type
+                is PgType.Multirange -> newMultirangeTypesByRangeOid[type.rangeOid] = type
+                else -> {}
             }
         }
 
@@ -300,6 +319,8 @@ class TypeRegistry {
         types = intMap
         typesByName = newTypesByName
         arrayTypesByElementOid = newArrayTypesByElementOid
+        rangeTypesByElementOid = newRangeTypesByElementOid
+        multirangeTypesByRangeOid = newMultirangeTypesByRangeOid
         codecsByOid = newOidMap
         codecToOid = newCodecToOid
     }
