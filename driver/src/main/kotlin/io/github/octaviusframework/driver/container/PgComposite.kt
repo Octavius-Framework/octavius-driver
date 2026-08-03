@@ -71,12 +71,7 @@ class PgComposite internal constructor(
 
     fun getAttributeType(index: Int): PgType {
         val oid = type.attributeOids[index]
-        return typeRegistry.types[oid]
-            ?: throw TypeException(
-                TypeExceptionMessage.TYPE_NOT_FOUND,
-                oid = oid,
-                details = "Nie znaleziono typu w rejestrze"
-            )
+        return typeRegistry.dictionary.getPgType(oid)
     }
 
     fun getAttributeType(name: String): PgType {

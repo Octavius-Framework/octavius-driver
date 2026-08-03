@@ -22,11 +22,11 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (kClass == Any::class) {
             val registry = context.typeManager.registry
-            return registry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
-                   registry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
+            return registry.converterRegistry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
+                   registry.converterRegistry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
         }
         if (!kClass.isData) return false
-        return context.typeManager.registry.registeredComposites.containsKey(kClass)
+        return context.typeManager.registry.converterRegistry.registeredComposites.containsKey(kClass)
     }
 
     override fun convert(source: PgComposite, expectedType: KType, sourceType: PgType, context: DeserializationContext): Any {
@@ -35,14 +35,14 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         @Suppress("UNCHECKED_CAST")
         val kClass = if (expectedClass == Any::class) {
             val registry = context.typeManager.registry
-            registry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
-                ?: registry.compositeClassByName[QualifiedName("", sourceType.name)]
+            registry.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
+                ?: registry.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
                 ?: throw OctaviusInternalException()
         } else {
             expectedClass
         } as KClass<Any>
 
-        val registration = context.typeManager.registry.registeredComposites[kClass]
+        val registration = context.typeManager.registry.converterRegistry.registeredComposites[kClass]
             ?: throw OctaviusInternalException()
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(

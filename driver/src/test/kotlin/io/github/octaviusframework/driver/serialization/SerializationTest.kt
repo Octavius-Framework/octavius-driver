@@ -68,7 +68,7 @@ class SerializationTest {
         val typeRegistry = dummyRow.typeRegistry
 
         // 1. Zbudowanie kompozytu fabryką od zera
-        val composite = session.types.createComposite("ser_test_composite")
+        val composite = session.types.containers.createComposite("ser_test_composite")
         composite["id"] = 777
         composite["name"] = "factory_test"
 

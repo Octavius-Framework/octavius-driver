@@ -16,7 +16,7 @@ import kotlin.reflect.typeOf
 fun <T> Row.get(index: Int, targetType: KType): T {
     val raw = getRaw(index)
     val oid = getOid(index)
-    val type = typeRegistry.types[oid]!!
+    val type = typeRegistry.dictionary.getPgType(oid)
     return resultMapper.deserialize(raw, targetType, sourceType = type) as T
 }
 
@@ -48,7 +48,7 @@ class Row(
         else {
             val offset = columnOffsets[index]
             val oid = metadata.getOid(index)
-            val codec = typeRegistry.getCodecByOid<Any>(oid)
+            val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
                 ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
             codec.fromBinary(rawData, offset, colLength)
         }

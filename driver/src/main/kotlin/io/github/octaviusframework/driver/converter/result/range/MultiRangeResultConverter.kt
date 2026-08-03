@@ -31,8 +31,7 @@ class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
         }
 
         val elementOid = source.ranges.first().elementOid
-        val pgElementType = context.typeManager.registry.types[elementOid]
-            ?: throw OctaviusInternalException()
+        val pgElementType = context.typeManager.typeDictionary.getPgType(elementOid)
 
         val convertedRanges = source.ranges.map { pgRange ->
             val lower = pgRange.lowerBound?.let { context.convert<Any>(it, ktElementType, pgElementType) }

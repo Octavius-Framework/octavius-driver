@@ -41,9 +41,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
         context: DeserializationContext
     ): Any {
 
-        val pgElementType = context.typeManager.registry.types[source.elementOid]
-            ?: throw IllegalStateException("Type not found for element OID: ${source.elementOid}")
-
+        val pgElementType = context.typeManager.typeDictionary.getPgType(source.elementOid)
         val elements = source.elements
         val size = elements.size
 

@@ -16,13 +16,12 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
     override val supportedSourceClass = PgArray::class
 
     override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
-        val kClass = expectedType.classifier as? KClass<*> ?: return false
+        val kClass = expectedType.classifier as? KClass<*>
         return kClass == List::class || kClass == Collection::class || kClass == Iterable::class || kClass == Set::class || kClass == Any::class
     }
 
     override fun convert(source: PgArray, expectedType: KType, sourceType: PgType, context: DeserializationContext): Collection<*> {
-        val pgElementType = context.typeManager.registry.types[source.elementOid]
-            ?: throw OctaviusInternalException()
+        val pgElementType = context.typeManager.typeDictionary.getPgType(source.elementOid)
 
         return buildMultiDimensionalCollection(source, context, expectedType, 0, 0, pgElementType)
     }
