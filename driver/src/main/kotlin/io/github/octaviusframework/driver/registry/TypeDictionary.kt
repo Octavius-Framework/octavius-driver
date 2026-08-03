@@ -4,12 +4,12 @@ import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
 
-class TypeDictionary(
-    val types: IntObjectMap<PgType>,
-    val typesByName: Map<String, Map<String, Int>>,
-    val arrayTypesByElementOid: IntObjectMap<PgType.Array>,
-    val rangeTypesByElementOid: IntObjectMap<PgType.Range>,
-    val multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange>
+class TypeDictionary private constructor(
+    private val types: IntObjectMap<PgType>,
+    private val typesByName: Map<String, Map<String, Int>>,
+    private val arrayTypesByElementOid: IntObjectMap<PgType.Array>,
+    private val rangeTypesByElementOid: IntObjectMap<PgType.Range>,
+    private val multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange>
 ) {
     companion object {
         val EMPTY = TypeDictionary(
@@ -19,6 +19,37 @@ class TypeDictionary(
             IntObjectMap(),
             IntObjectMap()
         )
+
+        fun build(newTypes: Map<Int, PgType>): TypeDictionary {
+            val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
+            val newTypesByName = mutableMapOf<String, MutableMap<String, Int>>()
+            val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
+            val newRangeTypesByElementOid = IntObjectMap<PgType.Range>()
+            val newMultirangeTypesByRangeOid = IntObjectMap<PgType.Multirange>()
+
+            for ((oid, type) in newTypes) {
+                intMap[oid] = type
+                newTypesByName.getOrPut(type.name) { mutableMapOf() }[type.schema] = oid
+                when (type) {
+                    is PgType.Array -> newArrayTypesByElementOid[type.elementOid] = type
+                    is PgType.Range -> newRangeTypesByElementOid[type.subtypeOid] = type
+                    is PgType.Multirange -> newMultirangeTypesByRangeOid[type.rangeOid] = type
+                    else -> {}
+                }
+            }
+
+            return TypeDictionary(
+                intMap,
+                newTypesByName,
+                newArrayTypesByElementOid,
+                newRangeTypesByElementOid,
+                newMultirangeTypesByRangeOid
+            )
+        }
+    }
+
+    fun forEachType(action: (Int, PgType) -> Unit) {
+        types.forEach(action)
     }
 
     fun getPgType(oid: Int): PgType = types[oid]
@@ -49,7 +80,7 @@ class TypeDictionary(
                 ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
         } else {
             // 2. If schema is empty, look in search_path (first match wins)
-            for (i in 0 until searchPath.size) {
+            for (i in searchPath.indices) {
                 val oid = schemasForName[searchPath[i]]
                 if (oid != null) {
                     resolvedOid = oid
