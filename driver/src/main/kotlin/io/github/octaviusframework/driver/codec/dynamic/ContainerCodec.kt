@@ -41,7 +41,7 @@ internal object ContainerCodec {
      * Parses a byte array into a [PgContainer] based on the OID.
      */
     fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
-        return when (val pgType = typeRegistry.types[oid]) {
+        return when (val pgType = typeRegistry.dictionary.getPgType(oid)) {
             is PgType.Array -> parsePgArray(data, offset, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(data, offset, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(data, offset, pgType.oid, typeRegistry)
@@ -102,7 +102,7 @@ internal object ContainerCodec {
      * @return The parsed [PgComposite].
      */
     fun parsePgComposite(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
-        val pgType = typeRegistry.types[oid] as? PgType.Composite
+        val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Composite
             ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
@@ -135,7 +135,7 @@ internal object ContainerCodec {
      * @return The parsed [PgRecord].
      */
     fun parsePgRecord(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
-        val pgType = typeRegistry.types[oid] as? PgType.Record
+        val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Record
             ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
@@ -173,7 +173,7 @@ internal object ContainerCodec {
      * @return The parsed [PgRange].
      */
     fun parsePgRange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
-        val pgType = typeRegistry.types[oid] as? PgType.Range
+        val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Range
             ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,
@@ -216,7 +216,7 @@ internal object ContainerCodec {
      * @return The parsed [PgMultirange].
      */
     fun parsePgMultirange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
-        val pgType = typeRegistry.types[oid] as? PgType.Multirange
+        val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Multirange
             ?: throw TypeException(
                 TypeExceptionMessage.NOT_A_CONTAINER,
                 oid = oid,

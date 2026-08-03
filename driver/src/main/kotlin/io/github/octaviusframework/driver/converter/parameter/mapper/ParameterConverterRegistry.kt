@@ -23,10 +23,8 @@ class ParameterConverterRegistry(
                 if (result !is PgTyped && !expectedOid.isKnownOid) {
                     val defaultOid = converter.getDefaultOid(context)
                     if (defaultOid.isKnownOid) {
-                        val type = context.typeManager.registry.types[defaultOid]
-                        if (type != null) {
-                            result = PgTyped(result, QualifiedName(type.schema, type.name, false))
-                        }
+                        val type = context.typeManager.typeDictionary.getPgType(defaultOid)
+                        result = PgTyped(result, QualifiedName(type.schema, type.name, false))
                     }
                 }
                 return result

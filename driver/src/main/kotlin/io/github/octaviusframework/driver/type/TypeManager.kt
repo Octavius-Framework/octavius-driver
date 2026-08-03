@@ -22,6 +22,7 @@ class TypeManager(
     /**
      * The underlying type registry associated with this TypeManager.
      */
+    val typeDictionary get() = registry.dictionary
 
     /**
      * Resolves an OID for a given type name, considering the current search path.
@@ -122,7 +123,7 @@ class TypeManager(
      * @return A new [PgComposite] instance with empty fields.
      */
     fun createComposite(oid: Int): PgComposite {
-        val pgType = registry.types[oid] as? PgType.Composite
+        val pgType = registry.dictionary.getPgType(oid) as? PgType.Composite
             ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite or does not exist in TypeRegistry")
         val fields = Array<Any?>(pgType.attributes.size) { null }
         return PgComposite(pgType, fields, registry)
@@ -179,7 +180,7 @@ class TypeManager(
         isLowerNull: Boolean = false,
         isUpperNull: Boolean = false
     ): PgRange {
-        val rangeType = registry.types[oid] as? PgType.Range
+        val rangeType = registry.dictionary.getPgType(oid) as? PgType.Range
             ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
             
         return PgRange.create(
@@ -209,7 +210,7 @@ class TypeManager(
      * Creates an empty PostgreSQL range type using its Object ID (OID).
      */
     fun createEmptyRange(oid: Int): PgRange {
-        val rangeType = registry.types[oid] as? PgType.Range
+        val rangeType = registry.dictionary.getPgType(oid) as? PgType.Range
             ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range or does not exist in TypeRegistry")
         return PgRange.empty(rangeType.oid, rangeType.subtypeOid, registry)
     }
@@ -235,7 +236,7 @@ class TypeManager(
      * @return A new [PgMultirange] instance.
      */
     fun createMultirange(oid: Int, vararg ranges: PgRange): PgMultirange {
-        val multirangeType = registry.types[oid] as? PgType.Multirange
+        val multirangeType = registry.dictionary.getPgType(oid) as? PgType.Multirange
             ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange or does not exist in TypeRegistry")
         return PgMultirange(multirangeType.oid, multirangeType.rangeOid, ranges.toList())
     }

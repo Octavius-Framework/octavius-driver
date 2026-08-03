@@ -22,7 +22,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         if (registration != null) return true
 
         if (expectedOid.isKnownOid) {
-            return typeRegistry.types[expectedOid] is PgType.Composite
+            return context.typeManager.typeDictionary.getPgType(expectedOid) is PgType.Composite
         }
 
         return false
@@ -33,10 +33,10 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         val registration = typeRegistry.registeredComposites[source::class] ?: throw OctaviusInternalException()
 
         val type = if (expectedOid.isKnownOid) {
-            typeRegistry.types[expectedOid] as PgType.Composite
+            context.typeManager.typeDictionary.getPgType(expectedOid) as PgType.Composite
         } else {
             val qName = registration.qualifiedName
-            typeRegistry.types[context.typeManager.resolveOid(qName.name, qName.schema)] as PgType.Composite
+            context.typeManager.typeDictionary.getPgType(context.typeManager.resolveOid(qName.name, qName.schema)) as PgType.Composite
         }
 
         @Suppress("UNCHECKED_CAST")

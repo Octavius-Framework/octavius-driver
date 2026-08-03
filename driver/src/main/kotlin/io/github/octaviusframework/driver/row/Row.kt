@@ -16,7 +16,7 @@ import kotlin.reflect.typeOf
 fun <T> Row.get(index: Int, targetType: KType): T {
     val raw = getRaw(index)
     val oid = getOid(index)
-    val type = typeRegistry.types[oid]!!
+    val type = typeRegistry.dictionary.getPgType(oid)
     return resultMapper.deserialize(raw, targetType, sourceType = type) as T
 }
 

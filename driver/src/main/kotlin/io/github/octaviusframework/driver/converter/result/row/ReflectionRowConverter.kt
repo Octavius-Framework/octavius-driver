@@ -47,7 +47,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
             if (index != -1) {
                 val rawValue = source.getRaw(index)
                 val oid = source.getOid(index)
-                val type = context.typeManager.registry.types[oid]!!
+                val type = context.typeManager.typeDictionary.getPgType(oid)
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {

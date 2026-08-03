@@ -77,19 +77,7 @@ class TypeRegistry {
     }
 
     @Volatile
-    var types: IntObjectMap<PgType> = IntObjectMap()
-
-    @Volatile
-    var typesByName: Map<String, Map<String, Int>> = emptyMap()
-
-    @Volatile
-    var arrayTypesByElementOid: IntObjectMap<PgType.Array> = IntObjectMap()
-
-    @Volatile
-    var rangeTypesByElementOid: IntObjectMap<PgType.Range> = IntObjectMap()
-
-    @Volatile
-    var multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange> = IntObjectMap()
+    var dictionary: TypeDictionary = TypeDictionary.EMPTY
 
     @Volatile
     private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
@@ -219,7 +207,7 @@ class TypeRegistry {
         } else {
             customDynamicCodecs = customDynamicCodecs + codec
 
-            types.forEach { oid, type ->
+            dictionary.types.forEach { oid, type ->
                 if (type.name == codec.pgTypeName) {
                     newOidMap[oid] = codec
                 }
@@ -245,17 +233,6 @@ class TypeRegistry {
         return codecToOid[codec]
     }
 
-    fun getArrayTypeByElementOid(elementOid: Int): PgType.Array? {
-        return arrayTypesByElementOid[elementOid]
-    }
-
-    fun getRangeTypeByElementOid(elementOid: Int): PgType.Range? {
-        return rangeTypesByElementOid[elementOid]
-    }
-
-    fun getMultirangeTypeByRangeOid(rangeOid: Int): PgType.Multirange? {
-        return multirangeTypesByRangeOid[rangeOid]
-    }
 
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
@@ -316,11 +293,14 @@ class TypeRegistry {
             }
         }
 
-        types = intMap
-        typesByName = newTypesByName
-        arrayTypesByElementOid = newArrayTypesByElementOid
-        rangeTypesByElementOid = newRangeTypesByElementOid
-        multirangeTypesByRangeOid = newMultirangeTypesByRangeOid
+        dictionary = TypeDictionary(
+            intMap,
+            newTypesByName,
+            newArrayTypesByElementOid,
+            newRangeTypesByElementOid,
+            newMultirangeTypesByRangeOid
+        )
+
         codecsByOid = newOidMap
         codecToOid = newCodecToOid
     }
@@ -332,50 +312,6 @@ class TypeRegistry {
         isArray: Boolean = false,
         searchPath: List<String>
     ): Int {
-        return resolveOidInternal(typeName, requestedSchema, isArray, searchPath, typesByName, arrayTypesByElementOid)
-    }
-
-    private fun resolveOidInternal(
-        typeName: String,
-        requestedSchema: String,
-        isArray: Boolean,
-        searchPath: List<String>,
-        typesByNameMap: Map<String, Map<String, Int>>,
-        arrayTypesMap: IntObjectMap<PgType.Array>
-    ): Int {
-        val schemasForName = typesByNameMap[typeName]
-            ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
-
-        var resolvedOid: Int? = null
-        // 1. If schema is explicitly requested
-        if (requestedSchema.isNotEmpty()) {
-            resolvedOid = schemasForName[requestedSchema]
-                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
-        } else {
-            // 2. If schema is empty, look in search_path (first match wins)
-            for (i in 0 until searchPath.size) {
-                val oid = schemasForName[searchPath[i]]
-                if (oid != null) {
-                    resolvedOid = oid
-                    break
-                }
-            }
-
-            // 3. If not in search_path, check for unambiguous match
-            if (resolvedOid == null) {
-                if (schemasForName.size == 1) {
-                    resolvedOid = schemasForName.values.first()
-                } else {
-                    throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
-                }
-            }
-        }
-
-        return if (isArray) {
-            arrayTypesMap[resolvedOid]?.oid
-                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
-        } else {
-            resolvedOid
-        }
+        return dictionary.resolveOid(typeName, requestedSchema, isArray, searchPath)
     }
 }
