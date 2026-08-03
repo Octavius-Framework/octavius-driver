@@ -24,6 +24,8 @@ class TypeManager(
      */
     val typeDictionary get() = registry.dictionary
 
+    val codecDictionary get() = registry.codecs
+
     /**
      * Resolves an OID for a given type name, considering the current search path.
      */

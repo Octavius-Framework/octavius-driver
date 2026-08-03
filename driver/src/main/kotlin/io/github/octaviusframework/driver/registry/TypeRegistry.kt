@@ -1,15 +1,10 @@
 package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.dynamic.DynamicContainerCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicDomainCodec
 import io.github.octaviusframework.driver.codec.dynamic.DynamicEnumCodec
-import io.github.octaviusframework.driver.codec.dynamic.DynamicContainerCodec
-import io.github.octaviusframework.driver.codec.standard.*
-import io.github.octaviusframework.driver.container.PgArray
-import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.container.PgMultirange
-import io.github.octaviusframework.driver.container.PgRange
-import io.github.octaviusframework.driver.container.PgRecord
+import io.github.octaviusframework.driver.container.*
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArrayParameterConverter
@@ -31,8 +26,6 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
@@ -80,17 +73,7 @@ class TypeRegistry {
     var dictionary: TypeDictionary = TypeDictionary.EMPTY
 
     @Volatile
-    private var codecsByOid: IntObjectMap<TypeCodec<*>> = IntObjectMap()
-
-
-    @Volatile
-    private var codecsByClass: Map<KClass<*>, TypeCodec<*>> = emptyMap()
-
-    @Volatile
-    private var codecToOid: Map<TypeCodec<*>, Int> = emptyMap()
-
-    @Volatile
-    private var customDynamicCodecs: List<TypeCodec<*>> = emptyList()
+    var codecs: CodecDictionary = CodecDictionary.createWithBuiltins()
 
     @Volatile
     var registeredComposites: Map<KClass<*>, CompositeRegistration> = emptyMap()
@@ -108,7 +91,7 @@ class TypeRegistry {
         val qName = QualifiedName(schema, name)
         newMap[T::class] = CompositeRegistration(qName, pgConvention, kotlinConvention)
         registeredComposites = newMap
-        
+
         val newNameMap = compositeClassByName.toMutableMap()
         newNameMap[qName] = T::class
         compositeClassByName = newNameMap
@@ -116,77 +99,16 @@ class TypeRegistry {
         ReflectionCompositeCache.getOrCreateDataObjectMetadata(T::class, pgConvention, kotlinConvention)
     }
 
-    init {
-        val newOidMap = IntObjectMap<TypeCodec<*>>()
-        val newClassMap = mutableMapOf<KClass<*>, TypeCodec<*>>()
-        val newCodecToOid = mutableMapOf<TypeCodec<*>, Int>()
-        registerBuiltins(newOidMap, newClassMap, newCodecToOid)
-        codecsByOid = newOidMap
-        codecsByClass = newClassMap
-        codecToOid = newCodecToOid
-    }
-
-    private fun registerBuiltins(
-        oidMap: IntObjectMap<TypeCodec<*>>,
-        classMap: MutableMap<KClass<*>, TypeCodec<*>>,
-        codecToOidMap: MutableMap<TypeCodec<*>, Int>
-    ) {
-        fun register(codec: TypeCodec<*>) {
-            if (codec.isDefaultForKotlinType) {
-                classMap[codec.kotlinClass] = codec
-
-                if (codec.kotlinClass.isSealed) {
-                    codec.kotlinClass.sealedSubclasses.forEach { subclass ->
-                        classMap[subclass] = codec
-                    }
-                }
-            }
-            if (codec.oid != null) {
-                oidMap[codec.oid!!] = codec
-                codecToOidMap[codec] = codec.oid!!
-            }
-        }
-        // Postgres Internal Types
-        register(OidCodec)
-        register(NameCodec)
-        register(CharCodec)
-
-        register(SmallIntCodec)
-        register(IntCodec)
-        register(BigIntCodec)
-        register(RealCodec)
-        register(DoubleCodec)
-        register(BooleanCodec)
-        register(TextCodec)
-        register(VarcharCodec)
-        register(BpcharCodec)
-        register(ByteaCodec)
-        register(UnknownCodec)
-
-        // DateTime
-        register(TimestamptzCodec)
-        register(TimestampCodec)
-        register(DateCodec)
-        register(TimeCodec)
-        register(IntervalCodec)
-
-        // Json
-        register(JsonbCodec)
-        register(JsonCodec)
-
-        register(UuidCodec)
-        register(NumericCodec)
-        register(VoidCodec)
-    }
-
     /**
      * Registers a custom codec. If OID and schema are missing (dynamic type in multi-schema),
      * it will be mapped globally for deserialization but resolved in-flight for serialization.
      */
     fun registerCodec(codec: TypeCodec<*>) = lock.withLock {
-        val newOidMap = IntObjectMap(codecsByOid)
-        val newClassMap = codecsByClass.toMutableMap()
-        val newCodecToOid = codecToOid.toMutableMap()
+        val currentCodecs = this.codecs
+        val newOidMap = IntObjectMap(currentCodecs.codecsByOid)
+        val newClassMap = currentCodecs.codecsByClass.toMutableMap()
+        val newCodecToOid = currentCodecs.codecToOid.toMutableMap()
+        val newRegisteredCodecs = currentCodecs.registeredCodecs + codec
 
         if (codec.isDefaultForKotlinType) {
             newClassMap[codec.kotlinClass] = codec
@@ -205,32 +127,26 @@ class TypeRegistry {
             newOidMap[resolvedOid] = codec
             newCodecToOid[codec] = resolvedOid
         } else {
-            customDynamicCodecs = customDynamicCodecs + codec
-
             dictionary.types.forEach { oid, type ->
-                if (type.name == codec.pgTypeName) {
+                if (type.name == codec.pgTypeName && (codec.pgSchema.isEmpty() || codec.pgSchema == type.schema)) {
                     newOidMap[oid] = codec
                 }
             }
         }
 
-        codecsByOid = newOidMap
-        codecsByClass = newClassMap
-        codecToOid = newCodecToOid
+        this.codecs = CodecDictionary(newOidMap, newClassMap, newCodecToOid, newRegisteredCodecs)
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun <T : Any> getCodecByOid(oid: Int): TypeCodec<T>? {
-        return codecsByOid[oid] as TypeCodec<T>?
+        return codecs.getCodecByOid(oid)
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun <T : Any> getCodecByClass(kClass: KClass<T>): TypeCodec<T>? {
-        return codecsByClass[kClass] as TypeCodec<T>?
+        return codecs.getCodecByClass(kClass)
     }
 
     fun getOidForCodec(codec: TypeCodec<*>): Int? {
-        return codecToOid[codec]
+        return codecs.getOidForCodec(codec)
     }
 
 
@@ -239,10 +155,11 @@ class TypeRegistry {
      * Additionally applies custom codecs waiting for an OID.
      */
     fun updateTypes(newTypes: Map<Int, PgType>) {
-        val newOidMap = IntObjectMap(codecsByOid)
-        val newCodecToOid = codecToOid.toMutableMap()
+        dictionary = buildTypeDictionary(newTypes)
+        codecs = buildCodecDictionary(newTypes, this.codecs)
+    }
 
-        // Preallocate to avoid any rehashes during initialization (load factor 0.75)
+    private fun buildTypeDictionary(newTypes: Map<Int, PgType>): TypeDictionary {
         val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
         val newTypesByName = mutableMapOf<String, MutableMap<String, Int>>()
         val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
@@ -260,10 +177,36 @@ class TypeRegistry {
             }
         }
 
-        for (codec in customDynamicCodecs) {
-            for ((oid, type) in newTypes) {
-                if (type.name == codec.pgTypeName && (codec.pgSchema.isEmpty() || codec.pgSchema == type.schema)) {
-                    newOidMap[oid] = codec
+        return TypeDictionary(
+            intMap,
+            newTypesByName,
+            newArrayTypesByElementOid,
+            newRangeTypesByElementOid,
+            newMultirangeTypesByRangeOid
+        )
+    }
+
+    private fun buildCodecDictionary(newTypes: Map<Int, PgType>, currentCodecs: CodecDictionary): CodecDictionary {
+        val newOidMap = IntObjectMap<TypeCodec<*>>()
+        val newCodecToOid = mutableMapOf<TypeCodec<*>, Int>()
+
+        for (codec in currentCodecs.registeredCodecs) {
+            if (codec.oid != null) {
+                newOidMap[codec.oid!!] = codec
+                newCodecToOid[codec] = codec.oid!!
+            } else if (codec.pgSchema.isNotBlank()) {
+                for ((oid, type) in newTypes) {
+                    if (type.name == codec.pgTypeName && type.schema == codec.pgSchema) {
+                        newOidMap[oid] = codec
+                        newCodecToOid[codec] = oid
+                        break
+                    }
+                }
+            } else {
+                for ((oid, type) in newTypes) {
+                    if (type.name == codec.pgTypeName) {
+                        newOidMap[oid] = codec
+                    }
                 }
             }
         }
@@ -284,6 +227,7 @@ class TypeRegistry {
                         PgMultirange::class,
                         this
                     )
+
                     else -> null
                 }
                 if (codec != null) {
@@ -293,16 +237,7 @@ class TypeRegistry {
             }
         }
 
-        dictionary = TypeDictionary(
-            intMap,
-            newTypesByName,
-            newArrayTypesByElementOid,
-            newRangeTypesByElementOid,
-            newMultirangeTypesByRangeOid
-        )
-
-        codecsByOid = newOidMap
-        codecToOid = newCodecToOid
+        return CodecDictionary(newOidMap, currentCodecs.codecsByClass, newCodecToOid, currentCodecs.registeredCodecs)
     }
 
 
