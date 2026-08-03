@@ -50,7 +50,7 @@ class ReflectionCompositeMappingTest {
         pgConvention: CaseConvention,
         kotlinConvention: CaseConvention
     ): PgType.Composite {
-        dummyRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
+        dummyRegistry.converterRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
         return type
     }
 

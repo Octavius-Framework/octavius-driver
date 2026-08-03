@@ -3,15 +3,22 @@ package io.github.octaviusframework.driver.converter.parameter.mapper
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.isKnownOid
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.reflect.KClass
 
 class ParameterConverterRegistry(
     private val parent: ParameterConverterRegistry? = null
 ) {
-    private val converters = mutableListOf<ParameterConverter<*>>()
+    private val lock = ReentrantLock()
 
-    fun addConverter(converter: ParameterConverter<*>) {
-        converters.add(0, converter)
+    @Volatile
+    private var converters: List<ParameterConverter<*>> = emptyList()
+
+    fun addConverter(converter: ParameterConverter<*>) = lock.withLock {
+        val newList = converters.toMutableList()
+        newList.add(0, converter)
+        converters = newList
     }
 
     fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {

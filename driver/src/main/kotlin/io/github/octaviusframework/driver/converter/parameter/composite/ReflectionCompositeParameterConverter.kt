@@ -18,7 +18,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         if (!sourceClass.isData) return false
         val typeRegistry = context.typeManager.registry
 
-        val registration = typeRegistry.registeredComposites[sourceClass]
+        val registration = typeRegistry.converterRegistry.registeredComposites[sourceClass]
         if (registration != null) return true
 
         if (expectedOid.isKnownOid) {
@@ -30,7 +30,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
         val typeRegistry = context.typeManager.registry
-        val registration = typeRegistry.registeredComposites[source::class] ?: throw OctaviusInternalException()
+        val registration = typeRegistry.converterRegistry.registeredComposites[source::class] ?: throw OctaviusInternalException()
 
         val type = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as PgType.Composite

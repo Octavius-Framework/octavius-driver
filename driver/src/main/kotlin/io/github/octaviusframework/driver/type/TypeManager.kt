@@ -14,6 +14,7 @@ class TypeManager(
     val registry: TypeRegistry,
     private val searchPathProvider: () -> List<String> = { emptyList() }
 ) {
+    val converterRegistry get() = registry.converterRegistry
     /**
      * The underlying type registry associated with this TypeManager.
      */
@@ -39,14 +40,14 @@ class TypeManager(
      *
      * @param converter The converter instance to register.
      */
-    fun registerResultConverter(converter: ResultConverter<*, *>) = registry.registerResultConverter(converter)
+    fun registerResultConverter(converter: ResultConverter<*, *>) = converterRegistry.registerResultConverter(converter)
 
     /**
      * Registers a custom [ParameterConverter] for mapping Kotlin types to PostgreSQL database types.
      *
      * @param converter The converter instance to register.
      */
-    fun registerParameterConverter(converter: ParameterConverter<*>) = registry.registerParameterConverter(converter)
+    fun registerParameterConverter(converter: ParameterConverter<*>) = converterRegistry.registerParameterConverter(converter)
 
     /**
      * Registers a custom [TypeCodec] for encoding and decoding
@@ -73,7 +74,7 @@ class TypeManager(
     ) {
         val qName = typeName.takeIf { it.isNotEmpty() } 
             ?: CaseConverter.convert(T::class.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER)
-        registry.registerAutoCompositeType<T>(qName, schema, pgConvention, kotlinConvention)
+        converterRegistry.registerAutoCompositeType<T>(qName, schema, pgConvention, kotlinConvention)
     }
 
     /**
@@ -99,8 +100,8 @@ class TypeManager(
 
         val actualSchema = schema.takeIf { it.isNotEmpty() } ?: ""
         val qualifiedName = QualifiedName(actualSchema, actualTypeName)
-        registry.registerParameterConverter(EnumParameterConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
-        registry.registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
+        registerParameterConverter(EnumParameterConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
+        registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
     }
 
 }

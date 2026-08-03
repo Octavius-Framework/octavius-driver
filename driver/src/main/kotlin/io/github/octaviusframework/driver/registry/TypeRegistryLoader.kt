@@ -28,7 +28,7 @@ object TypeRegistryLoader {
         """.trimIndent()
 
         val typeManager = TypeManager(typeRegistry) // Use only codecs for internal postgres types
-        val resultMapper = ResultMapper(typeRegistry.converterRegistry, typeManager)
+        val resultMapper = ResultMapper(typeManager.converterRegistry.resultConverterRegistry, typeManager)
         val result = queryExecutor.query(typesSql, mapper = resultMapper)
 
         val enumMap = mutableMapOf<Int, MutableList<String>>()

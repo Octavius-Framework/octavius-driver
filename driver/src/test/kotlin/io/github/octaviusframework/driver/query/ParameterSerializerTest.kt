@@ -31,7 +31,7 @@ class ParameterSerializerTest {
     fun testBasicRoundTrip() {
         val registry = TypeRegistry()
         val typeManager = TypeManager(registry)
-        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         // Test for Null
@@ -75,7 +75,7 @@ class ParameterSerializerTest {
     fun testByteArrayRoundTrip() {
         val registry = TypeRegistry()
         val typeManager = TypeManager(registry)
-        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         val byteArrayVal = byteArrayOf(0x01, 0x02, 0x03, 0xFF.toByte())
@@ -91,7 +91,7 @@ class ParameterSerializerTest {
     fun testSerializeAllMultipleParameters() {
         val registry = TypeRegistry()
         val typeManager = TypeManager(registry)
-        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         val parameters = listOf(123, "test", null, true)
@@ -113,7 +113,7 @@ class ParameterSerializerTest {
         registry.updateTypes(mapOf(PgStandardType.INT8.oid to PgType.Base(PgStandardType.INT8.oid, PgStandardType.INT8.typeName, "pg_catalog")))
         
         val typeManager = TypeManager(registry)
-        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         // Int value explicitly typed as INT8
@@ -128,7 +128,7 @@ class ParameterSerializerTest {
     fun testUnsupportedTypeThrowsException() {
         val registry = TypeRegistry()
         val typeManager = TypeManager(registry)
-        val parameterMapper = ParameterMapper(registry.parameterConverterRegistry, typeManager)
+        val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         class CustomUnsupportedClass(val data: String)
