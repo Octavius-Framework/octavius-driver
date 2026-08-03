@@ -24,14 +24,14 @@ import kotlin.reflect.typeOf
 class DeserializationTest {
 
     private val dummyRegistry = TypeRegistry().apply {
-        types = IntObjectMap<PgType>().apply {
-            put(1, PgType.Base(1, "dummy", "public"))
-            put(2, PgType.Array(2, "dummy_array", "public", 1))
-        }
-        registerAutoCompositeType<Address>("address")
-        registerAutoCompositeType<Person>("person")
-        registerAutoCompositeType<Company>("company")
-        registerAutoCompositeType<OptionalFields>("optional_fields")
+        updateTypes(mapOf(
+            1 to PgType.Base(1, "dummy", "public"),
+            2 to PgType.Array(2, "dummy_array", "public", 1)
+        ))
+        converterRegistry.registerAutoCompositeType<Address>("address")
+        converterRegistry.registerAutoCompositeType<Person>("person")
+        converterRegistry.registerAutoCompositeType<Company>("company")
+        converterRegistry.registerAutoCompositeType<OptionalFields>("optional_fields")
     }
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {

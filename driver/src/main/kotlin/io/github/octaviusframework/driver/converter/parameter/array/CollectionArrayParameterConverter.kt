@@ -55,30 +55,37 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        val typeRegistry = context.typeManager.registry
         val (dimensions, list) = getDimensionsAndFlatten(source)
 
         val arrayType = if (expectedOid.isKnownOid) {
-            typeRegistry.types[expectedOid] as? PgType.Array
+            context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Array
         } else {
             // Try to infer from first non-null element
             val firstNonNull = list.firstOrNull { it != null }
             if (firstNonNull != null) {
                 val converted = context.convert(firstNonNull, UNRESOLVED_OID)
-                val elementOid = if (converted is PgTyped) {
-                    context.typeManager.resolveOid(
-                        converted.pgType.name,
-                        converted.pgType.schema,
-                        converted.pgType.isArray
-                    )
-                } else if (converted is PgContainer) {
-                    converted.containerOid
-                } else if (converted != null) {
-                    typeRegistry.getCodecByClass(converted::class)?.oid
-                } else null
+                val elementOid = when {
+                    converted is PgTyped -> {
+                        context.typeManager.resolveOid(
+                            converted.pgType.name,
+                            converted.pgType.schema,
+                            converted.pgType.isArray
+                        )
+                    }
+
+                    converted is PgContainer -> {
+                        converted.containerOid
+                    }
+
+                    converted != null -> {
+                        context.typeManager.codecDictionary.getCodecByClass(converted::class)?.oid
+                    }
+
+                    else -> null
+                }
 
                 if (elementOid != null) {
-                    typeRegistry.getArrayTypeByElementOid(elementOid)
+                    context.typeManager.typeDictionary.getArrayType(elementOid)
                 } else null
             } else null
         }

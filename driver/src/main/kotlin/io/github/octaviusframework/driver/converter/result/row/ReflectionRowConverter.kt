@@ -26,7 +26,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
         @Suppress("UNCHECKED_CAST")
         val kClass = expectedType.classifier as KClass<Any>
 
-        val registration = source.typeRegistry.registeredComposites[kClass]
+        val registration = source.typeRegistry.converterRegistry.registeredComposites[kClass]
         val pgConvention = registration?.pgConvention ?: CaseConvention.SNAKE_CASE_LOWER
         val kotlinConvention = registration?.kotlinConvention ?: CaseConvention.CAMEL_CASE
 
@@ -47,7 +47,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
             if (index != -1) {
                 val rawValue = source.getRaw(index)
                 val oid = source.getOid(index)
-                val type = context.typeManager.registry.types[oid]!!
+                val type = context.typeManager.typeDictionary.getPgType(oid)
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {

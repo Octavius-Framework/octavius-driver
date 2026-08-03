@@ -37,11 +37,11 @@ class ReflectionCompositeMappingTest {
     )
 
     private val dummyRegistry = TypeRegistry().apply {
-        types = IntObjectMap<PgType>().apply {
-            put(1, PgType.Base(1, "text", "public"))
-            put(2, PgType.Base(2, "int4", "public"))
-            put(3, type)
-        }
+        updateTypes(mapOf(
+            1 to PgType.Base(1, "text", "public"),
+            2 to PgType.Base(2, "int4", "public"),
+            3 to type
+        ))
     }
     
     private val dummyTypeManager = TypeManager(dummyRegistry)
@@ -50,7 +50,7 @@ class ReflectionCompositeMappingTest {
         pgConvention: CaseConvention,
         kotlinConvention: CaseConvention
     ): PgType.Composite {
-        dummyRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
+        dummyRegistry.converterRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
         return type
     }
 

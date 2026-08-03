@@ -30,16 +30,16 @@ class RangeConverterTest {
     private val multiRangeOid = 4451 // int4multirange
 
     private val dummyRegistry = TypeRegistry().apply {
-        types = IntObjectMap<PgType>().apply {
-            put(baseOid, PgType.Base(baseOid, "int4", "pg_catalog"))
-            put(rangeOid, PgType.Range(rangeOid, "int4range", "pg_catalog", baseOid))
-            put(multiRangeOid, PgType.Multirange(multiRangeOid, "int4multirange", "pg_catalog", rangeOid))
-        }
+        updateTypes(mapOf(
+            baseOid to PgType.Base(baseOid, "int4", "pg_catalog"),
+            rangeOid to PgType.Range(rangeOid, "int4range", "pg_catalog", baseOid),
+            multiRangeOid to PgType.Multirange(multiRangeOid, "int4multirange", "pg_catalog", rangeOid)
+        ))
     }
 
     private val typeManager = TypeManager(dummyRegistry)
-    private val pgRangeType = dummyRegistry.types[rangeOid] as PgType.Range
-    private val pgMultiRangeType = dummyRegistry.types[multiRangeOid] as PgType.Multirange
+    private val pgRangeType = dummyRegistry.dictionary.getPgType(rangeOid) as PgType.Range
+    private val pgMultiRangeType = dummyRegistry.dictionary.getPgType(multiRangeOid) as PgType.Multirange
 
     @Test
     fun `test RangeResultConverter deserialization`() {

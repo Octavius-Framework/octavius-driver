@@ -58,8 +58,7 @@ class EnumResultConverter<T : Enum<T>>(
         val expectedClass = expectedType.classifier as? KClass<*> ?: return false
         if (expectedClass != enumClass && expectedClass != Any::class) return false
 
-         val resolvedOid = context.typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
-         return sourceType.oid == resolvedOid
+         return sourceType.name == qualifiedName.name && (qualifiedName.schema.isEmpty() || sourceType.schema == qualifiedName.schema)
     }
 
     override fun convert(source: String, expectedType: KType, sourceType: PgType, context: DeserializationContext): T {

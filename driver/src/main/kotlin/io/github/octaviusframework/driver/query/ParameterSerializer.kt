@@ -15,7 +15,7 @@ class ParameterSerializer(
     private val typeManager: TypeManager,
     private val parameterMapper: ParameterMapper
 ) {
-    private val typeRegistry = typeManager.registry
+    private val codecDictionary = typeManager.codecDictionary
 
     fun serializeAll(parameters: List<Any?>): Pair<IntArray, ByteArray> {
         val size = parameters.size
@@ -68,7 +68,7 @@ class ParameterSerializer(
     }
 
     private fun writeKnown(value: Any, oid: Int, writer: PgByteWriter, marker: Int): Int {
-        val codec = typeRegistry.getCodecByOid<Any>(oid)
+        val codec = codecDictionary.getCodecByOid<Any>(oid)
             ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Codec not found")
 
         if (!codec.kotlinClass.isInstance(value)) {
@@ -85,13 +85,13 @@ class ParameterSerializer(
     }
 
     private fun writeStandard(value: Any, writer: PgByteWriter, marker: Int): Int {
-        val codec = typeRegistry.getCodecByClass(value::class)
+        val codec = codecDictionary.getCodecByClass(value::class)
             ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, details = "Codec not found for: ${value::class.qualifiedName}")
 
         @Suppress("UNCHECKED_CAST")
         (codec as TypeCodec<Any>).toBinary(value, writer)
         writer.fillLengthInt(marker)
 
-        return typeRegistry.getOidForCodec(codec) ?: typeManager.resolveOid(codec.pgTypeName, codec.pgSchema)
+        return codecDictionary.getOidForCodec(codec) ?: typeManager.resolveOid(codec.pgTypeName, codec.pgSchema)
     }
 }

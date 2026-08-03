@@ -65,9 +65,9 @@ class JsonElementIntegrationTest {
             context: SerializationContext
         ): Any {
             val composite = if (expectedOid.isKnownOid) {
-                context.typeManager.createComposite(expectedOid)
+                context.typeManager.containers.createComposite(expectedOid)
             } else {
-                context.typeManager.createComposite("metadata_holder")
+                context.typeManager.containers.createComposite("metadata_holder")
             }
             composite["id"] = source.id
             composite["metadata"] = context.convert(source.metadata, composite.getAttributeOid("metadata"))
