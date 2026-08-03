@@ -101,6 +101,9 @@ class TypeRegistry {
     @Volatile
     var registeredComposites: Map<KClass<*>, CompositeRegistration> = emptyMap()
 
+    @Volatile
+    var compositeClassByName: Map<QualifiedName, KClass<*>> = emptyMap()
+
     inline fun <reified T : Any> registerAutoCompositeType(
         name: String,
         schema: String = "",
@@ -108,8 +111,13 @@ class TypeRegistry {
         kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
     ) = lock.withLock {
         val newMap = registeredComposites.toMutableMap()
-        newMap[T::class] = CompositeRegistration(QualifiedName(schema, name), pgConvention, kotlinConvention)
+        val qName = QualifiedName(schema, name)
+        newMap[T::class] = CompositeRegistration(qName, pgConvention, kotlinConvention)
         registeredComposites = newMap
+        
+        val newNameMap = compositeClassByName.toMutableMap()
+        newNameMap[qName] = T::class
+        compositeClassByName = newNameMap
 
         ReflectionCompositeCache.getOrCreateDataObjectMetadata(T::class, pgConvention, kotlinConvention)
     }

@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.ResultConverte
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import io.github.octaviusframework.driver.identifier.QualifiedName
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
@@ -19,13 +20,28 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
     override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
+        if (kClass == Any::class) {
+            val registry = context.typeManager.registry
+            return registry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
+                   registry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
+        }
         if (!kClass.isData) return false
         return context.typeManager.registry.registeredComposites.containsKey(kClass)
     }
 
     override fun convert(source: PgComposite, expectedType: KType, sourceType: PgType, context: DeserializationContext): Any {
+        val expectedClass = expectedType.classifier as? KClass<*> ?: Any::class
+        
         @Suppress("UNCHECKED_CAST")
-        val kClass = expectedType.classifier as KClass<Any>
+        val kClass = if (expectedClass == Any::class) {
+            val registry = context.typeManager.registry
+            registry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
+                ?: registry.compositeClassByName[QualifiedName("", sourceType.name)]
+                ?: throw OctaviusInternalException()
+        } else {
+            expectedClass
+        } as KClass<Any>
+
         val registration = context.typeManager.registry.registeredComposites[kClass]
             ?: throw OctaviusInternalException()
 
