@@ -6,6 +6,14 @@ import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 
+/**
+ * A factory for creating PostgreSQL container types such as composites, ranges, and multiranges.
+ *
+ * It utilizes the underlying [TypeManager] to resolve types by name or OID and instantiates
+ * the appropriate container representations.
+ *
+ * @property typeManager the manager used for resolving types and obtaining the registry.
+ */
 class ContainerFactory(
     private val typeManager: TypeManager
 ) {
@@ -80,6 +88,18 @@ class ContainerFactory(
 
     /**
      * Creates a new instance of a PostgreSQL range type using its Object ID (OID).
+     *
+     * @param oid The OID of the range type.
+     * @param lower The lower bound value.
+     * @param upper The upper bound value.
+     * @param isLowerInclusive Whether the lower bound is inclusive.
+     * @param isUpperInclusive Whether the upper bound is inclusive.
+     * @param isLowerInfinite Whether the lower bound is infinite.
+     * @param isUpperInfinite Whether the upper bound is infinite.
+     * @param isLowerNull Whether the lower bound is null.
+     * @param isUpperNull Whether the upper bound is null.
+     * @return A new [PgRange] instance.
+     * @throws TypeException if the type is not found or is not a range.
      */
     fun createRange(
         oid: Int,
@@ -112,6 +132,11 @@ class ContainerFactory(
 
     /**
      * Creates an empty PostgreSQL range type using its name and schema.
+     * 
+     * @param typeName The name of the range type.
+     * @param schema The schema where the range type is defined (defaults to empty for search path).
+     * @return An empty [PgRange] instance.
+     * @throws TypeException if the type cannot be found.
      */
     fun createEmptyRange(typeName: String, schema: String = ""): PgRange {
         val resolvedOid = typeManager.resolveOid(typeName, schema)
@@ -120,6 +145,10 @@ class ContainerFactory(
 
     /**
      * Creates an empty PostgreSQL range type using its Object ID (OID).
+     * 
+     * @param oid The OID of the range type.
+     * @return An empty [PgRange] instance.
+     * @throws TypeException if the type is not found or is not a range.
      */
     fun createEmptyRange(oid: Int): PgRange {
         val rangeType = registry.dictionary.getPgType(oid) as? PgType.Range
