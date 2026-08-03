@@ -48,10 +48,10 @@ class RangeParameterConverter : ParameterConverter<Any> {
         val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
 
         if (range.isEmpty) {
-            return context.typeManager.createEmptyRange(pgType.oid)
+            return context.typeManager.containers.createEmptyRange(pgType.oid)
         }
 
-        return context.typeManager.createRange(
+        return context.typeManager.containers.createRange(
             oid = pgType.oid,
             lower = convertedLower,
             upper = convertedUpper,

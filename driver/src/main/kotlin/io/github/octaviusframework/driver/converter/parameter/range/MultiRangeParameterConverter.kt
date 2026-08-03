@@ -52,9 +52,9 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
             val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
 
             if (range.isEmpty) {
-                context.typeManager.createEmptyRange(rangeOid)
+                context.typeManager.containers.createEmptyRange(rangeOid)
             } else {
-                context.typeManager.createRange(
+                context.typeManager.containers.createRange(
                     oid = rangeOid,
                     lower = convertedLower,
                     upper = convertedUpper,
@@ -68,6 +68,6 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
             }
         }
 
-        return context.typeManager.createMultirange(pgType.oid, *pgRanges.toTypedArray())
+        return context.typeManager.containers.createMultirange(pgType.oid, *pgRanges.toTypedArray())
     }
 }
