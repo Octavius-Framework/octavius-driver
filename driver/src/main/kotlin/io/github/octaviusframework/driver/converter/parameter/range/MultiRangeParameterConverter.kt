@@ -21,14 +21,13 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
         val multiRange = source as MultiRange<*>
         val typeManager = context.typeManager
-        val typeRegistry = typeManager.registry
 
         val pgType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Multirange
         } else {
             val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultOid(context)
                 ?.takeIf { it.isKnownOid }
-                ?: typeRegistry.getCodecByClass(multiRange.elementClass)?.let { typeRegistry.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
+                ?: typeManager.codecDictionary.getCodecByClass(multiRange.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
 
             if (elementOid != null && elementOid.isKnownOid) {
                 val rangeType = context.typeManager.typeDictionary.getRangeType(elementOid)

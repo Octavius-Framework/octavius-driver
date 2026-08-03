@@ -48,7 +48,7 @@ class Row(
         else {
             val offset = columnOffsets[index]
             val oid = metadata.getOid(index)
-            val codec = typeRegistry.getCodecByOid<Any>(oid)
+            val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
                 ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
             codec.fromBinary(rawData, offset, colLength)
         }

@@ -34,7 +34,7 @@ class TypeManager(
         schema: String = "",
         isArray: Boolean = false
     ): Int {
-        return registry.resolveOid(typeName, schema, isArray, searchPathProvider())
+        return registry.dictionary.resolveOid(typeName, schema, isArray, searchPathProvider())
     }
 
     /**
@@ -114,7 +114,7 @@ class TypeManager(
      * @return A new [io.github.octaviusframework.driver.container.PgComposite] instance with empty fields.
      */
     fun createComposite(typeName: String, schema: String = ""): PgComposite {
-        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.dictionary.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createComposite(resolvedOid)
     }
 
@@ -154,7 +154,7 @@ class TypeManager(
         isLowerNull: Boolean = false,
         isUpperNull: Boolean = false
     ): PgRange {
-        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.dictionary.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createRange(
             oid = resolvedOid,
             lower = lower,
@@ -204,7 +204,7 @@ class TypeManager(
      * Creates an empty PostgreSQL range type using its name and schema.
      */
     fun createEmptyRange(typeName: String, schema: String = ""): PgRange {
-        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.dictionary.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createEmptyRange(resolvedOid)
     }
 
@@ -226,7 +226,7 @@ class TypeManager(
      * @return A new [io.github.octaviusframework.driver.container.PgMultirange] instance.
      */
     fun createMultirange(typeName: String, schema: String = "", vararg ranges: PgRange): PgMultirange {
-        val resolvedOid = registry.resolveOid(typeName, schema, searchPath = searchPathProvider())
+        val resolvedOid = registry.dictionary.resolveOid(typeName, schema, searchPath = searchPathProvider())
         return createMultirange(resolvedOid, *ranges)
     }
 

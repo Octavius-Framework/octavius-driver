@@ -103,19 +103,6 @@ class TypeRegistry {
         this.codecs = this.codecs.withRegisteredCodec(codec, this.dictionary)
     }
 
-    fun <T : Any> getCodecByOid(oid: Int): TypeCodec<T>? {
-        return codecs.getCodecByOid(oid)
-    }
-
-    fun <T : Any> getCodecByClass(kClass: KClass<T>): TypeCodec<T>? {
-        return codecs.getCodecByClass(kClass)
-    }
-
-    fun getOidForCodec(codec: TypeCodec<*>): Int? {
-        return codecs.getOidForCodec(codec)
-    }
-
-
     /**
      * Replaces the entire type map with a new instance, ensuring thread-safety.
      * Additionally applies custom codecs waiting for an OID.
@@ -123,14 +110,5 @@ class TypeRegistry {
     fun updateTypes(newTypes: Map<Int, PgType>) {
         dictionary = TypeDictionary.build(newTypes)
         codecs = codecs.buildUpdated(newTypes, this)
-    }
-
-    fun resolveOid(
-        typeName: String,
-        requestedSchema: String,
-        isArray: Boolean = false,
-        searchPath: List<String>
-    ): Int {
-        return dictionary.resolveOid(typeName, requestedSchema, isArray, searchPath)
     }
 }

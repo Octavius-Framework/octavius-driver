@@ -21,14 +21,13 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        val typeRegistry = context.typeManager.registry
 
         val arrayType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Array
         } else {
             val componentType = source.javaClass.componentType?.kotlin
             if (componentType != null) {
-                val elementOid = typeRegistry.getCodecByClass(componentType)?.oid
+                val elementOid = context.typeManager.codecDictionary.getCodecByClass(componentType)?.oid
                 if (elementOid != null) {
                     context.typeManager.typeDictionary.getArrayType(elementOid)
                 } else null

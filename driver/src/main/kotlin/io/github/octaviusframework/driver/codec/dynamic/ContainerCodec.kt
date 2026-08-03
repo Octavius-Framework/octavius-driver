@@ -28,7 +28,7 @@ internal object ContainerCodec {
      * Parses a generic field, which can be either a container or a primitive type.
      */
     private fun parseField(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): Any {
-        val codec = typeRegistry.getCodecByOid<Any>(oid)
+        val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
             ?: throw TypeException(
                 TypeExceptionMessage.MISSING_CODEC,
                 oid = oid,
@@ -271,7 +271,7 @@ internal object ContainerCodec {
             return
         }
 
-        val codec = typeRegistry.getCodecByOid<Any>(expectedOid)
+        val codec = typeRegistry.codecs.getCodecByOid<Any>(expectedOid)
             ?: throw TypeException(
                 TypeExceptionMessage.MISSING_CODEC,
                 oid = expectedOid,
