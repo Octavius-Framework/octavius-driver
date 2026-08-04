@@ -18,8 +18,7 @@ internal class OctaviusSessionImpl(
     private val rawConnection: Connection
 ) : OctaviusSession {
 
-    internal val octaviusConnection: OctaviusConnection
-        get() = rawConnection.unwrapToOctavius()
+    internal val octaviusConnection: OctaviusConnection = rawConnection.unwrapToOctavius()
 
     override val types: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
 

@@ -18,7 +18,9 @@ fun getOctaviusSession(
     url: String,
     properties: OctaviusProperties
 ): OctaviusSession {
-    val conn = OctaviusConnectionFactory.createConnection(url, properties)
+    val mergedProps = OctaviusProperties.parse(url)
+    mergedProps.merge(properties)
+    val conn = OctaviusConnectionFactory.createConnection(url, mergedProps)
     return OctaviusSessionImpl(conn)
 }
 
