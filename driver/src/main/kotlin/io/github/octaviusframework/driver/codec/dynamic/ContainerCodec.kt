@@ -14,6 +14,8 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.codec.decodeSafely
+import io.github.octaviusframework.driver.codec.encodeSafely
 
 
 /**
@@ -34,7 +36,7 @@ internal object ContainerCodec {
                 oid = oid,
                 details = "Parsing field of oid $oid"
             )
-        return codec.fromBinary(data, offset, length)
+        return codec.decodeSafely(data, offset, length)
     }
 
     /**
@@ -285,7 +287,7 @@ internal object ContainerCodec {
             )
         }
         val marker = writer.reserveLengthInt()
-        codec.toBinary(value, writer)
+        codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)
     }
 

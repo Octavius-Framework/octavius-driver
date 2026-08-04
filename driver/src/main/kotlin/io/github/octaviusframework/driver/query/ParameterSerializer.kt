@@ -10,6 +10,7 @@ import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
+import io.github.octaviusframework.driver.codec.encodeSafely
 
 class ParameterSerializer(
     private val typeManager: TypeManager,
@@ -79,7 +80,7 @@ class ParameterSerializer(
             )
         }
 
-        codec.toBinary(value, writer)
+        codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)
         return oid
     }
@@ -89,7 +90,7 @@ class ParameterSerializer(
             ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, details = "Codec not found for: ${value::class.qualifiedName}")
 
         @Suppress("UNCHECKED_CAST")
-        (codec as TypeCodec<Any>).toBinary(value, writer)
+        (codec as TypeCodec<Any>).encodeSafely(value, writer)
         writer.fillLengthInt(marker)
 
         return codecDictionary.getOidForCodec(codec) ?: typeManager.resolveOid(codec.pgTypeName, codec.pgSchema)

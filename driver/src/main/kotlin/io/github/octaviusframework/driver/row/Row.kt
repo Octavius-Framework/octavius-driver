@@ -11,6 +11,7 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
+import io.github.octaviusframework.driver.codec.decodeSafely
 
 @Suppress("UNCHECKED_CAST")
 fun <T> Row.get(index: Int, targetType: KType): T {
@@ -50,7 +51,7 @@ class Row(
             val oid = metadata.getOid(index)
             val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
                 ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
-            codec.fromBinary(rawData, offset, colLength)
+            codec.decodeSafely(rawData, offset, colLength)
         }
     }
 
