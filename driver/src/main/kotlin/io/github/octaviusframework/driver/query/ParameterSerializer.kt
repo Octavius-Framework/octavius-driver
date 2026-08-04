@@ -72,14 +72,6 @@ class ParameterSerializer(
         val codec = codecDictionary.getCodecByOid<Any>(oid)
             ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Codec not found")
 
-        if (!codec.kotlinClass.isInstance(value)) {
-            throw TypeException(
-                TypeExceptionMessage.INVALID_PARAMETER_TYPE,
-                oid = oid,
-                details = "Type mismatch: ${value::class.qualifiedName} != ${codec.kotlinClass.qualifiedName}"
-            )
-        }
-
         codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)
         return oid

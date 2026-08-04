@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.container
 
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry
 
 /**
@@ -43,9 +43,8 @@ class PgArray(
     inline fun <reified T> get(index: Int): T {
         val value = elements[index]
         if (value is T) return value
-        throw TypeException(
-            TypeExceptionMessage.CASTING_ERROR,
-            typeName = T::class.simpleName,
+        throw MappingException(
+            MappingExceptionMessage.CASTING_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

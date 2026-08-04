@@ -279,13 +279,6 @@ internal object ContainerCodec {
                 oid = expectedOid,
                 details = "Serializing value: $value"
             )
-        if (!codec.kotlinClass.isInstance(value)) {
-            throw TypeException(
-                TypeExceptionMessage.INVALID_PARAMETER_TYPE,
-                oid = expectedOid,
-                details = "Type mismatch. Expected ${codec.kotlinClass.qualifiedName}, got ${value::class.qualifiedName}"
-            )
-        }
         val marker = writer.reserveLengthInt()
         codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)

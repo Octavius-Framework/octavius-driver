@@ -109,7 +109,7 @@ object ExceptionTranslator {
             state.startsWith("42") -> {
                 if (state == "42501") {
                     PermissionDeniedException(
-                        message = "Permission Denied (42501): $message",
+                        errorMessage = "Permission Denied (42501): $message",
                         sqlState = state,
                         schema = errorMsg.schema,
                         table = errorMsg.table,
