@@ -124,4 +124,31 @@ internal class SyncMessage : FrontendMessage {
     }
 }
 
+/**
+ * Message sent to the backend to force it to flush its output buffer.
+ */
+internal class FlushMessage : FrontendMessage {
+    override fun encode(out: PgOutputStream) {
+        out.writeByte('H'.code.toByte())
+        out.writeInt(4)
+    }
+}
+
+/**
+ * Message sent to the backend to close a statement or portal.
+ *
+ * @property targetType The type of object to close ('S' for Statement, 'P' for Portal).
+ * @property name The name of the statement or portal to close.
+ */
+internal class CloseMessage(private val targetType: Char, private val name: String) : FrontendMessage {
+    override fun encode(out: PgOutputStream) {
+        val nameBytes = name.toByteArray(StandardCharsets.UTF_8)
+        val length = 4 + 1 + nameBytes.size + 1
+        out.writeByte('C'.code.toByte())
+        out.writeInt(length)
+        out.writeByte(targetType.code.toByte())
+        out.writeCString(name)
+    }
+}
+
 

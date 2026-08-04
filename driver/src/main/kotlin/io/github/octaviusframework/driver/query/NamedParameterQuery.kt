@@ -82,6 +82,14 @@ class NamedParameterQuery internal constructor(
 
     fun fetchRowStrict(vararg params: Pair<String, Any?>): Row = fetchRowStrict(params.toMap())
 
+    fun forEachRow(params: Map<String, Any?>, fetchSize: Int, block: (Row) -> Unit) {
+        withPreparedQuery(params) { transformedSql, listParams ->
+            queryExecutor.queryForEach(transformedSql, listParams, parameterSerializer, resultMapper, fetchSize, { it }, block)
+        }
+    }
+
+    fun forEachRow(vararg params: Pair<String, Any?>, fetchSize: Int, block: (Row) -> Unit) = forEachRow(params.toMap(), fetchSize, block)
+
     //----------------------------------------Object Mapping Methods----------------------------------------------------
 
     inline fun <reified T : Any> fetchObjects(params: Map<String, Any?>): List<T> {
@@ -134,6 +142,18 @@ class NamedParameterQuery internal constructor(
 
     inline fun <reified T: Any> fetchObjectStrict(vararg params: Pair<String, Any?>): T = fetchObjectStrict(params.toMap())
     
+    inline fun <reified T : Any> forEachObject(params: Map<String, Any?>, fetchSize: Int, crossinline block: (T) -> Unit) {
+        val targetType = typeOf<T>()
+        val recordType = PgType.Record
+        withPreparedQuery(params) { transformedSql, listParams ->
+            queryExecutor.queryForEach(transformedSql, listParams, parameterSerializer, resultMapper, fetchSize, {
+                resultMapper.deserialize<T>(it, targetType, recordType)
+            }, { block(it) })
+        }
+    }
+
+    inline fun <reified T : Any> forEachObject(vararg params: Pair<String, Any?>, fetchSize: Int, crossinline block: (T) -> Unit) = forEachObject(params.toMap(), fetchSize, block)
+
     //-----------------------------------------Single Column Methods----------------------------------------------------
 
     inline fun <reified T> fetchFields(params: Map<String, Any?>): List<T> {
@@ -187,6 +207,16 @@ class NamedParameterQuery internal constructor(
 
     inline fun <reified T> fetchFieldStrict(vararg params: Pair<String, Any?>): T = fetchFieldStrict(params.toMap())
 
+    inline fun <reified T> forEachField(params: Map<String, Any?>, fetchSize: Int, crossinline block: (T) -> Unit) {
+        val targetType = typeOf<T>()
+        withPreparedQuery(params) { transformedSql, listParams ->
+            queryExecutor.queryForEach(transformedSql, listParams, parameterSerializer, resultMapper, fetchSize, {
+                it.get<T>(0, targetType)
+            }, { block(it) })
+        }
+    }
+
+    inline fun <reified T> forEachField(vararg params: Pair<String, Any?>, fetchSize: Int, crossinline block: (T) -> Unit) = forEachField(params.toMap(), fetchSize, block)
 
     fun update(params: Map<String, Any?>): Long {
         return withPreparedQuery(params) { transformedSql, listParams ->

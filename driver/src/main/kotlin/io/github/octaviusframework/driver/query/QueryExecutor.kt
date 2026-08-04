@@ -8,6 +8,8 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.row.Row
@@ -212,6 +214,86 @@ class QueryExecutor internal constructor(
         }
 
         return rows
+    }
+
+    /**
+     * Uses Extended Query Protocol.
+     * Intended for DQL (SELECT).
+     * Iterates over rows in batches of fetchSize and applies the given transform and block.
+     */
+    fun <R> queryForEach(
+        sql: String,
+        params: List<Any?> = emptyList(),
+        parameterSerializer: ParameterSerializer,
+        mapper: ResultMapper,
+        fetchSize: Int,
+        transform: (Row) -> R,
+        block: (R) -> Unit
+    ) = stream.lock.withLock {
+        val (paramTypes, paramValues) = parameterSerializer.serializeAll(params)
+        val statementName = ""
+        val portalName = ""
+        
+        stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
+        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
+        stream.sendMessage(DescribeMessage('P', portalName))
+        
+        var rowMetadata: RowMetadata? = null
+        var errorResponse: ErrorResponseMessage? = null
+        var executionError: OctaviusException? = null
+
+        fetchLoop@ while (true) {
+            stream.sendMessage(ExecuteMessage(portalName, fetchSize))
+            stream.sendMessage(FlushMessage())
+            stream.flush()
+
+            msgLoop@ while (true) {
+                when (val msg = stream.receiveMessage()) {
+                    is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
+                    is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
+                    is DataRowMessage -> {
+                        if (rowMetadata == null) {
+                            executionError = OctaviusInternalException("Received DataRow before RowDescription")
+                            break@fetchLoop
+                        } else {
+                            try {
+                                block(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
+                            } catch (e: Exception) {
+                                executionError = MappingException(MappingExceptionMessage.USER_CONVERTER_ERROR, "Exception in block: ${e.message}", e)
+                                break@fetchLoop
+                            }
+                        }
+                    }
+                    is PortalSuspendedMessage -> {
+                        break@msgLoop
+                    }
+                    is NoDataMessage, is CommandCompleteMessage -> {
+                        break@fetchLoop
+                    }
+                    is ErrorResponseMessage -> {
+                        errorResponse = msg
+                        break@fetchLoop
+                    }
+                    else -> { /* Ignore */ }
+                }
+            }
+        }
+
+        stream.sendMessage(SyncMessage())
+        stream.flush()
+        
+        while (true) {
+            val msg = stream.receiveMessage()
+            if (msg is ReadyForQueryMessage) {
+                transactionStatus = msg.transactionStatus
+                break
+            } else if (msg is ErrorResponseMessage) {
+                if (errorResponse == null) errorResponse = msg
+            }
+        }
+
+        if (errorResponse != null) throw ExceptionTranslator.translate(errorResponse)
+        if (executionError != null) throw executionError
     }
 }
 
