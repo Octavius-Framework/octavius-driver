@@ -8,18 +8,23 @@ enum class MappingExceptionMessage {
     INVALID_RECORD_FORMAT,
     COLUMN_NOT_FOUND,
     COLUMN_INDEX_OUT_OF_BOUNDS,
-    USER_CONVERTER_ERROR
+    USER_CONVERTER_ERROR,
+    CASTING_ERROR
 }
 
 class MappingException(
     val messageEnum: MappingExceptionMessage,
     val details: String? = null,
     cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException(messageEnum.name, cause, sqlState) {
+    sqlState: String? = null,
+    val path: MutableList<String> = mutableListOf()
+) : OctaviusException("MAPPING_EXCEPTION:${messageEnum.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")
+        if (path.isNotEmpty()) {
+            appendLine("Path: ${path.asReversed().joinToString(" -> ")}")
+        }
     }
 }
 
@@ -33,5 +38,6 @@ private fun generateDeveloperMessage(messageEnum: MappingExceptionMessage): Stri
         MappingExceptionMessage.COLUMN_NOT_FOUND -> "The requested column was not found in the row metadata."
         MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS -> "The requested column index is out of bounds for the row."
         MappingExceptionMessage.USER_CONVERTER_ERROR -> "An exception was thrown by a user-provided converter or mapper."
+        MappingExceptionMessage.CASTING_ERROR -> "Type casting error when converting database value to Kotlin type."
     }
 

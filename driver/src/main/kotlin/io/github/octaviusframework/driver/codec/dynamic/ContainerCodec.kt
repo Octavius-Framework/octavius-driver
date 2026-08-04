@@ -14,6 +14,8 @@ import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.codec.decodeSafely
+import io.github.octaviusframework.driver.codec.encodeSafely
 
 
 /**
@@ -34,13 +36,13 @@ internal object ContainerCodec {
                 oid = oid,
                 details = "Parsing field of oid $oid"
             )
-        return codec.fromBinary(data, offset, length)
+        return codec.decodeSafely(data, offset, length)
     }
 
     /**
      * Parses a byte array into a [PgContainer] based on the OID.
      */
-    fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
+    fun parseContainer(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.dictionary.getPgType(oid)) {
             is PgType.Array -> parsePgArray(data, offset, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(data, offset, pgType.oid, typeRegistry)
@@ -277,15 +279,8 @@ internal object ContainerCodec {
                 oid = expectedOid,
                 details = "Serializing value: $value"
             )
-        if (!codec.kotlinClass.isInstance(value)) {
-            throw TypeException(
-                TypeExceptionMessage.INVALID_PARAMETER_TYPE,
-                oid = expectedOid,
-                details = "Type mismatch. Expected ${codec.kotlinClass.qualifiedName}, got ${value::class.qualifiedName}"
-            )
-        }
         val marker = writer.reserveLengthInt()
-        codec.toBinary(value, writer)
+        codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)
     }
 

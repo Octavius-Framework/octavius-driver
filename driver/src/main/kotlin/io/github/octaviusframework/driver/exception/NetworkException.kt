@@ -26,7 +26,7 @@ class NetworkException(
     val details: String? = null,
     cause: Throwable? = null,
     sqlState: String? = "08006"
-) : OctaviusException(messageEnum.name, cause, sqlState) {
+) : OctaviusException("NETWORK_EXCEPTION:${messageEnum.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")

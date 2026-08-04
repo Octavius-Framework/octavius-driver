@@ -1,0 +1,51 @@
+package io.github.octaviusframework.driver.codec
+
+import io.github.octaviusframework.driver.exception.CodecAction
+import io.github.octaviusframework.driver.exception.CodecException
+import kotlin.math.min
+
+/**
+ * Safely decodes a value using this [TypeCodec].
+ * Any standard exceptions (like [IllegalArgumentException] or [IllegalStateException])
+ * thrown by the codec's [TypeCodec.fromBinary] method are caught and wrapped in a [CodecException].
+ */
+@Suppress("TooGenericExceptionCaught")
+internal fun <T : Any> TypeCodec<T>.decodeSafely(data: ByteArray, offset: Int, length: Int): T {
+    return try {
+        this.fromBinary(data, offset, length)
+    } catch (e: Exception) {
+        val truncatedLength = min(length, 100)
+        val valueToLog = if (offset + truncatedLength <= data.size) {
+            data.copyOfRange(offset, offset + truncatedLength)
+        } else {
+            data
+        }
+        throw CodecException(
+            action = CodecAction.DECODING,
+            value = valueToLog,
+            oid = this.oid,
+            kotlinClass = this.kotlinClass,
+            cause = e
+        )
+    }
+}
+
+/**
+ * Safely encodes a value using this [TypeCodec].
+ * Any standard exceptions (like [IllegalArgumentException] or [IllegalStateException])
+ * thrown by the codec's [TypeCodec.toBinary] method are caught and wrapped in a [CodecException].
+ */
+@Suppress("TooGenericExceptionCaught")
+internal fun <T : Any> TypeCodec<T>.encodeSafely(value: T, writer: PgByteWriter) {
+    try {
+        this.toBinary(value, writer)
+    } catch (e: Exception) {
+        throw CodecException(
+            action = CodecAction.ENCODING,
+            value = value,
+            oid = this.oid,
+            kotlinClass = this.kotlinClass,
+            cause = e
+        )
+    }
+}

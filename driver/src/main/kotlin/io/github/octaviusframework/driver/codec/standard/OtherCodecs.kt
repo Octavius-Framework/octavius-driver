@@ -3,7 +3,6 @@ package io.github.octaviusframework.driver.codec.standard
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.io.getLongBE
 import kotlin.uuid.Uuid
 
@@ -38,7 +37,7 @@ internal object VoidCodec : TypeCodec<Unit> {
 
     override val fromBinary: (ByteArray, Int, Int) -> Unit = { _, _, _ -> }
     override val toBinary: (Unit, PgByteWriter) -> Unit =
-        { _, _ -> throw TypeException(TypeExceptionMessage.INVALID_PARAMETER_TYPE, typeName = "Unit", details = "Cannot send Unit/void as parameter") }
+        { _, _ -> throw IllegalArgumentException("Cannot send Unit/void as parameter") }
 }
 
 internal object UuidCodec : TypeCodec<Uuid> {

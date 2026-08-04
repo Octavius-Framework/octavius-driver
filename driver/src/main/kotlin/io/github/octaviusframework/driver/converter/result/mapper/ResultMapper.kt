@@ -23,7 +23,8 @@ internal class DefaultDeserializationContext(
     private val registry: ResultConverterRegistry,
     override val typeManager: TypeManager
 ) : DeserializationContext {
-    override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType): T {
+    override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType, pathSegment: String?): T {
+        try {
         if (source == null) {
             if (!expectedType.isMarkedNullable) {
                 throw IllegalArgumentException("Cannot deserialize null to non-nullable type $expectedType")
@@ -46,7 +47,11 @@ internal class DefaultDeserializationContext(
             return source as T
         }
 
-        throw MappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
+            throw MappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
+        } catch (e: MappingException) {
+            if (pathSegment != null) e.path.add(pathSegment)
+            throw e
+        }
     }
 
     override fun findConverter(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {

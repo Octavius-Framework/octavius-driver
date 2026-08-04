@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.type.PgType
@@ -99,9 +100,9 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
 
         val elementOid = arrayType.elementOid
 
-        val convertedElements = list.map { element ->
+        val convertedElements = list.mapIndexed { index, element ->
             if (element != null) {
-                context.convert(element, elementOid)
+                context.convert(element, elementOid, "[$index]")
             } else null
         }
 

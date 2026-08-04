@@ -102,14 +102,14 @@ object TypeRegistryLoader {
                         oid,
                         info.name,
                         info.schema,
-                        rangeMap[oid] ?: error("Missing rangeMap for oid $oid")
+                        rangeMap[oid] ?: throw OctaviusInternalException("Missing rangeMap for oid $oid")
                     )
 
                     info.typtype == 'm' -> PgType.Multirange(
                         oid,
                         info.name,
                         info.schema,
-                        multirangeMap[oid] ?: error("Missing multirangeMap for oid $oid")
+                        multirangeMap[oid] ?: throw OctaviusInternalException("Missing multirangeMap for oid $oid")
                     )
 
                     info.typtype == 'c' -> {

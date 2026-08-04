@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.converter.result.composite
 
+import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
@@ -25,7 +26,7 @@ class MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
         for ((index, attributeName) in source.attributeNames.withIndex()) {
             val rawValue = source.get<Any?>(index)
             val type = source.getAttributeType(index)
-            result[attributeName] = if (rawValue == null) null else context.convert(rawValue, valueType, type)
+            result[attributeName] = if (rawValue == null) null else context.convert(rawValue, valueType, type, attributeName)
         }
         return result
     }

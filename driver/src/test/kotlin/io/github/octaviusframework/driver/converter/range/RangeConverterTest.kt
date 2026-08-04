@@ -124,7 +124,7 @@ class RangeConverterTest {
         
         val context = object : SerializationContext {
             override val typeManager = this@RangeConverterTest.typeManager
-            override fun convert(source: Any, expectedOid: Int): Any = source
+            override fun convert(source: Any, expectedOid: Int, pathSegment: String?): Any = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
             override fun findConverterByClass(
                 sourceClass: KClass<*>,
@@ -157,7 +157,7 @@ class RangeConverterTest {
 
         val context = object : SerializationContext {
             override val typeManager = this@RangeConverterTest.typeManager
-            override fun convert(source: Any, expectedOid: Int): Any = source
+            override fun convert(source: Any, expectedOid: Int, pathSegment: String?): Any = source
             override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? = null
             override fun findConverterByClass(
                 sourceClass: KClass<*>,

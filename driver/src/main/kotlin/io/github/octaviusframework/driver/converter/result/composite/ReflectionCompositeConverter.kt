@@ -70,7 +70,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
                         constructorArgs[param] = null
                     }
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, meta.type, type)
+                    val convertedValue = context.convert<Any>(rawValue, meta.type, type, columnName)
                     constructorArgs[param] = convertedValue
                 }
             } else {
