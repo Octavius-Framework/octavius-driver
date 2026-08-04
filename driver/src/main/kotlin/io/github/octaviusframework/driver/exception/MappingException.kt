@@ -16,11 +16,15 @@ class MappingException(
     val messageEnum: MappingExceptionMessage,
     val details: String? = null,
     cause: Throwable? = null,
-    sqlState: String? = null
+    sqlState: String? = null,
+    val path: MutableList<String> = mutableListOf()
 ) : OctaviusException("MAPPING_EXCEPTION:${messageEnum.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")
+        if (path.isNotEmpty()) {
+            appendLine("Path: ${path.asReversed().joinToString(" -> ")}")
+        }
     }
 }
 
