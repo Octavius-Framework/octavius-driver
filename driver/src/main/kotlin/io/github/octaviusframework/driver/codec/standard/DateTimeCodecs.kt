@@ -32,12 +32,10 @@ private fun instantToPgMicros(instant: Instant): Long {
         val nanos = instant.nanosecondsOfSecond
         val totalMicros = Math.addExact(Math.multiplyExact(seconds, 1000000L), (nanos / 1000).toLong())
         val pgMicros = Math.subtractExact(totalMicros, PG_EPOCH_MICROS)
-        if (pgMicros == Long.MAX_VALUE || pgMicros == Long.MIN_VALUE) {
-            throw ArithmeticException("Instant value overlaps with PostgreSQL infinity representation")
-        }
+        require(!(pgMicros == Long.MAX_VALUE || pgMicros == Long.MIN_VALUE)) { "Instant value overlaps with PostgreSQL infinity representation" }
         return pgMicros
     } catch (e: ArithmeticException) {
-        throw IllegalArgumentException("Instant is out of range for PostgreSQL timestamp", e)
+        throw IllegalArgumentException("Instant is out of range for PostgreSQL timestamp: ${e.message}")
     }
 }
 
@@ -49,8 +47,7 @@ internal object TimestamptzCodec : TypeCodec<Instant> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> Instant = { data, offset, _ ->
-        val micros = data.getLongBE(offset)
-        when (micros) {
+        when (val micros = data.getLongBE(offset)) {
             Long.MAX_VALUE -> Instant.DISTANT_FUTURE
             Long.MIN_VALUE -> Instant.DISTANT_PAST
             else -> microsToInstant(micros)
@@ -74,8 +71,7 @@ internal object TimestampCodec : TypeCodec<LocalDateTime> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> LocalDateTime = { data, offset, _ ->
-        val micros = data.getLongBE(offset)
-        when (micros) {
+        when (val micros = data.getLongBE(offset)) {
             Long.MAX_VALUE -> LocalDateTime.DISTANT_FUTURE
             Long.MIN_VALUE -> LocalDateTime.DISTANT_PAST
             else -> microsToInstant(micros).toLocalDateTime(TimeZone.UTC)
@@ -99,8 +95,7 @@ internal object DateCodec : TypeCodec<LocalDate> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> LocalDate = { data, offset, _ ->
-        val days = data.getIntBE(offset)
-        when (days) {
+        when (val days = data.getIntBE(offset)) {
             Int.MAX_VALUE -> LocalDate.DISTANT_FUTURE
             Int.MIN_VALUE -> LocalDate.DISTANT_PAST
             else -> LocalDate.fromEpochDays(days + PG_EPOCH_DAYS)
@@ -114,12 +109,10 @@ internal object DateCodec : TypeCodec<LocalDate> {
             else -> {
                 try {
                     val pgDays = Math.toIntExact(Math.subtractExact(value.toEpochDays(), PG_EPOCH_DAYS.toLong()))
-                    if (pgDays == Int.MAX_VALUE || pgDays == Int.MIN_VALUE) {
-                        throw ArithmeticException("LocalDate value overlaps with PostgreSQL infinity representation")
-                    }
+                    require(pgDays != Int.MAX_VALUE && pgDays != Int.MIN_VALUE) { "LocalDate value overlaps with PostgreSQL infinity representation" }
                     writer.writeInt(pgDays)
                 } catch (e: ArithmeticException) {
-                    throw IllegalArgumentException("LocalDate is out of range for PostgreSQL date", e)
+                    throw IllegalArgumentException("LocalDate is out of range for PostgreSQL date: ${e.message}")
                 }
             }
         }

@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.StatementException
+import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -44,7 +45,7 @@ class BasicQueryIntegrationTest {
             session.createNativeQuery("SELECT generate_series(1, 1000)").fetchRowStrict()
         }
 
-        assertEquals("INCORRECT_RESULT_SIZE", exception.message)
+        assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
 
         // Make sure the connection is in a healthy state and can execute subsequent queries
         val subsequentResult = session.createNativeQuery("SELECT 42").fetchRowStrict().get<Int>(0)

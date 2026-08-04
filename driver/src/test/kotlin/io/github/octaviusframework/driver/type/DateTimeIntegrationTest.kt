@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.type
 
+import io.github.octaviusframework.driver.exception.CodecException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -53,7 +54,7 @@ class DateTimeIntegrationTest {
         val badFutureDays = Int.MAX_VALUE.toLong() + pgEpochDays
         val badFutureDate = java.time.LocalDate.ofEpochDay(badFutureDays).toKotlinLocalDate()
 
-        val exFuture = assertFailsWith<TypeException> {
+        val exFuture = assertFailsWith<CodecException> {
             session.createNativeQuery("SELECT $1").fetchRow(badFutureDate)
         }
         assertEquals(true, exFuture.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))
@@ -62,7 +63,7 @@ class DateTimeIntegrationTest {
         val badPastDays = Int.MIN_VALUE.toLong() + pgEpochDays
         val badPastDate = java.time.LocalDate.ofEpochDay(badPastDays).toKotlinLocalDate()
 
-        val exPast = assertFailsWith<TypeException> {
+        val exPast = assertFailsWith<CodecException> {
             session.createNativeQuery("SELECT $1").fetchRow(badPastDate)
         }
         assertEquals(true, exPast.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))

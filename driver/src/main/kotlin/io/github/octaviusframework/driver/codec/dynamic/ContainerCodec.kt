@@ -42,7 +42,7 @@ internal object ContainerCodec {
     /**
      * Parses a byte array into a [PgContainer] based on the OID.
      */
-    fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
+    fun parseContainer(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.dictionary.getPgType(oid)) {
             is PgType.Array -> parsePgArray(data, offset, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(data, offset, pgType.oid, typeRegistry)
