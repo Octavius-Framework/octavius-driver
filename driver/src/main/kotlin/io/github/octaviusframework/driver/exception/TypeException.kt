@@ -23,7 +23,7 @@ class TypeException(
     val details: String? = null,
     cause: Throwable? = null,
     sqlState: String? = null
-) : OctaviusException(messageEnum.name, cause, sqlState) {
+) : OctaviusException("TYPE_EXCEPTION:${messageEnum.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (oid != null) appendLine("OID: $oid")

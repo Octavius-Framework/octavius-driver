@@ -54,7 +54,7 @@ class ConstraintViolationException(
     val column: String? = null,
     val constraint: String? = null
 ) : OctaviusException(
-    message = reason.name,
+    message = "CONSTRAINT_VIOLATION_EXCEPTION:${reason.name}",
     sqlState = sqlState
 ) {
     override fun getDetailedMessage(): String = buildString {

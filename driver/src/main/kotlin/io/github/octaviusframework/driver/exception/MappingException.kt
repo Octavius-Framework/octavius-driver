@@ -16,7 +16,7 @@ class MappingException(
     val details: String? = null,
     cause: Throwable? = null,
     sqlState: String? = null
-) : OctaviusException(messageEnum.name, cause, sqlState) {
+) : OctaviusException("MAPPING_EXCEPTION:${messageEnum.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("message: ${generateDeveloperMessage(messageEnum)}")
         if (details != null) appendLine("Details: $details")

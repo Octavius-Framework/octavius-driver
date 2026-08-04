@@ -5,6 +5,8 @@ package io.github.octaviusframework.driver.exception
  * Indicates a bug in the Octavius driver.
  */
 class OctaviusInternalException(
-    message: String = "This should never happen.",
+    val errorMessage: String = "This should never happen.",
     cause: Throwable? = null
-) : OctaviusException(message, cause)
+) : OctaviusException("OCTAVIUS_INTERNAL_EXCEPTION", cause) {
+    override fun getDetailedMessage(): String = errorMessage
+}
