@@ -28,7 +28,7 @@ class NetworkExceptionIntegrationTest {
                 session.createNativeQuery("SELECT pg_sleep(2)").fetchRows()
             }
 
-            assertEquals(NetworkExceptionMessage.CONNECTION_TIMEOUT, exception.messageEnum)
+            assertEquals(NetworkExceptionReason.CONNECTION_TIMEOUT, exception.reason)
         }
     }
 
@@ -45,9 +45,9 @@ class NetworkExceptionIntegrationTest {
                 }
 
                 assertTrue(
-                    exception.messageEnum == NetworkExceptionMessage.CONNECTION_CLOSED_BY_PEER ||
-                    exception.messageEnum == NetworkExceptionMessage.CONNECTION_ERROR,
-                    "Expectiong CONNECTION_CLOSED_BY_PEER or CONNECTION_ERROR, got: ${exception.messageEnum}"
+                    exception.reason == NetworkExceptionReason.CONNECTION_CLOSED_BY_PEER ||
+                    exception.reason == NetworkExceptionReason.CONNECTION_ERROR,
+                    "Expectiong CONNECTION_CLOSED_BY_PEER or CONNECTION_ERROR, got: ${exception.reason}"
                 )
             }
         }

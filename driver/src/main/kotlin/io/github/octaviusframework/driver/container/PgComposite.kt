@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 
@@ -30,13 +30,13 @@ class PgComposite internal constructor(
 
         if (value == null) {
             throw MappingException(
-                MappingExceptionMessage.CONVERSION_ERROR,
+                MappingExceptionReason.CONVERSION_ERROR,
                 details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
         throw MappingException(
-            MappingExceptionMessage.CONVERSION_ERROR,
+            MappingExceptionReason.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }
@@ -44,7 +44,7 @@ class PgComposite internal constructor(
     fun getColumnIndex(columnName: String): Int {
         val index = type.nameToIndex[columnName] ?: -1
         if (index == -1) throw MappingException(
-            MappingExceptionMessage.COLUMN_NOT_FOUND,
+            MappingExceptionReason.COLUMN_NOT_FOUND,
             details = "Atrybut: $columnName"
         )
         return index
@@ -61,7 +61,7 @@ class PgComposite internal constructor(
     inline fun <reified T> get(name: String): T {
         val index = type.nameToIndex[name] ?: -1
         if (index == -1) throw MappingException(
-            MappingExceptionMessage.COLUMN_NOT_FOUND,
+            MappingExceptionReason.COLUMN_NOT_FOUND,
             details = "Atrybut '$name' w kompozycie '${type.name}'"
         )
         return get<T>(index)

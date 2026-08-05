@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -43,7 +43,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 val value = elements[i]
                 if (value == null) {
                     if (!ktElementType.isMarkedNullable) {
-                        val e = MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
+                        val e = MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
                         e.path.add("[$i]")
                         throw e
                     }
@@ -66,7 +66,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 val value = elements[flatIndex]
                 if (value == null) {
                     if (!ktElementType.isMarkedNullable) {
-                        val e = MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
+                        val e = MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
                         e.path.add("[$i]")
                         throw e
                     }
@@ -81,7 +81,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                         if (kClassForCast != null && kClassForCast.isInstance(value)) {
                             value
                         } else {
-                            val e = MappingException(MappingExceptionMessage.CONVERSION_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
+                            val e = MappingException(MappingExceptionReason.CONVERSION_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
                             e.path.add("[$i]")
                             throw e
                         }

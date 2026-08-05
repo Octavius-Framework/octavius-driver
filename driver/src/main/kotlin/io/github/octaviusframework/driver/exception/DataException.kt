@@ -28,7 +28,7 @@ class DataException(
     sqlState: String? = null
 ) : OctaviusException("DATA_EXCEPTION:${reason.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
-        appendLine("message: ${generateDeveloperMessage(reason)}")
+        appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")
     }
 }

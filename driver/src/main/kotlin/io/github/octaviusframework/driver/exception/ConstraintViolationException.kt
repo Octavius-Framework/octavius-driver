@@ -58,7 +58,7 @@ class ConstraintViolationException(
     sqlState = sqlState
 ) {
     override fun getDetailedMessage(): String = buildString {
-        appendLine("message: ${generateDeveloperMessage(reason)}")
+        appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")
         if (schema != null) appendLine("Schema: $schema")
         if (table != null) appendLine("Table: $table")
@@ -67,8 +67,8 @@ class ConstraintViolationException(
     }
 }
 
-private fun generateDeveloperMessage(messageEnum: ConstraintViolationExceptionReason): String =
-    when (messageEnum) {
+private fun generateDeveloperMessage(reason: ConstraintViolationExceptionReason): String =
+    when (reason) {
         ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION -> "A duplicate value was provided for a unique column or index (PostgreSQL 23505)."
         ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION -> "A value was provided that does not exist in the referenced table (PostgreSQL 23503)."
         ConstraintViolationExceptionReason.NOT_NULL_VIOLATION -> "A null value was provided for a non-nullable column (PostgreSQL 23502)."

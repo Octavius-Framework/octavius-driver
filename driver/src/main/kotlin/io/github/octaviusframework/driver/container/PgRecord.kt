@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 
 /**
@@ -27,13 +27,13 @@ class PgRecord internal constructor(
 
         if (value == null) {
             throw MappingException(
-                MappingExceptionMessage.CONVERSION_ERROR,
+                MappingExceptionReason.CONVERSION_ERROR,
                 details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
         throw MappingException(
-            MappingExceptionMessage.CONVERSION_ERROR,
+            MappingExceptionReason.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

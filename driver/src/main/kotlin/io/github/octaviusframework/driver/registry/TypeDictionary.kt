@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 
 /**
@@ -72,7 +72,7 @@ class TypeDictionary private constructor(
      * @throws TypeException if the type is not found.
      */
     fun getPgType(oid: Int): PgType = types[oid]
-        ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, oid = oid, details = "Type with OID $oid not found")
+        ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, oid = oid, details = "Type with OID $oid not found")
 
     /**
      * Retrieves an array type by the OID of its elements.
@@ -82,7 +82,7 @@ class TypeDictionary private constructor(
      * @throws TypeException if the array type is not found.
      */
     fun getArrayType(elementOid: Int): PgType.Array = arrayTypesByElementOid[elementOid]
-        ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, oid = elementOid, details = "Array type for element OID $elementOid not found")
+        ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, oid = elementOid, details = "Array type for element OID $elementOid not found")
 
     /**
      * Retrieves a range type by the OID of its elements.
@@ -92,7 +92,7 @@ class TypeDictionary private constructor(
      * @throws TypeException if the range type is not found.
      */
     fun getRangeType(elementOid: Int): PgType.Range = rangeTypesByElementOid[elementOid]
-        ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, oid = elementOid, details = "Range type for element OID $elementOid not found")
+        ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, oid = elementOid, details = "Range type for element OID $elementOid not found")
 
     /**
      * Retrieves a multirange type by the OID of its base range type.
@@ -102,7 +102,7 @@ class TypeDictionary private constructor(
      * @throws TypeException if the multirange type is not found.
      */
     fun getMultirangeType(rangeOid: Int): PgType.Multirange = multirangeTypesByRangeOid[rangeOid]
-        ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, oid = rangeOid, details = "Multirange type for range OID $rangeOid not found")
+        ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, oid = rangeOid, details = "Multirange type for range OID $rangeOid not found")
 
     /**
      * Resolves the OID of a type given its name and an optional schema.
@@ -121,13 +121,13 @@ class TypeDictionary private constructor(
         searchPath: List<String>
     ): Int {
         val schemasForName = typesByName[typeName]
-            ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
+            ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
 
         var resolvedOid: Int? = null
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotEmpty()) {
             resolvedOid = schemasForName[requestedSchema]
-                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
+                ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
         } else {
             // 2. If schema is empty, look in search_path (first match wins)
             for (i in searchPath.indices) {
@@ -143,14 +143,14 @@ class TypeDictionary private constructor(
                 if (schemasForName.size == 1) {
                     resolvedOid = schemasForName.values.first()
                 } else {
-                    throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
+                    throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
                 }
             }
         }
 
         return if (isArray) {
             arrayTypesByElementOid[resolvedOid]?.oid
-                ?: throw TypeException(TypeExceptionMessage.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
+                ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
         } else {
             resolvedOid
         }

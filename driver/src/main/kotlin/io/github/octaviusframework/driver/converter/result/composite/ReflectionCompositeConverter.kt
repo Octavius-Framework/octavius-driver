@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
@@ -63,7 +63,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
+                        throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
@@ -74,7 +74,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
                 }
             } else {
                 if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Missing non-nullable attribute '$columnName' in composite for class $kClass", path = mutableListOf(columnName))
+                    throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Missing non-nullable attribute '$columnName' in composite for class $kClass", path = mutableListOf(columnName))
                 }
                 if (!param.isOptional) {
                     constructorArgs[param] = null

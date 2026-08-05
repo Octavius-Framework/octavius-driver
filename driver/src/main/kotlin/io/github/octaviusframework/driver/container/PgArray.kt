@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 
 /**
  * Represents a single dimension of a PostgreSQL array.
@@ -38,7 +38,7 @@ class PgArray(
         val value = elements[index]
         if (value is T) return value
         throw MappingException(
-            MappingExceptionMessage.CONVERSION_ERROR,
+            MappingExceptionReason.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

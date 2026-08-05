@@ -38,7 +38,7 @@ class QueryExecutor internal constructor(
                 is RowDescriptionMessage, is DataRowMessage -> {
                     if (errorResponse == null && executionError == null) {
                         executionError = InvalidOperationException(
-                            InvalidOperationExceptionMessage.UNEXPECTED_RESULT,
+                            InvalidOperationExceptionReason.UNEXPECTED_RESULT,
                             "Method execute() received result rows. Use query() for DQL queries."
                         )
                     }
@@ -95,7 +95,7 @@ class QueryExecutor internal constructor(
                 is DataRowMessage, is RowDescriptionMessage -> {
                     if (errorResponse == null && executionError == null) {
                         executionError = InvalidOperationException(
-                            InvalidOperationExceptionMessage.UNEXPECTED_RESULT,
+                            InvalidOperationExceptionReason.UNEXPECTED_RESULT,
                             "Method update() received result rows. Use query() for DQL queries."
                         )
                     }
@@ -192,7 +192,7 @@ class QueryExecutor internal constructor(
                             executionError = e
                         } catch (e: Exception) {
                             executionError = MappingException(
-                                MappingExceptionMessage.CONVERSION_ERROR,
+                                MappingExceptionReason.CONVERSION_ERROR,
                                 "Exception in row mapping: ${e.message}",
                                 e
                             )
@@ -267,7 +267,7 @@ class QueryExecutor internal constructor(
                                 break@fetchLoop
                             } catch (e: Exception) {
                                 executionError = MappingException(
-                                    MappingExceptionMessage.CONVERSION_ERROR,
+                                    MappingExceptionReason.CONVERSION_ERROR,
                                     "Exception in block: ${e.message}",
                                     e
                                 )

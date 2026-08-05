@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.codec.dynamic
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KClass
 
@@ -29,7 +29,7 @@ internal class DynamicDomainCodec<T : Any>(
     @Suppress("UNCHECKED_CAST")
     private val delegate: TypeCodec<T>
         get() = typeRegistry.codecs.getCodecByOid<T>(baseTypeOid)
-            ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = baseTypeOid, details = "Serializer not found for base domain type with OID $baseTypeOid")
+            ?: throw TypeException(TypeExceptionReason.MISSING_CODEC, oid = baseTypeOid, details = "Serializer not found for base domain type with OID $baseTypeOid")
 
     override val kotlinClass: KClass<T>
         get() = delegate.kotlinClass

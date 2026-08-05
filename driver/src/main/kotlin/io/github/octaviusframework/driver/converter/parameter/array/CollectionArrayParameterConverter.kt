@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
@@ -92,7 +92,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
 
         if (arrayType == null) {
             throw TypeException(
-                TypeExceptionMessage.TYPE_NOT_FOUND,
+                TypeExceptionReason.TYPE_NOT_FOUND,
                 details = "Cannot infer array type for the collection. The collection is empty, contains only nulls, or the element type is unknown. Use explicit typing (e.g. .withPgType(...))."
             )
         }

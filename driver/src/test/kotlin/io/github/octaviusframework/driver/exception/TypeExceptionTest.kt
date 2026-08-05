@@ -17,7 +17,7 @@ class TypeExceptionTest {
             nested.withPgType(PgStandardType.TEXT)
         }
         
-        assertEquals(TypeExceptionMessage.NESTED_PGTYPED_NOT_ALLOWED, exception.messageEnum)
+        assertEquals(TypeExceptionReason.NESTED_PGTYPED_NOT_ALLOWED, exception.reason)
     }
     
     @Test
@@ -28,7 +28,7 @@ class TypeExceptionTest {
             dictionary.getPgType(999999)
         }
         
-        assertEquals(TypeExceptionMessage.TYPE_NOT_FOUND, exception.messageEnum)
+        assertEquals(TypeExceptionReason.TYPE_NOT_FOUND, exception.reason)
         assertEquals(999999, exception.oid)
     }
 
@@ -40,7 +40,7 @@ class TypeExceptionTest {
             dictionary.resolveOid("some_non_existent_type", "", false, emptyList())
         }
         
-        assertEquals(TypeExceptionMessage.TYPE_NOT_FOUND, exception.messageEnum)
+        assertEquals(TypeExceptionReason.TYPE_NOT_FOUND, exception.reason)
         assertEquals("some_non_existent_type", exception.typeName)
     }
 }

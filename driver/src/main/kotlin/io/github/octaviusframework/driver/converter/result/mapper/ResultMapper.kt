@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.result.mapper
 
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.KClass
@@ -25,7 +25,7 @@ internal class DefaultDeserializationContext(
         try {
         if (source == null) {
             if (!expectedType.isMarkedNullable) {
-                throw MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Cannot deserialize null to non-nullable type $expectedType")
+                throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Cannot deserialize null to non-nullable type $expectedType")
             }
             @Suppress("UNCHECKED_CAST")
             return null as T
@@ -45,13 +45,13 @@ internal class DefaultDeserializationContext(
             return source as T
         }
 
-            throw MappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
+            throw MappingException(MappingExceptionReason.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
         } catch (e: MappingException) {
             if (pathSegment != null) e.path.add(pathSegment)
             throw e
         } catch (e: Exception) {
             val ex = MappingException(
-                MappingExceptionMessage.CONVERSION_ERROR,
+                MappingExceptionReason.CONVERSION_ERROR,
                 details = "Error during result deserialization: ${e.message}", 
                 cause = e
             )

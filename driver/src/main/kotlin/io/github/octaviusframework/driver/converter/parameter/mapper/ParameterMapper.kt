@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.KClass
 
@@ -28,7 +28,7 @@ internal class DefaultSerializationContext(
             throw e
         } catch (e: Exception) {
             val ex = MappingException(
-                MappingExceptionMessage.CONVERSION_ERROR,
+                MappingExceptionReason.CONVERSION_ERROR,
                 details = "Error during parameter serialization: ${e.message}", 
                 cause = e
             )

@@ -5,9 +5,9 @@ package io.github.octaviusframework.driver.row
 import io.github.octaviusframework.driver.codec.decodeSafely
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -49,7 +49,7 @@ class Row(
             val offset = columnOffsets[index]
             val oid = metadata.getOid(index)
             val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
-                ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Row")
+                ?: throw TypeException(TypeExceptionReason.MISSING_CODEC, oid = oid, details = "Row")
             codec.decodeSafely(rawData, offset, colLength)
         }
     }
@@ -62,7 +62,7 @@ class Row(
     }
 
     fun getRaw(index: Int): Any? {
-        if (index !in values.indices) throw MappingException(MappingExceptionMessage.COLUMN_NOT_FOUND, "Column index out of bounds: $index")
+        if (index !in values.indices) throw MappingException(MappingExceptionReason.COLUMN_NOT_FOUND, "Column index out of bounds: $index")
         return values[index]
     }
 

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.type
 
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
 
 /**
@@ -15,7 +15,7 @@ import io.github.octaviusframework.driver.identifier.QualifiedName
 data class PgTyped(val value: Any?, val pgType: QualifiedName) {
     init {
         if (value is PgTyped) {
-            throw TypeException(TypeExceptionMessage.NESTED_PGTYPED_NOT_ALLOWED)
+            throw TypeException(TypeExceptionReason.NESTED_PGTYPED_NOT_ALLOWED)
         }
     }
 }

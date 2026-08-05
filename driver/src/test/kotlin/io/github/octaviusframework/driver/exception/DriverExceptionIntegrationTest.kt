@@ -19,7 +19,7 @@ class DriverExceptionIntegrationTest {
             val exception = assertFailsWith<InvalidOperationException> {
                 session.createNativeQuery("SELECT 1").execute()
             }
-            assertEquals(InvalidOperationExceptionMessage.UNEXPECTED_RESULT, exception.messageEnum)
+            assertEquals(InvalidOperationExceptionReason.UNEXPECTED_RESULT, exception.reason)
         }
     }
 
@@ -31,7 +31,7 @@ class DriverExceptionIntegrationTest {
                 password = "wrong_password"
             })
         }
-        assertEquals(InitializationExceptionMessage.SERVER_REJECTED_CREDENTIALS, exception.messageEnum)
+        assertEquals(InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS, exception.reason)
         assertEquals("28P01", exception.sqlState) // Invalid password state
     }
 
@@ -43,7 +43,7 @@ class DriverExceptionIntegrationTest {
                 password = "1234"
             })
         }
-        assertEquals(InitializationExceptionMessage.CONNECTION_ERROR, exception.messageEnum)
+        assertEquals(InitializationExceptionReason.CONNECTION_ERROR, exception.reason)
     }
 
     @Test

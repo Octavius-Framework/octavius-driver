@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -227,7 +227,7 @@ class SerializationTest {
             session.createNativeQuery("SELECT $1 as res").fetchRows(recordMap)
         }
         
-        assertEquals(TypeExceptionMessage.MISSING_CODEC, exception.messageEnum)
+        assertEquals(TypeExceptionReason.MISSING_CODEC, exception.reason)
     }
 
 

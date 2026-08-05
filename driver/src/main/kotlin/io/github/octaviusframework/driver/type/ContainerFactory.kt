@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 
 /**
  * A factory for creating PostgreSQL container types such as composites, ranges, and multiranges.
@@ -39,7 +39,7 @@ class ContainerFactory(
      */
     fun createComposite(oid: Int): PgComposite {
         val pgType = registry.dictionary.getPgType(oid) as? PgType.Composite
-            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite")
+            ?: throw TypeException(TypeExceptionReason.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite")
         val fields = Array<Any?>(pgType.attributes.size) { null }
         return PgComposite(pgType, fields, registry)
     }
@@ -113,7 +113,7 @@ class ContainerFactory(
         isUpperNull: Boolean = false
     ): PgRange {
         val rangeType = registry.dictionary.getPgType(oid) as? PgType.Range
-            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range")
+            ?: throw TypeException(TypeExceptionReason.NOT_A_CONTAINER, oid = oid, details = "Type is not a range")
             
         return PgRange.create(
             rangeOid = rangeType.oid,
@@ -152,7 +152,7 @@ class ContainerFactory(
      */
     fun createEmptyRange(oid: Int): PgRange {
         val rangeType = registry.dictionary.getPgType(oid) as? PgType.Range
-            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a range")
+            ?: throw TypeException(TypeExceptionReason.NOT_A_CONTAINER, oid = oid, details = "Type is not a range")
         return PgRange.empty(rangeType.oid, rangeType.subtypeOid, registry)
     }
 
@@ -178,7 +178,7 @@ class ContainerFactory(
      */
     fun createMultirange(oid: Int, vararg ranges: PgRange): PgMultirange {
         val multirangeType = registry.dictionary.getPgType(oid) as? PgType.Multirange
-            ?: throw TypeException(TypeExceptionMessage.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange")
+            ?: throw TypeException(TypeExceptionReason.NOT_A_CONTAINER, oid = oid, details = "Type is not a multirange")
         return PgMultirange(multirangeType.oid, multirangeType.rangeOid, ranges.toList())
     }
 }

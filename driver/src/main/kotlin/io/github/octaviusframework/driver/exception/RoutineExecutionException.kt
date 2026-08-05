@@ -42,7 +42,7 @@ class RoutineExecutionException(
     sqlState: String? = null
 ) : OctaviusException("ROUTINE_EXECUTION_EXCEPTION:${reason.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
-        appendLine("message: ${generateDeveloperMessage(reason)}")
+        appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")
         if (dbDetail != null) appendLine("DB Detail: $dbDetail")
         if (hint != null) appendLine("Hint: $hint")
