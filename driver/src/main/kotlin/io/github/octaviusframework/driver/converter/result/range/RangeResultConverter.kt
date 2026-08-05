@@ -1,10 +1,9 @@
 package io.github.octaviusframework.driver.converter.result.range
 
+import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.container.PgRange
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.type.Range
 import kotlin.reflect.KClass
 import kotlin.reflect.KType

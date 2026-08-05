@@ -1,8 +1,7 @@
 package io.github.octaviusframework.driver.codec.standard
 
-import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
-import io.github.octaviusframework.driver.exception.TypeException
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.io.*
 import java.math.BigDecimal
 import java.math.BigInteger

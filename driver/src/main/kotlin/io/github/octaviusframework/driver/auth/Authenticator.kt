@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.auth
 
-import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
-import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
+import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse

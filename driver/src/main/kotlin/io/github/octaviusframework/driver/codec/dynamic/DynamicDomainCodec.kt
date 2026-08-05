@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.codec.dynamic
 
-import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
 import io.github.octaviusframework.driver.registry.TypeRegistry

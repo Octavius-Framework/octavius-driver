@@ -1,10 +1,10 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import java.sql.Connection
 import javax.sql.DataSource
-import io.github.octaviusframework.driver.properties.OctaviusProperties
 
 // DriverManager
 /**

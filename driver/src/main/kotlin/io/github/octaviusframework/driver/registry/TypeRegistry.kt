@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.type.PgType
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import kotlin.reflect.KClass
 
 class TypeRegistry {
     val lock = ReentrantLock()

@@ -1,9 +1,8 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.identifier.QualifiedName
-
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.identifier.QualifiedName
 
 /**
  * Wraps a value to explicitly specify the target PostgreSQL type.

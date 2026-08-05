@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.converter.result.row
 
-import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.row.Row

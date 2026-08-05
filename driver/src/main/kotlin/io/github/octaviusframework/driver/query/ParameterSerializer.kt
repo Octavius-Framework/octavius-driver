@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.encodeSafely
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 import io.github.octaviusframework.driver.exception.TypeException
@@ -10,7 +11,6 @@ import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
-import io.github.octaviusframework.driver.codec.encodeSafely
 
 class ParameterSerializer(
     private val typeManager: TypeManager,

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.result.mapper
 
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 

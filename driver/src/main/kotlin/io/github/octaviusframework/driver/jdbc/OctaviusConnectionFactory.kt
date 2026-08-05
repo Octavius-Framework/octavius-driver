@@ -1,15 +1,15 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
-import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import java.sql.Connection
 import java.sql.DriverManager
-import java.util.Properties
+import java.util.*
 
 object OctaviusConnectionFactory {
     fun createConnection(url: String, info: Properties? = null): Connection {

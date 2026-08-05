@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.row
 
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionMessage
 
 class RowMetadata(
     val descriptors: List<FieldDescription>

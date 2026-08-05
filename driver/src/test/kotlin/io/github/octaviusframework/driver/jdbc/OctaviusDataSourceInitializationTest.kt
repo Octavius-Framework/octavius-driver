@@ -1,9 +1,8 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.ssl.SslMode
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.util.Properties
 
 class OctaviusDataSourceInitializationTest {
 

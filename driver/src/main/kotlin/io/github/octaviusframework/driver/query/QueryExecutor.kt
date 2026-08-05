@@ -1,17 +1,11 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
-import io.github.octaviusframework.driver.exception.ExceptionTranslator
-import io.github.octaviusframework.driver.exception.InvalidOperationException
-import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
-import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.RowMetadata
 import kotlin.concurrent.withLock

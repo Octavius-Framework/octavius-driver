@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.ssl
 
-import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties

@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.properties
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.net.URLDecoder
 import java.net.URLEncoder
-import java.util.Properties
+import java.util.*
 
 class OctaviusProperties {
     var user: String? = null

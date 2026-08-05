@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.registry
 
+import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.array.CollectionArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.array.PrimitiveArrayParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
@@ -20,12 +21,12 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
-import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.reflect.KClass
+
 /**
  * A registry managing the converters used for mapping between Kotlin objects and PostgreSQL types.
  *

@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.isKnownOid

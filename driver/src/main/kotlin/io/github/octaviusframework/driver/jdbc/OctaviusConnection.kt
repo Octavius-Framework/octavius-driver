@@ -1,11 +1,6 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
-import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.InvalidOperationException
-import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
-import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
-import io.github.octaviusframework.driver.exception.NetworkException
+import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
