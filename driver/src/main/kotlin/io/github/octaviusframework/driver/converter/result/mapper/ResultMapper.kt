@@ -51,6 +51,14 @@ internal class DefaultDeserializationContext(
         } catch (e: MappingException) {
             if (pathSegment != null) e.path.add(pathSegment)
             throw e
+        } catch (e: Exception) {
+            val ex = MappingException(
+                MappingExceptionMessage.CONVERTER_ERROR,
+                details = "Error during result deserialization: ${e.message}", 
+                cause = e
+            )
+            if (pathSegment != null) ex.path.add(pathSegment)
+            throw ex
         }
     }
 
