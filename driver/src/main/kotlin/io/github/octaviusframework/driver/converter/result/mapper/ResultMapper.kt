@@ -27,7 +27,7 @@ internal class DefaultDeserializationContext(
         try {
         if (source == null) {
             if (!expectedType.isMarkedNullable) {
-                throw IllegalArgumentException("Cannot deserialize null to non-nullable type $expectedType")
+                throw MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Cannot deserialize null to non-nullable type $expectedType")
             }
             @Suppress("UNCHECKED_CAST")
             return null as T
