@@ -1,12 +1,11 @@
 package io.github.octaviusframework.driver.converter.result.array
 
+import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.container.PgArray
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -42,7 +41,14 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
         if (source.dimensions.isEmpty()) {
             val mappedElements = List(elements.size) { i ->
                 val value = elements[i]
-                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType)
+                if (value == null) {
+                    if (!ktElementType.isMarkedNullable) {
+                        val e = MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
+                        e.path.add("[$i]")
+                        throw e
+                    }
+                    null
+                } else context.convert<Any>(value, ktElementType, pgElementType, "[$i]")
             }
             return if (kClass == Set::class) mappedElements.toSet() else mappedElements
         }
@@ -59,6 +65,11 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 val flatIndex = flatIndexOffset + i
                 val value = elements[flatIndex]
                 if (value == null) {
+                    if (!ktElementType.isMarkedNullable) {
+                        val e = MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
+                        e.path.add("[$i]")
+                        throw e
+                    }
                     null
                 } else {
                     if (!converterSearched) {
@@ -70,10 +81,17 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                         if (kClassForCast != null && kClassForCast.isInstance(value)) {
                             value
                         } else {
-                            throw TypeException(TypeExceptionMessage.CASTING_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
+                            val e = MappingException(MappingExceptionReason.CONVERSION_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
+                            e.path.add("[$i]")
+                            throw e
                         }
                     } else {
-                        elementConverter!!.convert(value, ktElementType, pgElementType, context)
+                        try {
+                            elementConverter!!.convert(value, ktElementType, pgElementType, context)
+                        } catch (e: MappingException) {
+                            e.path.add("[$i]")
+                            throw e
+                        }
                     }
                 }
             }
@@ -84,14 +102,19 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
             }
 
             List(currentDimSize) { i ->
-                buildMultiDimensionalCollection(
-                    source,
-                    context,
-                    ktElementType,
-                    dimensionIndex + 1,
-                    flatIndexOffset + i * multiplier,
-                    pgElementType
-                )
+                try {
+                    buildMultiDimensionalCollection(
+                        source,
+                        context,
+                        ktElementType,
+                        dimensionIndex + 1,
+                        flatIndexOffset + i * multiplier,
+                        pgElementType
+                    )
+                } catch (e: MappingException) {
+                    e.path.add("[$i]")
+                    throw e
+                }
             }
         }
 

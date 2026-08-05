@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.transaction
 
-import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import java.sql.Savepoint
 
@@ -39,14 +39,14 @@ internal class OctaviusSavepointImpl : OctaviusSavepoint, Savepoint {
 
     override fun getSavepointId(): Int {
         if (savepointName != null) {
-            throw InvalidOperationException(InvalidOperationExceptionMessage.INVALID_SAVEPOINT, "Savepoint is named")
+            throw InvalidOperationException(InvalidOperationExceptionReason.INVALID_SAVEPOINT, "Savepoint is named")
         }
         return savepointId
     }
 
     override fun getSavepointName(): String {
         return savepointName ?: throw InvalidOperationException(
-            InvalidOperationExceptionMessage.INVALID_SAVEPOINT,
+            InvalidOperationExceptionReason.INVALID_SAVEPOINT,
             "Savepoint is un-named"
         )
     }

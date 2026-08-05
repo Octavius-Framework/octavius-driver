@@ -1,8 +1,7 @@
 package io.github.octaviusframework.driver.container
 
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.registry.TypeRegistry
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 
 /**
@@ -11,13 +10,11 @@ import io.github.octaviusframework.driver.type.PgType
  * @property type The record type definition.
  * @property fieldOids Array of OIDs corresponding to the fields in this record.
  * @property fields Array containing the values of the fields in this record.
- * @property typeRegistry Registry used for resolving types.
  */
 class PgRecord internal constructor(
     val type: PgType.Record,
     val fieldOids: IntArray,
-    val fields: Array<Any?>,
-    @PublishedApi internal val typeRegistry: TypeRegistry
+    val fields: Array<Any?>
 ) : PgContainer {
     override val containerOid: Int get() = type.oid
 
@@ -29,25 +26,16 @@ class PgRecord internal constructor(
         }
 
         if (value == null) {
-            throw TypeException(
-                TypeExceptionMessage.CASTING_ERROR,
-                typeName = T::class.simpleName,
+            throw MappingException(
+                MappingExceptionReason.CONVERSION_ERROR,
                 details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
-        throw TypeException(
-            TypeExceptionMessage.CASTING_ERROR,
-            typeName = T::class.simpleName,
-            details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
+        throw MappingException(
+            MappingExceptionReason.CONVERSION_ERROR,
+            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
-    }
-
-
-    fun getAttributeType(index: Int): PgType {
-        
-        val oid = fieldOids[index]
-        return typeRegistry.dictionary.getPgType(oid)
     }
 
     fun getAttributeOid(index: Int): Int {

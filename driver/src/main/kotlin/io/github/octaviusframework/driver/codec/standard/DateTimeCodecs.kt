@@ -1,14 +1,12 @@
 package io.github.octaviusframework.driver.codec.standard
 
-import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.io.getLongBE
-import io.github.octaviusframework.driver.type.MAX
 import io.github.octaviusframework.driver.type.DISTANT_FUTURE
 import io.github.octaviusframework.driver.type.DISTANT_PAST
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.type.MAX
 import io.github.octaviusframework.driver.type.PgInterval
 import kotlinx.datetime.*
 import kotlin.time.Instant
@@ -33,16 +31,10 @@ private fun instantToPgMicros(instant: Instant): Long {
         val nanos = instant.nanosecondsOfSecond
         val totalMicros = Math.addExact(Math.multiplyExact(seconds, 1000000L), (nanos / 1000).toLong())
         val pgMicros = Math.subtractExact(totalMicros, PG_EPOCH_MICROS)
-        if (pgMicros == Long.MAX_VALUE || pgMicros == Long.MIN_VALUE) {
-            throw ArithmeticException("Instant value overlaps with PostgreSQL infinity representation")
-        }
+        require(!(pgMicros == Long.MAX_VALUE || pgMicros == Long.MIN_VALUE)) { "Instant value overlaps with PostgreSQL infinity representation" }
         return pgMicros
     } catch (e: ArithmeticException) {
-        throw TypeException(
-            messageEnum = TypeExceptionMessage.VALUE_OUT_OF_RANGE,
-            details = "Instant is out of range for PostgreSQL timestamp",
-            cause = e
-        )
+        throw IllegalArgumentException("Instant is out of range for PostgreSQL timestamp: ${e.message}")
     }
 }
 
@@ -54,8 +46,7 @@ internal object TimestamptzCodec : TypeCodec<Instant> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> Instant = { data, offset, _ ->
-        val micros = data.getLongBE(offset)
-        when (micros) {
+        when (val micros = data.getLongBE(offset)) {
             Long.MAX_VALUE -> Instant.DISTANT_FUTURE
             Long.MIN_VALUE -> Instant.DISTANT_PAST
             else -> microsToInstant(micros)
@@ -79,8 +70,7 @@ internal object TimestampCodec : TypeCodec<LocalDateTime> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> LocalDateTime = { data, offset, _ ->
-        val micros = data.getLongBE(offset)
-        when (micros) {
+        when (val micros = data.getLongBE(offset)) {
             Long.MAX_VALUE -> LocalDateTime.DISTANT_FUTURE
             Long.MIN_VALUE -> LocalDateTime.DISTANT_PAST
             else -> microsToInstant(micros).toLocalDateTime(TimeZone.UTC)
@@ -104,8 +94,7 @@ internal object DateCodec : TypeCodec<LocalDate> {
     override val isDefaultForKotlinType = true
 
     override val fromBinary: (ByteArray, Int, Int) -> LocalDate = { data, offset, _ ->
-        val days = data.getIntBE(offset)
-        when (days) {
+        when (val days = data.getIntBE(offset)) {
             Int.MAX_VALUE -> LocalDate.DISTANT_FUTURE
             Int.MIN_VALUE -> LocalDate.DISTANT_PAST
             else -> LocalDate.fromEpochDays(days + PG_EPOCH_DAYS)
@@ -119,16 +108,10 @@ internal object DateCodec : TypeCodec<LocalDate> {
             else -> {
                 try {
                     val pgDays = Math.toIntExact(Math.subtractExact(value.toEpochDays(), PG_EPOCH_DAYS.toLong()))
-                    if (pgDays == Int.MAX_VALUE || pgDays == Int.MIN_VALUE) {
-                        throw ArithmeticException("LocalDate value overlaps with PostgreSQL infinity representation")
-                    }
+                    require(pgDays != Int.MAX_VALUE && pgDays != Int.MIN_VALUE) { "LocalDate value overlaps with PostgreSQL infinity representation" }
                     writer.writeInt(pgDays)
                 } catch (e: ArithmeticException) {
-                    throw TypeException(
-                        messageEnum = TypeExceptionMessage.VALUE_OUT_OF_RANGE,
-                        details = "LocalDate is out of range for PostgreSQL date",
-                        cause = e
-                    )
+                    throw IllegalArgumentException("LocalDate is out of range for PostgreSQL date: ${e.message}")
                 }
             }
         }

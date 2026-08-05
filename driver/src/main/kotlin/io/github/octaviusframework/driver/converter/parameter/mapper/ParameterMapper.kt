@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.KClass
 
@@ -18,8 +20,21 @@ internal class DefaultSerializationContext(
     private val registry: ParameterConverterRegistry,
     override val typeManager: TypeManager
 ) : SerializationContext {
-    override fun convert(source: Any, expectedOid: Int): Any? {
-        return registry.convert(source, expectedOid, this)
+    override fun convert(source: Any, expectedOid: Int, pathSegment: String?): Any {
+        try {
+            return registry.convert(source, expectedOid, this)
+        } catch (e: MappingException) {
+            if (pathSegment != null) e.path.add(pathSegment)
+            throw e
+        } catch (e: Exception) {
+            val ex = MappingException(
+                MappingExceptionReason.CONVERSION_ERROR,
+                details = "Error during parameter serialization: ${e.message}", 
+                cause = e
+            )
+            if (pathSegment != null) ex.path.add(pathSegment)
+            throw ex
+        }
     }
 
     override fun findConverter(source: Any, expectedOid: Int): ParameterConverter<Any>? {

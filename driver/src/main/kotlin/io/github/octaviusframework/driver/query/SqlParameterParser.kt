@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.query
 
-import io.github.octaviusframework.driver.exception.QueryContext
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import java.util.concurrent.ConcurrentHashMap

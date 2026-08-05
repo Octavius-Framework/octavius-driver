@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
@@ -30,7 +29,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
         val typeRegistry = context.typeManager.registry
-        val registration = typeRegistry.converterRegistry.registeredComposites[source::class] ?: throw OctaviusInternalException()
+        val registration = typeRegistry.converterRegistry.registeredComposites[source::class] ?: error("Missing registration for composite")
 
         val type = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as PgType.Composite
@@ -57,7 +56,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
             } else null
 
             if (value != null) {
-                value = context.convert(value, attributeOid)
+                value = context.convert(value, attributeOid, attrName)
             }
 
             value

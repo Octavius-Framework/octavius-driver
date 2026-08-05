@@ -1,16 +1,11 @@
 package io.github.octaviusframework.driver.codec.dynamic
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
-import io.github.octaviusframework.driver.container.ArrayDimension
-import io.github.octaviusframework.driver.container.PgArray
-import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.container.PgContainer
-import io.github.octaviusframework.driver.container.PgMultirange
-import io.github.octaviusframework.driver.container.PgRange
-import io.github.octaviusframework.driver.container.PgRecord
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import io.github.octaviusframework.driver.codec.decodeSafely
+import io.github.octaviusframework.driver.codec.encodeSafely
+import io.github.octaviusframework.driver.container.*
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
@@ -30,24 +25,24 @@ internal object ContainerCodec {
     private fun parseField(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): Any {
         val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
             ?: throw TypeException(
-                TypeExceptionMessage.MISSING_CODEC,
+                TypeExceptionReason.MISSING_CODEC,
                 oid = oid,
                 details = "Parsing field of oid $oid"
             )
-        return codec.fromBinary(data, offset, length)
+        return codec.decodeSafely(data, offset, length)
     }
 
     /**
      * Parses a byte array into a [PgContainer] based on the OID.
      */
-    fun parseContainer(data: ByteArray, offset: Int, length: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
+    fun parseContainer(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgContainer {
         return when (val pgType = typeRegistry.dictionary.getPgType(oid)) {
             is PgType.Array -> parsePgArray(data, offset, pgType.oid, typeRegistry)
             is PgType.Composite -> parsePgComposite(data, offset, pgType.oid, typeRegistry)
             is PgType.Range -> parsePgRange(data, offset, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(data, offset, pgType.oid, typeRegistry)
             is PgType.Record -> parsePgRecord(data, offset, pgType.oid, typeRegistry)
-            else -> throw OctaviusInternalException()
+            else -> error("Unknown pg type in container parsing")
         }
     }
 
@@ -104,7 +99,7 @@ internal object ContainerCodec {
     fun parsePgComposite(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgComposite {
         val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Composite
             ?: throw TypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
+                TypeExceptionReason.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Composite type"
             )
@@ -137,7 +132,7 @@ internal object ContainerCodec {
     fun parsePgRecord(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRecord {
         val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Record
             ?: throw TypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
+                TypeExceptionReason.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Record type"
             )
@@ -160,7 +155,7 @@ internal object ContainerCodec {
             }
         }
 
-        return PgRecord(pgType, fieldOids, fields, typeRegistry)
+        return PgRecord(pgType, fieldOids, fields)
     }
 
     /**
@@ -175,7 +170,7 @@ internal object ContainerCodec {
     fun parsePgRange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgRange {
         val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Range
             ?: throw TypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
+                TypeExceptionReason.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Range type"
             )
@@ -218,7 +213,7 @@ internal object ContainerCodec {
     fun parsePgMultirange(data: ByteArray, offset: Int, oid: Int, typeRegistry: TypeRegistry): PgMultirange {
         val pgType = typeRegistry.dictionary.getPgType(oid) as? PgType.Multirange
             ?: throw TypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
+                TypeExceptionReason.NOT_A_CONTAINER,
                 oid = oid,
                 details = "Expected Multirange type"
             )
@@ -249,7 +244,7 @@ internal object ContainerCodec {
             is PgMultirange -> serializePgMultirange(container, writer, typeRegistry)
             is PgRecord -> serializePgRecord()
             else -> throw TypeException(
-                TypeExceptionMessage.NOT_A_CONTAINER,
+                TypeExceptionReason.NOT_A_CONTAINER,
                 typeName = container::class.simpleName,
                 details = "Unknown container type"
             )
@@ -273,19 +268,12 @@ internal object ContainerCodec {
 
         val codec = typeRegistry.codecs.getCodecByOid<Any>(expectedOid)
             ?: throw TypeException(
-                TypeExceptionMessage.MISSING_CODEC,
+                TypeExceptionReason.MISSING_CODEC,
                 oid = expectedOid,
                 details = "Serializing value: $value"
             )
-        if (!codec.kotlinClass.isInstance(value)) {
-            throw TypeException(
-                TypeExceptionMessage.INVALID_PARAMETER_TYPE,
-                oid = expectedOid,
-                details = "Type mismatch. Expected ${codec.kotlinClass.qualifiedName}, got ${value::class.qualifiedName}"
-            )
-        }
         val marker = writer.reserveLengthInt()
-        codec.toBinary(value, writer)
+        codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)
     }
 
@@ -336,7 +324,7 @@ internal object ContainerCodec {
      */
     fun serializePgRecord() {
         throw TypeException(
-            TypeExceptionMessage.ANONYMOUS_RECORD_NOT_SUPPORTED,
+            TypeExceptionReason.ANONYMOUS_RECORD_NOT_SUPPORTED,
             oid = 2249,
             details = "Postgres cannot accept 'record' type directly as a bound parameter. Use a registered composite type instead."
         )

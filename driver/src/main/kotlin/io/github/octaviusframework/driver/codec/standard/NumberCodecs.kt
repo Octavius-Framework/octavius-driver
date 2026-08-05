@@ -1,9 +1,7 @@
 package io.github.octaviusframework.driver.codec.standard
 
-import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.PgByteWriter
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.io.*
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -73,10 +71,7 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
         val dscale = data.getShortBE(offset + 6).toInt() and 0xFFFF
 
         if (sign == 0xC000) {
-            throw TypeException(
-                TypeExceptionMessage.VALUE_OUT_OF_RANGE,
-                details = "NaN is not supported by java.math.BigDecimal"
-            )
+            throw IllegalArgumentException("NaN is not supported by java.math.BigDecimal")
         }
 
         if (ndigits == 0) {

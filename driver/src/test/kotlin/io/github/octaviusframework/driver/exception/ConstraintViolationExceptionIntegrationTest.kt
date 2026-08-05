@@ -11,86 +11,98 @@ import kotlin.test.assertNotNull
 
 class ConstraintViolationExceptionIntegrationTest {
 
-    private fun getSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
-        user = "postgres"
-        password = "1234"
-    })
+    private fun getSession() =
+        getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+        })
 
     @BeforeEach
     fun setup() {
-        val session = getSession()
-        session.createNativeQuery("CREATE TABLE IF NOT EXISTS parent_table (id INT PRIMARY KEY)").execute()
-        session.createNativeQuery("""
+        getSession().use { session ->
+            session.createNativeQuery("CREATE TABLE IF NOT EXISTS parent_table (id INT PRIMARY KEY)").execute()
+            session.createNativeQuery(
+                """
             CREATE TABLE IF NOT EXISTS constraint_test_table (
                 id INT PRIMARY KEY,
                 parent_id INT REFERENCES parent_table(id),
                 not_null_col VARCHAR(50) NOT NULL,
                 check_col INT CHECK (check_col > 0)
             )
-        """).execute()
+        """
+            ).execute()
+        }
     }
 
     @AfterEach
     fun teardown() {
-        val session = getSession()
-        session.createNativeQuery("DROP TABLE IF EXISTS constraint_test_table").execute()
-        session.createNativeQuery("DROP TABLE IF EXISTS parent_table").execute()
+        getSession().use { session ->
+            session.createNativeQuery("DROP TABLE IF EXISTS constraint_test_table").execute()
+            session.createNativeQuery("DROP TABLE IF EXISTS parent_table").execute()
+        }
     }
 
     @Test
     fun `should throw UNIQUE_CONSTRAINT_VIOLATION`() {
-        val session = getSession()
-        session.createNativeQuery("INSERT INTO parent_table (id) VALUES (1)").execute()
-        
-        val exception = assertFailsWith<ConstraintViolationException> {
+        getSession().use { session ->
             session.createNativeQuery("INSERT INTO parent_table (id) VALUES (1)").execute()
+
+            val exception = assertFailsWith<ConstraintViolationException> {
+                session.createNativeQuery("INSERT INTO parent_table (id) VALUES (1)").execute()
+            }
+
+            assertEquals(ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION, exception.reason)
+            assertEquals("parent_table", exception.table)
+            assertNotNull(exception.constraint) // Usually parent_table_pkey
+            assertEquals("public", exception.schema)
         }
-        
-        assertEquals(ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION, exception.reason)
-        assertEquals("parent_table", exception.table)
-        assertNotNull(exception.constraint) // Usually parent_table_pkey
-        assertEquals("public", exception.schema)
     }
 
     @Test
     fun `should throw FOREIGN_KEY_VIOLATION`() {
-        val session = getSession()
-        
-        val exception = assertFailsWith<ConstraintViolationException> {
-            session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, 999, 'test', 5)").execute()
+        getSession().use { session ->
+
+            val exception = assertFailsWith<ConstraintViolationException> {
+                session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, 999, 'test', 5)")
+                    .execute()
+            }
+
+            assertEquals(ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION, exception.reason)
+            assertEquals("constraint_test_table", exception.table)
+            assertNotNull(exception.constraint)
+            assertEquals("public", exception.schema)
         }
-        
-        assertEquals(ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION, exception.reason)
-        assertEquals("constraint_test_table", exception.table)
-        assertNotNull(exception.constraint)
-        assertEquals("public", exception.schema)
     }
 
     @Test
     fun `should throw NOT_NULL_VIOLATION`() {
-        val session = getSession()
-        
-        val exception = assertFailsWith<ConstraintViolationException> {
-            session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, NULL, 5)").execute()
+        getSession().use { session ->
+
+            val exception = assertFailsWith<ConstraintViolationException> {
+                session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, NULL, 5)")
+                    .execute()
+            }
+
+            assertEquals(ConstraintViolationExceptionReason.NOT_NULL_VIOLATION, exception.reason)
+            assertEquals("constraint_test_table", exception.table)
+            assertEquals("not_null_col", exception.column)
+            assertEquals("public", exception.schema)
         }
-        
-        assertEquals(ConstraintViolationExceptionReason.NOT_NULL_VIOLATION, exception.reason)
-        assertEquals("constraint_test_table", exception.table)
-        assertEquals("not_null_col", exception.column)
-        assertEquals("public", exception.schema)
     }
 
     @Test
     fun `should throw CHECK_CONSTRAINT_VIOLATION`() {
-        val session = getSession()
-        
-        val exception = assertFailsWith<ConstraintViolationException> {
-            session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, 'test', 0)").execute()
+        getSession().use { session ->
+
+            val exception = assertFailsWith<ConstraintViolationException> {
+                session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, 'test', 0)")
+                    .execute()
+            }
+
+            assertEquals(ConstraintViolationExceptionReason.CHECK_CONSTRAINT_VIOLATION, exception.reason)
+            assertEquals("constraint_test_table", exception.table)
+            assertNotNull(exception.constraint)
+            assertEquals("public", exception.schema)
         }
-        
-        assertEquals(ConstraintViolationExceptionReason.CHECK_CONSTRAINT_VIOLATION, exception.reason)
-        assertEquals("constraint_test_table", exception.table)
-        assertNotNull(exception.constraint)
-        assertEquals("public", exception.schema)
     }
 }

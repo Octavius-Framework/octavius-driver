@@ -4,9 +4,8 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
@@ -36,7 +35,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
 
         if (arrayType == null) {
             throw TypeException(
-                TypeExceptionMessage.TYPE_NOT_FOUND,
+                TypeExceptionReason.TYPE_NOT_FOUND,
                 details = "Cannot infer array type for the primitive array. The array is empty, or the element type is unknown. Use explicit typing (e.g. .withPgType(...))."
             )
         }
@@ -44,14 +43,14 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
         val elementOid = arrayType.elementOid
 
         val convertedElements: MutableList<Any?> = when (source) {
-            is IntArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            is DoubleArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            is FloatArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            is LongArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            is ShortArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            is BooleanArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            is CharArray -> MutableList(source.size) { context.convert(source[it], elementOid) }
-            else -> throw OctaviusInternalException()
+            is IntArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            is DoubleArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            is FloatArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            is LongArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            is ShortArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            is BooleanArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            is CharArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
+            else -> error("Unknown primitive array type")
         }
 
         val dimensions = listOf(ArrayDimension(convertedElements.size, 1))

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.InvalidOperationException
-import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.io.PrintWriter
@@ -90,14 +90,14 @@ class OctaviusDataSource : DataSource {
 
     override fun getLoginTimeout(): Int = octaviusProperties.loginTimeout ?: 0
 
-    override fun getParentLogger(): Logger = throw InvalidOperationException(InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED)
+    override fun getParentLogger(): Logger = throw InvalidOperationException(InvalidOperationExceptionReason.FEATURE_NOT_SUPPORTED)
 
     @Suppress("UNCHECKED_CAST")
     override fun <T> unwrap(iface: Class<T>): T {
         if (iface.isInstance(this)) {
             return this as T
         }
-        throw InvalidOperationException(InvalidOperationExceptionMessage.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
+        throw InvalidOperationException(InvalidOperationExceptionReason.UNWRAP_ERROR, "Cannot unwrap to ${iface.name}")
     }
 
     override fun isWrapperFor(iface: Class<*>): Boolean = iface.isInstance(this)

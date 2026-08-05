@@ -3,6 +3,7 @@ package io.github.octaviusframework.driver.session
 import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
+import io.github.octaviusframework.driver.jdbc.unwrapToOctavius
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
@@ -11,15 +12,13 @@ import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.type.TypeManager
 import java.sql.Connection
-import io.github.octaviusframework.driver.jdbc.unwrapToOctavius
 
 
 internal class OctaviusSessionImpl(
     private val rawConnection: Connection
 ) : OctaviusSession {
 
-    internal val octaviusConnection: OctaviusConnection
-        get() = rawConnection.unwrapToOctavius()
+    internal val octaviusConnection: OctaviusConnection = rawConnection.unwrapToOctavius()
 
     override val types: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
 

@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.exception.InvalidOperationExceptionMessage
 import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLWarning
@@ -17,19 +17,19 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
     private var isClosedFlag = false
 
     private fun checkClosed() {
-        if (isClosedFlag || connection.isClosed) throw InvalidOperationException(InvalidOperationExceptionMessage.STATEMENT_CLOSED)
+        if (isClosedFlag || connection.isClosed) throw InvalidOperationException(InvalidOperationExceptionReason.STATEMENT_CLOSED)
     }
 
     override fun execute(sql: String?): Boolean {
         checkClosed()
-        if (sql == null) throw InvalidOperationException(InvalidOperationExceptionMessage.NULL_SQL)
+        if (sql == null) throw InvalidOperationException(InvalidOperationExceptionReason.NULL_SQL)
         connection.queryExecutor.execute(sql)
         return false // Return true only if the first result is a ResultSet
     }
 
     override fun executeUpdate(sql: String?): Int {
         checkClosed()
-        if (sql == null) throw InvalidOperationException(InvalidOperationExceptionMessage.NULL_SQL)
+        if (sql == null) throw InvalidOperationException(InvalidOperationExceptionReason.NULL_SQL)
         val affected = connection.queryExecutor.update(sql)
         return affected.toInt()
     }
@@ -44,7 +44,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
 
     // --- Everything else throws InvalidOperationException ---
 
-    private fun unsupported(): Nothing = throw InvalidOperationException(InvalidOperationExceptionMessage.FEATURE_NOT_SUPPORTED)
+    private fun unsupported(): Nothing = throw InvalidOperationException(InvalidOperationExceptionReason.FEATURE_NOT_SUPPORTED)
 
     override fun <T> unwrap(iface: Class<T>?): T = unsupported()
     override fun isWrapperFor(iface: Class<*>?): Boolean = unsupported()

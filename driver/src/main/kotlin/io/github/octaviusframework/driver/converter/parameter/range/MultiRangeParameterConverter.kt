@@ -3,7 +3,7 @@ package io.github.octaviusframework.driver.converter.parameter.range
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.MultiRange
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
@@ -37,7 +37,7 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
 
         if (pgType == null) {
             throw TypeException(
-                TypeExceptionMessage.TYPE_NOT_FOUND,
+                TypeExceptionReason.TYPE_NOT_FOUND,
                 details = "Cannot infer multirange type. The multirange is empty or bounds are null. Use explicit typing (e.g. .withPgType(...))."
             )
         }

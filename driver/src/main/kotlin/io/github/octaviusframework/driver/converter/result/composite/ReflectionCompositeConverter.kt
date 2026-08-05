@@ -1,15 +1,13 @@
 package io.github.octaviusframework.driver.converter.result.composite
 
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
-import io.github.octaviusframework.driver.exception.MappingException
-
+import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
+import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
@@ -37,13 +35,13 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
             val registry = context.typeManager.registry
             registry.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
                 ?: registry.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
-                ?: throw OctaviusInternalException()
+                ?: error("Missing composite registration for type")
         } else {
             expectedClass
         } as KClass<Any>
 
         val registration = context.typeManager.registry.converterRegistry.registeredComposites[kClass]
-            ?: throw OctaviusInternalException()
+            ?: error("Missing composite registration for class")
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
             kClass,
@@ -64,18 +62,18 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null value for non-nullable attribute '$columnName' for class $kClass")
+                        throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
                     }
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, meta.type, type)
+                    val convertedValue = context.convert<Any>(rawValue, meta.type, type, columnName)
                     constructorArgs[param] = convertedValue
                 }
             } else {
                 if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw MappingException(MappingExceptionMessage.MISSING_ATTRIBUTE, "Missing non-nullable attribute '$columnName' in composite for class $kClass")
+                    throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Missing non-nullable attribute '$columnName' in composite for class $kClass", path = mutableListOf(columnName))
                 }
                 if (!param.isOptional) {
                     constructorArgs[param] = null

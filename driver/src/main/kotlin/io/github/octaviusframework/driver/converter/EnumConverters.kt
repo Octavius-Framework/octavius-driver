@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.converter
 
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
-import io.github.octaviusframework.driver.exception.MappingException
+
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
@@ -63,7 +62,7 @@ class EnumResultConverter<T : Enum<T>>(
 
     override fun convert(source: String, expectedType: KType, sourceType: PgType, context: DeserializationContext): T {
         return pgToEnum[source]
-            ?: throw MappingException(MappingExceptionMessage.UNKNOWN_ENUM_VALUE, "Unknown enum value: $source for enum ${enumClass.simpleName}")
+            ?: throw IllegalArgumentException("Unknown enum value: $source for enum ${enumClass.simpleName}")
     }
 }
 

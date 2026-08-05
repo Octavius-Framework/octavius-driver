@@ -21,8 +21,8 @@ internal class DynamicContainerCodec<T : PgContainer>(
     override val isDefaultForKotlinType = false
 
     @Suppress("UNCHECKED_CAST")
-    override val fromBinary: (ByteArray, Int, Int) -> T = { data, offset, length ->
-        ContainerCodec.parseContainer(data, offset, length, oid, typeRegistry) as T
+    override val fromBinary: (ByteArray, Int, Int) -> T = { data, offset, _ ->
+        ContainerCodec.parseContainer(data, offset, oid, typeRegistry) as T
     }
 
     override val toBinary: (T, PgByteWriter) -> Unit = { value, writer ->

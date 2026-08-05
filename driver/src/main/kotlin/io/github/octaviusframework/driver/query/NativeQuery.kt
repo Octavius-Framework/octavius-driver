@@ -60,6 +60,16 @@ class NativeQuery internal constructor(
         }
     }
 
+    fun forEachRow(vararg params: Any?, fetchSize: Int, block: (Row) -> Unit) {
+        withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
+            queryExecutor.queryForEach(sql, params.toList(), parameterSerializer, resultMapper, fetchSize, { it }, block)
+        }
+    }
+
     //----------------------------------------Object Mapping Methods----------------------------------------------------
 
     inline fun <reified T : Any> fetchObjects(vararg params: Any?): List<T> {
@@ -115,6 +125,20 @@ class NativeQuery internal constructor(
                 details = "Expected 1, got 0 rows."
             )
             rows.first()
+        }
+    }
+
+    inline fun <reified T : Any> forEachObject(vararg params: Any?, fetchSize: Int, crossinline block: (T) -> Unit) {
+        val targetType = typeOf<T>()
+        val recordType = PgType.Record
+        withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
+            queryExecutor.queryForEach(sql, params.toList(), parameterSerializer, resultMapper, fetchSize, {
+                resultMapper.deserialize<T>(it, targetType, recordType)
+            }, { block(it) })
         }
     }
 
@@ -174,6 +198,19 @@ class NativeQuery internal constructor(
                 details = "Expected 1, got at least 2 rows."
             )
             rows.first()
+        }
+    }
+
+    inline fun <reified T> forEachField(vararg params: Any?, fetchSize: Int, crossinline block: (T) -> Unit) {
+        val targetType = typeOf<T>()
+        withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() }) {
+            queryExecutor.queryForEach(sql, params.toList(), parameterSerializer, resultMapper, fetchSize, {
+                it.get<T>(0, targetType)
+            }, { block(it) })
         }
     }
 

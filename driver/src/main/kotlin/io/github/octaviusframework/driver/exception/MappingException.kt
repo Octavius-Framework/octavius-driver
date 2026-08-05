@@ -1,37 +1,46 @@
 package io.github.octaviusframework.driver.exception
 
-enum class MappingExceptionMessage {
-    UNKNOWN_ENUM_VALUE,
-    NULL_FOR_NON_NULLABLE_ATTRIBUTE,
-    MISSING_ATTRIBUTE,
+/**
+ * Represents the specific reason for a mapping failure.
+ */
+enum class MappingExceptionReason {
     NO_CONVERTER_FOUND,
-    INVALID_RECORD_FORMAT,
     COLUMN_NOT_FOUND,
-    COLUMN_INDEX_OUT_OF_BOUNDS,
-    USER_CONVERTER_ERROR
+    CONVERSION_ERROR,
+    REQUIRED_ATTRIBUTE_MISSING
 }
 
+/**
+ * Exception thrown when a type conversion or data mapping operation fails.
+ *
+ * This includes scenarios like failing to convert data between incompatible types (e.g., mapping an Int to a String),
+ * missing columns in a database row, or missing required non-nullable properties in a Kotlin class.
+ *
+ * @property reason The reason the mapping failed.
+ * @property details Additional details about the mapping failure.
+ * @property path The path in the nested object structure where the mapping error occurred.
+ */
 class MappingException(
-    val messageEnum: MappingExceptionMessage,
+    val reason: MappingExceptionReason,
     val details: String? = null,
     cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException(messageEnum.name, cause, sqlState) {
+    sqlState: String? = null,
+    val path: MutableList<String> = mutableListOf()
+) : OctaviusException("MAPPING_EXCEPTION:${reason.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
-        appendLine("message: ${generateDeveloperMessage(messageEnum)}")
+        appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")
+        if (path.isNotEmpty()) {
+            appendLine("Path: ${path.asReversed().joinToString(" -> ")}")
+        }
     }
 }
 
-private fun generateDeveloperMessage(messageEnum: MappingExceptionMessage): String =
-    when (messageEnum) {
-        MappingExceptionMessage.UNKNOWN_ENUM_VALUE -> "The specified enum value could not be found."
-        MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE -> "Attempted to map a null database value to a non-nullable Kotlin property."
-        MappingExceptionMessage.MISSING_ATTRIBUTE -> "A required non-nullable attribute is missing from the database result."
-        MappingExceptionMessage.NO_CONVERTER_FOUND -> "No converter was found for the specified types."
-        MappingExceptionMessage.INVALID_RECORD_FORMAT -> "The record data is in an invalid format."
-        MappingExceptionMessage.COLUMN_NOT_FOUND -> "The requested column was not found in the row metadata."
-        MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS -> "The requested column index is out of bounds for the row."
-        MappingExceptionMessage.USER_CONVERTER_ERROR -> "An exception was thrown by a user-provided converter or mapper."
+private fun generateDeveloperMessage(reason: MappingExceptionReason): String =
+    when (reason) {
+        MappingExceptionReason.NO_CONVERTER_FOUND -> "No converter was found for the specified types."
+        MappingExceptionReason.COLUMN_NOT_FOUND -> "The requested column or index was not found in the row metadata."
+        MappingExceptionReason.CONVERSION_ERROR -> "An error occurred during type conversion or casting."
+        MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING -> "A required non-nullable attribute is missing or null."
     }
 

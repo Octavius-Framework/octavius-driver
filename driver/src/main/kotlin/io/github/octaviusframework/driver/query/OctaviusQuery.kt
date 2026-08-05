@@ -6,9 +6,9 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMa
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.QueryContext
+import io.github.octaviusframework.driver.type.TypeManager
 
 /**
  * Base class for executing queries with parameters.

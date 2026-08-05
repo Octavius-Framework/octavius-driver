@@ -1,13 +1,11 @@
 package io.github.octaviusframework.driver.converter.result.mapper
 
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
 import io.github.octaviusframework.driver.exception.MappingException
-
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
-
-import io.github.octaviusframework.driver.type.TypeManager
 
 class ResultMapper(
     registry: ResultConverterRegistry,
@@ -23,10 +21,11 @@ internal class DefaultDeserializationContext(
     private val registry: ResultConverterRegistry,
     override val typeManager: TypeManager
 ) : DeserializationContext {
-    override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType): T {
+    override fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType, pathSegment: String?): T {
+        try {
         if (source == null) {
             if (!expectedType.isMarkedNullable) {
-                throw IllegalArgumentException("Cannot deserialize null to non-nullable type $expectedType")
+                throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Cannot deserialize null to non-nullable type $expectedType")
             }
             @Suppress("UNCHECKED_CAST")
             return null as T
@@ -46,7 +45,19 @@ internal class DefaultDeserializationContext(
             return source as T
         }
 
-        throw MappingException(MappingExceptionMessage.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
+            throw MappingException(MappingExceptionReason.NO_CONVERTER_FOUND, "No converter found for source ${source::class} and expected type $expectedType")
+        } catch (e: MappingException) {
+            if (pathSegment != null) e.path.add(pathSegment)
+            throw e
+        } catch (e: Exception) {
+            val ex = MappingException(
+                MappingExceptionReason.CONVERSION_ERROR,
+                details = "Error during result deserialization: ${e.message}", 
+                cause = e
+            )
+            if (pathSegment != null) ex.path.add(pathSegment)
+            throw ex
+        }
     }
 
     override fun findConverter(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>? {

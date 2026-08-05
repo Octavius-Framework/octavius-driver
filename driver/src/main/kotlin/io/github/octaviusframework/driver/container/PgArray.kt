@@ -1,8 +1,7 @@
 package io.github.octaviusframework.driver.container
 
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
-import io.github.octaviusframework.driver.registry.TypeRegistry
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 
 /**
  * Represents a single dimension of a PostgreSQL array.
@@ -33,19 +32,13 @@ class PgArray(
     val totalElements: Int
         get() = elements.size
 
-    operator fun set(index: Int, newValue: Any?) {
-        if (newValue is PgArray) {
-            throw IllegalArgumentException("Array cannot contain another array")
-        }
-        elements[index] = newValue
-    }
+
 
     inline fun <reified T> get(index: Int): T {
         val value = elements[index]
         if (value is T) return value
-        throw TypeException(
-            TypeExceptionMessage.CASTING_ERROR,
-            typeName = T::class.simpleName,
+        throw MappingException(
+            MappingExceptionReason.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

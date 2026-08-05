@@ -1,7 +1,9 @@
 package io.github.octaviusframework.driver.io
 
-import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionReason
+import io.github.octaviusframework.driver.exception.NetworkException
+import io.github.octaviusframework.driver.exception.NetworkExceptionReason
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
@@ -9,9 +11,7 @@ import io.github.octaviusframework.driver.notification.PgNotification
 import io.github.octaviusframework.driver.row.FieldDescription
 import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
-import io.github.octaviusframework.driver.exception.NetworkExceptionMessage
-import io.github.octaviusframework.driver.exception.NetworkException
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,7 +19,6 @@ import java.io.EOFException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
-import io.github.oshai.kotlinlogging.KotlinLogging
 import java.net.SocketTimeoutException
 import java.util.concurrent.locks.ReentrantLock
 
@@ -103,7 +102,7 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
             msg.encode(outputStream)
         } catch (e: IOException) {
             isBroken = true
-            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
+            throw NetworkException(NetworkExceptionReason.CONNECTION_ERROR, cause = e)
         }
     }
 
@@ -117,7 +116,7 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
             outputStream.flush()
         } catch (e: IOException) {
             isBroken = true
-            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
+            throw NetworkException(NetworkExceptionReason.CONNECTION_ERROR, cause = e)
         }
     }
 
@@ -276,13 +275,13 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                 return null
             }
             isBroken = true
-            throw NetworkException(NetworkExceptionMessage.CONNECTION_TIMEOUT, cause = e)
+            throw NetworkException(NetworkExceptionReason.CONNECTION_TIMEOUT, cause = e)
         } catch (e: EOFException) {
             isBroken = true
-            throw NetworkException(NetworkExceptionMessage.CONNECTION_CLOSED_BY_PEER, cause = e)
+            throw NetworkException(NetworkExceptionReason.CONNECTION_CLOSED_BY_PEER, cause = e)
         } catch (e: IOException) {
             isBroken = true
-            throw NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, cause = e)
+            throw NetworkException(NetworkExceptionReason.CONNECTION_ERROR, cause = e)
         }
     }
 
@@ -319,7 +318,7 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                 AuthenticationMessage.SASLFinal(data)
             }
             else -> throw InitializationException(
-                InitializationExceptionMessage.UNSUPPORTED_MECHANISM,
+                InitializationExceptionReason.UNSUPPORTED_MECHANISM,
                 details = "Unknown authentication type: $type"
             )
         }

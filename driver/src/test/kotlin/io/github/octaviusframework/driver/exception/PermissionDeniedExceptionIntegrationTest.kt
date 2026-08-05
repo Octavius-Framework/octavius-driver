@@ -1,0 +1,64 @@
+package io.github.octaviusframework.driver.exception
+
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.properties.OctaviusProperties
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+
+class PermissionDeniedExceptionIntegrationTest {
+
+    private fun getAdminSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
+        user = "postgres"
+        password = "1234"
+    })
+
+    private fun getNoPermSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
+        user = "test_user_no_perms"
+        password = "password"
+    })
+
+    @BeforeEach
+    fun setup() {
+        getAdminSession().use { session ->
+            try { session.createNativeQuery("DROP OWNED BY test_user_no_perms").execute() } catch (e: Exception) {}
+            try { session.createNativeQuery("DROP USER IF EXISTS test_user_no_perms").execute() } catch (e: Exception) {}
+            session.createNativeQuery("CREATE USER test_user_no_perms WITH PASSWORD 'password'").execute()
+            session.createNativeQuery("GRANT USAGE ON SCHEMA public TO test_user_no_perms").execute()
+            session.createNativeQuery("CREATE TABLE IF NOT EXISTS perm_test_table (id INT)").execute()
+            session.createNativeQuery("REVOKE ALL PRIVILEGES ON TABLE perm_test_table FROM test_user_no_perms").execute()
+        }
+    }
+
+    @AfterEach
+    fun teardown() {
+        getAdminSession().use { session ->
+            session.createNativeQuery("DROP TABLE IF EXISTS perm_test_table").execute()
+            try {
+                session.createNativeQuery("REVOKE USAGE ON SCHEMA public FROM test_user_no_perms").execute()
+            } catch (e: Exception) {}
+            try {
+                session.createNativeQuery("DROP USER IF EXISTS test_user_no_perms").execute()
+            } catch (e: Exception) {}
+        }
+    }
+
+    @Test
+    fun `should throw PermissionDeniedException with table and schema details`() {
+        getNoPermSession().use { session ->
+            val exception = assertFailsWith<PermissionDeniedException> {
+                session.createNativeQuery("SELECT * FROM perm_test_table").fetchRows()
+            }
+
+            assertEquals("42501", exception.sqlState)
+            println("errorMessage: " + exception.errorMessage)
+            println("table: " + exception.table)
+            println("schema: " + exception.schema)
+            assertTrue(exception.errorMessage.contains("perm_test_table"))
+        }
+    }
+}

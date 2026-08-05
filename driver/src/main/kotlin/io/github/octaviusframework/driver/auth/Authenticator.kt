@@ -1,8 +1,8 @@
 package io.github.octaviusframework.driver.auth
 
-import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
-import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.ExceptionTranslator
+import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
@@ -42,7 +42,7 @@ internal class Authenticator(private val stream: PgStream) {
                     val mechs = msg.mechanisms
                     if (!mechs.contains("SCRAM-SHA-256")) {
                         throw InitializationException(
-                            InitializationExceptionMessage.UNSUPPORTED_MECHANISM, details = "Supported: $mechs"
+                            InitializationExceptionReason.UNSUPPORTED_MECHANISM, details = "Supported: $mechs"
                         )
                     }
 
@@ -60,7 +60,7 @@ internal class Authenticator(private val stream: PgStream) {
                     }
                     if (continueMsg !is AuthenticationMessage.SASLContinue) {
                         throw InitializationException(
-                            InitializationExceptionMessage.PROTOCOL_VIOLATION,
+                            InitializationExceptionReason.PROTOCOL_VIOLATION,
                             details = "Expected SASLContinue, got: $continueMsg"
                         )
                     }
@@ -72,13 +72,13 @@ internal class Authenticator(private val stream: PgStream) {
                     val params = parts.associate { it.substring(0, 1) to it.substring(2) }
 
                     val serverNonce = params["r"] ?: throw InitializationException(
-                        InitializationExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing r in serverFirstMessage"
+                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing r in serverFirstMessage"
                     )
                     val saltB64 = params["s"] ?: throw InitializationException(
-                        InitializationExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing s in serverFirstMessage"
+                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing s in serverFirstMessage"
                     )
                     val iterationsStr = params["i"] ?: throw InitializationException(
-                        InitializationExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing i in serverFirstMessage"
+                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing i in serverFirstMessage"
                     )
 
                     val salt = Base64.getDecoder().decode(saltB64)
@@ -106,7 +106,7 @@ internal class Authenticator(private val stream: PgStream) {
                     }
                     if (finalMsg !is AuthenticationMessage.SASLFinal) {
                         throw InitializationException(
-                            InitializationExceptionMessage.PROTOCOL_VIOLATION,
+                            InitializationExceptionReason.PROTOCOL_VIOLATION,
                             details = "Expected SASLFinal, got: $finalMsg"
                         )
                     }
@@ -115,12 +115,12 @@ internal class Authenticator(private val stream: PgStream) {
                     val serverFinalParts = serverFinalMessage.split(",")
                     val serverParams = serverFinalParts.filter { it.length >= 3 }.associate { it.substring(0, 1) to it.substring(2) }
                     val serverSignature = serverParams["v"] ?: throw InitializationException(
-                        InitializationExceptionMessage.MISSING_PROTOCOL_PARAMETER, details = "Missing v in serverFinalMessage"
+                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing v in serverFinalMessage"
                     )
 
                     if (serverSignature != scramResult.expectedServerSignature) {
                         throw InitializationException(
-                            InitializationExceptionMessage.SERVER_REJECTED_CREDENTIALS,
+                            InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
                             details = "Invalid server signature"
                         )
                     }
@@ -128,14 +128,14 @@ internal class Authenticator(private val stream: PgStream) {
 
                 is AuthenticationMessage.CleartextPassword -> {
                     throw InitializationException(
-                        InitializationExceptionMessage.UNSUPPORTED_PASSWORD_ENCRYPTION,
+                        InitializationExceptionReason.UNSUPPORTED_PASSWORD_ENCRYPTION,
                         details = "Server requested CleartextPassword, only SCRAM is supported"
                     )
                 }
 
                 is AuthenticationMessage.MD5Password -> {
                     throw InitializationException(
-                        InitializationExceptionMessage.UNSUPPORTED_PASSWORD_ENCRYPTION,
+                        InitializationExceptionReason.UNSUPPORTED_PASSWORD_ENCRYPTION,
                         details = "Server requested MD5Password, only SCRAM is supported"
                     )
                 }

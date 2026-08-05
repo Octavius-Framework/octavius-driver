@@ -1,9 +1,9 @@
 package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.query.QueryExecutor
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.withLock
-import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 

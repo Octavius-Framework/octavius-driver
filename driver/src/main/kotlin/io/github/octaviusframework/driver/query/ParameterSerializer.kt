@@ -2,10 +2,11 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
+import io.github.octaviusframework.driver.codec.encodeSafely
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionMessage
+import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
@@ -69,27 +70,19 @@ class ParameterSerializer(
 
     private fun writeKnown(value: Any, oid: Int, writer: PgByteWriter, marker: Int): Int {
         val codec = codecDictionary.getCodecByOid<Any>(oid)
-            ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, oid = oid, details = "Codec not found")
+            ?: throw TypeException(TypeExceptionReason.MISSING_CODEC, oid = oid, details = "Codec not found")
 
-        if (!codec.kotlinClass.isInstance(value)) {
-            throw TypeException(
-                TypeExceptionMessage.INVALID_PARAMETER_TYPE,
-                oid = oid,
-                details = "Type mismatch: ${value::class.qualifiedName} != ${codec.kotlinClass.qualifiedName}"
-            )
-        }
-
-        codec.toBinary(value, writer)
+        codec.encodeSafely(value, writer)
         writer.fillLengthInt(marker)
         return oid
     }
 
     private fun writeStandard(value: Any, writer: PgByteWriter, marker: Int): Int {
         val codec = codecDictionary.getCodecByClass(value::class)
-            ?: throw TypeException(TypeExceptionMessage.MISSING_CODEC, details = "Codec not found for: ${value::class.qualifiedName}")
+            ?: throw TypeException(TypeExceptionReason.MISSING_CODEC, details = "Codec not found for: ${value::class.qualifiedName}")
 
         @Suppress("UNCHECKED_CAST")
-        (codec as TypeCodec<Any>).toBinary(value, writer)
+        (codec as TypeCodec<Any>).encodeSafely(value, writer)
         writer.fillLengthInt(marker)
 
         return codecDictionary.getOidForCodec(codec) ?: typeManager.resolveOid(codec.pgTypeName, codec.pgSchema)

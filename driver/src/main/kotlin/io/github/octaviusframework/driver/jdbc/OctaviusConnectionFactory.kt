@@ -1,15 +1,15 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
-import io.github.octaviusframework.driver.exception.InitializationExceptionMessage
 import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import java.sql.Connection
 import java.sql.DriverManager
-import java.util.Properties
+import java.util.*
 
 object OctaviusConnectionFactory {
     fun createConnection(url: String, info: Properties? = null): Connection {
@@ -30,7 +30,7 @@ object OctaviusConnectionFactory {
         val stream = try {
             PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity)
         } catch (e: Exception) {
-            throw InitializationException(InitializationExceptionMessage.CONNECTION_ERROR, e.message, e)
+            throw InitializationException(InitializationExceptionReason.CONNECTION_ERROR, e.message, e)
         }
 
         val sslNegotiator = SslNegotiator(stream)
@@ -56,7 +56,7 @@ object OctaviusConnectionFactory {
             if (majorVersion < 18) {
                 stream.close()
                 throw InitializationException(
-                    InitializationExceptionMessage.UNSUPPORTED_SERVER_VERSION,
+                    InitializationExceptionReason.UNSUPPORTED_SERVER_VERSION,
                     "Octavius Driver requires PostgreSQL database version 18 or higher. Received version: $serverVersion"
                 )
             }

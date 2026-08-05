@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
@@ -122,7 +121,7 @@ object TypeRegistryLoader {
                             "record" -> PgType.Record
                             "void" -> PgType.Void
                             "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
-                            else -> throw OctaviusInternalException()
+                            else -> error("Unknown pseudo-type ${info.name}")
                         }
                     }
 

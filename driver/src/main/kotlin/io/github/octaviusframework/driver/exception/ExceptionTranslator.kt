@@ -19,7 +19,7 @@ object ExceptionTranslator {
 
         return when {
             // Class 08 — Connection Exception
-            state.startsWith("08") -> NetworkException(NetworkExceptionMessage.CONNECTION_ERROR, details = message, sqlState = state)
+            state.startsWith("08") -> NetworkException(NetworkExceptionReason.CONNECTION_ERROR, details = message, sqlState = state)
 
             // Class 22 — Data Exception (Invalid data provided by the user)
             state.startsWith("22") -> {
@@ -40,7 +40,7 @@ object ExceptionTranslator {
             
             // Class 28 - Invalid Authorization Specification
             state.startsWith("28") -> InitializationException(
-                InitializationExceptionMessage.SERVER_REJECTED_CREDENTIALS,
+                InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
                 details = "Message: $message",
                 sqlState = state
             )
@@ -90,6 +90,12 @@ object ExceptionTranslator {
 
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
+                val reason = when (state) {
+                    "40001" -> TransactionExceptionReason.SERIALIZATION_FAILURE
+                    "40P01" -> TransactionExceptionReason.DEADLOCK_DETECTED
+                    else -> TransactionExceptionReason.UNKNOWN
+                }
+
                 if (state == "40002") {
                     ConstraintViolationException(
                         reason = ConstraintViolationExceptionReason.UNKNOWN,
@@ -101,7 +107,7 @@ object ExceptionTranslator {
                         constraint = errorMsg.constraint
                     )
                 } else {
-                    TransactionException(TransactionExceptionReason.ROLLBACK, details = "Message: $message", sqlState = state)
+                    TransactionException(reason, details = "Message: $message", sqlState = state)
                 }
             }
 
@@ -109,7 +115,7 @@ object ExceptionTranslator {
             state.startsWith("42") -> {
                 if (state == "42501") {
                     PermissionDeniedException(
-                        message = "Permission Denied (42501): $message",
+                        errorMessage = "Permission Denied (42501): $message",
                         sqlState = state,
                         schema = errorMsg.schema,
                         table = errorMsg.table,
@@ -118,7 +124,7 @@ object ExceptionTranslator {
                         routine = errorMsg.routine
                     )
                 } else {
-                    val messageEnum = when (state) {
+                    val reason = when (state) {
                         "42601", "42602", "42622", "42939", "42000" -> StatementExceptionReason.SYNTAX_ERROR
                         "42703", "42883", "42P01", "42P02", "42704" -> StatementExceptionReason.UNDEFINED_OBJECT
                         "42701", "42723", "42P03", "42P04", "42P05", "42P06", "42P07", "42712", "42710" -> StatementExceptionReason.DUPLICATE_OBJECT
@@ -127,7 +133,7 @@ object ExceptionTranslator {
                         else -> StatementExceptionReason.INVALID_DEFINITION
                     }
                     StatementException(
-                        messageEnum,
+                        reason,
                         details = "Message: $message",
                         position = errorMsg.position,
                         sqlState = state

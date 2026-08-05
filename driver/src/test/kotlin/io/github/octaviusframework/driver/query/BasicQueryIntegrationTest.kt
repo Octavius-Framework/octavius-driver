@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.StatementException
+import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
@@ -12,8 +13,6 @@ class BasicQueryIntegrationTest {
 
     @Test
     fun test() {
-        println("Zaczynamy test!")
-
         val props = OctaviusProperties()
         props.user = "postgres"
         props.password = "1234"
@@ -46,10 +45,48 @@ class BasicQueryIntegrationTest {
             session.createNativeQuery("SELECT generate_series(1, 1000)").fetchRowStrict()
         }
 
-        assertEquals("INCORRECT_RESULT_SIZE", exception.message)
+        assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
 
         // Make sure the connection is in a healthy state and can execute subsequent queries
         val subsequentResult = session.createNativeQuery("SELECT 42").fetchRowStrict().get<Int>(0)
         assertEquals(42, subsequentResult)
+    }
+
+    @Test
+    fun testForEachMethods() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        // NativeQuery forEachRow
+        var sum = 0
+        var count = 0
+        session.createNativeQuery("SELECT i FROM generate_series(1, 10) as i").forEachRow(fetchSize = 3) {
+            sum += it.get<Int>(0)
+            count++
+        }
+        assertEquals(10, count)
+        assertEquals(55, sum)
+
+        // NativeQuery forEachField
+        var sumField = 0
+        var countField = 0
+        session.createNativeQuery("SELECT i * $1 FROM generate_series(1, 10) as i").forEachField<Int>(2, fetchSize = 4) {
+            sumField += it
+            countField++
+        }
+        assertEquals(10, countField)
+        assertEquals(110, sumField)
+
+        // NamedParameterQuery forEachField
+        var sumNamedField = 0
+        var countNamedField = 0
+        session.createNamedQuery("SELECT i * @mult FROM generate_series(1, 10) as i").forEachField<Int>("mult" to 3, fetchSize = 5) {
+            sumNamedField += it
+            countNamedField++
+        }
+        assertEquals(10, countNamedField)
+        assertEquals(165, sumNamedField)
     }
 }

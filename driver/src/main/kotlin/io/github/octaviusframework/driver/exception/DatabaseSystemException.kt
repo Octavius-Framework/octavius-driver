@@ -8,6 +8,8 @@ package io.github.octaviusframework.driver.exception
  * from user query mistakes.
  */
 class DatabaseSystemException(
-    message: String,
+    val errorMessage: String,
     sqlState: String? = null
-) : OctaviusException(message, sqlState = sqlState)
+) : OctaviusException("DATABASE_SYSTEM_EXCEPTION", sqlState = sqlState) {
+    override fun getDetailedMessage(): String = errorMessage
+}
