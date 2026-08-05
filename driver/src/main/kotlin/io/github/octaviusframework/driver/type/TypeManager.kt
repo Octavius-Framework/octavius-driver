@@ -10,18 +10,36 @@ import io.github.octaviusframework.driver.identifier.CaseConverter
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.registry.TypeRegistry
 
+/**
+ * Manages the registration and resolution of PostgreSQL types, codecs, and converters.
+ *
+ * This class provides a high-level API over [TypeRegistry], making it easier to
+ * register custom mappings between Kotlin types and PostgreSQL database types.
+ *
+ * @property registry The underlying [TypeRegistry] used for storing type information.
+ */
 class TypeManager(
     val registry: TypeRegistry,
     private val searchPathProvider: () -> List<String> = { emptyList() }
 ) {
-    val converterRegistry get() = registry.converterRegistry
     /**
-     * The underlying type registry associated with this TypeManager.
+     * The registry handling the conversion of parameters and results.
+     */
+    val converterRegistry get() = registry.converterRegistry
+    
+    /**
+     * The dictionary mapping PostgreSQL type names to their OIDs and vice versa.
      */
     val typeDictionary get() = registry.dictionary
 
+    /**
+     * The dictionary maintaining [TypeCodec] implementations.
+     */
     val codecDictionary get() = registry.codecs
 
+    /**
+     * Factory for creating container types (like composites).
+     */
     val containers = ContainerFactory(this)
 
     /**

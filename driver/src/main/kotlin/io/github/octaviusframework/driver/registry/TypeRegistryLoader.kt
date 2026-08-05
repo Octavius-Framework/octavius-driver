@@ -5,8 +5,20 @@ import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 
+/**
+ * Utility object responsible for loading PostgreSQL type definitions from the database 
+ * and populating a [TypeRegistry].
+ */
 object TypeRegistryLoader {
 
+    /**
+     * Executes a query against the `pg_catalog` to fetch all relevant type information
+     * (base types, arrays, composites, enums, domains, ranges, etc.) and updates
+     * the given [TypeRegistry] with the constructed [PgType] instances.
+     *
+     * @param typeRegistry The registry to populate with loaded types.
+     * @param queryExecutor The executor used to run the type extraction query.
+     */
     fun load(typeRegistry: TypeRegistry, queryExecutor: QueryExecutor) {
         // typtype is b for a base type, c for a composite type (e.g., a table's row type), d for a domain, e for an enum type, p for a pseudo-type, r for a range type, or m for a multirange type.
         val typesSql = """

@@ -1,6 +1,13 @@
 package io.github.octaviusframework.driver.io
 
-// get from ByteArray
+/**
+ * Extension functions for reading Big-Endian primitive types from a [ByteArray].
+ * PostgreSQL network protocol encodes data in Network Byte Order (Big-Endian).
+ */
+
+/**
+ * Reads a 16-bit short integer from the byte array starting at [offset].
+ */
 fun ByteArray.getShortBE(offset: Int = 0): Short {
     return ((this[offset].toInt() and 0xFF shl 8) or
             (this[offset + 1].toInt() and 0xFF)).toShort()

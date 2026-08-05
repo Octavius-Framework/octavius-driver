@@ -9,6 +9,15 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 
+/**
+ * Metadata for a single constructor parameter and its corresponding property in a data class.
+ *
+ * @param T The type of the data class.
+ * @property parameter The reflection [KParameter] object from the constructor.
+ * @property property The reflection [KProperty1] object corresponding to the parameter.
+ * @property type The Kotlin [KType] of the parameter.
+ * @property keyName The mapped name used to resolve this property against a PostgreSQL record/composite type.
+ */
 data class ConstructorParamMetadata<T : Any>(
     val parameter: KParameter,
     val property: KProperty1<T, Any?>,
@@ -16,11 +25,24 @@ data class ConstructorParamMetadata<T : Any>(
     val keyName: String
 )
 
+/**
+ * Pre-computed reflection metadata for a data class.
+ *
+ * @param T The type of the data class.
+ * @property constructor The primary constructor of the data class.
+ * @property constructorProperties A list of metadata for each constructor parameter.
+ */
 data class DataObjectClassMetadata<T : Any>(
     val constructor: KFunction<T>,
     val constructorProperties: List<ConstructorParamMetadata<T>>
 )
 
+/**
+ * A global cache for Kotlin reflection metadata of data classes.
+ *
+ * This prevents the expensive overhead of inspecting class properties and annotations
+ * repeatedly during the serialization or deserialization of PostgreSQL composite types.
+ */
 object ReflectionCompositeCache {
     private val dataObjectCache = ConcurrentHashMap<KClass<*>, DataObjectClassMetadata<*>>()
 

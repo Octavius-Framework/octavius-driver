@@ -12,6 +12,11 @@ import io.github.octaviusframework.driver.type.TypeManager
 
 /**
  * Base class for executing queries with parameters.
+ *
+ * This class provides the foundational state and utilities needed for managing 
+ * type conversion registries and mappings localized to a single query instance.
+ *
+ * @param T The concrete type of the query (used for fluent API return types).
  */
 @Suppress("UNCHECKED_CAST")
 abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(

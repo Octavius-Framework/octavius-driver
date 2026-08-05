@@ -9,6 +9,14 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.typeOf
 
+/**
+ * Represents a query that accepts named parameters (e.g., `@name`, `@id`).
+ *
+ * `NamedParameterQuery` parses the SQL to extract named parameters and maps them to positional
+ * parameters before delegating execution to the underlying [QueryExecutor]. 
+ * It provides various execution methods to fetch rows, map results to Kotlin objects, 
+ * extract single fields, or perform data modifications (updates).
+ */
 class NamedParameterQuery internal constructor(
     sql: String,
     queryExecutor: QueryExecutor,

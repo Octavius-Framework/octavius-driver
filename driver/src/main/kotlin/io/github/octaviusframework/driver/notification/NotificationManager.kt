@@ -8,6 +8,12 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.concurrent.withLock
 
+/**
+ * Manages asynchronous notifications (`LISTEN` / `NOTIFY`) for a specific database session.
+ *
+ * This manager provides methods to subscribe to and unsubscribe from PostgreSQL notification channels,
+ * emit new notifications, and start listener loops to receive incoming messages via a Flow.
+ */
 class NotificationManager internal constructor(private val session: OctaviusSessionImpl) {
 
     private val connection get() = session.octaviusConnection

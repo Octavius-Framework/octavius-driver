@@ -4,10 +4,15 @@ package io.github.octaviusframework.driver.exception
  * Represents the reason for a type resolution or validation failure.
  */
 enum class TypeExceptionReason {
+    /** The specified type was not found in the TypeRegistry. */
     TYPE_NOT_FOUND,
+    /** The type with the specified OID is not a valid container type (Composite, Array, Enum, etc.). */
     NOT_A_CONTAINER,
+    /** Missing codec for the specific OID when parsing or serializing. */
     MISSING_CODEC,
+    /** PostgreSQL does not support receiving anonymous composite types (record) as input parameters. */
     ANONYMOUS_RECORD_NOT_SUPPORTED,
+    /** Nested PgTyped is not allowed. You cannot wrap a PgTyped instance within another PgTyped. */
     NESTED_PGTYPED_NOT_ALLOWED
 }
 

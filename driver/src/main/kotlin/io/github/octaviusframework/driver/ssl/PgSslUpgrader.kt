@@ -15,6 +15,12 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 import javax.net.ssl.*
 
+/**
+ * Utility object for upgrading a standard plaintext socket to an SSL-encrypted socket.
+ * 
+ * It manages the creation and initialization of `SSLContext`, `TrustManager`s, 
+ * and `KeyManager`s based on the provided [SslConfiguration].
+ */
 object PgSslUpgrader {
 
     fun upgrade(socket: Socket, host: String, port: Int, config: SslConfiguration): SSLSocket {

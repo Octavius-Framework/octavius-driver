@@ -5,17 +5,36 @@ import io.github.octaviusframework.driver.type.PgType
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
+/**
+ * Registry holding the mapping of database types, data codecs, and type converters.
+ *
+ * `TypeRegistry` manages the state for mapping PostgreSQL Object Identifiers (OIDs) to
+ * their corresponding type definitions ([PgType]), as well as providing resolution
+ * mechanisms for parameter encoders, result decoders, and data serialization.
+ */
 class TypeRegistry {
+    /**
+     * A lock used to ensure thread-safe updates to the registry's internal state.
+     */
     val lock = ReentrantLock()
 
     @Volatile
     internal var isLoaded: Boolean = false
 
+    /**
+     * The registry handling custom mappings and converters between Kotlin objects and PostgreSQL types.
+     */
     val converterRegistry = ConverterRegistry()
 
+    /**
+     * An immutable snapshot dictionary representing the current mapping of PostgreSQL OIDs and types.
+     */
     @Volatile
     var dictionary: TypeDictionary = TypeDictionary.EMPTY
 
+    /**
+     * An immutable snapshot dictionary for database binary/text codecs.
+     */
     @Volatile
     var codecs: CodecDictionary = CodecDictionary.createWithBuiltins()
 

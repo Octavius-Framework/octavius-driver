@@ -13,6 +13,15 @@ import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
+/**
+ * Converts a Kotlin Enum instance to its PostgreSQL String representation during query parameter serialization.
+ *
+ * @param T The type of the Kotlin enum.
+ * @property enumClass The Kotlin KClass of the enum.
+ * @property qualifiedName The qualified name of the corresponding PostgreSQL ENUM type in the database.
+ * @property pgConvention The naming convention expected by PostgreSQL (e.g., lower_snake_case).
+ * @property kotlinConvention The naming convention used in the Kotlin enum (typically SNAKE_CASE_UPPER).
+ */
 class EnumParameterConverter<T : Enum<T>>(
     private val enumClass: KClass<T>,
     private val qualifiedName: QualifiedName,
@@ -39,6 +48,15 @@ class EnumParameterConverter<T : Enum<T>>(
     }
 }
 
+/**
+ * Converts a PostgreSQL String representation back into a Kotlin Enum instance during result set deserialization.
+ *
+ * @param T The type of the Kotlin enum.
+ * @property enumClass The Kotlin KClass of the enum.
+ * @property qualifiedName The qualified name of the corresponding PostgreSQL ENUM type in the database.
+ * @property pgConvention The naming convention expected by PostgreSQL (e.g., lower_snake_case).
+ * @property kotlinConvention The naming convention used in the Kotlin enum (typically SNAKE_CASE_UPPER).
+ */
 class EnumResultConverter<T : Enum<T>>(
     private val enumClass: KClass<T>,
     private val qualifiedName: QualifiedName,
