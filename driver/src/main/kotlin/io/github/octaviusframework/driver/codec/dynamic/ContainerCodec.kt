@@ -162,7 +162,7 @@ internal object ContainerCodec {
             }
         }
 
-        return PgRecord(pgType, fieldOids, fields, typeRegistry)
+        return PgRecord(pgType, fieldOids, fields)
     }
 
     /**
