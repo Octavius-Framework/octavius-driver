@@ -28,7 +28,7 @@ internal class DefaultSerializationContext(
             throw e
         } catch (e: Exception) {
             val ex = MappingException(
-                MappingExceptionMessage.CONVERTER_ERROR,
+                MappingExceptionMessage.CONVERSION_ERROR,
                 details = "Error during parameter serialization: ${e.message}", 
                 cause = e
             )

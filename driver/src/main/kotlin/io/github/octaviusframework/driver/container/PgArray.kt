@@ -39,7 +39,7 @@ class PgArray(
         val value = elements[index]
         if (value is T) return value
         throw MappingException(
-            MappingExceptionMessage.CASTING_ERROR,
+            MappingExceptionMessage.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

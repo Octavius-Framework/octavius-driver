@@ -118,7 +118,7 @@ fun PgInterval.toDurationExact(): Duration = when (this) {
     is Finite -> {
         if (days != 0 || months != 0) {
             throw MappingException(
-                messageEnum = MappingExceptionMessage.CASTING_ERROR,
+                messageEnum = MappingExceptionMessage.CONVERSION_ERROR,
                 details = "Cannot convert PgInterval to exact Duration because it contains variable-length calendar units (days: $days, months: $months)."
             )
         }

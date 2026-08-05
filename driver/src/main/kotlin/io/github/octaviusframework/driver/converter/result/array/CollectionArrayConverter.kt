@@ -44,7 +44,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 val value = elements[i]
                 if (value == null) {
                     if (!ktElementType.isMarkedNullable) {
-                        val e = MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null array element for non-nullable type $ktElementType")
+                        val e = MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
                         e.path.add("[$i]")
                         throw e
                     }
@@ -67,7 +67,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 val value = elements[flatIndex]
                 if (value == null) {
                     if (!ktElementType.isMarkedNullable) {
-                        val e = MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null array element for non-nullable type $ktElementType")
+                        val e = MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Null array element for non-nullable type $ktElementType")
                         e.path.add("[$i]")
                         throw e
                     }
@@ -82,7 +82,7 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                         if (kClassForCast != null && kClassForCast.isInstance(value)) {
                             value
                         } else {
-                            val e = MappingException(MappingExceptionMessage.CASTING_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
+                            val e = MappingException(MappingExceptionMessage.CONVERSION_ERROR, details = "No converter found for source ${value::class} and expected type $ktElementType")
                             e.path.add("[$i]")
                             throw e
                         }

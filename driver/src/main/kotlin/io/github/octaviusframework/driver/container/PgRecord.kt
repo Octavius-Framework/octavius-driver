@@ -30,13 +30,13 @@ class PgRecord internal constructor(
 
         if (value == null) {
             throw MappingException(
-                MappingExceptionMessage.CASTING_ERROR,
+                MappingExceptionMessage.CONVERSION_ERROR,
                 details = "Expected non-null value for attribute at index $index, got null"
             )
         }
 
         throw MappingException(
-            MappingExceptionMessage.CASTING_ERROR,
+            MappingExceptionMessage.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

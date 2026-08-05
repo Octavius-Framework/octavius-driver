@@ -63,7 +63,7 @@ class EnumResultConverter<T : Enum<T>>(
 
     override fun convert(source: String, expectedType: KType, sourceType: PgType, context: DeserializationContext): T {
         return pgToEnum[source]
-            ?: throw MappingException(MappingExceptionMessage.UNKNOWN_ENUM_VALUE, "Unknown enum value: $source for enum ${enumClass.simpleName}")
+            ?: throw MappingException(MappingExceptionMessage.CONVERSION_ERROR, "Unknown enum value: $source for enum ${enumClass.simpleName}")
     }
 }
 

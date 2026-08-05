@@ -29,7 +29,7 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
         }
 
         if (source.fields.size % 2 != 0) {
-            throw MappingException(MappingExceptionMessage.INVALID_RECORD_FORMAT, "Record fields must be in key-value pairs (even number of fields expected)")
+            throw MappingException(MappingExceptionMessage.CONVERSION_ERROR, "Record fields must be in key-value pairs (even number of fields expected)")
         }
 
         val result = mutableMapOf<String, Any?>()
