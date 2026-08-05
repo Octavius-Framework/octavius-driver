@@ -51,7 +51,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
 
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null value for non-nullable attribute '$columnName' for class $kClass")
+                        throw MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
                     }
                     if (!param.isOptional) {
                         constructorArgs[param] = null
@@ -62,7 +62,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
                 }
             } else {
                 if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw MappingException(MappingExceptionMessage.MISSING_ATTRIBUTE, "Missing non-nullable attribute '$columnName' in row for class $kClass")
+                    throw MappingException(MappingExceptionMessage.MISSING_ATTRIBUTE, "Missing non-nullable attribute '$columnName' in row for class $kClass", path = mutableListOf(columnName))
                 }
                 if (!param.isOptional) {
                     constructorArgs[param] = null
