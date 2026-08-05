@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.exception
 
+/**
+ * Represents the specific reason for a mapping failure.
+ */
 enum class MappingExceptionReason {
     NO_CONVERTER_FOUND,
     COLUMN_NOT_FOUND,
@@ -7,6 +10,16 @@ enum class MappingExceptionReason {
     REQUIRED_ATTRIBUTE_MISSING
 }
 
+/**
+ * Exception thrown when a type conversion or data mapping operation fails.
+ *
+ * This includes scenarios like failing to convert data between incompatible types (e.g., mapping an Int to a String),
+ * missing columns in a database row, or missing required non-nullable properties in a Kotlin class.
+ *
+ * @property reason The reason the mapping failed.
+ * @property details Additional details about the mapping failure.
+ * @property path The path in the nested object structure where the mapping error occurred.
+ */
 class MappingException(
     val reason: MappingExceptionReason,
     val details: String? = null,

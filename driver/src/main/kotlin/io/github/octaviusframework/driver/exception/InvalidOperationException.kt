@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.exception
 
+/**
+ * Represents the specific reason for an invalid operation.
+ */
 enum class InvalidOperationExceptionReason {
     AUTO_COMMIT_VIOLATION,
     INVALID_SAVEPOINT,
@@ -12,6 +15,15 @@ enum class InvalidOperationExceptionReason {
     UNEXPECTED_RESULT
 }
 
+/**
+ * Exception thrown when the driver attempts an operation that is not allowed in the current state or context.
+ *
+ * Examples include trying to commit when auto-commit is enabled, operating on a closed statement,
+ * or using unsupported features.
+ *
+ * @property reason The specific type of invalid operation.
+ * @property details Additional details about the failure.
+ */
 class InvalidOperationException(
     val reason: InvalidOperationExceptionReason,
     val details: String? = null,

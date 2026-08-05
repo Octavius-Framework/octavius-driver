@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.exception
 
+/**
+ * Represents the reason for a type resolution or validation failure.
+ */
 enum class TypeExceptionReason {
     TYPE_NOT_FOUND,
     NOT_A_CONTAINER,
@@ -8,6 +11,17 @@ enum class TypeExceptionReason {
     NESTED_PGTYPED_NOT_ALLOWED
 }
 
+/**
+ * Exception thrown when type resolution or validation fails within the driver's type registry.
+ *
+ * Includes scenarios where a type cannot be found, an incorrect container type is used,
+ * or an expected codec is missing.
+ *
+ * @property reason The specific reason for the type error.
+ * @property oid The OID of the type that caused the error, if applicable.
+ * @property typeName The name of the type that caused the error, if applicable.
+ * @property details Additional human-readable details about the failure.
+ */
 class TypeException(
     val reason: TypeExceptionReason,
     val oid: Int? = null,
