@@ -33,12 +33,7 @@ class PgArray(
     val totalElements: Int
         get() = elements.size
 
-    operator fun set(index: Int, newValue: Any?) {
-        if (newValue is PgArray) {
-            throw IllegalArgumentException("Array cannot contain another array")
-        }
-        elements[index] = newValue
-    }
+
 
     inline fun <reified T> get(index: Int): T {
         val value = elements[index]
