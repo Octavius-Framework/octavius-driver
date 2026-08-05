@@ -90,6 +90,12 @@ object ExceptionTranslator {
 
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
+                val reason = when (state) {
+                    "40001" -> TransactionExceptionReason.SERIALIZATION_FAILURE
+                    "40P01" -> TransactionExceptionReason.DEADLOCK_DETECTED
+                    else -> TransactionExceptionReason.UNKNOWN
+                }
+
                 if (state == "40002") {
                     ConstraintViolationException(
                         reason = ConstraintViolationExceptionReason.UNKNOWN,
@@ -101,7 +107,7 @@ object ExceptionTranslator {
                         constraint = errorMsg.constraint
                     )
                 } else {
-                    TransactionException(TransactionExceptionReason.ROLLBACK, details = "Message: $message", sqlState = state)
+                    TransactionException(reason, details = "Message: $message", sqlState = state)
                 }
             }
 

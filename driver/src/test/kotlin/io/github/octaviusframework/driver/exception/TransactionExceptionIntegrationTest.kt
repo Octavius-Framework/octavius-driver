@@ -39,6 +39,7 @@ class TransactionExceptionIntegrationTest {
                 session.createNativeQuery("SELECT pg_sleep(1)").fetchField<Any?>()
             }
 
+            assertEquals("57014", exception.sqlState)
             assertEquals(TransactionExceptionReason.TIMEOUT, exception.reason)
         }
     }
