@@ -198,7 +198,7 @@ class QueryExecutor internal constructor(
                             executionError = e
                         } catch (e: Exception) {
                             executionError = MappingException(
-                                MappingExceptionMessage.USER_CONVERTER_ERROR,
+                                MappingExceptionMessage.CONVERTER_ERROR,
                                 "Exception in row mapping: ${e.message}",
                                 e
                             )
@@ -273,7 +273,7 @@ class QueryExecutor internal constructor(
                                 break@fetchLoop
                             } catch (e: Exception) {
                                 executionError = MappingException(
-                                    MappingExceptionMessage.USER_CONVERTER_ERROR,
+                                    MappingExceptionMessage.CONVERTER_ERROR,
                                     "Exception in block: ${e.message}",
                                     e
                                 )

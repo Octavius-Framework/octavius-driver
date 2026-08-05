@@ -8,7 +8,7 @@ enum class MappingExceptionMessage {
     INVALID_RECORD_FORMAT,
     COLUMN_NOT_FOUND,
     COLUMN_INDEX_OUT_OF_BOUNDS,
-    USER_CONVERTER_ERROR,
+    CONVERTER_ERROR,
     CASTING_ERROR
 }
 
@@ -37,7 +37,7 @@ private fun generateDeveloperMessage(messageEnum: MappingExceptionMessage): Stri
         MappingExceptionMessage.INVALID_RECORD_FORMAT -> "The record data is in an invalid format."
         MappingExceptionMessage.COLUMN_NOT_FOUND -> "The requested column was not found in the row metadata."
         MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS -> "The requested column index is out of bounds for the row."
-        MappingExceptionMessage.USER_CONVERTER_ERROR -> "An exception was thrown by a user-provided converter or mapper."
+        MappingExceptionMessage.CONVERTER_ERROR -> "An exception was thrown by a user-provided converter or mapper."
         MappingExceptionMessage.CASTING_ERROR -> "Type casting error when converting database value to Kotlin type."
     }
 
