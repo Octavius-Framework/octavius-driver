@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
@@ -51,7 +50,7 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
             is ShortArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
             is BooleanArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
             is CharArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            else -> throw OctaviusInternalException()
+            else -> error("Unknown primitive array type")
         }
 
         val dimensions = listOf(ArrayDimension(convertedElements.size, 1))

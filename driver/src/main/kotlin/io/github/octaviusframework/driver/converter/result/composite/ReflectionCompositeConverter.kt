@@ -6,7 +6,6 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
@@ -36,13 +35,13 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
             val registry = context.typeManager.registry
             registry.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
                 ?: registry.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
-                ?: throw OctaviusInternalException()
+                ?: error("Missing composite registration for type")
         } else {
             expectedClass
         } as KClass<Any>
 
         val registration = context.typeManager.registry.converterRegistry.registeredComposites[kClass]
-            ?: throw OctaviusInternalException()
+            ?: error("Missing composite registration for class")
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
             kClass,

@@ -3,7 +3,6 @@ package io.github.octaviusframework.driver.converter.result.array
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -116,7 +115,7 @@ class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
                 }
                 result
             }
-            else -> throw OctaviusInternalException()
+            else -> error("Unsupported primitive array type")
         }
     }
 }

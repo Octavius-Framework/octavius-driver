@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
@@ -102,14 +101,14 @@ object TypeRegistryLoader {
                         oid,
                         info.name,
                         info.schema,
-                        rangeMap[oid] ?: throw OctaviusInternalException("Missing rangeMap for oid $oid")
+                        rangeMap[oid] ?: error("Missing rangeMap for oid $oid")
                     )
 
                     info.typtype == 'm' -> PgType.Multirange(
                         oid,
                         info.name,
                         info.schema,
-                        multirangeMap[oid] ?: throw OctaviusInternalException("Missing multirangeMap for oid $oid")
+                        multirangeMap[oid] ?: error("Missing multirangeMap for oid $oid")
                     )
 
                     info.typtype == 'c' -> {
@@ -122,7 +121,7 @@ object TypeRegistryLoader {
                             "record" -> PgType.Record
                             "void" -> PgType.Void
                             "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
-                            else -> throw OctaviusInternalException()
+                            else -> error("Unknown pseudo-type ${info.name}")
                         }
                     }
 

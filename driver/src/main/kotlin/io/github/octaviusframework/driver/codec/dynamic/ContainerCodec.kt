@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.codec.PgByteWriter
 import io.github.octaviusframework.driver.codec.decodeSafely
 import io.github.octaviusframework.driver.codec.encodeSafely
 import io.github.octaviusframework.driver.container.*
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.io.getIntBE
@@ -43,7 +42,7 @@ internal object ContainerCodec {
             is PgType.Range -> parsePgRange(data, offset, pgType.oid, typeRegistry)
             is PgType.Multirange -> parsePgMultirange(data, offset, pgType.oid, typeRegistry)
             is PgType.Record -> parsePgRecord(data, offset, pgType.oid, typeRegistry)
-            else -> throw OctaviusInternalException()
+            else -> error("Unknown pg type in container parsing")
         }
     }
 

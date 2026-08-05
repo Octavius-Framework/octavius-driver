@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.session
 
-import io.github.octaviusframework.driver.exception.OctaviusInternalException
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
@@ -192,7 +191,7 @@ enum class TransactionState {
             'I' -> IDLE
             'T' -> IN_TRANSACTION
             'E' -> FAILED
-            else -> throw OctaviusInternalException("Unknown transaction state: $c")
+            else -> error("Unknown transaction state: $c")
         }
     }
 }

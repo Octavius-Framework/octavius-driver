@@ -174,7 +174,7 @@ class QueryExecutor internal constructor(
                 is DataRowMessage -> {
                     if (rowMetadata == null) {
                         if (executionError == null) {
-                            executionError = OctaviusInternalException("Received DataRow before RowDescription")
+                            executionError = IllegalStateException("Received DataRow before RowDescription")
                         }
                     } else if (executionError == null && errorResponse == null) {
                         try {
@@ -257,7 +257,7 @@ class QueryExecutor internal constructor(
                     is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
                     is DataRowMessage -> {
                         if (rowMetadata == null) {
-                            executionError = OctaviusInternalException("Received DataRow before RowDescription")
+                            executionError = IllegalStateException("Received DataRow before RowDescription")
                             break@fetchLoop
                         } else {
                             try {
