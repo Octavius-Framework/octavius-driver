@@ -42,7 +42,14 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
         if (source.dimensions.isEmpty()) {
             val mappedElements = List(elements.size) { i ->
                 val value = elements[i]
-                if (value == null) null else context.convert<Any>(value, ktElementType, pgElementType, "[$i]")
+                if (value == null) {
+                    if (!ktElementType.isMarkedNullable) {
+                        val e = MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null array element for non-nullable type $ktElementType")
+                        e.path.add("[$i]")
+                        throw e
+                    }
+                    null
+                } else context.convert<Any>(value, ktElementType, pgElementType, "[$i]")
             }
             return if (kClass == Set::class) mappedElements.toSet() else mappedElements
         }
@@ -59,6 +66,11 @@ class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
                 val flatIndex = flatIndexOffset + i
                 val value = elements[flatIndex]
                 if (value == null) {
+                    if (!ktElementType.isMarkedNullable) {
+                        val e = MappingException(MappingExceptionMessage.NULL_FOR_NON_NULLABLE_ATTRIBUTE, "Null array element for non-nullable type $ktElementType")
+                        e.path.add("[$i]")
+                        throw e
+                    }
                     null
                 } else {
                     if (!converterSearched) {
