@@ -36,14 +36,14 @@ class PgRange internal constructor(
         if (isEmpty || isLowerInfinite || isLowerNull) {
             if (null is T) return null as T
             throw MappingException(
-                MappingExceptionMessage.CASTING_ERROR,
+                MappingExceptionMessage.CONVERSION_ERROR,
                 details = "Lower bound is null or infinite (missing) but requested type is non-nullable"
             )
         }
         val value = lowerBound
         if (value is T) return value
         throw MappingException(
-            MappingExceptionMessage.CASTING_ERROR,
+            MappingExceptionMessage.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }
@@ -52,14 +52,14 @@ class PgRange internal constructor(
         if (isEmpty || isUpperInfinite || isUpperNull) {
             if (null is T) return null as T
             throw MappingException(
-                MappingExceptionMessage.CASTING_ERROR,
+                MappingExceptionMessage.CONVERSION_ERROR,
                 details = "Upper bound is null or infinite (missing) but requested type is non-nullable"
             )
         }
         val value = upperBound
         if (value is T) return value
         throw MappingException(
-            MappingExceptionMessage.CASTING_ERROR,
+            MappingExceptionMessage.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

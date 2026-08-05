@@ -182,17 +182,27 @@ class QueryExecutor internal constructor(
                         if (executionError == null) {
                             executionError = OctaviusInternalException("Received DataRow before RowDescription")
                         }
-                    } else {
-                        rows.add(transform(
-                            Row(
-                                msg.rawData,
-                                msg.columnOffsets,
-                                msg.columnLengths,
-                                rowMetadata,
-                                typeRegistry,
-                                mapper
+                    } else if (executionError == null && errorResponse == null) {
+                        try {
+                            rows.add(transform(
+                                Row(
+                                    msg.rawData,
+                                    msg.columnOffsets,
+                                    msg.columnLengths,
+                                    rowMetadata,
+                                    typeRegistry,
+                                    mapper
+                                )
+                            ))
+                        } catch (e: OctaviusException) {
+                            executionError = e
+                        } catch (e: Exception) {
+                            executionError = MappingException(
+                                MappingExceptionMessage.CONVERSION_ERROR,
+                                "Exception in row mapping: ${e.message}",
+                                e
                             )
-                        ))
+                        }
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
@@ -258,8 +268,15 @@ class QueryExecutor internal constructor(
                         } else {
                             try {
                                 block(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
+                            } catch (e: OctaviusException) {
+                                executionError = e
+                                break@fetchLoop
                             } catch (e: Exception) {
-                                executionError = MappingException(MappingExceptionMessage.USER_CONVERTER_ERROR, "Exception in block: ${e.message}", e)
+                                executionError = MappingException(
+                                    MappingExceptionMessage.CONVERSION_ERROR,
+                                    "Exception in block: ${e.message}",
+                                    e
+                                )
                                 break@fetchLoop
                             }
                         }

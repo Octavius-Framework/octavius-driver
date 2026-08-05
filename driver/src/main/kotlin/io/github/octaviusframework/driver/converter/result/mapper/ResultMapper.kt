@@ -27,7 +27,7 @@ internal class DefaultDeserializationContext(
         try {
         if (source == null) {
             if (!expectedType.isMarkedNullable) {
-                throw IllegalArgumentException("Cannot deserialize null to non-nullable type $expectedType")
+                throw MappingException(MappingExceptionMessage.REQUIRED_ATTRIBUTE_MISSING, "Cannot deserialize null to non-nullable type $expectedType")
             }
             @Suppress("UNCHECKED_CAST")
             return null as T
@@ -51,6 +51,14 @@ internal class DefaultDeserializationContext(
         } catch (e: MappingException) {
             if (pathSegment != null) e.path.add(pathSegment)
             throw e
+        } catch (e: Exception) {
+            val ex = MappingException(
+                MappingExceptionMessage.CONVERSION_ERROR,
+                details = "Error during result deserialization: ${e.message}", 
+                cause = e
+            )
+            if (pathSegment != null) ex.path.add(pathSegment)
+            throw ex
         }
     }
 

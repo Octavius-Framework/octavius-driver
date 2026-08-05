@@ -9,7 +9,6 @@ import kotlin.math.min
  * Any standard exceptions (like [IllegalArgumentException] or [IllegalStateException])
  * thrown by the codec's [TypeCodec.fromBinary] method are caught and wrapped in a [CodecException].
  */
-@Suppress("TooGenericExceptionCaught")
 internal fun <T : Any> TypeCodec<T>.decodeSafely(data: ByteArray, offset: Int, length: Int): T {
     return try {
         this.fromBinary(data, offset, length)
@@ -35,7 +34,6 @@ internal fun <T : Any> TypeCodec<T>.decodeSafely(data: ByteArray, offset: Int, l
  * Any standard exceptions (like [IllegalArgumentException] or [IllegalStateException])
  * thrown by the codec's [TypeCodec.toBinary] method are caught and wrapped in a [CodecException].
  */
-@Suppress("TooGenericExceptionCaught")
 internal fun <T : Any> TypeCodec<T>.encodeSafely(value: T, writer: PgByteWriter) {
     try {
         this.toBinary(value, writer)

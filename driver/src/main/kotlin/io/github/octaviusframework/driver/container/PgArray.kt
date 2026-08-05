@@ -33,18 +33,13 @@ class PgArray(
     val totalElements: Int
         get() = elements.size
 
-    operator fun set(index: Int, newValue: Any?) {
-        if (newValue is PgArray) {
-            throw IllegalArgumentException("Array cannot contain another array")
-        }
-        elements[index] = newValue
-    }
+
 
     inline fun <reified T> get(index: Int): T {
         val value = elements[index]
         if (value is T) return value
         throw MappingException(
-            MappingExceptionMessage.CASTING_ERROR,
+            MappingExceptionMessage.CONVERSION_ERROR,
             details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }

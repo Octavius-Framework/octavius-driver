@@ -63,7 +63,7 @@ class Row(
     }
 
     fun getRaw(index: Int): Any? {
-        if (index !in values.indices) throw MappingException(MappingExceptionMessage.COLUMN_INDEX_OUT_OF_BOUNDS, "Column index out of bounds: $index")
+        if (index !in values.indices) throw MappingException(MappingExceptionMessage.COLUMN_NOT_FOUND, "Column index out of bounds: $index")
         return values[index]
     }
 

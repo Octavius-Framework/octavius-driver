@@ -155,7 +155,7 @@ class DeserializationTest {
         val ex = assertThrows(MappingException::class.java) {
             deserializer.deserialize<Address>(composite, typeOf<Address>(), composite.type)
         }
-        assertTrue(ex.message!!.contains("MISSING_ATTRIBUTE"))
+        assertTrue(ex.message!!.contains("REQUIRED_ATTRIBUTE_MISSING"))
     }
 
     @Test

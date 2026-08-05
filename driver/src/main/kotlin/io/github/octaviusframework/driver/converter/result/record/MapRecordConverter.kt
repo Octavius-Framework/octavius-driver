@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.converter.result.record
 
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
-import io.github.octaviusframework.driver.exception.MappingException
+
 
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
@@ -29,7 +28,7 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
         }
 
         if (source.fields.size % 2 != 0) {
-            throw MappingException(MappingExceptionMessage.INVALID_RECORD_FORMAT, "Record fields must be in key-value pairs (even number of fields expected)")
+            throw IllegalArgumentException("Record fields must be in key-value pairs (even number of fields expected)")
         }
 
         val result = mutableMapOf<String, Any?>()

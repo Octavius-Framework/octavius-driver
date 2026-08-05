@@ -38,7 +38,7 @@ class SerializationTest {
         val originalBytes = writer1.toByteArray()
 
         // Modyfikacja warstwy 3 przez operator
-        array[1] = 999
+        array.elements[1] = 999
 
         val writer2 = PgByteWriter()
         ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
