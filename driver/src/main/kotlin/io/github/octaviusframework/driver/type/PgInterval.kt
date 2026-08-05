@@ -1,10 +1,7 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionMessage
-import io.github.octaviusframework.driver.type.PgInterval.Finite
-import io.github.octaviusframework.driver.type.PgInterval.Infinity
-import io.github.octaviusframework.driver.type.PgInterval.MinusInfinity
+
+import io.github.octaviusframework.driver.type.PgInterval.*
 import kotlinx.datetime.DateTimePeriod
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.microseconds
@@ -117,9 +114,8 @@ fun PgInterval.toDurationExact(): Duration = when (this) {
     MinusInfinity -> -Duration.INFINITE
     is Finite -> {
         if (days != 0 || months != 0) {
-            throw MappingException(
-                messageEnum = MappingExceptionMessage.CONVERSION_ERROR,
-                details = "Cannot convert PgInterval to exact Duration because it contains variable-length calendar units (days: $days, months: $months)."
+            throw IllegalArgumentException(
+                "Cannot convert PgInterval to exact Duration because it contains variable-length calendar units (days: $days, months: $months)."
             )
         }
         time.microseconds
