@@ -1,4 +1,4 @@
-package pl.benchmark
+package io.github.octaviusframework.driver.codec.dynamic
 
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
