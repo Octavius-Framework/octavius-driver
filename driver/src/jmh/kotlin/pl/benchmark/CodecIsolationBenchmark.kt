@@ -70,6 +70,6 @@ open class CodecIsolationBenchmark {
     fun benchmarkContainerDecoding(): Any {
         // Czysta kalkulacja CPU - zero sieci, zero I/O!
         // Upewnij się, że targetOid pokrywa się z głównym typem bajtów.
-        return ContainerCodec.parseContainer(rawPayload, 0, rawPayload.size, targetOid, typeRegistry)
+        return ContainerCodec.parseContainer(rawPayload, 0,  targetOid, typeRegistry)
     }
 }

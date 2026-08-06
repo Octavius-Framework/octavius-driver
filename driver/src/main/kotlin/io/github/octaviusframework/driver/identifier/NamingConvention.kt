@@ -9,9 +9,24 @@ package io.github.octaviusframework.driver.identifier
  * 3. Automatic generation of PostgreSQL type names from Kotlin class names.
  */
 enum class CaseConvention {
+    /**
+     * e.g., `SOME_VARIABLE_NAME`
+     */
     SNAKE_CASE_UPPER,
+
+    /**
+     * e.g., `some_variable_name`
+     */
     SNAKE_CASE_LOWER,
+
+    /**
+     * e.g., `SomeVariableName`
+     */
     PASCAL_CASE,
+
+    /**
+     * e.g., `someVariableName`
+     */
     CAMEL_CASE,
 }
 
@@ -96,14 +111,23 @@ object CaseConverter {
 
 // --- Extension Functions ---
 
+/**
+ * Converts a string from camelCase to lower_snake_case.
+ */
 fun String.toSnakeCase(): String {
     return CaseConverter.convert(this, CaseConvention.CAMEL_CASE, CaseConvention.SNAKE_CASE_LOWER)
 }
 
+/**
+ * Converts a string from lower_snake_case to camelCase.
+ */
 fun String.toCamelCase(): String {
     return CaseConverter.convert(this, CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
 }
 
+/**
+ * Converts a string from lower_snake_case to PascalCase.
+ */
 fun String.toPascalCase(): String {
     return CaseConverter.convert(this, CaseConvention.SNAKE_CASE_LOWER, CaseConvention.PASCAL_CASE)
 }

@@ -4,9 +4,13 @@ package io.github.octaviusframework.driver.exception
  * Represents the specific reason for a mapping failure.
  */
 enum class MappingExceptionReason {
+    /** No suitable converter was found for the target data types. */
     NO_CONVERTER_FOUND,
+    /** The specified column name or index does not exist in the row. */
     COLUMN_NOT_FOUND,
+    /** The data could not be converted or cast to the target type. */
     CONVERSION_ERROR,
+    /** A required, non-nullable property in the target object received a null value. */
     REQUIRED_ATTRIBUTE_MISSING
 }
 

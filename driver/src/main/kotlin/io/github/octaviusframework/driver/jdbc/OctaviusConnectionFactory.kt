@@ -11,12 +11,35 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*
 
+/**
+ * Factory object responsible for establishing physical connections to a PostgreSQL database.
+ *
+ * It handles URL parsing, socket creation, SSL negotiation, and the PostgreSQL startup 
+ * and authentication sequences. It ensures that the connected server meets the minimum 
+ * version requirement (PostgreSQL 18+).
+ */
 object OctaviusConnectionFactory {
+    /**
+     * Creates a new database connection using the provided JDBC URL and optional properties.
+     *
+     * @param url The JDBC URL (e.g., `jdbc:octavius://localhost:5432/db`).
+     * @param info Additional connection properties.
+     * @return A newly established [Connection] (specifically, an [OctaviusConnection]).
+     * @throws InitializationException if the connection cannot be established or the server version is unsupported.
+     */
     fun createConnection(url: String, info: Properties? = null): Connection {
         val properties = OctaviusProperties.parse(url, info)
         return createConnection(url, properties)
     }
 
+    /**
+     * Creates a new database connection using the provided JDBC URL and pre-parsed [OctaviusProperties].
+     *
+     * @param url The JDBC URL.
+     * @param properties The parsed configuration properties.
+     * @return A newly established [Connection].
+     * @throws InitializationException if the connection cannot be established or the server version is unsupported.
+     */
     fun createConnection(url: String, properties: OctaviusProperties): Connection {
         val serverName = properties.serverName ?: "localhost"
         val portNumber = properties.portNumber ?: 5432

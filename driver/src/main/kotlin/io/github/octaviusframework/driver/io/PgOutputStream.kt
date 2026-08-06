@@ -3,6 +3,13 @@ package io.github.octaviusframework.driver.io
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets
 
+/**
+ * A highly optimized, buffered output stream tailored for the PostgreSQL wire protocol.
+ *
+ * It provides specialized methods for efficiently writing protocol primitives
+ * like bytes, integers, shorts, and null-terminated C-style strings.
+ * Internal buffering minimizes the number of underlying network write operations.
+ */
 class PgOutputStream(private var outputStream: OutputStream) {
     private val buffer = ByteArray(8192)
     private var position = 0

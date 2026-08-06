@@ -6,6 +6,12 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 
+/**
+ * Handles the initial PostgreSQL SSL negotiation protocol.
+ *
+ * It sends an `SSLRequest` message to the server, parses the response (`S` for Yes, `N` for No),
+ * and if supported and configured, delegates the actual socket upgrade to [PgSslUpgrader].
+ */
 internal class SslNegotiator(private val stream: PgStream) {
 
     fun negotiate(host: String, port: Int, properties: OctaviusProperties) {

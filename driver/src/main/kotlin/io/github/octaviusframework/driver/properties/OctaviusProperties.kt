@@ -5,6 +5,15 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.util.*
 
+/**
+ * Holds all configuration properties for establishing a connection to a PostgreSQL database
+ * using the Octavius driver.
+ *
+ * It provides a strongly-typed representation of common connection properties (e.g., host,
+ * port, user, password, ssl settings) and stores any unrecognised properties in a map.
+ * This class also provides utility methods for parsing properties from a JDBC URL and 
+ * converting the properties back into a valid JDBC URL.
+ */
 class OctaviusProperties {
     var user: String? = null
     var password: String? = null

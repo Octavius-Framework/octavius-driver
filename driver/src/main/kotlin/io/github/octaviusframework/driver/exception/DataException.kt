@@ -1,16 +1,30 @@
 package io.github.octaviusframework.driver.exception
 
+/**
+ * Categorizes the specific reason why a [DataException] was thrown.
+ */
 enum class DataExceptionReason {
-    DATA_TRUNCATION,          // 22001, 22008, 22015
-    NUMERIC_OUT_OF_RANGE,     // 22003, 22022
-    DIVISION_BY_ZERO,         // 22012
-    INVALID_FORMAT,           // 22007, 22P02, 22P03, 22018
-    ARRAY_SUBSCRIPT_ERROR,    // 2202E
-    NULL_VALUE_NOT_ALLOWED,   // 22004, 22002
-    JSON_ERROR,               // 2203X
-    XML_ERROR,                // 2200L - 2200T
-    ESCAPE_CHARACTER_ERROR,   // 22019, 2200D, 22025, 22P06, 2200C, 2200B
-    REGEX_ERROR,              // 2201B
+    /** String, interval, or datetime truncation/overflow (22001, 22008, 22015). */
+    DATA_TRUNCATION,
+    /** Numeric value out of bounds (22003, 22022). */
+    NUMERIC_OUT_OF_RANGE,
+    /** Division by zero (22012). */
+    DIVISION_BY_ZERO,
+    /** Invalid data format or representation (22007, 22P02, 22P03, 22018). */
+    INVALID_FORMAT,
+    /** Array subscript out of bounds (2202E). */
+    ARRAY_SUBSCRIPT_ERROR,
+    /** Null value not allowed by constraint (22004, 22002). */
+    NULL_VALUE_NOT_ALLOWED,
+    /** Error parsing or operating on JSON data (2203X). */
+    JSON_ERROR,
+    /** Error parsing or operating on XML data (2200L - 2200T). */
+    XML_ERROR,
+    /** Invalid escape character sequence (22019, 2200D, 22025, 22P06, 2200C, 2200B). */
+    ESCAPE_CHARACTER_ERROR,
+    /** Invalid regular expression (2201B). */
+    REGEX_ERROR,
+    /** A generic or unknown data error. */
     UNKNOWN
 }
 

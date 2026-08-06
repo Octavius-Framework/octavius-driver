@@ -4,6 +4,13 @@ import java.io.EOFException
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 
+/**
+ * A highly optimized, buffered input stream tailored for the PostgreSQL wire protocol.
+ *
+ * It provides specialized methods for efficiently reading protocol primitives
+ * like bytes, integers, shorts, and null-terminated C-style strings.
+ * Internal buffering is used to minimize network reads and object allocations.
+ */
 class PgInputStream(private var inputStream: InputStream) {
     private val buffer = ByteArray(8192)
     private var position = 0

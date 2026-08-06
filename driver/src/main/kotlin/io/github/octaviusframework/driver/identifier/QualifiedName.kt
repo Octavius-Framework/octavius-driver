@@ -3,6 +3,10 @@ package io.github.octaviusframework.driver.identifier
 /**
  * Represents a qualified PostgreSQL name (schema + object name).
  * Handles quoting correctly even if names contain dots.
+ *
+ * @property schema The schema name. If empty, the object belongs to the default schema.
+ * @property name The object name (e.g., table or type name).
+ * @property isArray Indicates whether this qualified name refers to an array type (appends `[]`).
  */
 data class QualifiedName(
     val schema: String,

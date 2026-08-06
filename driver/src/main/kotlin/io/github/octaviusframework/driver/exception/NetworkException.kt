@@ -5,10 +5,15 @@ package io.github.octaviusframework.driver.exception
  * Represents specific types of network-related errors that can occur during database communication.
  */
 enum class NetworkExceptionReason {
+    /** A generic network connection error. */
     CONNECTION_ERROR,
+    /** A read or connect operation timed out. */
     CONNECTION_TIMEOUT,
+    /** Attempted to use a connection that has already been closed locally. */
     CONNECTION_CLOSED,
+    /** The remote database server (peer) closed the connection unexpectedly. */
     CONNECTION_CLOSED_BY_PEER,
+    /** The connection was aborted locally, e.g., by a thread interrupt or specific API call. */
     CONNECTION_ABORTED
 }
 

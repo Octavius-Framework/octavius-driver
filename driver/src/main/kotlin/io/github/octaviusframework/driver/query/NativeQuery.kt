@@ -9,6 +9,14 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import kotlin.reflect.typeOf
 
+/**
+ * Represents a query that uses standard PostgreSQL positional parameters (e.g., `$1`, `$2`).
+ *
+ * `NativeQuery` passes the provided SQL string and parameters directly to the underlying
+ * [QueryExecutor] without any intermediate parsing or modification of the SQL statement.
+ * It provides various execution methods to fetch rows, map results to Kotlin objects, 
+ * extract single fields, or perform data modifications (updates).
+ */
 class NativeQuery internal constructor(
     sql: String,
     queryExecutor: QueryExecutor,

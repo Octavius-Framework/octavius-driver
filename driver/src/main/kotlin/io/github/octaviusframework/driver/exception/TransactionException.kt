@@ -1,10 +1,18 @@
 package io.github.octaviusframework.driver.exception
 
+/**
+ * Categorizes the specific reason why a [TransactionException] was thrown.
+ */
 enum class TransactionExceptionReason {
+    /** Transaction or statement timed out. */
     TIMEOUT,
+    /** A required lock could not be obtained. */
     LOCK_NOT_AVAILABLE,
+    /** A database deadlock was detected. */
     DEADLOCK_DETECTED,
+    /** The transaction failed due to a serialization conflict. */
     SERIALIZATION_FAILURE,
+    /** An unknown or unspecified transaction error. */
     UNKNOWN
 }
 

@@ -4,14 +4,23 @@ package io.github.octaviusframework.driver.exception
  * Represents the specific reason for an invalid operation.
  */
 enum class InvalidOperationExceptionReason {
+    /** Transaction operations like commit or savepoint used when auto-commit is enabled. */
     AUTO_COMMIT_VIOLATION,
+    /** Provided savepoint is invalid or belongs to another connection. */
     INVALID_SAVEPOINT,
+    /** Attempted to operate on a closed statement. */
     STATEMENT_CLOSED,
+    /** Requested transaction isolation level is not supported. */
     UNSUPPORTED_ISOLATION_LEVEL,
+    /** Timeout value is negative. */
     INVALID_TIMEOUT,
+    /** JDBC unwrap() failed. */
     UNWRAP_ERROR,
+    /** The JDBC feature is not implemented by this driver. */
     FEATURE_NOT_SUPPORTED,
+    /** SQL string passed to statement was null. */
     NULL_SQL,
+    /** update or execute returned result. */
     UNEXPECTED_RESULT
 }
 

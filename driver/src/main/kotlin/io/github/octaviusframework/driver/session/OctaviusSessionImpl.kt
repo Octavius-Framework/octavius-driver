@@ -14,6 +14,12 @@ import io.github.octaviusframework.driver.type.TypeManager
 import java.sql.Connection
 
 
+/**
+ * Internal implementation of the [OctaviusSession] interface.
+ *
+ * This class wraps a raw JDBC [Connection] (which could be pooled) and delegates 
+ * operations to the underlying [OctaviusConnection].
+ */
 internal class OctaviusSessionImpl(
     private val rawConnection: Connection
 ) : OctaviusSession {

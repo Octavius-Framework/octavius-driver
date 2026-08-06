@@ -5,20 +5,35 @@ import io.github.octaviusframework.driver.exception.InvalidOperationExceptionRea
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import java.sql.Savepoint
 
+/**
+ * Represents a savepoint within a database transaction in the Octavius framework.
+ *
+ * A savepoint can be used to roll back portions of a transaction. It can be created
+ * either with an auto-generated numeric ID or with a specific name.
+ */
 interface OctaviusSavepoint {
     /**
      * Retrieves the generated ID for the savepoint that this
      * `OctaviusSavepoint` object represents.
+     *
+     * @return The auto-generated numeric ID of this savepoint.
+     * @throws InvalidOperationException if the savepoint is named.
      */
     fun getSavepointId(): Int
 
     /**
      * Retrieves the name of the savepoint that this
      * `OctaviusSavepoint` object represents.
+     *
+     * @return The name of this savepoint.
+     * @throws InvalidOperationException if the savepoint is un-named.
      */
     fun getSavepointName(): String
 }
 
+/**
+ * Internal implementation of the [OctaviusSavepoint] and standard JDBC [Savepoint] interfaces.
+ */
 internal class OctaviusSavepointImpl : OctaviusSavepoint, Savepoint {
     private val savepointId: Int
     private val savepointName: String?

@@ -10,6 +10,14 @@ import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.RowMetadata
 import kotlin.concurrent.withLock
 
+/**
+ * Handles the low-level execution of PostgreSQL queries over the wire protocol.
+ *
+ * This executor manages communication with the database using both the Simple Query Protocol
+ * (for utility statements) and the Extended Query Protocol (for parameterized DML and DQL).
+ * It is responsible for parsing responses, managing the transaction state flag, and mapping
+ * results back into usable domain objects.
+ */
 class QueryExecutor internal constructor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry
@@ -174,7 +182,10 @@ class QueryExecutor internal constructor(
                 is DataRowMessage -> {
                     if (rowMetadata == null) {
                         if (executionError == null) {
-                            executionError = IllegalStateException("Received DataRow before RowDescription")
+                            executionError = InvalidOperationException(
+                                InvalidOperationExceptionReason.UNEXPECTED_RESULT,
+                                "Received DataRow before RowDescription"
+                            )
                         }
                     } else if (executionError == null && errorResponse == null) {
                         try {
@@ -257,7 +268,10 @@ class QueryExecutor internal constructor(
                     is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
                     is DataRowMessage -> {
                         if (rowMetadata == null) {
-                            executionError = IllegalStateException("Received DataRow before RowDescription")
+                            executionError = InvalidOperationException(
+                                InvalidOperationExceptionReason.UNEXPECTED_RESULT,
+                                "Received DataRow before RowDescription"
+                            )
                             break@fetchLoop
                         } else {
                             try {

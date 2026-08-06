@@ -6,13 +6,21 @@ package io.github.octaviusframework.driver.exception
  * Represents the specific reason for an initialization failure during database connection or authentication.
  */
 enum class InitializationExceptionReason {
+    /** The server requested or only supports an authentication mechanism not supported by this driver. */
     UNSUPPORTED_MECHANISM,
+    /** The server sent an unexpected message sequence violating the connection protocol. */
     PROTOCOL_VIOLATION,
+    /** A required parameter was missing in the server's authentication challenge. */
     MISSING_PROTOCOL_PARAMETER,
+    /** The database server rejected the provided username or password. */
     SERVER_REJECTED_CREDENTIALS,
+    /** The server requested an outdated/unsupported password encryption method (e.g. MD5, Cleartext). */
     UNSUPPORTED_PASSWORD_ENCRYPTION,
+    /** SSL negotiation failed or certificates are invalid/unsupported. */
     SSL_ERROR,
+    /** The server version is too old for this driver to support. */
     UNSUPPORTED_SERVER_VERSION,
+    /** A generic connection error occurred before authentication could begin. */
     CONNECTION_ERROR
 }
 
