@@ -182,7 +182,10 @@ class QueryExecutor internal constructor(
                 is DataRowMessage -> {
                     if (rowMetadata == null) {
                         if (executionError == null) {
-                            executionError = IllegalStateException("Received DataRow before RowDescription")
+                            executionError = InvalidOperationException(
+                                InvalidOperationExceptionReason.UNEXPECTED_RESULT,
+                                "Received DataRow before RowDescription"
+                            )
                         }
                     } else if (executionError == null && errorResponse == null) {
                         try {
@@ -265,7 +268,10 @@ class QueryExecutor internal constructor(
                     is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
                     is DataRowMessage -> {
                         if (rowMetadata == null) {
-                            executionError = IllegalStateException("Received DataRow before RowDescription")
+                            executionError = InvalidOperationException(
+                                InvalidOperationExceptionReason.UNEXPECTED_RESULT,
+                                "Received DataRow before RowDescription"
+                            )
                             break@fetchLoop
                         } else {
                             try {
