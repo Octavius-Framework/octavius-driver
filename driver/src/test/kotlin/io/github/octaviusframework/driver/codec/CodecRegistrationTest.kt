@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.codec
 
+import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get

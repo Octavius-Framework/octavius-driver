@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.serialization
 
-import io.github.octaviusframework.driver.codec.PgByteWriter
+import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.codec.dynamic.ContainerCodec
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray

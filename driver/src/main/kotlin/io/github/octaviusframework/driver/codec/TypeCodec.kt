@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.codec
 
+import io.github.octaviusframework.driver.io.PgByteWriter
 import kotlin.reflect.KClass
 
 /**

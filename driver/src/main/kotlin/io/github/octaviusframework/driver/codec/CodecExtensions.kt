@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.codec
 
 import io.github.octaviusframework.driver.exception.CodecAction
 import io.github.octaviusframework.driver.exception.CodecException
+import io.github.octaviusframework.driver.io.PgByteWriter
 import kotlin.math.min
 
 /**

@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.exception
 
-import io.github.octaviusframework.driver.codec.PgByteWriter
+import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.decodeSafely
 import io.github.octaviusframework.driver.codec.encodeSafely
