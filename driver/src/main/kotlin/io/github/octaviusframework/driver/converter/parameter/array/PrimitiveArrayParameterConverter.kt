@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
@@ -42,18 +43,20 @@ class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
 
         val elementOid = arrayType.elementOid
 
-        val convertedElements: MutableList<Any?> = when (source) {
-            is IntArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            is DoubleArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            is FloatArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            is LongArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            is ShortArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            is BooleanArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            is CharArray -> MutableList(source.size) { context.convert(source[it], elementOid, "[$it]") }
-            else -> error("Unknown primitive array type")
+        val size = java.lang.reflect.Array.getLength(source)
+        val convertedElements = ArrayList<Any?>(size)
+
+        for (i in 0 until size) {
+            val item = java.lang.reflect.Array.get(source, i)
+            try {
+                convertedElements.add(context.convert(item, elementOid, null))
+            } catch (e: MappingException) {
+                e.path.add("[$i]")
+                throw e
+            }
         }
 
-        val dimensions = listOf(ArrayDimension(convertedElements.size, 1))
+        val dimensions = listOf(ArrayDimension(size, 1))
 
         return PgArray(
             arrayOid = arrayType.oid,

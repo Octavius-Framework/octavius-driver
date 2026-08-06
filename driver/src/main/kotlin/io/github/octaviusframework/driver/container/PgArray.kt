@@ -26,7 +26,7 @@ class PgArray(
     val arrayOid: Int,
     val elementOid: Int,
     val dimensions: List<ArrayDimension>,
-    val elements: MutableList<Any?>
+    val elements: List<Any?>
 ) : PgContainer {
     override val containerOid: Int get() = arrayOid
     val totalElements: Int

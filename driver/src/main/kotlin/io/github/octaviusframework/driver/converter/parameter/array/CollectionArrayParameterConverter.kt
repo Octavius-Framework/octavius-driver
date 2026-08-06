@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
@@ -22,7 +23,7 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
                (sourceClass.java.isArray && sourceClass.java.componentType?.isPrimitive == false)
     }
 
-    private fun getDimensionsAndFlatten(source: Any): Pair<List<ArrayDimension>, MutableList<Any?>> {
+    private fun getDimensions(source: Any): List<ArrayDimension> {
         val dimensions = mutableListOf<Int>()
         var current: Any? = source
 
@@ -32,36 +33,37 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
             current = if (current is Collection<*>) current.firstOrNull() else (current as Array<*>).firstOrNull()
         }
 
-        val expectedSize = dimensions.fold(1) { acc, i -> acc * i }
-        val arrayDimensions = dimensions.map { ArrayDimension(it, 1) }
+        return dimensions.map { ArrayDimension(it, 1) }
+    }
 
-        val flatList = ArrayList<Any?>(expectedSize)
-
-        fun flattenInto(item: Any?) {
-            when (item) {
-                is Collection<*> -> item.forEach { flattenInto(it) }
-                is Array<*> -> item.forEach { flattenInto(it) }
-                else -> flatList.add(item)
+    private fun findFirstNonNull(source: Any): Any? {
+        when (source) {
+            is Collection<*> -> {
+                for (item in source) {
+                    val found = findFirstNonNull(item ?: continue)
+                    if (found != null) return found
+                }
             }
+            is Array<*> -> {
+                for (item in source) {
+                    val found = findFirstNonNull(item ?: continue)
+                    if (found != null) return found
+                }
+            }
+            else -> return source
         }
-
-        flattenInto(source)
-
-        if (dimensions.isNotEmpty() && dimensions.first() > 0 && flatList.size != expectedSize) {
-            throw IllegalArgumentException("Multidimensional arrays must be rectangular")
-        }
-
-        return arrayDimensions to flatList
+        return null
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        val (dimensions, list) = getDimensionsAndFlatten(source)
+        val dimensions = getDimensions(source)
+        val expectedSize = dimensions.fold(1) { acc, dim -> acc * dim.size }
 
         val arrayType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Array
         } else {
             // Try to infer from first non-null element
-            val firstNonNull = list.firstOrNull { it != null }
+            val firstNonNull = findFirstNonNull(source)
             if (firstNonNull != null) {
                 val converted = context.convert(firstNonNull, UNRESOLVED_OID)
                 val elementOid = when {
@@ -99,17 +101,42 @@ class CollectionArrayParameterConverter : ParameterConverter<Any> {
 
         val elementOid = arrayType.elementOid
 
-        val convertedElements = list.mapIndexed { index, element ->
-            if (element != null) {
-                context.convert(element, elementOid, "[$index]")
-            } else null
+        val convertedElements = ArrayList<Any?>(expectedSize)
+        var globalIndex = 0
+
+        fun flattenAndConvert(item: Any?) {
+            when (item) {
+                is Collection<*> -> {
+                    for (child in item) flattenAndConvert(child)
+                }
+                is Array<*> -> {
+                    for (child in item) flattenAndConvert(child)
+                }
+                else -> {
+                    if (item != null) {
+                        try {
+                            convertedElements.add(context.convert(item, elementOid, null))
+                        } catch (e: MappingException) {
+                            e.path.add("[$globalIndex]")
+                            throw e
+                        }
+                    } else {
+                        convertedElements.add(null)
+                    }
+                    globalIndex++
+                }
+            }
         }
+
+        flattenAndConvert(source)
+
+        require(dimensions.isEmpty() || dimensions.first().size == 0 || convertedElements.size == expectedSize) { "Multidimensional arrays must be rectangular" }
 
         return PgArray(
             arrayOid = arrayType.oid,
             elementOid = elementOid,
             dimensions = dimensions,
-            elements = convertedElements.toMutableList()
+            elements = convertedElements
         )
     }
 }
