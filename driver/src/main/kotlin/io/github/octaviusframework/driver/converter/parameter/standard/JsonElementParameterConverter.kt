@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.converter.parameter.standard
 
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.identifier.QualifiedName
 import kotlinx.serialization.json.JsonElement
 import kotlin.reflect.KClass
 
@@ -13,8 +14,8 @@ class JsonElementParameterConverter : ParameterConverter<JsonElement> {
         return supportedClass.java.isAssignableFrom(sourceClass.java)
     }
 
-    override fun getDefaultOid(context: SerializationContext): Int {
-        return context.typeManager.resolveOid("jsonb", "pg_catalog")
+    override fun getDefaultTypeName(context: SerializationContext): QualifiedName {
+        return QualifiedName("pg_catalog", "jsonb")
     }
 
     override fun convert(source: JsonElement, expectedOid: Int, context: SerializationContext): Any {

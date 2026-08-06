@@ -25,7 +25,8 @@ class RangeParameterConverter : ParameterConverter<Any> {
         val pgType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Range
         } else {
-            val elementOid = context.findConverterByClass(range.elementClass, UNRESOLVED_OID)?.getDefaultOid(context)
+            val elementOid = context.findConverterByClass(range.elementClass, UNRESOLVED_OID)?.getDefaultTypeName(context)
+                ?.let { context.typeManager.resolveOid(it.name, it.schema, it.isArray) }
                 ?.takeIf { it.isKnownOid }
                 ?: typeManager.codecDictionary.getCodecByClass(range.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
 

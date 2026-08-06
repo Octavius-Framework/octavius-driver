@@ -25,7 +25,8 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         val pgType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Multirange
         } else {
-            val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultOid(context)
+            val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultTypeName(context)
+                ?.let { context.typeManager.resolveOid(it.name, it.schema, it.isArray) }
                 ?.takeIf { it.isKnownOid }
                 ?: typeManager.codecDictionary.getCodecByClass(multiRange.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
 
