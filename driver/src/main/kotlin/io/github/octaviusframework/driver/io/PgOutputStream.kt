@@ -54,20 +54,20 @@ class PgOutputStream(private var outputStream: OutputStream) {
         buffer[position++] = s.toByte()
     }
 
-    fun writeBytes(bytes: ByteArray) {
-        var offset = 0
-        var length = bytes.size
-        while (length > 0) {
+    fun writeBytes(bytes: ByteArray, offset: Int = 0, length: Int = bytes.size - offset) {
+        var currentOffset = offset
+        var remaining = length
+        while (remaining > 0) {
             val space = buffer.size - position
             if (space == 0) {
                 flushBuffer()
                 continue
             }
-            val toCopy = minOf(space, length)
-            System.arraycopy(bytes, offset, buffer, position, toCopy)
+            val toCopy = minOf(space, remaining)
+            System.arraycopy(bytes, currentOffset, buffer, position, toCopy)
             position += toCopy
-            offset += toCopy
-            length -= toCopy
+            currentOffset += toCopy
+            remaining -= toCopy
         }
     }
 

@@ -18,7 +18,7 @@ class ParameterSerializer(
 ) {
     private val codecDictionary = typeManager.codecDictionary
 
-    fun serializeAll(parameters: List<Any?>): Pair<IntArray, ByteArray> {
+    fun serializeAll(parameters: List<Any?>): Pair<IntArray, PgByteWriter> {
         val size = parameters.size
         val oids = IntArray(size)
         val writer = PgByteWriter()
@@ -28,7 +28,7 @@ class ParameterSerializer(
             oids[i] = serializeValue(parameters[i], writer, marker)
         }
 
-        return oids to writer.toByteArray()
+        return oids to writer
     }
 
     private fun serializeValue(parameter: Any?, writer: PgByteWriter, marker: Int): Int {
