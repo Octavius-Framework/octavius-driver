@@ -73,12 +73,16 @@ class QueryExecutor internal constructor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = stream.lock.withLock {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
+        val serializationResult = parameterSerializer?.serializeAll(params)
+        val paramTypes = serializationResult?.first ?: IntArray(0)
+        val writer = serializationResult?.second
+        val paramValues = writer?.data ?: ByteArray(0)
+        val paramValuesLength = writer?.position ?: 0
         val statementName = ""
         val portalName = ""
         
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
+        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1), paramValuesLength))
         stream.sendMessage(DescribeMessage('P', portalName))
         stream.sendMessage(ExecuteMessage(portalName, 0))
         stream.sendMessage(SyncMessage())
@@ -156,12 +160,16 @@ class QueryExecutor internal constructor(
         maxRows: Int = 0,
         transform: (Row) -> R
     ): List<R> = stream.lock.withLock {
-        val (paramTypes, paramValues) = parameterSerializer?.serializeAll(params) ?: (IntArray(0) to ByteArray(0))
+        val serializationResult = parameterSerializer?.serializeAll(params)
+        val paramTypes = serializationResult?.first ?: IntArray(0)
+        val writer = serializationResult?.second
+        val paramValues = writer?.data ?: ByteArray(0)
+        val paramValuesLength = writer?.position ?: 0
         val statementName = ""
         val portalName = ""
         
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
+        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1), paramValuesLength))
         stream.sendMessage(DescribeMessage('P', portalName))
         stream.sendMessage(ExecuteMessage(portalName, maxRows))
         stream.sendMessage(SyncMessage())
@@ -245,12 +253,16 @@ class QueryExecutor internal constructor(
         transform: (Row) -> R,
         block: (R) -> Unit
     ) = stream.lock.withLock {
-        val (paramTypes, paramValues) = parameterSerializer.serializeAll(params)
+        val serializationResult = parameterSerializer.serializeAll(params)
+        val paramTypes = serializationResult.first
+        val writer = serializationResult.second
+        val paramValues = writer.data
+        val paramValuesLength = writer.position
         val statementName = ""
         val portalName = ""
         
         stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1)))
+        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1), paramValuesLength))
         stream.sendMessage(DescribeMessage('P', portalName))
         
         var rowMetadata: RowMetadata? = null

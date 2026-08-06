@@ -17,7 +17,8 @@ import kotlin.test.assertTrue
 class ParameterSerializerTest {
 
     private fun serializeValueForTest(serializer: ParameterSerializer, value: Any?): ByteArray? {
-        val (_, bytes) = serializer.serializeAll(listOf(value))
+        val (_, writer) = serializer.serializeAll(listOf(value))
+        val bytes = writer.toByteArray()
         if (bytes.size < 4) return null
         val length = (bytes[0].toInt() and 0xFF shl 24) or
                 (bytes[1].toInt() and 0xFF shl 16) or
@@ -95,7 +96,8 @@ class ParameterSerializerTest {
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
         val parameters = listOf(123, "test", null, true)
-        val (oids, bytes) = serializer.serializeAll(parameters)
+        val (oids, writer) = serializer.serializeAll(parameters)
+        val bytes = writer.toByteArray()
 
         assertEquals(4, oids.size)
         // verify oids logic: Int, String, Null, Boolean

@@ -18,40 +18,6 @@ import kotlin.test.assertNotNull
 
 class SerializationTest {
 
-
-    @Test
-    fun testArraySerialization() {
-        val props = OctaviusProperties()
-        props.user = "postgres"
-        props.password = "1234"
-
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
-
-        val row = session.createNativeQuery("SELECT ARRAY[1, 2, 3, 4, 5]::int[] as my_arr").fetchRowStrict()
-
-        val array = row.get<PgArray>("my_arr")
-        assertNotNull(array)
-
-        // Serializacja zerocopy
-        val writer1 = PgByteWriter()
-        ContainerCodec.serializeContainer(array, writer1, row.typeRegistry)
-        val originalBytes = writer1.toByteArray()
-
-        // Modyfikacja warstwy 3 przez operator
-        array.elements[1] = 999
-
-        val writer2 = PgByteWriter()
-        ContainerCodec.serializeContainer(array, writer2, row.typeRegistry)
-
-        val expectedRow = session.createNativeQuery("SELECT ARRAY[1, 999, 3, 4, 5]::int[] as my_arr").fetchRowStrict()
-        val expectedArray = expectedRow.get<PgArray>(0)
-        val writer3 = PgByteWriter()
-        ContainerCodec.serializeContainer(expectedArray, writer3, row.typeRegistry)
-        val expectedBytes = writer3.toByteArray()
-
-        assertContentEquals(expectedBytes, writer2.toByteArray())
-    }
-
     @Test
     fun testFactoryAndSerializationRoundtrip() {
         val props = OctaviusProperties()

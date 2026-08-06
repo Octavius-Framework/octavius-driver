@@ -45,7 +45,8 @@ internal class BindMessage(
     private val parameterCount: Int,
     private val parameterValues: ByteArray, // Pre-serialized values including lengths
     private val parameterFormats: List<Int>, // 0 for text, 1 for binary (for each parameter, or one for all)
-    private val resultFormats: List<Int> = listOf(1) // default to binary for all
+    private val resultFormats: List<Int> = listOf(1), // default to binary for all
+    private val parameterValuesLength: Int = parameterValues.size
 ) : FrontendMessage {
     override fun encode(out: PgOutputStream) {
         val portalBytes = portalName.toByteArray(StandardCharsets.UTF_8)
@@ -53,7 +54,7 @@ internal class BindMessage(
 
         val length = 4 + portalBytes.size + 1 + statementBytes.size + 1 +
                 2 + (parameterFormats.size * 2) +
-                2 + parameterValues.size +
+                2 + parameterValuesLength +
                 2 + (resultFormats.size * 2)
 
         out.writeByte('B'.code.toByte())
@@ -67,8 +68,8 @@ internal class BindMessage(
 
         // Parameter values
         out.writeShort(parameterCount)
-        if (parameterValues.isNotEmpty()) {
-            out.writeBytes(parameterValues)
+        if (parameterValuesLength > 0) {
+            out.writeBytes(parameterValues, 0, parameterValuesLength)
         }
 
         // Result formats
