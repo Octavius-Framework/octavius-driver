@@ -264,6 +264,38 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                         }
                         return DataRowMessage(rowDataBuffer, sharedColumnOffsets, sharedColumnLengths)
                     }
+                    'G' -> {
+                        val format = inputStream.readByte()
+                        val numColumns = inputStream.readShort()
+                        val columnFormats = mutableListOf<Short>()
+                        for (i in 0 until numColumns) {
+                            columnFormats.add(inputStream.readShort())
+                        }
+                        return CopyInResponseMessage(format, numColumns, columnFormats)
+                    }
+                    'H' -> {
+                        val format = inputStream.readByte()
+                        val numColumns = inputStream.readShort()
+                        val columnFormats = mutableListOf<Short>()
+                        for (i in 0 until numColumns) {
+                            columnFormats.add(inputStream.readShort())
+                        }
+                        return CopyOutResponseMessage(format, numColumns, columnFormats)
+                    }
+                    'W' -> {
+                        val format = inputStream.readByte()
+                        val numColumns = inputStream.readShort()
+                        val columnFormats = mutableListOf<Short>()
+                        for (i in 0 until numColumns) {
+                            columnFormats.add(inputStream.readShort())
+                        }
+                        return CopyBothResponseMessage(format, numColumns, columnFormats)
+                    }
+                    'd' -> {
+                        val data = inputStream.readBytes(payloadLength)
+                        return BackendCopyDataMessage(data)
+                    }
+                    'c' -> return BackendCopyDoneMessage
                     else -> {
                         val unparsed = inputStream.readBytes(payloadLength)
                         logger.trace { "IGNORING: Unsupported synchronous message type: $tag" }

@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.copy.CopyManager
 import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
@@ -22,6 +23,15 @@ class OctaviusConnection internal constructor(internal val stream: PgStream, int
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
 
     internal val queryExecutor = QueryExecutor(stream, typeRegistry)
+    private val copyManager = CopyManager(stream)
+
+    /**
+     * Provides an API for performing PostgreSQL COPY operations.
+     */
+    fun copy(): CopyManager {
+        checkClosed()
+        return copyManager
+    }
 
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
