@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.session
 
 import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
+import io.github.octaviusframework.driver.copy.CopyManager
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.unwrapToOctavius
@@ -29,6 +30,9 @@ internal class OctaviusSessionImpl(
     override val types: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
 
     override val notifications: NotificationManager = NotificationManager(this)
+
+    override val copy: CopyManager
+        get() = octaviusConnection.copy()
 
     override val transaction: TransactionManager = TransactionManager(this)
 

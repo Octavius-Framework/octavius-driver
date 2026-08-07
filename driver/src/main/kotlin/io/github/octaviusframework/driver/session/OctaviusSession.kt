@@ -24,6 +24,11 @@ interface OctaviusSessionOperations {
     val notifications: NotificationManager
 
     /**
+     * Provides an API for performing PostgreSQL COPY operations.
+     */
+    val copy: io.github.octaviusframework.driver.copy.CopyManager
+
+    /**
      * Provides a high-level API for executing operations within transaction scopes 
      * (e.g., `required`, `nested`). Automatically manages commits and rollbacks 
      * based on block execution outcomes.
