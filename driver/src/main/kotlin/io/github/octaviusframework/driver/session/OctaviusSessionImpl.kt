@@ -31,8 +31,8 @@ internal class OctaviusSessionImpl(
 
     override val notifications: NotificationManager = NotificationManager(this)
 
-    override val copy: CopyManager
-        get() = octaviusConnection.copy()
+    override val copy: CopyManager = CopyManager(octaviusConnection.stream)
+
 
     override val transaction: TransactionManager = TransactionManager(this)
 

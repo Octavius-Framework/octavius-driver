@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.session
 
+import io.github.octaviusframework.driver.copy.CopyManager
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
@@ -26,7 +27,7 @@ interface OctaviusSessionOperations {
     /**
      * Provides an API for performing PostgreSQL COPY operations.
      */
-    val copy: io.github.octaviusframework.driver.copy.CopyManager
+    val copy: CopyManager
 
     /**
      * Provides a high-level API for executing operations within transaction scopes 
