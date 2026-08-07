@@ -1,6 +1,8 @@
 package io.github.octaviusframework.spring
 
+import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.row.get
+import io.github.octaviusframework.spring.exception.OctaviusDataAccessException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -63,6 +65,32 @@ class OctaviusSpringIntegrationTest {
         val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(1L, count) // Outer insert should be there, nested should be rolled back
     }
+
+    @Test
+    fun `should translate octavius exceptions to OctaviusDataAccessException`() {
+        val ex = assertThrows(OctaviusDataAccessException::class.java) {
+            octaviusTemplate.execute { session -> 
+                session.createNativeQuery("SELECT * FROM non_existent_table_12345").execute() 
+            }
+        }
+        
+        assertNotNull(ex.octaviusException)
+        assertTrue(ex.octaviusException is StatementException)
+        assertEquals("42P01", (ex.octaviusException as StatementException).sqlState) // undefined_table
+    }
+
+    @Test
+    fun `should handle deferred constraint violation on commit`() {
+        testService.createTableWithDeferredConstraint()
+
+        val ex = assertThrows(io.github.octaviusframework.spring.exception.OctaviusDataAccessException::class.java) {
+            testService.insertWithDeferredConstraintViolation()
+        }
+        
+        assertNotNull(ex.octaviusException)
+        assertTrue(ex.octaviusException is io.github.octaviusframework.driver.exception.ConstraintViolationException)
+        assertEquals("23505", (ex.octaviusException as io.github.octaviusframework.driver.exception.ConstraintViolationException).sqlState) // unique_violation
+    }
 }
 
 @TestConfiguration
@@ -82,6 +110,13 @@ open class TestService(private val octaviusTemplate: OctaviusTemplate) {
         octaviusTemplate.execute { session -> session.createNativeQuery("TRUNCATE test_spring").execute() }
     }
 
+    open fun createTableWithDeferredConstraint() {
+        octaviusTemplate.execute { session ->
+            session.createNativeQuery("CREATE TABLE IF NOT EXISTS test_deferred (id INT, CONSTRAINT unique_id UNIQUE (id) DEFERRABLE INITIALLY DEFERRED)").execute()
+            session.createNativeQuery("TRUNCATE test_deferred").execute()
+        }
+    }
+
     @Transactional
     open fun insertWithRollback() {
         octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('test')").execute() }
@@ -93,6 +128,14 @@ open class TestService(private val octaviusTemplate: OctaviusTemplate) {
         octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('test')").execute() }
     }
     
+    @Transactional
+    open fun insertWithDeferredConstraintViolation() {
+        octaviusTemplate.execute { session -> 
+            session.createNativeQuery("INSERT INTO test_deferred (id) VALUES (1)").execute()
+            session.createNativeQuery("INSERT INTO test_deferred (id) VALUES (1)").execute()
+        }
+    }
+
     @org.springframework.context.annotation.Lazy
     @Autowired
     lateinit var self: TestService
