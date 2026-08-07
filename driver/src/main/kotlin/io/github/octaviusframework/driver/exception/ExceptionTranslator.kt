@@ -71,7 +71,9 @@ object ExceptionTranslator {
                 }
                 ConstraintViolationException(
                     reason = reason,
-                    details = "Message: $message",
+                    dbMessage = errorMsg.message,
+                    details = errorMsg.detail,
+                    where = errorMsg.whereContext,
                     sqlState = state,
                     schema = errorMsg.schema,
                     table = errorMsg.table,
@@ -105,7 +107,9 @@ object ExceptionTranslator {
                 if (state == "40002") {
                     ConstraintViolationException(
                         reason = ConstraintViolationExceptionReason.UNKNOWN,
-                        details = "Message: $message",
+                        dbMessage = errorMsg.message,
+                        details = errorMsg.detail,
+                        where = errorMsg.whereContext,
                         sqlState = state,
                         schema = errorMsg.schema,
                         table = errorMsg.table,

@@ -47,7 +47,9 @@ enum class ConstraintViolationExceptionReason {
  */
 class ConstraintViolationException(
     val reason: ConstraintViolationExceptionReason,
+    val dbMessage: String? = null,
     val details: String? = null,
+    val where: String? = null,
     sqlState: String? = null,
     val schema: String? = null,
     val table: String? = null,
@@ -59,7 +61,9 @@ class ConstraintViolationException(
 ) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
+        if (dbMessage != null) appendLine("Database Message: $dbMessage")
         if (details != null) appendLine("Details: $details")
+        if (where != null) appendLine("Context: $where")
         if (schema != null) appendLine("Schema: $schema")
         if (table != null) appendLine("Table: $table")
         if (column != null) appendLine("Column: $column")
