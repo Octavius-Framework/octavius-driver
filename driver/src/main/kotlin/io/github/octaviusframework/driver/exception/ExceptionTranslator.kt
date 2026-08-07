@@ -35,7 +35,13 @@ object ExceptionTranslator {
                     "2200L", "2200M", "2200N", "2200S", "2200T" -> DataExceptionReason.XML_ERROR
                     else -> if (state.startsWith("2203")) DataExceptionReason.JSON_ERROR else DataExceptionReason.UNKNOWN
                 }
-                DataException(reason, details = "Message: $message", sqlState = state)
+                DataException(
+                    reason = reason,
+                    dbMessage = errorMsg.message,
+                    details = errorMsg.detail,
+                    where = errorMsg.whereContext,
+                    sqlState = state
+                )
             }
             
             // Class 28 - Invalid Authorization Specification

@@ -37,13 +37,18 @@ enum class DataExceptionReason {
  */
 class DataException(
     val reason: DataExceptionReason,
+    val dbMessage: String? = null,
     val details: String? = null,
+    val where: String? = null,
     cause: Throwable? = null,
     sqlState: String? = null
 ) : OctaviusException("DATA_EXCEPTION:${reason.name}", cause, sqlState) {
+
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
+        if (dbMessage != null) appendLine("Database Message: $dbMessage")
         if (details != null) appendLine("Details: $details")
+        if (where != null) appendLine("Context: $where")
     }
 }
 
