@@ -1,5 +1,6 @@
 package io.github.octaviusframework.spring
 
+import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.spring.exception.OctaviusDataAccessException
@@ -83,13 +84,13 @@ class OctaviusSpringIntegrationTest {
     fun `should handle deferred constraint violation on commit`() {
         testService.createTableWithDeferredConstraint()
 
-        val ex = assertThrows(io.github.octaviusframework.spring.exception.OctaviusDataAccessException::class.java) {
+        val ex = assertThrows(OctaviusDataAccessException::class.java) {
             testService.insertWithDeferredConstraintViolation()
         }
         
         assertNotNull(ex.octaviusException)
-        assertTrue(ex.octaviusException is io.github.octaviusframework.driver.exception.ConstraintViolationException)
-        assertEquals("23505", (ex.octaviusException as io.github.octaviusframework.driver.exception.ConstraintViolationException).sqlState) // unique_violation
+        assertTrue(ex.octaviusException is ConstraintViolationException)
+        assertEquals("23505", (ex.octaviusException as ConstraintViolationException).sqlState) // unique_violation
     }
 }
 
