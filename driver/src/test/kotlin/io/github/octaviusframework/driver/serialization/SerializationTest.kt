@@ -77,6 +77,7 @@ class SerializationTest {
             builtArrayBytes,
             "Zbudowana tablica musi zgadzać się z Postgresową"
         )
+        session.close()
     }
 
     @Test
@@ -96,6 +97,7 @@ class SerializationTest {
         assertEquals(10, returnedArray.get<Int>(0))
         assertEquals(20, returnedArray.get<Int>(1))
         assertEquals(30, returnedArray.get<Int>(2))
+        session.close()
     }
 
     @Test
@@ -136,6 +138,7 @@ class SerializationTest {
             serializedArray,
             "Zbudowana tablica wielowymiarowa musi zgadzać się z Postgresową"
         )
+        session.close()
     }
 
     @Test
@@ -174,6 +177,7 @@ class SerializationTest {
         assertEquals(10, returnedArray.get<Int>(0))
         assertEquals(20, returnedArray.get<Int>(1))
         assertEquals(30, returnedArray.get<Int>(2))
+        session.close()
     }
     @Test
     fun testRecordMapSerialization() {
@@ -194,6 +198,7 @@ class SerializationTest {
         }
         
         assertEquals(TypeExceptionReason.MISSING_CODEC, exception.reason)
+        session.close()
     }
 
 
@@ -209,6 +214,7 @@ class SerializationTest {
         val res = session.createNativeQuery("SELECT '$stringVal' as res").fetchField<String>()
 
         assertEquals(stringVal, res)
+        session.close()
     }
 }
 

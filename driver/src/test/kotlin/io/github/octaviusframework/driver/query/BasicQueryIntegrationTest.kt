@@ -30,6 +30,7 @@ class BasicQueryIntegrationTest {
         assertEquals(1, result2.get(0))
         assertEquals(2.4f, result2.get(1))
         assertEquals(1, result2.get(2))
+        session.close()
     }
 
     @Test
@@ -50,6 +51,7 @@ class BasicQueryIntegrationTest {
         // Make sure the connection is in a healthy state and can execute subsequent queries
         val subsequentResult = session.createNativeQuery("SELECT 42").fetchRowStrict().get<Int>(0)
         assertEquals(42, subsequentResult)
+        session.close()
     }
 
     @Test
@@ -88,5 +90,6 @@ class BasicQueryIntegrationTest {
         }
         assertEquals(10, countNamedField)
         assertEquals(165, sumNamedField)
+        session.close()
     }
 }

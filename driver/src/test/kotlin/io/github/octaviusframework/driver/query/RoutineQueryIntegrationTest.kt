@@ -75,6 +75,7 @@ class RoutineQueryIntegrationTest {
             session.createNativeQuery("DROP FUNCTION IF EXISTS get_series(INT)").execute()
             session.createNativeQuery("DROP FUNCTION IF EXISTS returns_void()").execute()
             session.createNativeQuery("DROP PROCEDURE IF EXISTS do_nothing()").execute()
+            session.close()
         }
     }
 

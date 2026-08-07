@@ -33,6 +33,7 @@ class RangeIntegrationTest {
         assertEquals(20, range.upperBound)
         assertTrue(range.isLowerInclusive)
         assertFalse(range.isUpperInclusive)
+        session.close()
     }
 
     @Test
@@ -55,6 +56,7 @@ class RangeIntegrationTest {
         assertEquals(20, second.upperBound)
         assertTrue(second.isLowerInclusive)
         assertFalse(second.isUpperInclusive)
+        session.close()
     }
 
     @Test
@@ -71,6 +73,7 @@ class RangeIntegrationTest {
         assertEquals(16, rangeBack.upperBound) // Normalized [5,15] to [5,16)
         assertTrue(rangeBack.isLowerInclusive)
         assertFalse(rangeBack.isUpperInclusive)
+        session.close()
     }
 
     @Test
@@ -101,5 +104,6 @@ class RangeIntegrationTest {
         assertNull(second.upperBound)
         assertTrue(second.isLowerInclusive)
         assertTrue(second.isUpperInfinite)
+        session.close()
     }
 }

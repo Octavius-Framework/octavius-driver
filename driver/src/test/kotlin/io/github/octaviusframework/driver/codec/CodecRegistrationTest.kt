@@ -51,5 +51,7 @@ class CodecRegistrationTest {
         
         assertNotNull(result)
         assertEquals("dummy_circle", result.info)
+        
+        session.close()
     }
 }
