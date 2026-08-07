@@ -8,8 +8,8 @@ enum class InvalidOperationExceptionReason {
     AUTO_COMMIT_VIOLATION,
     /** Provided savepoint is invalid or belongs to another connection. */
     INVALID_SAVEPOINT,
-    /** Attempted to operate on a closed statement. */
-    STATEMENT_CLOSED,
+    /** Attempted to operate on a closed object (e.g. Large Object or Statement). */
+    OBJECT_CLOSED,
     /** Requested transaction isolation level is not supported. */
     UNSUPPORTED_ISOLATION_LEVEL,
     /** Timeout value is negative. */
@@ -49,7 +49,7 @@ private fun generateDeveloperMessage(reason: InvalidOperationExceptionReason): S
     when (reason) {
         InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
         InvalidOperationExceptionReason.INVALID_SAVEPOINT -> "Invalid savepoint operation."
-        InvalidOperationExceptionReason.STATEMENT_CLOSED -> "Operation cannot be performed because the statement is closed."
+        InvalidOperationExceptionReason.OBJECT_CLOSED -> "Operation cannot be performed because the object is closed."
         InvalidOperationExceptionReason.UNSUPPORTED_ISOLATION_LEVEL -> "The requested transaction isolation level is not supported."
         InvalidOperationExceptionReason.INVALID_TIMEOUT -> "Timeout value cannot be negative."
         InvalidOperationExceptionReason.UNWRAP_ERROR -> "Cannot unwrap the connection/statement to the requested interface."

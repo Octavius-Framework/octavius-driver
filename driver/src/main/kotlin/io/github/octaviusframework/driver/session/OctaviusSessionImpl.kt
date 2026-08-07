@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.copy.CopyManager
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.unwrapToOctavius
+import io.github.octaviusframework.driver.lo.LargeObjectManager
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
@@ -33,6 +34,7 @@ internal class OctaviusSessionImpl(
 
     override val copy: CopyManager = CopyManager(octaviusConnection.stream)
 
+    override val largeObjects: LargeObjectManager = LargeObjectManager(this)
 
     override val transaction: TransactionManager = TransactionManager(this)
 
