@@ -1,62 +1,63 @@
 # Queries
 
-This document describes the query API available in the Octavius Driver. Queries are categorized based on how parameters are passed and the type of results expected from the database.
+This document covers the query API in the Octavius Driver. Queries fall into two dimensions: how parameters get passed in, and what shape of result you expect back out.
 
 ## Query Types (Parameterization)
 
 ### Native Query (Positional Parameters)
-These queries use native PostgreSQL positional parameters, utilizing `$1`, `$2`, `$3`, etc. as placeholders.
-Parameters are passed as a variable number of arguments (`vararg`) of type `Any?`.
+Native PostgreSQL positional parameters — `$1`, `$2`, `$3`, and so on. Parameters are passed as a `vararg` of type `Any?`.
 
 ### Named Parameter Query
-This type of query allows the use of named parameters (e.g., `@id`, `@firstName`). It significantly improves the readability of complex SQL queries and reduces the risk of passing parameters in the wrong order.
-- Parameter values can be passed as a dictionary `Map<String, Any?>` or as pairs (`Pair<String, Any?>`) via `vararg`.
+Named parameters (`@id`, `@cognomen`, ...) read much better in anything beyond a trivial query, and they remove the classic mistake of passing arguments in the wrong order.
+- Values go in either as a `Map<String, Any?>` or as `Pair<String, Any?>` entries via `vararg`.
 
 ## Retrieving Results (`fetch*` Methods)
 
-When you execute an SQL query that returns results (such as a `SELECT` statement or modifying statements like `INSERT` / `UPDATE` / `DELETE` with a `RETURNING` clause), **always use the `fetch*` family of methods**. They are divided into three groups depending on the data format you expect:
+Whenever a query returns rows — a `SELECT`, or an `INSERT` / `UPDATE` / `DELETE` with `RETURNING` — reach for one of the `fetch*` methods rather than `update()`. They split into three families depending on the shape you want back:
 
 ### 1. Row-based Methods
-The lowest level of data retrieval. These methods return `Row` objects, from which individual columns can be extracted.
-- `fetchRows()` – fetches all matching rows as `List<Row>`. If there are no results, it returns an empty list.
-- `fetchRow()` – fetches exactly one row as an optional type `Row?`. It returns `null` if the query yields no data. It throws a `StatementException` if the query returns more than 1 result.
-- `fetchRowStrict()` – fetches exactly one row without nullability (returns a non-null `Row` object). It throws an exception if the number of received rows is not exactly 1 (0 or more than 1).
-- `forEachRow(fetchSize: Int, block: (Row) -> Unit)` – allows iterative, streaming processing of rows. Highly recommended for queries returning large datasets to avoid high memory consumption.
+The lowest-level option. These return `Row` objects, from which you pull individual columns yourself.
+- `fetchRows()` — all matching rows as `List<Row>`; an empty list if there's nothing.
+- `fetchRow()` — exactly one row as `Row?`; `null` if the query returns nothing, and a `StatementException` if it returns more than one.
+- `fetchRowStrict()` — the non-nullable cousin of `fetchRow()`; throws unless exactly one row comes back.
+- `forEachRow(fetchSize: Int, block: (Row) -> Unit)` — streams rows one at a time. Worth using for anything that could return a large result set — say, an audit of every citizen in the census.
 
 ### 2. Object Mapping Methods
-These methods can automatically map a database row directly to your custom Kotlin objects/classes on the fly (using the internal `ResultMapper`).
-- `fetchObjects<T>()` – maps all rows and returns `List<T>`.
-- `fetchObject<T>()` – returns a single object while maintaining nullability (`T?`). Returns `null` if there are no results.
-- `fetchObjectStrict<T>()` – returns exactly 1 object (always an instance of class `T`). It expects exactly one row, otherwise, it throws an exception.
-- `forEachObject<T>(fetchSize: Int, block: (T) -> Unit)` – iterative processing with automatic object mapping.
+These map a row straight onto your own Kotlin classes on the fly, via the internal `ResultMapper`.
+- `fetchObjects<T>()` — every row, mapped, as `List<T>`.
+- `fetchObject<T>()` — a single object, nullable (`T?`); `null` if there's no match.
+- `fetchObjectStrict<T>()` — exactly one object, guaranteed non-null; throws otherwise.
+- `forEachObject<T>(fetchSize: Int, block: (T) -> Unit)` — the streaming, object-mapped equivalent.
 
 ### 3. Single Column Methods
-Perfect for scalar/aggregation queries (e.g., `SELECT count(*) FROM table`) or when you are only interested in extracting the value from the first column of the results (e.g., `SELECT id`).
-- `fetchFields<T>()` – fetches only the first column as a list of values `List<T>`. Note that if the database column can contain nulls, you must specify `T` as a nullable type (e.g., `String?`).
-- `fetchField<T>()` – returns the field as an optional variant (`T?`). This method can return `null` either if the query returns no rows, or if the column value itself is `null`.
-- `fetchFieldStrict<T>()` – returns the field and throws an exception if there were zero or more than one result, or if the returned value is unexpectedly `null` when `T` is a non-nullable type. Returns type `T`.
-- `forEachField<T>(fetchSize: Int, block: (T) -> Unit)` – iterative processing of the first column.
+Ideal for scalar or aggregate queries — a `count(*)` over your legions, say — or when you only care about the first column.
+- `fetchFields<T>()` — the first column only, as `List<T>`. If that column can be `null`, type `T` as nullable.
+- `fetchField<T>()` — the field as `T?`; `null` either because there were no rows, or because the value itself was `null`.
+- `fetchFieldStrict<T>()` — throws if the result isn't exactly one row, or if a non-nullable `T` would have to hold `null`. Returns `T`.
+- `forEachField<T>(fetchSize: Int, block: (T) -> Unit)` — streaming, first-column-only.
 
 ---
 
-### Nullability 
-Pay special attention to the **Strict** methods.
-Standard variants (e.g., `fetchRow()`, `fetchObject()`, `fetchField()`) return optional types (with a `?` symbol). They handle the natural behavior of databases where empty datasets simply return no result (result = `null`).
+### Nullability
+Pay close attention to the **Strict** variants.
+The standard methods (`fetchRow()`, `fetchObject()`, `fetchField()`) return optional types — reflecting the ordinary reality that an empty result set is a `null`, not an error.
 
-Using `fetch*Strict` methods provides validation: they strictly guarantee that a non-null object is returned to Kotlin. However, if there is no data (0 results), a `StatementException` (`StatementExceptionReason.INCORRECT_RESULT_SIZE`) will be thrown.
+The `fetch*Strict` methods guarantee that exactly one row is returned. If there's no data at all (or more than one row), you'll get a `StatementException` (`StatementExceptionReason.INCORRECT_RESULT_SIZE`).
+
+For `fetchRowStrict()` and `fetchObjectStrict()`, this means they always return a genuinely non-null result. However, for `fetchFieldStrict<T>()`, the returned value can still be `null` if the row exists but the column's value is `null` (provided your type `T` is nullable, e.g., `String?`).
 
 ## Data Modification (`update` & `execute`)
-For queries that do not return any rows (and you don't expect them to):
-- `update()` – used for DML queries that modify the database (e.g., `UPDATE`, `INSERT`, `DELETE`). It uses the Extended Query Protocol under the hood and returns a numerical value (`Long`) indicating how many rows were affected.
-- `execute()` – used for raw execution of commands where no results or modification counts are expected, such as DDL statements (table creation) or administrative queries. **Note:** `execute()` uses PostgreSQL's Simple Query Protocol, which means it does not support parameter binding (`$1`) or returning tabular data.
+For queries that don't return rows, and you don't expect them to:
+- `update()` — for DML that changes the database (`UPDATE`, `INSERT`, `DELETE`). Runs through the Extended Query Protocol and returns a `Long` with the affected row count.
+- `execute()` — for raw command execution with no result and no row count, such as DDL (creating a table) or administrative commands. **Note:** `execute()` uses PostgreSQL's Simple Query Protocol, so it does not support parameter binding (`$1`) or returning tabular data.
 
-**Important (Using the RETURNING clause):** 
-Keep in mind that if you use the `RETURNING` clause with `INSERT` or `UPDATE` queries (a common use case for obtaining newly generated record IDs), you should use the `fetch*` mechanism instead of `update()`. For example, use `fetchFieldStrict<Long>()`. A query returning values via `RETURNING` is handled internally exactly like a standard `SELECT`.
+**A note on `RETURNING`:**
+If an `INSERT` or `UPDATE` carries a `RETURNING` clause — a common way to get back a newly generated ID after enrolling a new senator, say — use `fetch*`, not `update()`. `fetchFieldStrict<Long>()` is a natural fit here. Internally, a query with `RETURNING` is handled exactly like a `SELECT`.
 
 ## Custom Converters
-Throughout the execution cycle (especially during `fetchObject*` calls), queries convert data under the hood using a dedicated type manager and `ResultMapper`.
-This system provides the flexibility to register your own custom converters. You can apply them directly to a specific query instance using:
-- `registerResultConverter(converter: ResultConverter<*, *>)` – registers a converter for mapping database results to Kotlin objects.
-- `registerParameterConverter(converter: ParameterConverter<*>)` – registers a converter for formatting Kotlin objects into query parameters before they are sent to the database.
+Throughout execution — especially in `fetchObject*` calls — queries convert data behind the scenes through a dedicated type manager and `ResultMapper`.
+You can register your own converters and apply them to a specific query instance:
+- `registerResultConverter(converter: ResultConverter<*, *>)` — for mapping database results onto Kotlin objects.
+- `registerParameterConverter(converter: ParameterConverter<*>)` — for formatting Kotlin objects into query parameters before they head to the database.
 
-This allows the driver to easily handle specific structures such as Enums, custom JSON serializers in DTO objects, or complex time formats out-of-the-box.
+That gives the driver a clean way to handle specialized structures out of the box — enums, custom JSON serializers in your DTOs, unusual time formats, and the like.

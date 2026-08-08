@@ -1,64 +1,65 @@
 # Error Handling and Exceptions in Octavius JDBC Driver
 
-The error handling architecture in the Octavius Driver is built around a single base class – `OctaviusException`. It provides a rich context to make debugging easier. Specific subclasses represent distinct categories of errors.
+Octavius builds its error handling around a single base class — `OctaviusException` — that carries rich diagnostic context. Specific subclasses represent distinct categories of failure, so you're rarely left guessing what went wrong.
 
-Most exceptions utilize **enums** to uniquely identify the reason for the error. This means developers do not have to manually parse PostgreSQL `SQLSTATE` codes.
+Most exceptions carry an **enum** identifying the exact reason for the failure, which means you don't have to hand-parse PostgreSQL `SQLSTATE` codes yourself.
 
 ---
 
 ## Message Format and Logging
 
-The base `message` property of an `OctaviusException` is always formatted predictably as `EXCEPTION_NAME(:REASON_ENUM)`. This allows for fast visual identification and programmatic filtering without relying on complex string matching.
+The base `message` property of an `OctaviusException` always follows a predictable `EXCEPTION_NAME[:REASON_ENUM]` shape (the `:REASON_ENUM` part is omitted if there is no specific reason enum for a given exception). This makes it easy to spot at a glance and easy to filter on programmatically without string-matching gymnastics.
 
-For example, a violation of a unique constraint will have the message `CONSTRAINT_VIOLATION_EXCEPTION:UNIQUE_CONSTRAINT_VIOLATION`.
+A unique-constraint violation, for instance, produces the message `CONSTRAINT_VIOLATION_EXCEPTION:UNIQUE_CONSTRAINT_VIOLATION`.
 
-When an exception is logged (or its `toString()` method is called), it generates a highly readable, structured block that includes the error type, SQL state, message, details, and query context.
+When an exception is logged (or `toString()` is called on it), it prints a structured, readable block containing the error type, SQL state, message, details, and query context.
 
 ### Example Log Output
 
 ```text
-------------------------------------------------------------
-ERROR: ConstraintViolationException
-SQLSTATE: 23505
+--------------------------------------------------------------------------------
 MESSAGE: CONSTRAINT_VIOLATION_EXCEPTION:UNIQUE_CONSTRAINT_VIOLATION
-DETAILS: Reason: A duplicate value was provided for a unique column or index (PostgreSQL 23505).
-Table: users
-Constraint: users_email_key
+SQLSTATE: 23505
+EXCEPTION DETAILS:
+Reason: A duplicate value was provided for a unique column or index (PostgreSQL 23505).
+Database Message: Duplicate value violates unique constraint "senators_cognomen_key" 
+Details: Key (cogomen_id)=(1)
+Schema: roma
+Table: senators
+Constraint: senators_cognomen_key
 ================================================================================
 DATABASE EXECUTION CONTEXT
 ================================================================================
 HIGH-LEVEL SQL:
-INSERT INTO users (email) VALUES (?)
+INSERT INTO senators (cognomen) VALUES (?)
 --------------------------------------------------------------------------------
 PARAMETERS:
-1 - admin@example.com
+1 - Scipio
 ================================================================================
-------------------------------------------------------------
-CAUSE:
-------------------------------------------------------------
-No cause available
-------------------------------------------------------------
+--------------------------------------------------------------------------------
 ```
+
+(The Senate, it turns out, already had a Scipio.)
 
 ---
 
 ## Error Context (QueryContext)
 
-Every `OctaviusException` can carry a `QueryContext` object. Once an error is caught, this context provides:
-- **`sql`**: The high-level SQL query executed by the application.
-- **`parameters`**: The map of parameters passed to the query.
-- **`dbSql`**: The actual SQL query sent to the database (after translation).
-- **`dbParameters`**: The list of values sent directly to the database.
+Every `OctaviusException` can carry a `QueryContext`. Once you've caught the error, this gives you:
+- **`sql`** — the high-level SQL query your application executed.
+- **`parameters`** — the map of parameters passed into the query.
+- **`dbSql`** — the actual SQL sent to the database, after translation.
+- **`dbParameters`** — the values sent directly to the database.
 
 ---
 
 ## Exception Categories and Enums
 
 ### 1. `ConstraintViolationException`
-**When it is thrown:** When a database constraint is violated during query execution (e.g., inserting a duplicate primary key).
-**Context / Properties:** 
-- `schema`, `table`, `column` – Identifies which column/table the violation affects.
-- `constraint` – The name of the violated constraint.
+**Thrown when:** a database constraint is violated during execution (e.g. inserting a duplicate primary key).
+**Context / properties:**
+- `schema`, `table`, `column` — identifies the column/table the violation affects.
+- `constraint` — the name of the violated constraint.
 
 | Reason (`ConstraintViolationExceptionReason`) | Description                                                |
 |-----------------------------------------------|------------------------------------------------------------|
@@ -70,8 +71,8 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `UNKNOWN`                                     | Unmapped or generic constraint violation.                  |
 
 ### 2. `DataException`
-**When it is thrown:** When the query structure is correct, but the data values cause a database error (e.g., numeric overflow, JSON parsing error).
-**Context / Properties:** `details` (Detailed database message).
+**Thrown when:** the query itself is well-formed, but the data values trigger a database error (e.g. numeric overflow, malformed JSON).
+**Context / properties:** `details` (the detailed database message).
 
 | Reason (`DataExceptionReason`) | Description                                              |
 |--------------------------------|----------------------------------------------------------|
@@ -87,8 +88,8 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `REGEX_ERROR`                  | Invalid regular expression.                              |
 
 ### 3. `StatementException`
-**When it is thrown:** Errors during SQL parsing, planning, or execution (e.g., syntax errors, missing tables, ambiguous columns).
-**Context / Properties:** `position` (The exact 1-based character position of the error in the SQL string).
+**Thrown when:** SQL parsing, planning, or execution fails (e.g. syntax errors, missing tables, ambiguous columns).
+**Context / properties:** `position` — the exact 1-based character position of the error in the SQL string.
 
 | Reason (`StatementExceptionReason`) | Description                                                               |
 |-------------------------------------|---------------------------------------------------------------------------|
@@ -106,7 +107,7 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `INCORRECT_RESULT_SIZE`             | Query returned an unexpected number of rows (e.g., `SELECT INTO STRICT`). |
 
 ### 4. `InitializationException`
-**When it is thrown:** When the driver fails to establish a connection or authenticate with the database server.
+**Thrown when:** the driver fails to establish a connection or authenticate with the database server.
 
 | Reason (`InitializationExceptionReason`) | Description                                                                  |
 |------------------------------------------|------------------------------------------------------------------------------|
@@ -120,7 +121,7 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `CONNECTION_ERROR`                       | General connection failure.                                                  |
 
 ### 5. `NetworkException`
-**When it is thrown:** When a physical network error disrupts communication (e.g., timeout, server crash, broken pipe).
+**Thrown when:** a physical network error disrupts communication (e.g. timeout, server crash, broken pipe).
 
 | Reason (`NetworkExceptionReason`) | Description                                          |
 |-----------------------------------|------------------------------------------------------|
@@ -131,7 +132,7 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `CONNECTION_ABORTED`              | Connection explicitly aborted by the client.         |
 
 ### 6. `TransactionException`
-**When it is thrown:** When a transaction fails due to environment or concurrency issues.
+**Thrown when:** a transaction fails due to environment or concurrency issues.
 
 | Reason (`TransactionExceptionReason`) | Description                                                |
 |---------------------------------------|------------------------------------------------------------|
@@ -142,8 +143,8 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `UNKNOWN`                             | Unknown transaction exception.                             |
 
 ### 7. `RoutineExecutionException`
-**When it is thrown:** When an error occurs inside a PL/pgSQL routine (e.g., explicit `RAISE EXCEPTION` or assertions).
-**Context / Properties:** `dbDetail`, `hint`, `whereContext` (Stacktrace inside the procedure).
+**Thrown when:** an error occurs inside a PL/pgSQL routine (e.g. explicit `RAISE EXCEPTION` or a failed assertion).
+**Context / properties:** `dbDetail`, `hint`, `whereContext` (stack trace inside the procedure).
 
 | Reason (`RoutineExecutionExceptionReason`) | Description                                                                  |
 |--------------------------------------------|------------------------------------------------------------------------------|
@@ -154,11 +155,11 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `UNKNOWN`                                  | Unknown PL/pgSQL execution error.                                            |
 
 ### 8. `PermissionDeniedException`
-**When it is thrown:** When the database user lacks privileges to execute an action or access an object.
-**Context / Properties:** `schema`, `table`, `column`, `routine`, `datatype` (Identifies what object access was denied).
+**Thrown when:** the database user lacks the privileges to execute an action or access an object.
+**Context / properties:** `schema`, `table`, `column`, `routine`, `datatype` — identifies exactly what access was denied.
 
 ### 9. `InvalidOperationException`
-**When it is thrown:** When the driver attempts an operation not allowed in the current state.
+**Thrown when:** the driver is asked to do something not allowed in its current state.
 
 | Reason (`InvalidOperationExceptionReason`) | Description                                                                          |
 |--------------------------------------------|--------------------------------------------------------------------------------------|
@@ -173,8 +174,8 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `UNEXPECTED_RESULT`                        | Execution returned rows when none were expected.                                     |
 
 ### 10. `TypeException` & `CodecException`
-**When it is thrown:** When there are issues resolving PostgreSQL types or converting data.
-**Context (CodecException):** `action` (`ENCODING` / `DECODING`), `value`, `pgType`, `kotlinClass`.
+**Thrown when:** the driver runs into trouble resolving PostgreSQL types or converting data.
+**Context (`CodecException`):** `action` (`ENCODING` / `DECODING`), `value`, `pgType`, `kotlinClass`.
 
 | Reason (`TypeExceptionReason`)   | Description                                                 |
 |----------------------------------|-------------------------------------------------------------|
@@ -190,8 +191,8 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `DECODING`             | Codec failed to decode the PostgreSQL data into a Kotlin object.         |
 
 ### 11. `MappingException`
-**When it is thrown:** When a type conversion or data mapping operation fails.
-**Context / Properties:** `path` (The object tree path where the mapping failed).
+**Thrown when:** a type conversion or data mapping operation fails.
+**Context / properties:** `path` — the object tree path where the mapping failed.
 
 | Reason (`MappingExceptionReason`) | Description                                                          |
 |-----------------------------------|----------------------------------------------------------------------|
@@ -201,5 +202,5 @@ Every `OctaviusException` can carry a `QueryContext` object. Once an error is ca
 | `CONVERSION_ERROR`                | Error during type casting or conversion (e.g., `Int` to `String`).   |
 
 ### 12. `DatabaseSystemException`
-**When it is thrown:** When a generic database system error occurs (e.g., out of memory, disk full).
-**Context / Properties:** `errorMessage`.
+**Thrown when:** a generic database system error occurs (e.g. out of memory, disk full).
+**Context / properties:** `errorMessage`.
