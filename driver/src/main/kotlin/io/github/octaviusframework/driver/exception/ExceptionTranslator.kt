@@ -47,7 +47,7 @@ object ExceptionTranslator {
             // Class 28 - Invalid Authorization Specification
             state.startsWith("28") -> InitializationException(
                 InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
-                details = "Message: $message",
+                details = message,
                 sqlState = state
             )
 
