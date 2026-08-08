@@ -26,6 +26,7 @@ class OctaviusProperties {
     
     var maxCachedRowSize: Int? = null
     var notificationBufferCapacity: Int? = null
+    var noticeHandler: String? = null
 
     var ssl: Boolean? = null
     var sslmode: SslMode? = null
@@ -47,6 +48,7 @@ class OctaviusProperties {
             "sockettimeout" -> socketTimeout = value.toIntOrNull()
             "maxcachedrowsize" -> maxCachedRowSize = value.toIntOrNull()
             "notificationbuffercapacity" -> notificationBufferCapacity = value.toIntOrNull()
+            "noticehandler" -> noticeHandler = value
             "ssl" -> ssl = value.toBoolean()
             "sslmode" -> sslmode = SslMode.of(value)
             "sslrootcert" -> sslrootcert = value
@@ -67,6 +69,7 @@ class OctaviusProperties {
         other.socketTimeout?.let { socketTimeout = it }
         other.maxCachedRowSize?.let { maxCachedRowSize = it }
         other.notificationBufferCapacity?.let { notificationBufferCapacity = it }
+        other.noticeHandler?.let { noticeHandler = it }
         other.ssl?.let { ssl = it }
         other.sslmode?.let { sslmode = it }
         other.sslrootcert?.let { sslrootcert = it }
@@ -141,6 +144,7 @@ class OctaviusProperties {
         socketTimeout?.let { queryParams["socketTimeout"] = it.toString() }
         maxCachedRowSize?.let { queryParams["maxCachedRowSize"] = it.toString() }
         notificationBufferCapacity?.let { queryParams["notificationBufferCapacity"] = it.toString() }
+        noticeHandler?.let { queryParams["noticeHandler"] = it }
         ssl?.let { queryParams["ssl"] = it.toString() }
         sslmode?.let { queryParams["sslmode"] = it.value }
         sslrootcert?.let { queryParams["sslrootcert"] = it }

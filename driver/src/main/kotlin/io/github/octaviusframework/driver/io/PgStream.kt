@@ -7,6 +7,8 @@ import io.github.octaviusframework.driver.exception.NetworkExceptionReason
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.FrontendMessage
 import io.github.octaviusframework.driver.message.frontend.TerminateMessage
+import io.github.octaviusframework.driver.notice.NoticeHandler
+import io.github.octaviusframework.driver.notice.PgNotice
 import io.github.octaviusframework.driver.notification.PgNotification
 import io.github.octaviusframework.driver.row.FieldDescription
 import io.github.octaviusframework.driver.ssl.PgSslUpgrader
@@ -31,7 +33,13 @@ import java.util.concurrent.locks.ReentrantLock
  * @param loginTimeoutSecs Timeout in seconds for the initial connection and login process.
  * @param notificationBufferCapacity Capacity of the buffer for asynchronous notifications.
  */
-internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int = 10, notificationBufferCapacity: Int = 256) : AutoCloseable {
+internal class PgStream(
+    val host: String,
+    val port: Int,
+    loginTimeoutSecs: Int = 10,
+    notificationBufferCapacity: Int = 256,
+    val noticeHandler: NoticeHandler? = null
+) : AutoCloseable {
     companion object {
         private val logger = KotlinLogging.logger {}
         // A specific logger name allows users to filter just notices in logback.xml
@@ -170,7 +178,7 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                             if (token == '\u0000') break
                             fields[token] = inputStream.readCString()
                         }
-                        val notice = NoticeResponseMessage(fields)
+                        val notice = PgNotice(fields)
                         val logMsg = "[PID: $processId] $notice"
 
                         when (notice.severity) {
@@ -178,6 +186,14 @@ internal class PgStream(val host: String, val port: Int, loginTimeoutSecs: Int =
                             "NOTICE", "INFO", "LOG" -> noticeLogger.info { logMsg }
                             "DEBUG" -> noticeLogger.debug { logMsg }
                             else -> noticeLogger.info { logMsg }
+                        }
+
+                        if (noticeHandler != null) {
+                            try {
+                                noticeHandler.handleNotice(notice)
+                            } catch (e: Exception) {
+                                logger.error(e) { "[PID: $processId] Error in custom NoticeHandler while handling code ${notice.code}" }
+                            }
                         }
                     }
                     'A' -> {

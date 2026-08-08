@@ -16,6 +16,7 @@ Below is the full list of fields `OctaviusProperties` understands.
 * **`socketTimeout`** — seconds to wait on a socket read before timing out.
 * **`maxCachedRowSize`** — maximum size, in bytes, of a row kept in memory.
 * **`notificationBufferCapacity`** — capacity of the LISTEN/NOTIFY buffer (default: `256`).
+* **`noticeHandler`** — fully-qualified class name of a custom `NoticeHandler` implementation to intercept database notices (warnings, infos, etc.). If the provided type is a Kotlin `object`, its singleton instance is reused across all connections. Otherwise, a new instance is created via the empty constructor for each new connection.
 
 ## SSL Configuration
 * **`ssl`** — whether to encrypt the connection (`true`/`false`).

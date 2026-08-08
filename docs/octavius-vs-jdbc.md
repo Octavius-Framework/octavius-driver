@@ -42,6 +42,13 @@ There's no mutable cursor to walk with `.next()`. Octavius hydrates results stra
 ### 5. DatabaseMetaData
 The heavyweight JDBC metadata API is skipped entirely. If you need metadata, query `pg_catalog` directly through `OctaviusSession`.
 
+### 6. SQL Warnings
+The JDBC spec handles database notices by silently accumulating `SQLWarning` objects in a linked list on the `Connection` or `Statement`. 
+If you forget to manually call `clearWarnings()` after every execution, this creates a silent, application-killing memory leak over millions of queries.
+Octavius drops this pull-based trap entirely. 
+Instead, it uses a push-based, event-driven `NoticeHandler` — you get your database notices immediately as they arrive, 
+and the garbage collector handles the rest.
+
 ## Summary
 
 Dropping JDBC's historical baggage buys Octavius:
