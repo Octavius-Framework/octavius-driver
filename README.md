@@ -1,6 +1,6 @@
 # Octavius Driver
 
-![Version](https://img.shields.io/badge/version-0.8.9-blue)
+![Version](https://img.shields.io/badge/version-0.9.1-blue)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 
 A native, high-performance, lightweight PostgreSQL driver for Kotlin.
@@ -9,12 +9,6 @@ A native, high-performance, lightweight PostgreSQL driver for Kotlin.
 Past that point, it deliberately sheds the legacy JDBC baggage — stateful `ResultSet`s, `CallableStatement`s, manual resource bookkeeping — in favor of a purely Kotlin-first, idiomatic API.
 
 It speaks PostgreSQL's Wire Protocol v3 directly, with no other database driver wrapped or delegated to underneath.
-
-> **🚧 Work In Progress / Status**
->
-> The current version is **0.8.9**. 
-> The driver already handles most day-to-day database work, including complex types (arrays, composites, JSON) and integrates cleanly with connection pools like HikariCP —
-> but there's still ground to cover before a 1.0 release.
 
 ## Key Features
 
@@ -44,7 +38,7 @@ Add the Octavius driver to your `build.gradle.kts` dependencies:
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:0.8.9")
+    implementation("io.github.octavius-framework:driver:0.9.1")
 }
 ```
 
@@ -87,4 +81,3 @@ More detail lives in the `docs/` folder:
 - [Exception Translation](docs/exceptions.md)
 - [Connection Properties](docs/properties.md)
 - [Functions and Procedures](docs/functions-procedures.md)
-- 
