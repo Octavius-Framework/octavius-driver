@@ -1,0 +1,50 @@
+name: Deploy Dokka to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Generate Dokka documentation
+        run: ./gradlew dokkaGenerateHtml
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/dokka/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
