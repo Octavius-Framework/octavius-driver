@@ -1,6 +1,6 @@
 # Octavius Driver
 
-![Version](https://img.shields.io/badge/version-0.9.2-blue)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 
 A native, high-performance, lightweight PostgreSQL driver for Kotlin.
