@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -9,6 +10,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class StatementExceptionIntegrationTest {
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private fun getSession() =
         getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
@@ -24,7 +29,7 @@ class StatementExceptionIntegrationTest {
                 // Error at 'FRO', which is at index 9, position 10
                 session.createNativeQuery("SELECT * FRO test_table").fetchRowStrict()
             }
-
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.SYNTAX_ERROR, exception.reason)
             assertEquals(10, exception.position)
 
@@ -47,7 +52,7 @@ class StatementExceptionIntegrationTest {
                 session.createNamedQuery("SELECT @param FRO test_table")
                     .fetchRow("param" to 1)
             }
-
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.SYNTAX_ERROR, exception.reason)
             // The error is actually at "test_table" (position 15), because PostgreSQL treats "FRO" as a column alias for $1.
             assertEquals(15, exception.position)
@@ -68,7 +73,7 @@ class StatementExceptionIntegrationTest {
                 session.createNamedQuery("SELECT @param, 'unclosed quote test")
                     .fetchRow("param" to 1)
             }
-
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.UNCLOSED_QUOTE, exception.reason)
             // position is 1-indexed, so 15 + 1 = 16
             assertEquals(16, exception.position)
@@ -86,7 +91,7 @@ class StatementExceptionIntegrationTest {
             val exception = assertFailsWith<StatementException> {
                 session.createNativeQuery("SELECT * FROM some_non_existent_table").fetchRows()
             }
-
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.UNDEFINED_OBJECT, exception.reason)
             // Position points to 'some_non_existent_table'. "SELECT * FROM " is 14 chars.
             // 's' is at position 15.
@@ -103,7 +108,7 @@ class StatementExceptionIntegrationTest {
                 session.createNamedQuery("SELECT @param /* unclosed comment")
                     .fetchRow("param" to 1)
             }
-
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.UNCLOSED_COMMENT, exception.reason)
             // position is 1-indexed, so 14 + 1 = 15
             assertEquals(15, exception.position)
@@ -138,7 +143,7 @@ class StatementExceptionIntegrationTest {
                 // Trigger 42804 datatype_mismatch
                 session.createNativeQuery("SELECT 1 UNION SELECT current_date").fetchRows()
             }
-
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.DATA_TYPE_ERROR, exception.reason)
         }
     }

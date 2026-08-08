@@ -144,7 +144,7 @@ object ExceptionTranslator {
                     }
                     StatementException(
                         reason,
-                        details = "Message: $message",
+                        details = message,
                         position = errorMsg.position,
                         sqlState = state
                     )
@@ -154,7 +154,7 @@ object ExceptionTranslator {
             state.startsWith("54") ->
                 StatementException(
                     StatementExceptionReason.SYNTAX_ERROR,
-                    details = "Message: $message",
+                    details = message,
                     position = errorMsg.position,
                     sqlState = state
                 )
