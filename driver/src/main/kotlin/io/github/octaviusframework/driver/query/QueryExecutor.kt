@@ -78,7 +78,7 @@ class QueryExecutor internal constructor(
      */
     fun update(
         sql: String,
-        params: List<Any?> = emptyList(),
+        params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = stream.lock.withLock {
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
@@ -145,7 +145,7 @@ class QueryExecutor internal constructor(
      */
     fun query(
         sql: String,
-        params: List<Any?> = emptyList(),
+        params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer? = null,
         mapper: ResultMapper,
         maxRows: Int = 0
@@ -160,7 +160,7 @@ class QueryExecutor internal constructor(
      */
     fun <R> query(
         sql: String,
-        params: List<Any?> = emptyList(),
+        params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer?,
         mapper: ResultMapper,
         maxRows: Int = 0,
@@ -250,7 +250,7 @@ class QueryExecutor internal constructor(
      */
     fun <R> queryForEach(
         sql: String,
-        params: List<Any?> = emptyList(),
+        params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer,
         mapper: ResultMapper,
         fetchSize: Int,

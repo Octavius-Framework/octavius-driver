@@ -30,7 +30,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper)
+            queryExecutor.query(sql, params, parameterSerializer, resultMapper)
         }
     }
 
@@ -40,7 +40,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
+            val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2)
             if (rows.size > 1) throw StatementException(
                 StatementExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
@@ -55,7 +55,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2)
+            val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2)
             if (rows.isEmpty()) throw StatementException(
                 StatementExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
@@ -74,7 +74,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.queryForEach(sql, params.toList(), parameterSerializer, resultMapper, fetchSize, { it }, block)
+            queryExecutor.queryForEach(sql, params, parameterSerializer, resultMapper, fetchSize, { it }, block)
         }
     }
 
@@ -88,7 +88,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) {
+            queryExecutor.query(sql, params, parameterSerializer, resultMapper) {
                 resultMapper.deserialize(it, targetType, recordType)
             }
         }
@@ -102,7 +102,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
             if (rows.size > 1) throw StatementException(
@@ -121,7 +121,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
             if (rows.size > 1) throw StatementException(
@@ -144,7 +144,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.queryForEach(sql, params.toList(), parameterSerializer, resultMapper, fetchSize, {
+            queryExecutor.queryForEach(sql, params, parameterSerializer, resultMapper, fetchSize, {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }, { block(it) })
         }
@@ -159,7 +159,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper) { it.get(0, targetType) }
+            queryExecutor.query(sql, params, parameterSerializer, resultMapper) { it.get(0, targetType) }
         }
     }
 
@@ -170,7 +170,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 it.get<T>(
                     0,
                     targetType
@@ -191,7 +191,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            val rows = queryExecutor.query(sql, params.toList(), parameterSerializer, resultMapper, maxRows = 2) {
+            val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 it.get<T>(
                     0,
                     targetType
@@ -216,7 +216,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.queryForEach(sql, params.toList(), parameterSerializer, resultMapper, fetchSize, {
+            queryExecutor.queryForEach(sql, params, parameterSerializer, resultMapper, fetchSize, {
                 it.get<T>(0, targetType)
             }, { block(it) })
         }
@@ -230,7 +230,7 @@ class NativeQuery internal constructor(
             { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
             { sql },
             { params.toList() }) {
-            queryExecutor.update(sql, params.toList(), parameterSerializer)
+            queryExecutor.update(sql, params, parameterSerializer)
         }
     }
 

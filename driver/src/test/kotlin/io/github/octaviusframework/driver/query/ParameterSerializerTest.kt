@@ -19,7 +19,7 @@ class ParameterSerializerTest {
 
     private fun serializeValueForTest(serializer: ParameterSerializer, value: Any?): ByteArray? {
         val writer = PgByteWriter()
-        serializer.serializeAll(listOf(value), writer)
+        serializer.serializeAll(arrayOf<Any?>(value), writer)
         val bytes = writer.toByteArray()
         if (bytes.size < 4) return null
         val length = (bytes[0].toInt() and 0xFF shl 24) or
@@ -97,7 +97,7 @@ class ParameterSerializerTest {
         val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
-        val parameters = listOf(123, "test", null, true)
+        val parameters = arrayOf<Any?>(123, "test", null, true)
         val writer = PgByteWriter()
         val oids = serializer.serializeAll(parameters, writer)
         val bytes = writer.toByteArray()
@@ -124,7 +124,7 @@ class ParameterSerializerTest {
         // Int value explicitly typed as INT8
         val typedValue = 123L.withPgType(PgStandardType.INT8)
         val writer = PgByteWriter()
-        val oids = serializer.serializeAll(listOf(typedValue), writer)
+        val oids = serializer.serializeAll(arrayOf<Any?>(typedValue), writer)
 
         assertEquals(1, oids.size)
         assertEquals(PgStandardType.INT8.oid, oids[0], "OID should match explicitly provided INT8 type")
@@ -140,9 +140,9 @@ class ParameterSerializerTest {
         class CustomUnsupportedClass(val data: String)
         val unsupported = CustomUnsupportedClass("test")
         val writer = PgByteWriter()
-        
+
         assertFailsWith<TypeException>("Should fail when codec is missing") {
-            serializer.serializeAll(listOf(unsupported), writer)
+            serializer.serializeAll(arrayOf<Any?>(unsupported), writer)
         }
     }
 }
