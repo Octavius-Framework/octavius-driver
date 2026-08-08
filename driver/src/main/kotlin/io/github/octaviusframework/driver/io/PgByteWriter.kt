@@ -4,7 +4,10 @@ package io.github.octaviusframework.driver.io
  * Optimized buffer for building binary packets for the database.
  * Allows reserving space for size and filling it later without memory copying.
  */
-class PgByteWriter(initialCapacity: Int = 1024) {
+class PgByteWriter(
+    private val initialCapacity: Int = 1024,
+    private val maxCapacity: Int = 65536
+) {
     var data = ByteArray(initialCapacity)
         private set
     var position = 0
@@ -92,5 +95,12 @@ class PgByteWriter(initialCapacity: Int = 1024) {
 
     fun updatePosition(newPosition: Int) {
         position = newPosition
+    }
+
+    fun clear() {
+        position = 0
+        if (data.size > maxCapacity) {
+            data = ByteArray(initialCapacity)
+        }
     }
 }

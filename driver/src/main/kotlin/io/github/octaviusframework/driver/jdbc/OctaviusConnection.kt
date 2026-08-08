@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
+import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
@@ -19,10 +20,20 @@ import java.util.concurrent.Executor
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-class OctaviusConnection internal constructor(internal val stream: PgStream, internal val url: String) : Connection {
+class OctaviusConnection internal constructor(
+    internal val stream: PgStream,
+    internal val url: String,
+    maxParameterWriterCapacity: Int? = null,
+    initialParameterWriterCapacity: Int? = null
+) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(url)
 
-    internal val queryExecutor = QueryExecutor(stream, typeRegistry)
+    internal val queryExecutor = QueryExecutor(
+        stream,
+        typeRegistry,
+        maxParameterWriterCapacity,
+        initialParameterWriterCapacity
+    )
     init {
         GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
     }

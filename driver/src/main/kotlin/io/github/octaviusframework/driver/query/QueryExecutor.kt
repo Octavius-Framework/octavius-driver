@@ -8,6 +8,7 @@ import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.RowMetadata
+import io.github.octaviusframework.driver.io.PgByteWriter
 import kotlin.concurrent.withLock
 
 /**
@@ -20,8 +21,15 @@ import kotlin.concurrent.withLock
  */
 class QueryExecutor internal constructor(
     private val stream: PgStream,
-    private val typeRegistry: TypeRegistry
+    private val typeRegistry: TypeRegistry,
+    maxParameterWriterCapacity: Int? = null,
+    initialParameterWriterCapacity: Int? = null
 ) {
+    private val parameterWriter = PgByteWriter(
+        initialCapacity = initialParameterWriterCapacity ?: 1024,
+        maxCapacity = maxParameterWriterCapacity ?: 65536
+    )
+    
     var transactionStatus: Char = 'I'
         private set
 
@@ -73,11 +81,9 @@ class QueryExecutor internal constructor(
         params: List<Any?> = emptyList(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = stream.lock.withLock {
-        val serializationResult = parameterSerializer?.serializeAll(params)
-        val paramTypes = serializationResult?.first ?: IntArray(0)
-        val writer = serializationResult?.second
-        val paramValues = writer?.data ?: ByteArray(0)
-        val paramValuesLength = writer?.position ?: 0
+        val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
+        val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
+        val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
         val statementName = ""
         val portalName = ""
         
@@ -160,11 +166,9 @@ class QueryExecutor internal constructor(
         maxRows: Int = 0,
         transform: (Row) -> R
     ): List<R> = stream.lock.withLock {
-        val serializationResult = parameterSerializer?.serializeAll(params)
-        val paramTypes = serializationResult?.first ?: IntArray(0)
-        val writer = serializationResult?.second
-        val paramValues = writer?.data ?: ByteArray(0)
-        val paramValuesLength = writer?.position ?: 0
+        val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
+        val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
+        val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
         val statementName = ""
         val portalName = ""
         
@@ -253,11 +257,9 @@ class QueryExecutor internal constructor(
         transform: (Row) -> R,
         block: (R) -> Unit
     ) = stream.lock.withLock {
-        val serializationResult = parameterSerializer.serializeAll(params)
-        val paramTypes = serializationResult.first
-        val writer = serializationResult.second
-        val paramValues = writer.data
-        val paramValuesLength = writer.position
+        val paramTypes = parameterSerializer.serializeAll(params, parameterWriter)
+        val paramValues = parameterWriter.data
+        val paramValuesLength = parameterWriter.position
         val statementName = ""
         val portalName = ""
         
