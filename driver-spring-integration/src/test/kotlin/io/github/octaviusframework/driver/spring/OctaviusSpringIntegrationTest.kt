@@ -1,9 +1,9 @@
-package io.github.octaviusframework.spring
+package io.github.octaviusframework.driver.spring
 
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.row.get
-import io.github.octaviusframework.spring.exception.OctaviusDataAccessException
+import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -11,6 +11,8 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Lazy
+import org.springframework.transaction.annotation.EnableTransactionManagement
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.annotation.Propagation
 
@@ -95,7 +97,7 @@ class OctaviusSpringIntegrationTest {
 }
 
 @TestConfiguration
-@org.springframework.transaction.annotation.EnableTransactionManagement
+@EnableTransactionManagement
 open class TestApplication {
     
     @Bean
@@ -137,7 +139,7 @@ open class TestService(private val octaviusTemplate: OctaviusTemplate) {
         }
     }
 
-    @org.springframework.context.annotation.Lazy
+    @Lazy
     @Autowired
     lateinit var self: TestService
 

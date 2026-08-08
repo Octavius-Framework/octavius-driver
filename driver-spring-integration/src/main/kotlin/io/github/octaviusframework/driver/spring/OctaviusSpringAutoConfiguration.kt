@@ -1,7 +1,7 @@
-package io.github.octaviusframework.spring
+package io.github.octaviusframework.driver.spring
 
 import io.github.octaviusframework.driver.session.OctaviusSession
-import io.github.octaviusframework.spring.exception.OctaviusExceptionTranslator
+import io.github.octaviusframework.driver.spring.exception.OctaviusExceptionTranslator
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
