@@ -18,17 +18,17 @@ class ParameterSerializer(
 ) {
     private val codecDictionary = typeManager.codecDictionary
 
-    fun serializeAll(parameters: List<Any?>): Pair<IntArray, PgByteWriter> {
+    fun serializeAll(parameters: Array<out Any?>, writer: PgByteWriter): IntArray {
+        writer.clear()
         val size = parameters.size
         val oids = IntArray(size)
-        val writer = PgByteWriter()
 
         for (i in 0 until size) {
             val marker = writer.reserveLengthInt()
             oids[i] = serializeValue(parameters[i], writer, marker)
         }
 
-        return oids to writer
+        return oids
     }
 
     private fun serializeValue(parameter: Any?, writer: PgByteWriter, marker: Int): Int {

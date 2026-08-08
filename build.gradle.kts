@@ -12,7 +12,7 @@ plugins {
 
 allprojects {
     group = "io.github.octavius-framework"
-    version = "0.9.1"
+    version = "0.9.2"
 
     repositories {
         mavenCentral()

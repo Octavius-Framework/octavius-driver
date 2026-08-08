@@ -1,6 +1,6 @@
 # Octavius Driver
 
-![Version](https://img.shields.io/badge/version-0.9.1-blue)
+![Version](https://img.shields.io/badge/version-0.9.2-blue)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 
 A native, high-performance, lightweight PostgreSQL driver for Kotlin.
@@ -38,7 +38,7 @@ Add the Octavius driver to your `build.gradle.kts` dependencies:
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:0.9.1")
+    implementation("io.github.octavius-framework:driver:0.9.2")
 }
 ```
 

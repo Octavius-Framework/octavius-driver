@@ -27,6 +27,8 @@ class OctaviusProperties {
     var maxCachedRowSize: Int? = null
     var notificationBufferCapacity: Int? = null
     var noticeHandler: String? = null
+    var maxParameterWriterCapacity: Int? = null
+    var initialParameterWriterCapacity: Int? = null
 
     var ssl: Boolean? = null
     var sslmode: SslMode? = null
@@ -49,6 +51,8 @@ class OctaviusProperties {
             "maxcachedrowsize" -> maxCachedRowSize = value.toIntOrNull()
             "notificationbuffercapacity" -> notificationBufferCapacity = value.toIntOrNull()
             "noticehandler" -> noticeHandler = value
+            "maxparameterwritercapacity" -> maxParameterWriterCapacity = value.toIntOrNull()
+            "initialparameterwritercapacity" -> initialParameterWriterCapacity = value.toIntOrNull()
             "ssl" -> ssl = value.toBoolean()
             "sslmode" -> sslmode = SslMode.of(value)
             "sslrootcert" -> sslrootcert = value
@@ -70,6 +74,8 @@ class OctaviusProperties {
         other.maxCachedRowSize?.let { maxCachedRowSize = it }
         other.notificationBufferCapacity?.let { notificationBufferCapacity = it }
         other.noticeHandler?.let { noticeHandler = it }
+        other.maxParameterWriterCapacity?.let { maxParameterWriterCapacity = it }
+        other.initialParameterWriterCapacity?.let { initialParameterWriterCapacity = it }
         other.ssl?.let { ssl = it }
         other.sslmode?.let { sslmode = it }
         other.sslrootcert?.let { sslrootcert = it }
@@ -145,6 +151,8 @@ class OctaviusProperties {
         maxCachedRowSize?.let { queryParams["maxCachedRowSize"] = it.toString() }
         notificationBufferCapacity?.let { queryParams["notificationBufferCapacity"] = it.toString() }
         noticeHandler?.let { queryParams["noticeHandler"] = it }
+        maxParameterWriterCapacity?.let { queryParams["maxParameterWriterCapacity"] = it.toString() }
+        initialParameterWriterCapacity?.let { queryParams["initialParameterWriterCapacity"] = it.toString() }
         ssl?.let { queryParams["ssl"] = it.toString() }
         sslmode?.let { queryParams["sslmode"] = it.value }
         sslrootcert?.let { queryParams["sslrootcert"] = it }
