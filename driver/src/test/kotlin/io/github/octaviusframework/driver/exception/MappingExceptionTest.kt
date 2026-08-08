@@ -10,12 +10,16 @@ import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.type.TypeManager
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
 import kotlin.test.assertFailsWith
 
 class MappingExceptionTest {
+    companion object {
+        val logger = KotlinLogging.logger {}
+    }
 
     private val dummyRegistry = TypeRegistry().apply {
         updateTypes(mapOf(
@@ -76,6 +80,7 @@ class MappingExceptionTest {
         val ex = assertFailsWith<MappingException> {
             deserializer.deserialize<Company>(companyComposite, typeOf<Company>(), companyComposite.type)
         }
+        logger.error(ex) {}
 
         val details = ex.getDetailedMessage()
         assertTrue(details.contains("Path: employees -> [1] -> address -> city"), "Expected path missing, got: $details")
@@ -104,7 +109,7 @@ class MappingExceptionTest {
         val ex = assertFailsWith<MappingException> {
             deserializer.deserialize<Company>(companyComposite, typeOf<Company>(), companyComposite.type)
         }
-
+        logger.error(ex) {}
         val details = ex.getDetailedMessage()
         assertTrue(details.contains("Path: employees -> [0] -> name"), "Expected path missing, got: $details")
         assertTrue(details.contains("Null value for non-nullable attribute 'name'"), "Expected null property message, got: $details")
@@ -125,7 +130,7 @@ class MappingExceptionTest {
         val ex = assertFailsWith<MappingException> {
             deserializer.deserialize<Company>(companyComposite, typeOf<Company>(), companyComposite.type)
         }
-
+        logger.error(ex) {}
         val details = ex.getDetailedMessage()
         assertTrue(details.contains("Path: employees -> [0]"), "Expected path missing, got: $details")
         assertTrue(details.contains("Null array element for non-nullable type"), "Expected null element message, got: $details")

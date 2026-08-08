@@ -27,14 +27,14 @@ enum class RoutineExecutionExceptionReason {
  * errors explicitly raised by database developers (e.g., via RAISE EXCEPTION) or assertion failures inside the database.
  *
  * @property reason The categorized reason for the routine failure.
- * @property details Additional context or hints provided by the database regarding the error.
+ * @property dbMessage Additional context or hints provided by the database regarding the error.
  * @property dbDetail Explicit DETAIL field provided by PostgreSQL.
  * @property hint Explicit HINT field provided by PostgreSQL.
  * @property whereContext Call stack or context (WHERE field) of the PL/pgSQL execution.
  */
 class RoutineExecutionException(
     val reason: RoutineExecutionExceptionReason,
-    val details: String? = null,
+    val dbMessage: String? = null,
     val dbDetail: String? = null,
     val hint: String? = null,
     val whereContext: String? = null,
@@ -43,7 +43,7 @@ class RoutineExecutionException(
 ) : OctaviusException("ROUTINE_EXECUTION_EXCEPTION:${reason.name}", cause, sqlState) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
-        if (details != null) appendLine("Details: $details")
+        if (dbMessage != null) appendLine("DB Message: $dbMessage")
         if (dbDetail != null) appendLine("DB Detail: $dbDetail")
         if (hint != null) appendLine("Hint: $hint")
         if (whereContext != null) appendLine("Where: $whereContext")

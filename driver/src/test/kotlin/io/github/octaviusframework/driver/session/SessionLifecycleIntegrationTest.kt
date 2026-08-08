@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.exception.TransactionExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.concurrent.Executors
@@ -15,6 +16,10 @@ import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SessionLifecycleIntegrationTest {
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     @Test
     fun `should cancel long running query`() {
@@ -37,7 +42,7 @@ class SessionLifecycleIntegrationTest {
         // 57014 is query_canceled
         assertEquals("57014", exception.sqlState)
         assertEquals(TransactionExceptionReason.TIMEOUT, exception.reason)
-
+        logger.error(exception) { "" }
         // Session should be usable after query cancellation
         val result = session.createNativeQuery("SELECT 1").fetchRowStrict().get<Int>(0)
         assertEquals(1, result)

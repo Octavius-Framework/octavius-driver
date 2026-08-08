@@ -141,7 +141,7 @@ object SqlParameterParser {
             searchPos++
         }
 
-        throw StatementException(StatementExceptionReason.UNCLOSED_DOLLAR_QUOTE, "Unclosed dollar-quoted string starting at index $start", position = start + 1)
+        throw StatementException(StatementExceptionReason.UNCLOSED_DOLLAR_QUOTE, "Unclosed dollar-quoted string", position = start + 1)
     }
 
     private fun isValidTagCharacter(char: Char, isFirstChar: Boolean): Boolean {
@@ -166,14 +166,14 @@ object SqlParameterParser {
             }
             i++
         }
-        throw StatementException(StatementExceptionReason.UNCLOSED_QUOTE, "Unclosed backslash-escaped literal starting at index $start", position = start + 1)
+        throw StatementException(StatementExceptionReason.UNCLOSED_QUOTE, "Unclosed backslash-escaped literal", position = start + 1)
     }
 
     private fun skipUntil(sql: String, start: Int, endChar: Char, throwOnEof: Boolean = false, exceptionMessage: StatementExceptionReason? = null): Int {
         val index = sql.indexOf(endChar, start + 1)
         if (index == -1) {
             if (throwOnEof) {
-                throw StatementException(exceptionMessage ?: StatementExceptionReason.UNCLOSED_QUOTE, "Unclosed token starting at index $start", position = start + 1)
+                throw StatementException(exceptionMessage ?: StatementExceptionReason.UNCLOSED_QUOTE, "Unclosed token - [${endChar}]", position = start + 1)
             }
             return sql.length
         }
@@ -196,7 +196,7 @@ object SqlParameterParser {
             i++
         }
         if (depth > 0) {
-            throw StatementException(StatementExceptionReason.UNCLOSED_COMMENT, "Unclosed multi-line comment starting at index $start", position = start + 1)
+            throw StatementException(StatementExceptionReason.UNCLOSED_COMMENT, "Unclosed multi-line comment", position = start + 1)
         }
         return i - 1
     }

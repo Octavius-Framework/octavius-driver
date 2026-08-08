@@ -2,15 +2,18 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
 
 class PermissionDeniedExceptionIntegrationTest {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private fun getAdminSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
         user = "postgres"
@@ -53,12 +56,12 @@ class PermissionDeniedExceptionIntegrationTest {
             val exception = assertFailsWith<PermissionDeniedException> {
                 session.createNativeQuery("SELECT * FROM perm_test_table").fetchRows()
             }
-
+            logger.error(exception) { "" }
             assertEquals("42501", exception.sqlState)
-            println("errorMessage: " + exception.errorMessage)
+            println("errorMessage: " + exception.dbMessage)
             println("table: " + exception.table)
             println("schema: " + exception.schema)
-            assertTrue(exception.errorMessage.contains("perm_test_table"))
+            assertTrue(exception.dbMessage.contains("perm_test_table"))
         }
     }
 }

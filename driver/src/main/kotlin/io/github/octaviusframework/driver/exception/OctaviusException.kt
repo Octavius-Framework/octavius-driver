@@ -13,25 +13,36 @@ open class OctaviusException(
 
     open fun getDetailedMessage(): String? = null
 
-    override fun toString(): String {
-        val detailedMsg = getDetailedMessage()?.let { "DETAILS: $it\n" } ?: ""
-        val nestedError = cause?.toString() ?: "No cause available"
-        val sqlStateSection = sqlState?.let { "SQLSTATE: $it\n" } ?: ""
-        val contextSection = queryContext?.let { "$it\n" } ?: ""
-        val causeSection = """
-CAUSE:
-------------------------------------------------------------
-$nestedError
-------------------------------------------------------------
-"""
 
-        return """
-------------------------------------------------------------
-ERROR: ${this::class.simpleName}
-$sqlStateSection
-MESSAGE: $message
-${detailedMsg}$contextSection------------------------------------------------------------
-$causeSection
-"""
+
+    override fun toString(): String = buildString {
+        appendLine(line)
+        appendLine("MESSAGE: $message")
+
+        if (sqlState != null) {
+            appendLine("SQLSTATE: $sqlState")
+        }
+
+
+        val detailedMsg = getDetailedMessage()
+        if (detailedMsg != null) {
+            appendLine("EXCEPTION DETAILS: \n$detailedMsg")
+        }
+        
+        if (queryContext != null) {
+            appendLine(queryContext.toString())
+        }
+        
+        append(line)
+        
+        if (cause != null) {
+            appendLine()
+            appendLine("CAUSE:")
+            appendLine(line)
+            appendLine(cause.toString())
+            append(line)
+        }
     }
 }
+
+const val line = "--------------------------------------------------------------------------------"

@@ -2,11 +2,16 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class DriverExceptionIntegrationTest {
+
+    companion object {
+        val logger = KotlinLogging.logger {}
+    }
 
     private fun getSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
         user = "postgres"
@@ -19,6 +24,7 @@ class DriverExceptionIntegrationTest {
             val exception = assertFailsWith<InvalidOperationException> {
                 session.createNativeQuery("SELECT 1").execute()
             }
+            logger.error(exception) { "" }
             assertEquals(InvalidOperationExceptionReason.UNEXPECTED_RESULT, exception.reason)
         }
     }
@@ -31,6 +37,7 @@ class DriverExceptionIntegrationTest {
                 password = "wrong_password"
             })
         }
+        logger.error(exception) { "" }
         assertEquals(InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS, exception.reason)
         assertEquals("28P01", exception.sqlState) // Invalid password state
     }
@@ -43,6 +50,7 @@ class DriverExceptionIntegrationTest {
                 password = "1234"
             })
         }
+        logger.error(exception) { "" }
         assertEquals(InitializationExceptionReason.CONNECTION_ERROR, exception.reason)
     }
 
@@ -52,6 +60,7 @@ class DriverExceptionIntegrationTest {
             val exception = assertFailsWith<StatementException> {
                 session.createNativeQuery("SELECT 1 WHERE false").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
         }
     }
@@ -62,6 +71,7 @@ class DriverExceptionIntegrationTest {
             val exception = assertFailsWith<StatementException> {
                 session.createNativeQuery("SELECT 1 UNION ALL SELECT 2").fetchRow()
             }
+            logger.error(exception) { "" }
             assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
         }
     }
