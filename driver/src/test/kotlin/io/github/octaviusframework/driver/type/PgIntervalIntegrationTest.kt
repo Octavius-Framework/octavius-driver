@@ -27,6 +27,7 @@ class PgIntervalIntegrationTest {
             .fetchRowStrict(finiteInterval)
             
         assertEquals(finiteInterval, result.get(0))
+        session.close()
     }
 
     @Test
@@ -41,6 +42,7 @@ class PgIntervalIntegrationTest {
 
         assertEquals(PgInterval.Infinity, result.get(0))
         assertEquals(PgInterval.MinusInfinity, result.get(1))
+        session.close()
     }
 
     @Test
@@ -59,6 +61,7 @@ class PgIntervalIntegrationTest {
             months = 14
         )
         assertEquals(expected, result.get(0))
+        session.close()
     }
     
     @Test
@@ -73,6 +76,7 @@ class PgIntervalIntegrationTest {
 
         assertEquals(PgInterval.Infinity, result.get(0))
         assertEquals(PgInterval.MinusInfinity, result.get(1))
+        session.close()
     }
 
     @Test
@@ -98,6 +102,7 @@ class PgIntervalIntegrationTest {
             
         assertEquals(interval, result.get(0))
         assertEquals(period, (result.get<PgInterval>(0)).toDateTimePeriod())
+        session.close()
     }
 
     @Test
@@ -115,6 +120,7 @@ class PgIntervalIntegrationTest {
             
         assertEquals(interval, result.get(0))
         assertEquals(duration, result.get<PgInterval>(0).toDurationExact())
+        session.close()
     }
 
     @Test
@@ -133,6 +139,7 @@ class PgIntervalIntegrationTest {
             
         assertEquals(interval, result.get(0))
         assertEquals(duration, result.get<PgInterval>(0).toDurationApproximate())
+        session.close()
     }
 
     @Test
@@ -161,5 +168,6 @@ class PgIntervalIntegrationTest {
         assertEquals(intervalDuration, result.get(1))
         assertEquals(negativePeriod, result.get<PgInterval>(0).toDateTimePeriod())
         assertEquals(negativeDuration, result.get<PgInterval>(1).toDurationExact())
+        session.close()
     }
 }

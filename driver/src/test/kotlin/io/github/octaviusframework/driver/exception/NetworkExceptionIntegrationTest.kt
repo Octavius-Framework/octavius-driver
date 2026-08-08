@@ -2,12 +2,16 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class NetworkExceptionIntegrationTest {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private fun getSession(props: OctaviusProperties = OctaviusProperties()) = getOctaviusSession(
         "jdbc:octavius://localhost:5432/octavius_test",
@@ -27,7 +31,7 @@ class NetworkExceptionIntegrationTest {
             val exception = assertFailsWith<NetworkException> {
                 session.createNativeQuery("SELECT pg_sleep(2)").fetchRows()
             }
-
+            logger.error(exception) {"" }
             assertEquals(NetworkExceptionReason.CONNECTION_TIMEOUT, exception.reason)
         }
     }
@@ -43,7 +47,7 @@ class NetworkExceptionIntegrationTest {
                 val exception = assertFailsWith<NetworkException> {
                     session1.createNativeQuery("SELECT 1").fetchRowStrict()
                 }
-
+                logger.error(exception) {"" }
                 assertTrue(
                     exception.reason == NetworkExceptionReason.CONNECTION_CLOSED_BY_PEER ||
                     exception.reason == NetworkExceptionReason.CONNECTION_ERROR,

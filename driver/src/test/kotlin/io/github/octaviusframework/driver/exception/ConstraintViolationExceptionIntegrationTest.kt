@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -10,6 +11,10 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 
 class ConstraintViolationExceptionIntegrationTest {
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private fun getSession() =
         getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
@@ -50,7 +55,7 @@ class ConstraintViolationExceptionIntegrationTest {
             val exception = assertFailsWith<ConstraintViolationException> {
                 session.createNativeQuery("INSERT INTO parent_table (id) VALUES (1)").execute()
             }
-
+            logger.error(exception) { "" }
             assertEquals(ConstraintViolationExceptionReason.UNIQUE_CONSTRAINT_VIOLATION, exception.reason)
             assertEquals("parent_table", exception.table)
             assertNotNull(exception.constraint) // Usually parent_table_pkey
@@ -66,7 +71,7 @@ class ConstraintViolationExceptionIntegrationTest {
                 session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, 999, 'test', 5)")
                     .execute()
             }
-
+            logger.error(exception) { "" }
             assertEquals(ConstraintViolationExceptionReason.FOREIGN_KEY_VIOLATION, exception.reason)
             assertEquals("constraint_test_table", exception.table)
             assertNotNull(exception.constraint)
@@ -82,7 +87,7 @@ class ConstraintViolationExceptionIntegrationTest {
                 session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, NULL, 5)")
                     .execute()
             }
-
+            logger.error(exception) { "" }
             assertEquals(ConstraintViolationExceptionReason.NOT_NULL_VIOLATION, exception.reason)
             assertEquals("constraint_test_table", exception.table)
             assertEquals("not_null_col", exception.column)
@@ -98,7 +103,7 @@ class ConstraintViolationExceptionIntegrationTest {
                 session.createNativeQuery("INSERT INTO constraint_test_table (id, parent_id, not_null_col, check_col) VALUES (1, NULL, 'test', 0)")
                     .execute()
             }
-
+            logger.error(exception) { "" }
             assertEquals(ConstraintViolationExceptionReason.CHECK_CONSTRAINT_VIOLATION, exception.reason)
             assertEquals("constraint_test_table", exception.table)
             assertNotNull(exception.constraint)

@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
-import io.github.octaviusframework.driver.type.UNRESOLVED_OID
+import io.github.octaviusframework.driver.identifier.QualifiedName
 import kotlin.reflect.KClass
 
 interface ParameterConverter<T : Any> {
@@ -12,6 +12,6 @@ interface ParameterConverter<T : Any> {
 
     fun convert(source: T, expectedOid: Int, context: SerializationContext): Any
 
-    fun getDefaultOid(context: SerializationContext): Int = UNRESOLVED_OID
+    fun getDefaultTypeName(context: SerializationContext): QualifiedName? = null
 }
 

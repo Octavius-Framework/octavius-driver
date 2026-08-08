@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
-import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.isKnownOid
 import java.util.concurrent.locks.ReentrantLock
@@ -22,16 +21,15 @@ class ParameterConverterRegistry(
     }
 
     fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        for (i in 0 until converters.size) {
+        for (i in converters.indices) {
             val converter = converters[i]
             if (converter.canConvert(source::class, expectedOid, context)) {
                 @Suppress("UNCHECKED_CAST")
                 var result = (converter as ParameterConverter<Any>).convert(source, expectedOid, context)
                 if (result !is PgTyped && !expectedOid.isKnownOid) {
-                    val defaultOid = converter.getDefaultOid(context)
-                    if (defaultOid.isKnownOid) {
-                        val type = context.typeManager.typeDictionary.getPgType(defaultOid)
-                        result = PgTyped(result, QualifiedName(type.schema, type.name, false))
+                    val defaultType = converter.getDefaultTypeName(context)
+                    if (defaultType != null) {
+                        result = PgTyped(result, defaultType)
                     }
                 }
                 return result
@@ -46,7 +44,7 @@ class ParameterConverterRegistry(
     }
 
     fun findConverterByClass(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): ParameterConverter<Any>? {
-        for (i in 0 until converters.size) {
+        for (i in converters.indices) {
             val converter = converters[i]
             if (converter.canConvert(sourceClass, expectedOid, context)) {
                 @Suppress("UNCHECKED_CAST")

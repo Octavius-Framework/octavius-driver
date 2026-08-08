@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -9,11 +10,15 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class TransactionExceptionIntegrationTest {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
-    private fun getSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
-        user = "postgres"
-        password = "1234"
-    })
+    private fun getSession() =
+        getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+        })
 
     @BeforeEach
     fun setup() {
@@ -38,7 +43,7 @@ class TransactionExceptionIntegrationTest {
             val exception = assertFailsWith<TransactionException> {
                 session.createNativeQuery("SELECT pg_sleep(1)").fetchField<Any?>()
             }
-
+            logger.error(exception) { "" }
             assertEquals("57014", exception.sqlState)
             assertEquals(TransactionExceptionReason.TIMEOUT, exception.reason)
         }
@@ -55,9 +60,10 @@ class TransactionExceptionIntegrationTest {
                 try {
                     val exception = assertFailsWith<TransactionException> {
                         // Try to lock the same row with NOWAIT in session2
-                        session2.createNativeQuery("SELECT * FROM lock_test_table WHERE id = 1 FOR UPDATE NOWAIT").fetchRows()
+                        session2.createNativeQuery("SELECT * FROM lock_test_table WHERE id = 1 FOR UPDATE NOWAIT")
+                            .fetchRows()
                     }
-
+                    logger.error(exception) { "" }
                     assertEquals(TransactionExceptionReason.LOCK_NOT_AVAILABLE, exception.reason)
                 } finally {
                     session1.createNativeQuery("ROLLBACK").execute()

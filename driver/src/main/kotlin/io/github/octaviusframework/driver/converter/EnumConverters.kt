@@ -43,8 +43,8 @@ class EnumParameterConverter<T : Enum<T>>(
         return enumToPg[source]!!
     }
 
-    override fun getDefaultOid(context: SerializationContext): Int {
-        return context.typeManager.resolveOid(qualifiedName.name, qualifiedName.schema)
+    override fun getDefaultTypeName(context: SerializationContext): QualifiedName {
+        return qualifiedName
     }
 }
 

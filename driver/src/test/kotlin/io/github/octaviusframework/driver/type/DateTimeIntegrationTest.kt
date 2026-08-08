@@ -39,6 +39,7 @@ class DateTimeIntegrationTest {
             .fetchRowStrict(Instant.DISTANT_FUTURE, Instant.DISTANT_PAST)
         assertEquals(Instant.DISTANT_FUTURE, instantResult.get(0))
         assertEquals(Instant.DISTANT_PAST, instantResult.get(1))
+        session.close()
     }
 
     @Test
@@ -67,5 +68,6 @@ class DateTimeIntegrationTest {
             session.createNativeQuery("SELECT $1").fetchRow(badPastDate)
         }
         assertEquals(true, exPast.cause?.message?.contains("overlaps with PostgreSQL infinity representation"))
+        session.close()
     }
 }

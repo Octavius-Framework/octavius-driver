@@ -1,24 +1,24 @@
-# Type System and Mapping (Octavius Driver)
+# Type System and Mapping
 
-The type mapping architecture in the `octavius-driver` library is based on an efficient and flexible **2-layer architecture**. It separates low-level binary communication with the database from high-level mapping to Kotlin objects.
+Type mapping in `octavius-driver` rests on a flexible **2-layer architecture** that keeps low-level binary wire communication cleanly separated from high-level mapping onto Kotlin objects.
 
 ## 2-Layer Architecture
 
-1.  **Codecs Layer (`TypeCodec<T>`)**
-    *   **Role:** Responsible for direct translation between basic Kotlin types and the native PostgreSQL binary format (represented by byte arrays and `PgByteWriter`).
-    *   **Operation:** Codecs operate at a low level, serializing and deserializing data considering PostgreSQL type OIDs.
-    *   **Registration:** Codecs are centrally managed by `TypeRegistry`, which associates them based on Kotlin classes or OIDs defined in the database.
+1. **Codecs Layer (`TypeCodec<T>`)**
+    * **Role:** the direct translation between basic Kotlin types and PostgreSQL's native binary format (`ByteArray` and `PgByteWriter`).
+    * **Operation:** codecs work at a low level, serializing and deserializing with full awareness of PostgreSQL type OIDs.
+    * **Registration:** centrally managed by `TypeRegistry`, which associates codecs by Kotlin class or by the OID defined in the database.
 
-2.  **Converters Layer (`ResultConverter<S, T>` / `ParameterConverter<T>`)**
-    *   **Role:** Provides a higher level of abstraction that maps intermediate structures decoded by codecs (e.g., `PgComposite`, `PgArray`, `PgRecord`, `OctaviusRow`) to target complex user-defined data structures.
-    *   **Operation:** Handles reflective mapping (to classes, e.g., data classes), transformations to collections (`Collection<*>`), maps (`Map<String, Any?>`), and other nested objects.
-    *   **Context:** Utilizes `SerializationContext` and `DeserializationContext` interfaces to recursively resolve and convert nested types in complex structures, enabling a smooth transition from the object layer to the binary layer and vice versa.
+2. **Converters Layer (`ResultConverter<S, T>` / `ParameterConverter<T>`)**
+    * **Role:** a higher level of abstraction, mapping the intermediate structures codecs decode (`PgComposite`, `PgArray`, `PgRecord`, `Row`) onto whatever complex, user-defined structures you actually want.
+    * **Operation:** handles reflective mapping onto classes (data classes), transformation into collections (`Collection<*>`), maps (`Map<String, Any?>`), and nested objects.
+    * **Context:** `SerializationContext` and `DeserializationContext` recursively resolve and convert nested types within complex structures, bridging the object layer and the binary layer smoothly in both directions.
 
-Thanks to this approach, adding support for a custom specific type for PostgreSQL is limited to writing a relatively small and simple codec, while the entire logic of assigning it to appropriate fields in data classes or collections is still handled automatically by the generic converter layer.
+Thanks to this split, adding support for a specific custom PostgreSQL type is usually just writing a small, focused codec — the reflective work of wiring it into data classes and collections is handled automatically by the generic converter layer above it.
 
 ## Basic Codecs
 
-The `io.github.octaviusframework.driver.codec` package provides codecs to translate types between PostgreSQL and Kotlin.
+The `io.github.octaviusframework.driver.codec` package ships the codecs translating between PostgreSQL and Kotlin types.
 
 | PostgreSQL Type                                      | Kotlin Type                      | Notes                                            |
 |:-----------------------------------------------------|:---------------------------------|:-------------------------------------------------|
@@ -47,7 +47,7 @@ The `io.github.octaviusframework.driver.codec` package provides codecs to transl
 
 ### Infinity Values for Date/Time
 
-<sup>1</sup> **PostgreSQL special values** (`infinity`, `-infinity`) are fully supported for date and timestamp types using provided constants:
+<sup>1</sup> PostgreSQL's special `infinity` / `-infinity` values are fully supported for date and timestamp types, via dedicated constants:
 
 | PostgreSQL Type | Special Values          | Kotlin Constants                                             |
 |-----------------|-------------------------|--------------------------------------------------------------|
@@ -55,55 +55,57 @@ The `io.github.octaviusframework.driver.codec` package provides codecs to transl
 | `timestamp`     | `infinity`, `-infinity` | `LocalDateTime.DISTANT_FUTURE`, `LocalDateTime.DISTANT_PAST` |
 | `timestamptz`   | `infinity`, `-infinity` | `Instant.DISTANT_FUTURE`, `Instant.DISTANT_PAST`             |
 
+Handy, incidentally, for anything modeled as lasting "in perpetuity" — an empire's founding decree, say, with no scheduled end date.
+
 ### PgInterval
 
-By default, the PostgreSQL `interval` type is mapped to the internal `PgInterval` class. The driver does not provide built-in converters to automatically map this type to standard Kotlin types like `kotlin.time.Duration` or `kotlinx.datetime.DateTimePeriod`. 
+By default, PostgreSQL's `interval` type maps to the driver's own `PgInterval` class rather than to a stock Kotlin type like `kotlin.time.Duration` or `kotlinx.datetime.DateTimePeriod`.
 
-This is an intentional design choice because there is no single perfect equivalent in the Kotlin standard library:
-*   **Database Calculations:** It's generally best practice to perform interval math directly in the database where timezones and variable-length dates are fully supported.
-*   **`Duration` limitations:** Developers usually want to extract intervals as a `Duration`. However, `Duration` is based on absolute time and cannot accurately represent variable-length calendar units (days and months). An approximate conversion (which assumes 1 month = 30 days, 1 day = 24 hours) might be inaccurate.
-*   **`DateTimePeriod` limitations:** While `DateTimePeriod` is exact and supports months/days, it is often inconvenient to work with or perform calculations on.
+That's a deliberate choice — there's no single clean equivalent in the Kotlin standard library:
+* **Database-side calculation is usually the right call.** Interval math belongs in the database, where timezones and variable-length dates are already handled correctly.
+* **`Duration` has limits.** It's tempting to reach for `Duration`, but it's based on absolute time and can't represent variable-length calendar units — days and months — accurately. Converting approximately (assuming 1 month = 30 days, 1 day = 24 hours) can quietly introduce drift.
+* **`DateTimePeriod` has its own limits.** It's exact, and does support months/days, but it's often awkward to actually compute with.
 
-Therefore, when extracting an interval, you receive a `PgInterval` which strictly preserves the raw DB representation (months, days, and microseconds). `PgInterval` provides explicit extension functions like `toDurationApproximate()`, `toDurationExact()`, and `toDateTimePeriod()` allowing you to decide how it should be converted.
+So when you extract an interval, you get a `PgInterval` that preserves the raw database representation — months, days, microseconds — as-is. `PgInterval` exposes explicit extensions like `toDurationApproximate()`, `toDurationExact()`, and `toDateTimePeriod()`, so you decide how (and whether) to collapse it.
 
-If your application has specific requirements (e.g., you always want approximate `Duration` extraction), you can easily write a custom `ResultConverter` and register it to automatically intercept and convert `PgInterval` values to your desired type across the entire application.
+If your application consistently wants, say, an approximate `Duration`, writing and registering a custom `ResultConverter` lets you intercept and convert `PgInterval` values everywhere, automatically.
 
 ### PgTyped
 
-`PgTyped` is a wrapper class that allows you to explicitly specify the target PostgreSQL type for a given parameter value. This is extremely useful for handling type ambiguities, such as when sending an empty collection and the database needs to know the exact array type (e.g., `int4[]` vs `text[]`).
+`PgTyped` wraps a value so you can explicitly declare the PostgreSQL type it should be sent as. This matters most when there's genuine ambiguity — sending an empty collection, for instance, where the database has no way to infer whether you mean `int4[]` or `text[]`.
 
-You can wrap any value using the `.withPgType(...)` extension functions:
+Wrap any value with the `.withPgType(...)` extension functions:
 * `value.withPgType(PgStandardType.INT4_ARRAY)`
-* `value.withPgType("my_custom_type")`
+* `value.withPgType("legio_status")` — a custom enum type, say, for a legion's current campaign status
 
 ## Basic Converters
 
-Converters (in the `io.github.octaviusframework.driver.converter` package) are divided into those responsible for deserializing query results (`ResultConverter`) and those preparing query parameters (`ParameterConverter`).
+Converters, in the `io.github.octaviusframework.driver.converter` package, split into those deserializing query results (`ResultConverter`) and those preparing query parameters (`ParameterConverter`).
 
 ### ResultConverters (Reading from DB to objects)
 
-These converters are used when you extract data from a row (e.g., `row.get(TargetClass::class)`). They dictate what Kotlin class is returned based on the requested target class.
+These fire when you pull data out of a row (e.g. `row.get(TargetClass::class)`) — they decide what Kotlin shape comes back based on the class you asked for.
 
-| Converter Class                                              | Returns (Output Type)                  | When Used (Target Class in `get`)                                           | Description                                                                                                                         |
-|:-------------------------------------------------------------|:---------------------------------------|:----------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------|
-| `ReflectionRowConverter` <br> `ReflectionCompositeConverter` | Kotlin Data Class                      | Data classes (e.g., `MyUser::class`)                                        | Maps result rows (`OctaviusRow`) and complex DB types (`PgComposite`) directly to Kotlin data classes based on flexible reflection. |
-| `MapRowConverter` <br> `MapCompositeConverter`               | `Map<String, Any?>`                    | `Map::class`                                                                | Decodes data directly to a universal dictionary. Very useful when the database data schema is not fully known.                      |
-| `MapRecordConverter`                                         | `Map<String, Any?>`                    | `Map::class`, `Any::class`                                                  | Handles decoding anonymous PostgreSQL `record` types into a dictionary.                                                             |
-| `CollectionArrayConverter`                                   | `Collection<T>` <br> (e.g., `List<T>`) | `Collection::class`, `List::class`, `Set::class`                            | Processes binary PostgreSQL arrays (`PgArray`) into flexible Kotlin collections.                                                    |
-| `PrimitiveArrayConverter`                                    | Kotlin Array                           | Primitive Arrays (e.g., `IntArray::class`, `CharArray::class`)              | Processes binary PostgreSQL arrays into primitive Kotlin arrays.                                                                    |
-| `JsonElementConverter`                                       | `JsonElement`                          | `JsonElement::class`, `JsonObject::class`, `JsonArray::class`, `Any::class` | Handles `JSON` and `JSONB` data types and passes them upwards as Kotlinx Serialization JSON elements.                               |
-| `RangeResultConverter` <br> `MultiRangeResultConverter`      | `Range<T>`, `MultiRange<T>`            | `Range::class`, `MultiRange::class`                                         | Deserializes PostgreSQL range and multirange types.                                                                                 |
+| Converter Class                                              | Returns (Output Type)                  | When Used (Target Class in `get`)                                           | Description                                                                                                     |
+|:-------------------------------------------------------------|:---------------------------------------|:----------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------|
+| `ReflectionRowConverter` <br> `ReflectionCompositeConverter` | Kotlin Data Class                      | Data classes (e.g., `Senator::class`)                                       | Maps result rows (`Row`) and complex DB types (`PgComposite`) directly onto Kotlin data classes via reflection. |
+| `MapRowConverter` <br> `MapCompositeConverter`               | `Map<String, Any?>`                    | `Map::class`                                                                | Decodes straight to a universal dictionary — handy when the schema isn't fully known up front.                  |
+| `MapRecordConverter`                                         | `Map<String, Any?>`                    | `Map::class`, `Any::class`                                                  | Handles anonymous PostgreSQL `record` types, decoded into a dictionary.                                         |
+| `CollectionArrayConverter`                                   | `Collection<T>` <br> (e.g., `List<T>`) | `Collection::class`, `List::class`, `Set::class`                            | Turns binary PostgreSQL arrays (`PgArray`) into ordinary Kotlin collections.                                    |
+| `PrimitiveArrayConverter`                                    | Kotlin Array                           | Primitive arrays (e.g., `IntArray::class`, `CharArray::class`)              | Turns binary PostgreSQL arrays into primitive Kotlin arrays.                                                    |
+| `JsonElementConverter`                                       | `JsonElement`                          | `JsonElement::class`, `JsonObject::class`, `JsonArray::class`, `Any::class` | Passes `JSON`/`JSONB` data up as Kotlinx Serialization JSON elements.                                           |
+| `RangeResultConverter` <br> `MultiRangeResultConverter`      | `Range<T>`, `MultiRange<T>`            | `Range::class`, `MultiRange::class`                                         | Deserializes PostgreSQL range and multirange types.                                                             |
 
 ### ParameterConverters (Writing objects to DB)
 
-These converters are used to translate Kotlin objects into formats that codecs can serialize to the database.
+These translate your Kotlin objects into a shape the codec layer can serialize.
 
-| Converter Class                                               | Accepted Input Type             | Description                                                                                                                         |
-|:--------------------------------------------------------------|:--------------------------------|:------------------------------------------------------------------------------------------------------------------------------------|
-| `ReflectionCompositeParameterConverter`                       | Kotlin Data Class               | Translates user data classes into logical structures (`PgComposite`) ready to be pushed through the codec layer as composite types. |
-| `CollectionArrayParameterConverter`                           | `Collection<T>`                 | Packs Kotlin collections into structures for database array serialization.                                                          |
-| `PrimitiveArrayParameterConverter`                            | Kotlin Array                    | Packs standard Kotlin arrays into structures for database array serialization.                                                      |
-| `JsonElementParameterConverter`                               | `JsonElement`                   | Adapts Kotlinx JSON elements for serialization to PostgreSQL `JSON`/`JSONB` types.                                                  |
-| `RangeParameterConverter` <br> `MultiRangeParameterConverter` | `PgRange<T>`, `PgMultiRange<T>` | Converts Kotlin range wrappers into PostgreSQL range/multirange types.                                                              |
+| Converter Class                                               | Accepted Input Type       | Description                                                                                                           |
+|:--------------------------------------------------------------|:--------------------------|:----------------------------------------------------------------------------------------------------------------------|
+| `ReflectionCompositeParameterConverter`                       | Kotlin Data Class         | Turns a data class into a logical `PgComposite` structure, ready to pass through the codec layer as a composite type. |
+| `CollectionArrayParameterConverter`                           | `Collection<T>`           | Packs a Kotlin collection into structures for database array serialization.                                           |
+| `PrimitiveArrayParameterConverter`                            | Kotlin Array              | Packs a standard Kotlin array into structures for database array serialization.                                       |
+| `JsonElementParameterConverter`                               | `JsonElement`             | Adapts Kotlinx JSON elements for serialization to PostgreSQL `JSON`/`JSONB`.                                          |
+| `RangeParameterConverter` <br> `MultiRangeParameterConverter` | `PgRange`, `PgMultiRange` | Converts Kotlin range wrappers into PostgreSQL range/multirange types.                                                |
 
-The designed architecture, through centralization of registries (`TypeRegistry`, `ParameterConverterRegistry`, `ResultConverterRegistry`), allows for extremely easy extensibility and injection of custom dedicated behaviors (e.g., adding PostGIS support or custom JSON engines).
+Centralizing everything behind `TypeRegistry`, `ParameterConverterRegistry`, and `ResultConverterRegistry` makes the whole system easy to extend — plugging in PostGIS support or a custom JSON engine is a matter of registering a converter, not rewriting the pipeline.

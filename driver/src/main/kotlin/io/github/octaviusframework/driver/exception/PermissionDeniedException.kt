@@ -13,7 +13,7 @@ package io.github.octaviusframework.driver.exception
  * @property routine The name of the routine (function/procedure) for which permission was denied, if applicable.
  */
 class PermissionDeniedException(
-    val errorMessage: String,
+    val dbMessage: String,
     cause: Throwable? = null,
     sqlState: String? = null,
     val schema: String? = null,
@@ -27,7 +27,7 @@ class PermissionDeniedException(
     sqlState = sqlState
 ) {
     override fun getDetailedMessage(): String = buildString {
-        appendLine("message: $errorMessage")
+        appendLine("Database message: $dbMessage")
         if (schema != null) appendLine("Schema: $schema")
         if (table != null) appendLine("Table: $table")
         if (column != null) appendLine("Column: $column")

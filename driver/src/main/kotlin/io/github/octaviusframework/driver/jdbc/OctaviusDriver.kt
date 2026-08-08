@@ -42,7 +42,7 @@ class OctaviusDriver : Driver {
     }
 
     override fun getMajorVersion(): Int = 0
-    override fun getMinorVersion(): Int = 5
+    override fun getMinorVersion(): Int = 9
     override fun jdbcCompliant(): Boolean = false
     override fun getParentLogger(): Logger = throw InvalidOperationException(InvalidOperationExceptionReason.FEATURE_NOT_SUPPORTED)
 }

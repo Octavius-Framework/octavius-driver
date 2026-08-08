@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.codec
+package io.github.octaviusframework.driver.io
 
 /**
  * Optimized buffer for building binary packets for the database.

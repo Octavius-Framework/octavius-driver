@@ -1,12 +1,13 @@
-package io.github.octaviusframework.spring
+package io.github.octaviusframework.driver.spring
 
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
-import io.github.octaviusframework.spring.exception.OctaviusDataAccessException
-import io.github.octaviusframework.spring.exception.OctaviusExceptionTranslator
+import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
+import io.github.octaviusframework.driver.spring.exception.OctaviusExceptionTranslator
+import org.springframework.jdbc.UncategorizedSQLException
 import org.springframework.jdbc.datasource.DataSourceUtils
 import org.springframework.jdbc.support.SQLExceptionTranslator
 import java.sql.SQLException
@@ -39,7 +40,7 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
             if (translated != null) {
                 throw translated
             }
-            throw OctaviusDataAccessException("Uncategorized SQL Exception during OctaviusTemplate execution", cause = ex)
+            throw UncategorizedSQLException("OctaviusTemplate execution", null, ex)
         } catch (ex: OctaviusException) {
             throw OctaviusDataAccessException(ex)
         } catch (ex: RuntimeException) {

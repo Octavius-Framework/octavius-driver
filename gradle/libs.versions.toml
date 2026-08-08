@@ -6,8 +6,9 @@ serialization = "1.11.0"
 datetime = "0.8.0"
 kotlin-logging = "8.0.4"
 logback = "1.5.38"
+dokka = "2.2.0"
+vanniktech-publish = "0.37.0"
 jmh = "0.7.2"
-
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
@@ -20,4 +21,6 @@ logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+vanniktech-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-publish" }
 jmh = { id = "me.champeau.jmh", version.ref = "jmh" }

@@ -2,11 +2,16 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class DataExceptionIntegrationTest {
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private fun getSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
         user = "postgres"
@@ -19,6 +24,7 @@ class DataExceptionIntegrationTest {
             val exception = assertFailsWith<DataException> {
                 session.createNativeQuery("SELECT 1 / 0").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(DataExceptionReason.DIVISION_BY_ZERO, exception.reason)
         }
     }
@@ -29,6 +35,7 @@ class DataExceptionIntegrationTest {
             val exception = assertFailsWith<DataException> {
                 session.createNativeQuery("SELECT 'not-a-number'::int").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(DataExceptionReason.INVALID_FORMAT, exception.reason)
         }
     }
@@ -39,6 +46,7 @@ class DataExceptionIntegrationTest {
             val exception = assertFailsWith<DataException> {
                 session.createNativeQuery("SELECT 10000000000::int").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(DataExceptionReason.NUMERIC_OUT_OF_RANGE, exception.reason)
         }
     }
@@ -51,6 +59,7 @@ class DataExceptionIntegrationTest {
                 val exception = assertFailsWith<DataException> {
                     session.createNativeQuery("INSERT INTO test_truncation VALUES ('too_long')").execute()
                 }
+                logger.error(exception) { "" }
                 assertEquals(DataExceptionReason.DATA_TRUNCATION, exception.reason)
             } finally {
                 session.createNativeQuery("DROP TABLE test_truncation").execute()
@@ -64,6 +73,7 @@ class DataExceptionIntegrationTest {
             val exception = assertFailsWith<DataException> {
                 session.createNativeQuery("SELECT ARRAY[ARRAY[1,2], ARRAY[1]]").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(DataExceptionReason.ARRAY_SUBSCRIPT_ERROR, exception.reason)
         }
     }
@@ -74,6 +84,7 @@ class DataExceptionIntegrationTest {
             val exception = assertFailsWith<DataException> {
                 session.createNativeQuery("SELECT '{\"invalid_json\"'::json").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(DataExceptionReason.INVALID_FORMAT, exception.reason)
         }
     }
@@ -84,6 +95,7 @@ class DataExceptionIntegrationTest {
             val exception = assertFailsWith<DataException> {
                 session.createNativeQuery("SELECT 'abc' ~ '*abc'").fetchRowStrict()
             }
+            logger.error(exception) { "" }
             assertEquals(DataExceptionReason.REGEX_ERROR, exception.reason)
         }
     }

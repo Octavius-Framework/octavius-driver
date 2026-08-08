@@ -1,4 +1,4 @@
-package io.github.octaviusframework.spring.exception
+package io.github.octaviusframework.driver.spring.exception
 
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import org.springframework.dao.DataAccessException

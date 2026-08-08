@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.session
 
+import io.github.octaviusframework.driver.copy.CopyManager
+import io.github.octaviusframework.driver.lo.LargeObjectManager
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.query.NativeQuery
@@ -22,6 +24,16 @@ interface OctaviusSessionOperations {
      * Handles asynchronous PostgreSQL notifications (`LISTEN` / `NOTIFY` mechanism).
      */
     val notifications: NotificationManager
+
+    /**
+     * Provides an API for performing PostgreSQL COPY operations.
+     */
+    val copy: CopyManager
+
+    /**
+     * Provides an API for managing PostgreSQL Large Objects.
+     */
+    val largeObjects: LargeObjectManager
 
     /**
      * Provides a high-level API for executing operations within transaction scopes 

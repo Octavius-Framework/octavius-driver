@@ -35,13 +35,19 @@ object ExceptionTranslator {
                     "2200L", "2200M", "2200N", "2200S", "2200T" -> DataExceptionReason.XML_ERROR
                     else -> if (state.startsWith("2203")) DataExceptionReason.JSON_ERROR else DataExceptionReason.UNKNOWN
                 }
-                DataException(reason, details = "Message: $message", sqlState = state)
+                DataException(
+                    reason = reason,
+                    dbMessage = errorMsg.message,
+                    details = errorMsg.detail,
+                    where = errorMsg.whereContext,
+                    sqlState = state
+                )
             }
             
             // Class 28 - Invalid Authorization Specification
             state.startsWith("28") -> InitializationException(
                 InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
-                details = "Message: $message",
+                details = message,
                 sqlState = state
             )
 
@@ -65,7 +71,9 @@ object ExceptionTranslator {
                 }
                 ConstraintViolationException(
                     reason = reason,
-                    details = "Message: $message",
+                    dbMessage = errorMsg.message,
+                    details = errorMsg.detail,
+                    where = errorMsg.whereContext,
                     sqlState = state,
                     schema = errorMsg.schema,
                     table = errorMsg.table,
@@ -77,7 +85,7 @@ object ExceptionTranslator {
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
                 if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or transaction_timeout
-                    TransactionException(TransactionExceptionReason.TIMEOUT, details = "Message: $message", sqlState = state)
+                    TransactionException(TransactionExceptionReason.TIMEOUT, dbMessage = "Message: $message", sqlState = state)
                 } else {
                     StatementException(
                         StatementExceptionReason.INVALID_TRANSACTION_STATE,
@@ -99,7 +107,9 @@ object ExceptionTranslator {
                 if (state == "40002") {
                     ConstraintViolationException(
                         reason = ConstraintViolationExceptionReason.UNKNOWN,
-                        details = "Message: $message",
+                        dbMessage = errorMsg.message,
+                        details = errorMsg.detail,
+                        where = errorMsg.whereContext,
                         sqlState = state,
                         schema = errorMsg.schema,
                         table = errorMsg.table,
@@ -107,7 +117,7 @@ object ExceptionTranslator {
                         constraint = errorMsg.constraint
                     )
                 } else {
-                    TransactionException(reason, details = "Message: $message", sqlState = state)
+                    TransactionException(reason, dbMessage = "Message: $message", sqlState = state)
                 }
             }
 
@@ -115,7 +125,7 @@ object ExceptionTranslator {
             state.startsWith("42") -> {
                 if (state == "42501") {
                     PermissionDeniedException(
-                        errorMessage = "Permission Denied (42501): $message",
+                        dbMessage = message,
                         sqlState = state,
                         schema = errorMsg.schema,
                         table = errorMsg.table,
@@ -134,7 +144,7 @@ object ExceptionTranslator {
                     }
                     StatementException(
                         reason,
-                        details = "Message: $message",
+                        details = message,
                         position = errorMsg.position,
                         sqlState = state
                     )
@@ -144,20 +154,20 @@ object ExceptionTranslator {
             state.startsWith("54") ->
                 StatementException(
                     StatementExceptionReason.SYNTAX_ERROR,
-                    details = "Message: $message",
+                    details = message,
                     position = errorMsg.position,
                     sqlState = state
                 )
 
             state.startsWith("55") -> {
                 if (state == "55P03") { // lock_not_available
-                    TransactionException(TransactionExceptionReason.LOCK_NOT_AVAILABLE, details = "Message: $message", sqlState = state)
+                    TransactionException(TransactionExceptionReason.LOCK_NOT_AVAILABLE, dbMessage = message, sqlState = state)
                 } else {
                     DatabaseSystemException("Database object state error ($state): $message", sqlState = state)
                 }
             }
 
-            state == "57014" -> TransactionException(TransactionExceptionReason.TIMEOUT, details = "Message: $message", sqlState = state)
+            state == "57014" -> TransactionException(TransactionExceptionReason.TIMEOUT, dbMessage = message, sqlState = state)
             state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
                 DatabaseSystemException("Database system error ($state): $message", sqlState = state)
                 
@@ -172,7 +182,7 @@ object ExceptionTranslator {
                 }
                 RoutineExecutionException(
                     reason = reason, 
-                    details = "Message: $message",
+                    dbMessage = message,
                     dbDetail = errorMsg.detail,
                     hint = errorMsg.hint,
                     whereContext = errorMsg.whereContext,

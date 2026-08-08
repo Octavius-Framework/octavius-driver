@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.session.OctaviusSession
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -35,6 +36,11 @@ class ParameterConverterTest {
         session.reloadTypes()
         session.types.registerAutoComposite<SimpleAddress>("simple_address")
         session.types.registerAutoComposite<ComplexUser>("complex_user")
+    }
+
+    @AfterAll
+    fun teardown() {
+        session.close()
     }
 
     @Test

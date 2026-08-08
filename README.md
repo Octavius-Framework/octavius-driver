@@ -1,33 +1,36 @@
 # Octavius Driver
 
-![Version](https://img.shields.io/badge/version-0.8.9-blue)
+![Version](https://img.shields.io/badge/version-0.9.1-blue)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 
-A native, high-performance, and lightweight PostgreSQL database driver for Kotlin. It leverages the standard JDBC connection infrastructure (such as `DataSource` and connection pools) but communicates directly with PostgreSQL via the Wire Protocol v3, offering a modern Kotlin API instead of legacy JDBC stateful objects.
+A native, high-performance, lightweight PostgreSQL driver for Kotlin.
 
-> **🚧 Work In Progress / Status**
-> 
-> The current version is **0.8.9**. The driver is fully capable of handling most database interactions, including complex types (arrays, composites, json) and integrates smoothly with connection pools like HikariCP, but **there is still some work to do** before it reaches a 1.0 release.
+**Octavius is not a traditional JDBC driver.** It leans on standard JDBC interfaces (`java.sql.Connection`) purely as a way in — enough to slot smoothly into modern connection pools like **HikariCP**. 
+Past that point, it deliberately sheds the legacy JDBC baggage — stateful `ResultSet`s, `CallableStatement`s, manual resource bookkeeping — in favor of a purely Kotlin-first API.
+
+It speaks PostgreSQL's Wire Protocol v3 directly, with no other database driver wrapped or delegated to underneath.
 
 ## Key Features
 
-- **Native Protocol Implementation**: Directly implements PostgreSQL Wire Protocol v3, without delegating to or wrapping traditional PostgreSQL drivers.
-- **Extended Query Protocol by Default**: Enforces the safer and more efficient Extended Query Protocol (Parse, Bind, Execute, Sync) for all data manipulation and queries.
-- **Strong Type System Mapping**: Deep integration with Kotlin's type system. The `GlobalTypeRegistry` seamlessly handles standard PostgreSQL types as well as advanced structures like Composites, Arrays, Ranges, Records, and JSON.
-- **Connection Pool Ready**: Designed to work effortlessly with modern JDBC connection pools like **HikariCP**, while exposing its Kotlin session API.
-- **Modern and Lightweight**: Strips away legacy JDBC features (e.g., `CallableStatement`, CLOB/BLOB handling, and stateful, mutable `ResultSet`s) to provide a streamlined, predictable, and fast abstraction.
+- **Native protocol implementation** — talks PostgreSQL Wire Protocol v3 directly, with nothing wrapped or delegated underneath.
+- **Extended Query Protocol by default** — every data manipulation and query goes through the safer, more efficient Parse/Bind/Execute/Sync cycle.
+- **A type system that actually fits Kotlin** — the `GlobalTypeRegistry` handles standard PostgreSQL types alongside composites, arrays, ranges, records, and JSON without friction.
+- **Asynchronous notifications** — `LISTEN` / `NOTIFY` exposed as a Kotlin Coroutines `SharedFlow`.
+- **Connection pool ready** — built to work effortlessly with modern JDBC connection pools like **HikariCP**, while still exposing its Kotlin session API on top.
+- **Modern and lightweight** — no `CallableStatement`, no CLOB/BLOB handling, no stateful mutable `ResultSet` — just a streamlined, predictable, fast abstraction.
 
 ## Architecture
 
-The driver architecture is modular and highly layered:
-- **`driver` module**: Core driver logic.
-  - **IO & SSL**: Low-level, efficient handling of socket streams (`PgStream`), buffering, and secure connection negotiation.
-  - **Message**: Parsing and building of PostgreSQL Wire Protocol v3 packets.
-  - **Query**: The operational heart, executing queries using the Extended Query Protocol with support for named parameters.
-  - **Codec, Converter & Registry**: A robust type system (`GlobalTypeRegistry`) that maps raw binary/text data directly to and from Kotlin types, supporting composites, arrays, records, and enums.
-  - **Session & Transaction**: `OctaviusSession` and `OctaviusSavepoint` APIs providing a modern, native Kotlin interface for database interactions and transaction control.
-  - **JDBC**: A compatibility layer bridging the native Octavius API with legacy JDBC infrastructure, enabling integration with connection pools like HikariCP.
-- **`hikari` module**: Dedicated integration testing layer for HikariCP.
+The driver is organized in clear, modular layers:
+- **`driver` module** — core driver logic.
+  - **IO & SSL** — efficient socket stream handling (`PgStream`), buffering, and secure connection negotiation.
+  - **Message** — parsing and building of PostgreSQL Wire Protocol v3 packets.
+  - **Query** — the operational core, running queries through the Extended Query Protocol with named-parameter support.
+  - **Codec, Converter & Registry** — a type system (`GlobalTypeRegistry`) mapping raw binary/text data to and from Kotlin types, including composites, arrays, records, and enums.
+  - **Session & Transaction** — `OctaviusSession` and `OctaviusSavepoint` provide a native Kotlin interface for database work and transaction control.
+  - **JDBC** — the compatibility layer bridging the native Octavius API with legacy JDBC infrastructure, for pools like HikariCP.
+- **`driver-spring-integration` module** — native Spring Framework / Spring Boot integration (`OctaviusTemplate`, exception translation, autoconfiguration).
+- **`hikari` module** — dedicated integration testing layer for HikariCP.
 
 ## Quick Start
 
@@ -35,11 +38,11 @@ Add the Octavius driver to your `build.gradle.kts` dependencies:
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:0.8.9")
+    implementation("io.github.octavius-framework:driver:0.9.1")
 }
 ```
 
-Since Octavius replaces legacy, stateful JDBC `ResultSet` with its own modern API, you interact with the database using `OctaviusSession`:
+Octavius replaces the legacy, stateful JDBC `ResultSet` with its own modern API — you talk to the database through `OctaviusSession`:
 
 ```kotlin
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
@@ -47,29 +50,34 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 
 val config = HikariConfig().apply {
-    jdbcUrl = "jdbc:octavius://localhost:5432/my_db"
-    username = "postgres"
-    password = "password"
+    jdbcUrl = "jdbc:octavius://localhost:5432/res_publica"
+    username = "consul"
+    password = "senatus_populusque"
 }
 val dataSource = HikariDataSource(config)
 
-// 1. Establish session using the custom jdbc:octavius protocol via HikariCP
+// 1. Pull a session through HikariCP via the custom jdbc:octavius protocol
 val session = dataSource.getOctaviusSession()
 
-// 2. Execute a query with named parameters
-val row = session.createNamedQuery("SELECT id, name FROM users WHERE id = @id")
+// 2. Run a query with named parameters
+val row = session.createNamedQuery("SELECT id, cognomen FROM senators WHERE id = @id")
     .fetchRow("id" to 1)
 
-// 3. Strongly typed data extraction without ResultSet legacy
+// 3. Strongly typed extraction, no ResultSet in sight
 val id: Int = row.get("id")
-val name: String = row.get("name")
+val cognomen: String = row.get("cognomen")
 
 session.close() // Safely returns the connection to the pool
 ```
 
-## Roadmap
-- [ ] Further optimize type converters
-- [ ] Expand test coverage
-- [ ] Better README
-- [ ] Documentation
-- [ ] Many other things
+## Documentation
+
+More detail lives in the `docs/` folder:
+- [**Octavius vs Legacy JDBC (why this driver breaks the mold)**](docs/octavius-vs-jdbc.md)
+- [Executing Queries (Native & Named)](docs/queries.md)
+- [Transaction Management](docs/transactions.md)
+- [Type System & Mapping](docs/type-system.md)
+- [Listen & Notify (Asynchronous Flow)](docs/listen-notify.md)
+- [Exception Translation](docs/exceptions.md)
+- [Connection Properties](docs/properties.md)
+- [Functions and Procedures](docs/functions-procedures.md)

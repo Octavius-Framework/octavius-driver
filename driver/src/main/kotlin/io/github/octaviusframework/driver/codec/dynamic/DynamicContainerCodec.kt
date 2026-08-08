@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.codec.dynamic
 
-import io.github.octaviusframework.driver.codec.PgByteWriter
+import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.registry.TypeRegistry

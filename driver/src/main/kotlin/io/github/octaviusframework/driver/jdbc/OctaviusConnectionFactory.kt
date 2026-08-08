@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
+import io.github.octaviusframework.driver.notice.NoticeHandler
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import java.sql.Connection
@@ -51,7 +52,18 @@ object OctaviusConnectionFactory {
         val notificationBufferCapacity = properties.notificationBufferCapacity ?: 256
 
         val stream = try {
-            PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity)
+            val handler = properties.noticeHandler?.let { className ->
+                val clazz = try {
+                    Thread.currentThread().contextClassLoader.loadClass(className)
+                } catch (_: ClassNotFoundException) {
+                    Class.forName(className)
+                }
+                
+                val kClass = clazz.kotlin
+                kClass.objectInstance as? NoticeHandler
+                    ?: clazz.getDeclaredConstructor().newInstance() as NoticeHandler
+            }
+            PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity, handler)
         } catch (e: Exception) {
             throw InitializationException(InitializationExceptionReason.CONNECTION_ERROR, e.message, e)
         }
