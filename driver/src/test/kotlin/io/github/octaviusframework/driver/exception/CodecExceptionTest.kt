@@ -4,12 +4,17 @@ import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.decodeSafely
 import io.github.octaviusframework.driver.codec.encodeSafely
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class CodecExceptionTest {
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private val failingCodec = object : TypeCodec<String> {
         override val pgTypeName: String = "varchar"
@@ -41,7 +46,7 @@ class CodecExceptionTest {
         val exception = assertFailsWith<CodecException> {
             failingCodec.decodeSafely(data, 0, data.size)
         }
-
+        logger.error(exception) { "" }
         assertEquals(CodecAction.DECODING, exception.action)
         assertEquals(1043, exception.oid)
         assertEquals(String::class, exception.kotlinClass)
@@ -54,7 +59,7 @@ class CodecExceptionTest {
         val exception = assertFailsWith<CodecException> {
             failingCodec.encodeSafely("test", writer)
         }
-
+        logger.error(exception) { "" }
         assertEquals(CodecAction.ENCODING, exception.action)
         assertEquals(1043, exception.oid)
         assertEquals(String::class, exception.kotlinClass)

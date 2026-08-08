@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.exception
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
@@ -9,6 +10,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class RoutineExecutionExceptionIntegrationTest {
+companion object {
+    private val logger = KotlinLogging.logger {}
+}
 
     private fun getSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
         user = "postgres"
@@ -27,6 +31,7 @@ class RoutineExecutionExceptionIntegrationTest {
                     $$;
                 """).execute()
             }
+            logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.RAISE_EXCEPTION, exception.reason)
             assertNotNull(exception.whereContext)
             assertTrue(exception.whereContext.isNotEmpty())
@@ -47,6 +52,7 @@ class RoutineExecutionExceptionIntegrationTest {
                     $$;
                 """).execute()
             }
+            logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.NO_DATA_FOUND, exception.reason)
             assertNotNull(exception.whereContext)
             assertTrue(exception.whereContext.isNotEmpty())
@@ -67,6 +73,7 @@ class RoutineExecutionExceptionIntegrationTest {
                     $$;
                 """).execute()
             }
+            logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.TOO_MANY_ROWS, exception.reason)
             assertNotNull(exception.whereContext)
             assertTrue(exception.whereContext.isNotEmpty())
@@ -85,6 +92,7 @@ class RoutineExecutionExceptionIntegrationTest {
                     $$;
                 """).execute()
             }
+            logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.ASSERT_FAILURE, exception.reason)
             assertNotNull(exception.whereContext)
             assertTrue(exception.whereContext.isNotEmpty())
