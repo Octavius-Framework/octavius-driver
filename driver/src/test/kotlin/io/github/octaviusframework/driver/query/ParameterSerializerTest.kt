@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import org.junit.jupiter.api.Test
 import io.github.octaviusframework.driver.exception.TypeException
+import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.withPgType
 import kotlin.test.assertEquals
@@ -17,7 +18,8 @@ import kotlin.test.assertTrue
 class ParameterSerializerTest {
 
     private fun serializeValueForTest(serializer: ParameterSerializer, value: Any?): ByteArray? {
-        val (_, writer) = serializer.serializeAll(listOf(value))
+        val writer = PgByteWriter()
+        serializer.serializeAll(arrayOf<Any?>(value), writer)
         val bytes = writer.toByteArray()
         if (bytes.size < 4) return null
         val length = (bytes[0].toInt() and 0xFF shl 24) or
@@ -95,8 +97,9 @@ class ParameterSerializerTest {
         val parameterMapper = ParameterMapper(registry.converterRegistry.parameterConverterRegistry, typeManager)
         val serializer = ParameterSerializer(typeManager, parameterMapper)
 
-        val parameters = listOf(123, "test", null, true)
-        val (oids, writer) = serializer.serializeAll(parameters)
+        val parameters = arrayOf<Any?>(123, "test", null, true)
+        val writer = PgByteWriter()
+        val oids = serializer.serializeAll(parameters, writer)
         val bytes = writer.toByteArray()
 
         assertEquals(4, oids.size)
@@ -120,7 +123,8 @@ class ParameterSerializerTest {
 
         // Int value explicitly typed as INT8
         val typedValue = 123L.withPgType(PgStandardType.INT8)
-        val (oids, _) = serializer.serializeAll(listOf(typedValue))
+        val writer = PgByteWriter()
+        val oids = serializer.serializeAll(arrayOf<Any?>(typedValue), writer)
 
         assertEquals(1, oids.size)
         assertEquals(PgStandardType.INT8.oid, oids[0], "OID should match explicitly provided INT8 type")
@@ -135,9 +139,10 @@ class ParameterSerializerTest {
 
         class CustomUnsupportedClass(val data: String)
         val unsupported = CustomUnsupportedClass("test")
-        
+        val writer = PgByteWriter()
+
         assertFailsWith<TypeException>("Should fail when codec is missing") {
-            serializer.serializeAll(listOf(unsupported))
+            serializer.serializeAll(arrayOf<Any?>(unsupported), writer)
         }
     }
 }

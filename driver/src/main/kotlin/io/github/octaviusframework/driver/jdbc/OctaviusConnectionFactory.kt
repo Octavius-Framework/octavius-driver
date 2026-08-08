@@ -97,6 +97,11 @@ object OctaviusConnectionFactory {
             }
         }
 
-        return OctaviusConnection(stream, url)
+        return OctaviusConnection(
+            stream, 
+            url, 
+            properties.maxParameterWriterCapacity, 
+            properties.initialParameterWriterCapacity
+        )
     }
 }

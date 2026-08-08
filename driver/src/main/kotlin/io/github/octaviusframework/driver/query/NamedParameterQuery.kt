@@ -24,25 +24,27 @@ class NamedParameterQuery internal constructor(
 ) : OctaviusQuery<NamedParameterQuery>(sql, queryExecutor, typeManager) {
 
     @PublishedApi
-    internal fun prepareNamedQuery(params: Map<String, Any?>): Pair<String, List<Any?>> {
+    internal fun prepareNamedQuery(params: Map<String, Any?>): Pair<String, Array<out Any?>> {
         val parsed = SqlParameterParser.parse(sql)
-        val listParams = parsed.paramNames.map {
-            if (!params.containsKey(it)) {
-                throw StatementException(StatementExceptionReason.MISSING_NAMED_PARAMETER, "Missing parameter: $it")
+        val paramNames = parsed.paramNames
+        val arrayParams = Array(paramNames.size) { i ->
+            val name = paramNames[i]
+            if (!params.containsKey(name)) {
+                throw StatementException(StatementExceptionReason.MISSING_NAMED_PARAMETER, "Missing parameter: $name")
             }
-            params[it]
+            params[name]
         }
-        return Pair(parsed.transformedSql, listParams)
+        return Pair(parsed.transformedSql, arrayParams)
     }
 
     @PublishedApi
     internal inline fun <R> withPreparedQuery(
         params: Map<String, Any?>,
-        block: (String, List<Any?>) -> R
+        block: (String, Array<out Any?>) -> R
     ): R {
         var transformedSql: String? = null
-        var listParams: List<Any?>? = null
-        return withQueryContext(sql, { params }, { transformedSql }, { listParams }) {
+        var listParams: Array<out Any?>? = null
+        return withQueryContext(sql, { params }, { transformedSql }, { listParams?.toList() }) {
             val (tSql, lParams) = prepareNamedQuery(params)
             transformedSql = tSql
             listParams = lParams

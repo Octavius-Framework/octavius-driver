@@ -67,6 +67,7 @@ internal class PgStream(
         val connectTimeoutMs = if (loginTimeoutSecs > 0) loginTimeoutSecs * 1000 else 10000
         socket.connect(InetSocketAddress(host, port), connectTimeoutMs)
         socket.soTimeout = connectTimeoutMs
+        socket.tcpNoDelay = true
         inputStream = PgInputStream(socket.getInputStream())
         outputStream = PgOutputStream(socket.getOutputStream())
     }
