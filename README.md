@@ -6,7 +6,7 @@
 A native, high-performance, lightweight PostgreSQL driver for Kotlin.
 
 **Octavius is not a traditional JDBC driver.** It leans on standard JDBC interfaces (`java.sql.Connection`) purely as a way in — enough to slot smoothly into modern connection pools like **HikariCP**. 
-Past that point, it deliberately sheds the legacy JDBC baggage — stateful `ResultSet`s, `CallableStatement`s, manual resource bookkeeping — in favor of a purely Kotlin-first, idiomatic API.
+Past that point, it deliberately sheds the legacy JDBC baggage — stateful `ResultSet`s, `CallableStatement`s, manual resource bookkeeping — in favor of a purely Kotlin-first API.
 
 It speaks PostgreSQL's Wire Protocol v3 directly, with no other database driver wrapped or delegated to underneath.
 
@@ -16,7 +16,7 @@ It speaks PostgreSQL's Wire Protocol v3 directly, with no other database driver 
 - **Extended Query Protocol by default** — every data manipulation and query goes through the safer, more efficient Parse/Bind/Execute/Sync cycle.
 - **A type system that actually fits Kotlin** — the `GlobalTypeRegistry` handles standard PostgreSQL types alongside composites, arrays, ranges, records, and JSON without friction.
 - **Asynchronous notifications** — `LISTEN` / `NOTIFY` exposed as a Kotlin Coroutines `SharedFlow`.
-- **Connection pool ready** — built to work effortlessly with modern JDBC connection pools like **HikariCP**, while still exposing its native Kotlin session API on top.
+- **Connection pool ready** — built to work effortlessly with modern JDBC connection pools like **HikariCP**, while still exposing its Kotlin session API on top.
 - **Modern and lightweight** — no `CallableStatement`, no CLOB/BLOB handling, no stateful mutable `ResultSet` — just a streamlined, predictable, fast abstraction.
 
 ## Architecture
