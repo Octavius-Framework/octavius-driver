@@ -17,7 +17,8 @@ It speaks PostgreSQL's Wire Protocol v3 directly, with no other database driver 
 - **A type system that actually fits Kotlin** — the `GlobalTypeRegistry` handles standard PostgreSQL types alongside composites, arrays, ranges, records, and JSON without friction.
 - **Asynchronous notifications** — `LISTEN` / `NOTIFY` exposed as a Kotlin Coroutines `SharedFlow`.
 - **Connection pool ready** — built to work effortlessly with modern JDBC connection pools like **HikariCP**, while still exposing its Kotlin session API on top.
-- **Modern and lightweight** — no `CallableStatement`, no CLOB/BLOB handling, no stateful mutable `ResultSet` — just a streamlined, predictable, fast abstraction.
+- **Modern and lightweight** — no `CallableStatement`, no legacy JDBC `Blob`/`Clob` interface, no stateful mutable `ResultSet` — just a streamlined, predictable, fast abstraction.
+- **Large Objects & COPY Support** — built-in native support for PostgreSQL Large Objects (`lo`) and bulk data transfers via the `COPY` protocol.
 
 ## Architecture
 
@@ -81,3 +82,5 @@ More detail lives in the `docs/` folder:
 - [Exception Translation](docs/exceptions.md)
 - [Connection Properties](docs/properties.md)
 - [Functions and Procedures](docs/functions-procedures.md)
+- [COPY Protocol (Bulk Data Transfers)](docs/copy.md)
+- [Large Objects (LO)](docs/large-objects.md)
