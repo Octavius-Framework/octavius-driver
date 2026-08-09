@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-class TransactionExceptionIntegrationTest {
+class ConcurrencyExceptionIntegrationTest {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
@@ -40,12 +40,12 @@ class TransactionExceptionIntegrationTest {
         getSession().use { session ->
             session.createNativeQuery("SET statement_timeout = '10ms'").execute()
 
-            val exception = assertFailsWith<TransactionException> {
+            val exception = assertFailsWith<ExecutionAbortedException> {
                 session.createNativeQuery("SELECT pg_sleep(1)").fetchField<Any?>()
             }
             logger.error(exception) { "" }
             assertEquals("57014", exception.sqlState)
-            assertEquals(TransactionExceptionReason.TIMEOUT, exception.reason)
+            assertEquals(ExecutionAbortedExceptionReason.QUERY_CANCELED, exception.reason)
         }
     }
 
@@ -58,13 +58,13 @@ class TransactionExceptionIntegrationTest {
                 session1.createNativeQuery("SELECT * FROM lock_test_table WHERE id = 1 FOR UPDATE").fetchRows()
 
                 try {
-                    val exception = assertFailsWith<TransactionException> {
+                    val exception = assertFailsWith<ConcurrencyException> {
                         // Try to lock the same row with NOWAIT in session2
                         session2.createNativeQuery("SELECT * FROM lock_test_table WHERE id = 1 FOR UPDATE NOWAIT")
                             .fetchRows()
                     }
                     logger.error(exception) { "" }
-                    assertEquals(TransactionExceptionReason.LOCK_NOT_AVAILABLE, exception.reason)
+                    assertEquals(ConcurrencyExceptionReason.LOCK_NOT_AVAILABLE, exception.reason)
                 } finally {
                     session1.createNativeQuery("ROLLBACK").execute()
                 }

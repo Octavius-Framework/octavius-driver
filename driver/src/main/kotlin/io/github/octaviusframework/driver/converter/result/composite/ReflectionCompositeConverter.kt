@@ -19,12 +19,11 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
     override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (kClass == Any::class) {
-            val registry = context.typeManager.registry
-            return registry.converterRegistry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
-                   registry.converterRegistry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
+            return context.typeManager.converterRegistry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
+                    context.typeManager.converterRegistry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
         }
         if (!kClass.isData) return false
-        return context.typeManager.registry.converterRegistry.registeredComposites.containsKey(kClass)
+        return context.typeManager.converterRegistry.registeredComposites.containsKey(kClass)
     }
 
     override fun convert(source: PgComposite, expectedType: KType, sourceType: PgType, context: DeserializationContext): Any {

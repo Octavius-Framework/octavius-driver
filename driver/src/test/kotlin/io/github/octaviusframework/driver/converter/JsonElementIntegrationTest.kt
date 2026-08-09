@@ -18,7 +18,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KType
@@ -28,7 +27,7 @@ class JsonElementIntegrationTest {
 
     data class MetadataHolder(
         val id: Int,
-        val metadata: JsonElement
+        val metadata: JsonObject
     )
 
     class MetadataHolderResultConverter : ResultConverter<PgComposite, MetadataHolder> {
@@ -37,7 +36,7 @@ class JsonElementIntegrationTest {
             return expectedType.classifier == MetadataHolder::class
         }
 
-        private val jsonElementType = typeOf<JsonElement>()
+        private val jsonObjectType = typeOf<JsonObject>()
 
         override fun convert(
             source: PgComposite,
@@ -49,7 +48,7 @@ class JsonElementIntegrationTest {
                 id = source.get("id"),
                 metadata = context.convert(
                     source.get("metadata"),
-                    jsonElementType,
+                    jsonObjectType,
                     source.getAttributeType("metadata")
                 )
             )
@@ -119,9 +118,8 @@ class JsonElementIntegrationTest {
             val row = conn.createNamedQuery("SELECT data FROM test_json_elements WHERE id = @id")
                 .fetchRowStrict(mapOf("id" to 1))
 
-            val outputJson = row.get<JsonElement>("data")
-            assertTrue(outputJson is JsonObject)
-            assertEquals("value123", (outputJson as JsonObject)["key"]?.let { (it as JsonPrimitive).content })
+            val outputJson = row.get<JsonObject>("data")
+            assertEquals("value123", outputJson["key"]?.let { (it as JsonPrimitive).content })
             assertEquals("42", outputJson["number"]?.let { (it as JsonPrimitive).content })
         } finally {
             conn.close()
@@ -148,7 +146,7 @@ class JsonElementIntegrationTest {
 
             val outputHolder = row.get<MetadataHolder>("res")
             assertEquals(100, outputHolder.id)
-            val outputJson = outputHolder.metadata as JsonObject
+            val outputJson = outputHolder.metadata
             assertEquals("active", (outputJson["status"] as JsonPrimitive).content)
         } finally {
             conn.close()
@@ -168,10 +166,10 @@ class JsonElementIntegrationTest {
             val row = conn.createNamedQuery("SELECT @list as res")
                 .fetchRowStrict("list" to list)
 
-            val outputList = row.get<List<JsonElement>>("res")
+            val outputList = row.get<List<JsonObject>>("res")
             assertEquals(2, outputList.size)
-            assertEquals("val1", (outputList[0] as JsonObject)["key1"]?.let { (it as JsonPrimitive).content })
-            assertEquals("val2", (outputList[1] as JsonObject)["key2"]?.let { (it as JsonPrimitive).content })
+            assertEquals("val1", outputList[0]["key1"]?.let { (it as JsonPrimitive).content })
+            assertEquals("val2", outputList[1]["key2"]?.let { (it as JsonPrimitive).content })
         } finally {
             conn.close()
         }
