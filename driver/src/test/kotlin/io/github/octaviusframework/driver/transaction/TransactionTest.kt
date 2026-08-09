@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.transaction
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
@@ -9,6 +11,10 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
+import io.github.octaviusframework.driver.session.OctaviusSessionImpl
+import io.github.octaviusframework.driver.session.TransactionIsolationLevel
+import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -188,5 +194,42 @@ class TransactionTest {
 
         // Verify only the first was committed
         assertEquals(1L, countRows())
+    }
+
+    @Test
+    fun `test transaction isolation level configurations`() {
+        // Test autoCommit = true
+        session.autoCommit = true
+        session.transactionIsolationLevel = TransactionIsolationLevel.SERIALIZABLE
+        assertEquals(TransactionIsolationLevel.SERIALIZABLE, session.transactionIsolationLevel)
+        
+        session.createNativeQuery("SELECT 1").fetchField<Any?>()
+        
+        // Allowed after query when autoCommit is true
+        session.transactionIsolationLevel = TransactionIsolationLevel.READ_COMMITTED
+        assertEquals(TransactionIsolationLevel.READ_COMMITTED, session.transactionIsolationLevel)
+        
+        // Test autoCommit = false
+        session.autoCommit = false
+        // Allowed before query
+        session.transactionIsolationLevel = TransactionIsolationLevel.REPEATABLE_READ
+        assertEquals(TransactionIsolationLevel.REPEATABLE_READ, session.transactionIsolationLevel)
+        
+        session.createNativeQuery("SELECT 1").fetchField<Any?>()
+        
+        // Changing after query in a transaction block should throw OctaviusException from PostgreSQL
+        assertThrows<OctaviusException> {
+            session.transactionIsolationLevel = TransactionIsolationLevel.SERIALIZABLE
+        }
+    }
+
+    @Test
+    fun `test unsupported transaction isolation level`() {
+        val internalSession = session as OctaviusSessionImpl
+        val wrapper = assertThrows<SQLExceptionWrapper> {
+            internalSession.octaviusConnection.transactionIsolation = java.sql.Connection.TRANSACTION_NONE
+        }
+        val innerEx = wrapper.wrappedException as InvalidOperationException
+        assertEquals(InvalidOperationExceptionReason.UNSUPPORTED_ISOLATION_LEVEL, innerEx.reason)
     }
 }

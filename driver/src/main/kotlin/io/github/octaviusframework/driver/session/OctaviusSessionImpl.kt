@@ -105,10 +105,10 @@ internal class OctaviusSessionImpl(
             unwrapSqlException { rawConnection.isReadOnly = value }
         }
 
-    override var transactionIsolationLevel: Int
-        get() = unwrapSqlException { rawConnection.transactionIsolation }
+    override var transactionIsolationLevel: TransactionIsolationLevel
+        get() = unwrapSqlException { TransactionIsolationLevel.fromJdbcValue(rawConnection.transactionIsolation) }
         set(value) {
-            unwrapSqlException { rawConnection.transactionIsolation = value }
+            unwrapSqlException { rawConnection.transactionIsolation = value.jdbcValue }
         }
 
     override var networkTimeout: Int
