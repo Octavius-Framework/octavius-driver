@@ -20,7 +20,7 @@ import kotlin.reflect.KClass
  * @property registry The underlying [TypeRegistry] used for storing type information.
  */
 class TypeManager(
-    val registry: TypeRegistry,
+    private val registry: TypeRegistry,
     private val searchPathProvider: () -> List<String> = { emptyList() }
 ) {
     /**

@@ -24,7 +24,6 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
     @PublishedApi internal val queryExecutor: QueryExecutor,
     val typeManager: TypeManager
 ) {
-    val typeRegistry = typeManager.registry
     val resultConverterRegistry = ResultConverterRegistry(parent = typeManager.converterRegistry.resultConverterRegistry)
     val parameterConverterRegistry = ParameterConverterRegistry(parent = typeManager.converterRegistry.parameterConverterRegistry)
     @PublishedApi internal val resultMapper = ResultMapper(resultConverterRegistry, typeManager)

@@ -17,7 +17,6 @@ import io.github.octaviusframework.driver.exception.TypeExceptionReason
 class ContainerFactory(
     private val typeManager: TypeManager
 ) {
-    private val registry get() = typeManager.registry
 
     /**
      * Creates a new instance of a PostgreSQL composite type using its name and schema.

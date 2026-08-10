@@ -26,7 +26,6 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        val typeRegistry = context.typeManager.registry
         val registration = context.typeManager.converterRegistry.registeredComposites[source::class] ?: error("Missing registration for composite")
 
         val type = if (expectedOid.isKnownOid) {

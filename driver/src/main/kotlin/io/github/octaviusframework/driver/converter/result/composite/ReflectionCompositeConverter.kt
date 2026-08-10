@@ -31,15 +31,14 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         
         @Suppress("UNCHECKED_CAST")
         val kClass = if (expectedClass == Any::class) {
-            val registry = context.typeManager.registry
-            registry.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
-                ?: registry.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
+            context.typeManager.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)]
+                ?: context.typeManager.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
                 ?: error("Missing composite registration for type")
         } else {
             expectedClass
         } as KClass<Any>
 
-        val registration = context.typeManager.registry.converterRegistry.registeredComposites[kClass]
+        val registration = context.typeManager.converterRegistry.registeredComposites[kClass]
             ?: error("Missing composite registration for class")
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
