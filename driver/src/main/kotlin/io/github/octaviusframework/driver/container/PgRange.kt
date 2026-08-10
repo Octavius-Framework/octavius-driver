@@ -2,7 +2,6 @@ package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.registry.TypeRegistry
 
 /**
  * Represents a PostgreSQL range type (e.g., int4range, tsrange).
@@ -12,15 +11,13 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
  * @property flags Bitmask flags representing the range properties (e.g., empty, inclusive/exclusive bounds).
  * @property lowerBound The lower bound value of the range, or null if infinite/unbounded.
  * @property upperBound The upper bound value of the range, or null if infinite/unbounded.
- * @property typeRegistry Registry used for resolving types.
  */
 class PgRange internal constructor(
     val rangeOid: Int,
     val elementOid: Int,
     val flags: Byte,
     val lowerBound: Any?,
-    val upperBound: Any?,
-    @PublishedApi internal val typeRegistry: TypeRegistry
+    val upperBound: Any?
 ) : PgContainer {
     override val containerOid: Int get() = rangeOid
 
@@ -65,14 +62,13 @@ class PgRange internal constructor(
     }
 
     companion object {
-        fun empty(rangeOid: Int, elementOid: Int, typeRegistry: TypeRegistry): PgRange {
+        fun empty(rangeOid: Int, elementOid: Int): PgRange {
             return PgRange(
                 rangeOid = rangeOid,
                 elementOid = elementOid,
                 flags = 0x01,
                 lowerBound = null,
-                upperBound = null,
-                typeRegistry = typeRegistry
+                upperBound = null
             )
         }
 
@@ -86,8 +82,7 @@ class PgRange internal constructor(
             isLowerInfinite: Boolean = (lowerBound == null),
             isUpperInfinite: Boolean = (upperBound == null),
             isLowerNull: Boolean = false,
-            isUpperNull: Boolean = false,
-            typeRegistry: TypeRegistry
+            isUpperNull: Boolean = false
         ): PgRange {
             var flags = 0
 
@@ -106,7 +101,7 @@ class PgRange internal constructor(
                 flags = flags or 0x40
             }
 
-            return PgRange(rangeOid, elementOid, flags.toByte(), lowerBound, upperBound, typeRegistry)
+            return PgRange(rangeOid, elementOid, flags.toByte(), lowerBound, upperBound)
         }
     }
 }

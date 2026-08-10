@@ -17,7 +17,6 @@ import io.github.octaviusframework.driver.container.PgRange
 import io.github.octaviusframework.driver.type.Range
 import io.github.octaviusframework.driver.type.rangeOf
 import io.github.octaviusframework.driver.type.multiRangeOf
-import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
@@ -59,8 +58,7 @@ class RangeConverterTest {
             isLowerInfinite = false,
             isUpperInfinite = false,
             isLowerNull = false,
-            isUpperNull = false,
-            typeRegistry = dummyRegistry
+            isUpperNull = false
         )
 
         val expectedType = typeOf<Range<Int>>()
@@ -88,8 +86,7 @@ class RangeConverterTest {
             lowerBound = 10,
             upperBound = 20,
             isLowerInclusive = true,
-            isUpperInclusive = false,
-            typeRegistry = dummyRegistry
+            isUpperInclusive = false
         )
         
         val pgRange2 = PgRange.create(
@@ -100,8 +97,7 @@ class RangeConverterTest {
             isLowerInclusive = true,
             isUpperInclusive = false,
             isLowerInfinite = false,
-            isUpperInfinite = true,
-            typeRegistry = dummyRegistry
+            isUpperInfinite = true
         )
 
         val pgMultiRange = PgMultirange.create(multiRangeOid, rangeOid, listOf(pgRange1, pgRange2))
