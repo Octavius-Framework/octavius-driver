@@ -20,30 +20,34 @@ Thanks to this split, adding support for a specific custom PostgreSQL type is us
 
 The `io.github.octaviusframework.driver.codec` package ships the codecs translating between PostgreSQL and Kotlin types.
 
-| PostgreSQL Type                                      | Kotlin Type                      | Notes                                            |
-|:-----------------------------------------------------|:---------------------------------|:-------------------------------------------------|
-| `int2`                                               | `Short`                          |                                                  |
-| `int4`                                               | `Int`                            |                                                  |
-| `int8`                                               | `Long`                           |                                                  |
-| `float4`                                             | `Float`                          |                                                  |
-| `float8`                                             | `Double`                         |                                                  |
-| `numeric`                                            | `java.math.BigDecimal`           |                                                  |
-| `text`, `varchar`, `unknown`, `bpchar` (`character`) | `String`                         |                                                  |
-| `json`, `jsonb`                                      | `String`                         | Processed later by JSON converters               |
-| `timestamptz`                                        | `kotlin.time.Instant`            | <sup>1</sup>                                     |
-| `timestamp`                                          | `kotlinx.datetime.LocalDateTime` | <sup>1</sup>                                     |
-| `date`                                               | `kotlinx.datetime.LocalDate`     | <sup>1</sup>                                     |
-| `time`                                               | `kotlinx.datetime.LocalTime`     |                                                  |
-| `interval`                                           | `PgInterval`                     |                                                  |
-| `bool`                                               | `Boolean`                        |                                                  |
-| `bytea`                                              | `ByteArray`                      |                                                  |
-| `uuid`                                               | `kotlin.uuid.Uuid`               |                                                  |
-| `void`                                               | `Unit`                           | Return type of void functions (e.g. `pg_notify`) |
-| `oid`, `name`, `"char"`                              | `Int`, `String`, `String`        | Internal PostgreSQL types                        |
-| `array`                                              | `PgArray`                        | Evaluated at runtime                             |
-| `composite`, `record`                                | `PgComposite`, `PgRecord`        | Evaluated at runtime                             |
-| `enum`                                               | `String`                         | Evaluated at runtime                             |
-| `domain`                                             | *(Base type)*                    | Delegates to the codec of the underlying type    |
+| PostgreSQL Type                                             | Kotlin Type                                                               | Notes                                            |
+|:------------------------------------------------------------|:--------------------------------------------------------------------------|:-------------------------------------------------|
+| `int2`                                                      | `Short`                                                                   |                                                  |
+| `int4`                                                      | `Int`                                                                     |                                                  |
+| `int8`                                                      | `Long`                                                                    |                                                  |
+| `float4`                                                    | `Float`                                                                   |                                                  |
+| `float8`                                                    | `Double`                                                                  |                                                  |
+| `numeric`                                                   | `java.math.BigDecimal`                                                    |                                                  |
+| `text`, `varchar`, `unknown`, `bpchar` (`character`)        | `String`                                                                  |                                                  |
+| `json`, `jsonb`                                             | `String`                                                                  | Processed later by JSON converters               |
+| `timestamptz`                                               | `kotlin.time.Instant`                                                     | <sup>1</sup>                                     |
+| `timestamp`                                                 | `kotlinx.datetime.LocalDateTime`                                          | <sup>1</sup>                                     |
+| `date`                                                      | `kotlinx.datetime.LocalDate`                                              | <sup>1</sup>                                     |
+| `time`                                                      | `kotlinx.datetime.LocalTime`                                              |                                                  |
+| `interval`                                                  | `PgInterval`                                                              |                                                  |
+| `bool`                                                      | `Boolean`                                                                 |                                                  |
+| `bytea`                                                     | `ByteArray`                                                               |                                                  |
+| `uuid`                                                      | `kotlin.uuid.Uuid`                                                        |                                                  |
+| `xml`                                                       | `String`                                                                  |                                                  |
+| `bit`, `varbit`                                             | `java.util.BitSet`                                                        |                                                  |
+| `inet`, `cidr`, `macaddr`, `macaddr8`                       | `String`                                                                  | String preserves original notation e.g., `/24`   |
+| `point`, `line`, `lseg`, `box`, `path`, `polygon`, `circle` | `PgPoint`, `PgLine`, `PgLseg`, `PgBox`, `PgPath`, `PgPolygon`, `PgCircle` | Mapped to native driver geometric data classes   |
+| `void`                                                      | `Unit`                                                                    | Return type of void functions (e.g. `pg_notify`) |
+| `oid`, `name`, `"char"`                                     | `Int`, `String`, `String`                                                 | Internal PostgreSQL types                        |
+| `array`                                                     | `PgArray`                                                                 | Evaluated at runtime                             |
+| `composite`, `record`                                       | `PgComposite`, `PgRecord`                                                 | Evaluated at runtime                             |
+| `enum`                                                      | `String`                                                                  | Evaluated at runtime                             |
+| `domain`                                                    | *(Base type)*                                                             | Delegates to the codec of the underlying type    |
 
 ### Infinity Values for Date/Time
 
@@ -56,6 +60,16 @@ The `io.github.octaviusframework.driver.codec` package ships the codecs translat
 | `timestamptz`   | `infinity`, `-infinity` | `Instant.DISTANT_FUTURE`, `Instant.DISTANT_PAST`             |
 
 Handy, incidentally, for anything modeled as lasting "in perpetuity" — an empire's founding decree, say, with no scheduled end date.
+
+### Numeric (BigDecimal) Special Values
+
+Unlike dates, the driver **does not** map PostgreSQL `numeric` special values (`NaN`, `Infinity`, `-Infinity`) to Kotlin. 
+Java and Kotlin use `java.math.BigDecimal` for exact-precision decimal types, and that class mathematically prohibits non-finite values by design. 
+If your query retrieves a `numeric` column containing `NaN` or `Infinity`, the driver will immediately throw an `IllegalArgumentException` / `TypeException` to prevent silent data corruption (such as treating Infinity as zero).
+
+If your domain logic genuinely relies on `NaN` or `Infinity` (e.g. sensor readings, AI analysis), you should either:
+1. Use standard IEEE 754 floating-point types (`float4` / `float8`), which map to Kotlin's `Float` and `Double` and fully support non-finite values.
+2. Override the default `NumericCodec` with your own custom codec that maps the `numeric` OID (1700) to a custom Kotlin wrapper class capable of representing both exact decimals and non-finite concepts.
 
 ### PgInterval
 
