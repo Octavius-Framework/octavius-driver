@@ -63,9 +63,10 @@ class CodecDictionary private constructor(
             register(VarcharCodec)
             register(BpcharCodec)
             register(UnknownCodec)
-            // Json
+            // Json and XML
             register(JsonbCodec)
             register(JsonCodec)
+            register(XmlCodec)
             // DateTime
             register(TimestamptzCodec)
             register(TimestampCodec)
@@ -77,6 +78,21 @@ class CodecDictionary private constructor(
             register(UuidCodec)
             register(VoidCodec)
             register(BooleanCodec)
+            register(BitCodec)
+            register(VarbitCodec)
+            // Networking
+            register(MacAddrCodec)
+            register(MacAddr8Codec)
+            register(InetCodec)
+            register(CidrCodec)
+            // Geometric Types
+            register(PointCodec)
+            register(LsegCodec)
+            register(PathCodec)
+            register(BoxCodec)
+            register(PolygonCodec)
+            register(LineCodec)
+            register(CircleCodec)
 
             return CodecDictionary(oidMap, classMap, codecToOidMap, registeredCodecsList)
         }

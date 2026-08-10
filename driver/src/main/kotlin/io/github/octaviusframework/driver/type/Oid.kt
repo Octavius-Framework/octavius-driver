@@ -36,6 +36,7 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     BOOL("bool", false, 16),
     UUID("uuid", false, 2950),
     BYTEA("bytea", false, 17),
+    XML("xml", false, 142),
     UNKNOWN("unknown", false, 705),
 
     // --- Array types ---
@@ -58,6 +59,7 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     BOOL_ARRAY("bool", true, 1000),
     UUID_ARRAY("uuid", true, 2951),
     BYTEA_ARRAY("bytea", true, 1001),
+    XML_ARRAY("xml", true, 143),
 }
 
 const val UNRESOLVED_OID = 0
