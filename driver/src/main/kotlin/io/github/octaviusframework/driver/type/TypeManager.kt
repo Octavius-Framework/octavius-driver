@@ -92,7 +92,7 @@ class TypeManager(
     ) {
         val qName = typeName.takeIf { it.isNotEmpty() } 
             ?: CaseConverter.convert(T::class.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER)
-        converterRegistry.registerAutoCompositeType<T>(qName, schema, pgConvention, kotlinConvention)
+        converterRegistry.registerAutoCompositeType(T::class, qName, schema, pgConvention, kotlinConvention)
     }
 
     /**

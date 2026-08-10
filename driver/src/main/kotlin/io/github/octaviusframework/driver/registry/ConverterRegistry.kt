@@ -98,13 +98,14 @@ class ConverterRegistry {
     /**
      * Registers a Kotlin class to be automatically mapped to and from a PostgreSQL composite type.
      *
-     * @param T the Kotlin data class to register.
+     * @param kClass the Kotlin data class to register.
      * @param name the name of the composite type in PostgreSQL.
      * @param schema the schema of the composite type (defaults to an empty string for the search path).
      * @param pgConvention the casing convention used for fields in the database.
      * @param kotlinConvention the casing convention used for properties in the Kotlin class.
      */
-    inline fun <reified T : Any> registerAutoCompositeType(
+    fun registerAutoCompositeType(
+        kClass: KClass<*>,
         name: String,
         schema: String = "",
         pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
@@ -112,13 +113,13 @@ class ConverterRegistry {
     ) = lock.withLock {
         val newMap = registeredComposites.toMutableMap()
         val qName = QualifiedName(schema, name)
-        newMap[T::class] = CompositeRegistration(qName, pgConvention, kotlinConvention)
+        newMap[kClass] = CompositeRegistration(qName, pgConvention, kotlinConvention)
         registeredComposites = newMap
 
         val newNameMap = compositeClassByName.toMutableMap()
-        newNameMap[qName] = T::class
+        newNameMap[qName] = kClass
         compositeClassByName = newNameMap
 
-        ReflectionCompositeCache.getOrCreateDataObjectMetadata(T::class, pgConvention, kotlinConvention)
+        ReflectionCompositeCache.getOrCreateDataObjectMetadata(kClass, pgConvention, kotlinConvention)
     }
 }
