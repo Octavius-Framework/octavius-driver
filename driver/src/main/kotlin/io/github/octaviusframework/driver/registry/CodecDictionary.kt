@@ -80,6 +80,11 @@ class CodecDictionary private constructor(
             register(BooleanCodec)
             register(BitCodec)
             register(VarbitCodec)
+            // Networking
+            register(MacAddrCodec)
+            register(MacAddr8Codec)
+            register(InetCodec)
+            register(CidrCodec)
             // Geometric Types
             register(PointCodec)
             register(LsegCodec)
