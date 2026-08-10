@@ -37,9 +37,8 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
             
             val valRaw = source.get<Any?>(i + 1)
             val valOid = source.getAttributeOid(i + 1)
-            val valType = context.typeManager.typeDictionary.getPgType(valOid)
             
-            result[key] = if (valRaw == null) null else context.convert(valRaw, valueType, valType, key)
+            result[key] = if (valRaw == null) null else context.convert(valRaw, valueType, valOid, key)
         }
         return result
     }

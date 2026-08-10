@@ -164,9 +164,8 @@ class DeserializationIntegrationTest {
                 ): TestUserData {
                     val code = source.get<String>("code")
                     val statusRaw = source.get<Any?>("status")
-                    val statusType = source.typeRegistry.dictionary.getPgType(source.type.attributes["status"]!!)
                     val status = if (statusRaw != null) {
-                        context.convert(statusRaw, typeOf<TestStatus>(), statusType)
+                        context.convert(statusRaw, typeOf<TestStatus>(), source.getAttributeOid("status"))
                     } else {
                         TestStatus.UNKNOWN
                     }

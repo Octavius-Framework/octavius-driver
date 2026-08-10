@@ -49,7 +49,7 @@ class JsonElementIntegrationTest {
                 metadata = context.convert(
                     source.get("metadata"),
                     jsonObjectType,
-                    source.getAttributeType("metadata")
+                    source.getAttributeOid("metadata")
                 )
             )
         }

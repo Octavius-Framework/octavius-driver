@@ -46,8 +46,6 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
             if (index != -1) {
                 val rawValue = source.getRaw(index)
                 val oid = source.getOid(index)
-                val type = context.typeManager.typeDictionary.getPgType(oid)
-
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
                         throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
@@ -56,7 +54,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
                         constructorArgs[param] = null
                     }
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, meta.type, type, columnName)
+                    val convertedValue = context.convert<Any>(rawValue, meta.type, oid, columnName)
                     constructorArgs[param] = convertedValue
                 }
             } else {

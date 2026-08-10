@@ -34,7 +34,7 @@ class MappingExceptionTest {
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
         val type = PgType.Composite(1, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1 }))
         val fields = attributes.values.toTypedArray()
-        return PgComposite(type, fields, dummyRegistry)
+        return PgComposite(type, fields)
     }
 
     private fun createArray(elements: List<Any?>): PgArray {

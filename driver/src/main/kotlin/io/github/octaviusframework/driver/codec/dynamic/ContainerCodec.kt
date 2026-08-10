@@ -117,7 +117,7 @@ internal object ContainerCodec {
             }
         }
 
-        return PgComposite(pgType, fields, typeRegistry)
+        return PgComposite(pgType, fields)
     }
 
     /**
@@ -198,7 +198,7 @@ internal object ContainerCodec {
             localOffset += len
         }
 
-        return PgRange(oid, pgType.subtypeOid, flags, lowerBound, upperBound, typeRegistry)
+        return PgRange(oid, pgType.subtypeOid, flags, lowerBound, upperBound)
     }
 
     /**

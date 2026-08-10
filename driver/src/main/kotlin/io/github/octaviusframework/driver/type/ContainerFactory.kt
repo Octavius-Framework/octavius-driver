@@ -41,7 +41,7 @@ class ContainerFactory(
         val pgType = typeManager.typeDictionary.getPgType(oid) as? PgType.Composite
             ?: throw TypeException(TypeExceptionReason.NOT_A_CONTAINER, oid = oid, details = "Type is not a composite")
         val fields = Array<Any?>(pgType.attributes.size) { null }
-        return PgComposite(pgType, fields, registry)
+        return PgComposite(pgType, fields)
     }
 
 

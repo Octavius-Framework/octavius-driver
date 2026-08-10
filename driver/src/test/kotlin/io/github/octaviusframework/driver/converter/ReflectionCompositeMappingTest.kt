@@ -57,7 +57,7 @@ class ReflectionCompositeMappingTest {
         val fields = type.attributes.map { (key, _) ->
             attributes[key]
         }.toTypedArray()
-        return PgComposite(type, fields, dummyRegistry)
+        return PgComposite(type, fields)
     }
 
     @Test

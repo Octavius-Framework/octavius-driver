@@ -57,8 +57,6 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
             if (index != -1) {
                 val rawValue = source.get<Any?>(index)
-                val type = source.getAttributeType(index)
-
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
                         throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
@@ -67,7 +65,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
                         constructorArgs[param] = null
                     }
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, meta.type, type, columnName)
+                    val convertedValue = context.convert<Any>(rawValue, meta.type, source.getAttributeOid(index), columnName)
                     constructorArgs[param] = convertedValue
                 }
             } else {

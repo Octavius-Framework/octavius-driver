@@ -2,7 +2,6 @@ package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 
 /**
@@ -14,8 +13,7 @@ import io.github.octaviusframework.driver.type.PgType
  */
 class PgComposite internal constructor(
     val type: PgType.Composite,
-    val fields: Array<Any?>,
-    @PublishedApi internal val typeRegistry: TypeRegistry
+    val fields: Array<Any?>
 ) : PgContainer {
     override val containerOid: Int get() = type.oid
     val attributeNames: List<String>
@@ -65,15 +63,6 @@ class PgComposite internal constructor(
             details = "Atrybut '$name' w kompozycie '${type.name}'"
         )
         return get<T>(index)
-    }
-
-    fun getAttributeType(index: Int): PgType {
-        val oid = type.attributeOids[index]
-        return typeRegistry.dictionary.getPgType(oid)
-    }
-
-    fun getAttributeType(name: String): PgType {
-        return getAttributeType(getColumnIndex(name))
     }
 
     fun getAttributeOid(index: Int): Int {

@@ -60,7 +60,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
             value
         }.toTypedArray()
 
-        return PgComposite(type, fields, typeRegistry)
+        return PgComposite(type, fields)
     }
 }
 
