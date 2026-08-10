@@ -77,6 +77,8 @@ class CodecDictionary private constructor(
             register(UuidCodec)
             register(VoidCodec)
             register(BooleanCodec)
+            register(BitCodec)
+            register(VarbitCodec)
 
             return CodecDictionary(oidMap, classMap, codecToOidMap, registeredCodecsList)
         }
