@@ -39,7 +39,7 @@ Add the Octavius driver to your `build.gradle.kts` dependencies:
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:0.9.2")
+    implementation("io.github.octavius-framework:driver:0.9.3")
 }
 ```
 
