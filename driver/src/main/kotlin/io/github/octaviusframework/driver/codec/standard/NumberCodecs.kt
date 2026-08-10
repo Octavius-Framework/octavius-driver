@@ -73,6 +73,12 @@ internal object NumericCodec : TypeCodec<BigDecimal> {
         if (sign == 0xC000) {
             throw IllegalArgumentException("NaN is not supported by java.math.BigDecimal")
         }
+        if (sign == 0xD000) {
+            throw IllegalArgumentException("Infinity is not supported by java.math.BigDecimal")
+        }
+        if (sign == 0xF000) {
+            throw IllegalArgumentException("-Infinity is not supported by java.math.BigDecimal")
+        }
 
         if (ndigits == 0) {
             BigDecimal.ZERO.setScale(dscale)
