@@ -77,3 +77,13 @@ internal object JsonCodec : TypeCodec<String> {
         writer.writeBytes(value.toByteArray(Charsets.UTF_8))
     }
 }
+
+internal object XmlCodec : TypeCodec<String> {
+    override val pgTypeName = "xml"
+    override val pgSchema: String = "pg_catalog"
+    override val oid: Int = 142
+    override val kotlinClass = String::class
+
+    override val fromBinary = TextCodec.fromBinary
+    override val toBinary = TextCodec.toBinary
+}
