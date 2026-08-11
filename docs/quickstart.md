@@ -1,5 +1,7 @@
 # Quickstart
 
+> **Note:** Octavius requires **Java 21+** and **PostgreSQL 18+**. Attempting to connect to older PostgreSQL versions will fail because the driver uses Protocol v3.2 exclusively.
+
 ## 1. Add the Dependency
 
 Add the Octavius driver to your project dependencies.

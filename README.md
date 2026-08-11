@@ -33,6 +33,11 @@ The driver is organized in clear, modular layers:
 - **`driver-spring-integration` module** — native Spring Framework / Spring Boot integration (`OctaviusTemplate`, exception translation, autoconfiguration).
 - **`hikari` module** — dedicated integration testing layer for HikariCP.
 
+## Requirements
+
+- **Java 21+**
+- **PostgreSQL 18+** — Octavius exclusively speaks **PostgreSQL Wire Protocol v3.2** (introduced in PostgreSQL 18). Attempting to connect to older database versions (which expect v3.0) will fail at the protocol level during the initial handshake.
+
 ## Quick Start
 
 Add the Octavius driver to your `build.gradle.kts` dependencies:
