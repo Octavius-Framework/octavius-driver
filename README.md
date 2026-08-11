@@ -80,12 +80,14 @@ session.close() // Safely returns the connection to the pool
 
 More detail lives in the `docs/` folder:
 - [**Octavius vs Legacy JDBC (why this driver breaks the mold)**](docs/octavius-vs-jdbc.md)
+- [Quickstart](docs/quickstart.md)
+- [Session Initialization and Configuration](docs/initialization.md)
+- [Spring Integration](docs/spring-integration.md)
 - [Executing Queries (Native & Named)](docs/queries.md)
 - [Transaction Management](docs/transactions.md)
 - [Type System & Mapping](docs/type-system.md)
 - [Listen & Notify (Asynchronous Flow)](docs/listen-notify.md)
 - [Exception Translation](docs/exceptions.md)
-- [Connection Properties](docs/properties.md)
 - [Functions and Procedures](docs/functions-procedures.md)
 - [COPY Protocol (Bulk Data Transfers)](docs/copy.md)
 - [Large Objects (LO)](docs/large-objects.md)
