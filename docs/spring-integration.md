@@ -19,7 +19,7 @@ If you are using Spring Boot, the module will automatically configure everything
 
 1. **`OctaviusTemplate`**: A specialized template bean that handles executing operations within an `OctaviusSession`.
 2. **`PlatformTransactionManager`**: A customized `JdbcTransactionManager` that enables nested transactions and uses `OctaviusExceptionTranslator`.
-3. **Exception Translation**: Any `OctaviusException` or `SQLException` is automatically mapped to Spring's standard `DataAccessException` hierarchy for cleaner error handling.
+3. **Exception Translation**: Any `OctaviusException` and exceptions from `SQLExceptionWrapper` are wrapped in `OctaviusDataAccessException`. Other `SQLException`s (e.g., from Hikari) are translated into Spring's standard `DataAccessException` hierarchy.
 
 You only need to configure the data source in your `application.yml` or `application.properties`:
 
