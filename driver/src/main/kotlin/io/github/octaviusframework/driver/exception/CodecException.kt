@@ -1,6 +1,5 @@
 package io.github.octaviusframework.driver.exception
 
-import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
 
 /**
@@ -13,14 +12,16 @@ enum class CodecAction { ENCODING, DECODING }
  *
  * @property action Indicates whether the failure happened during encoding or decoding.
  * @property value The value that failed to process.
- * @property pgType The PostgreSQL type associated with the operation, if known.
+ * @property name The PostgreSQL type name associated with the operation, if known.
+ * @property schema The PostgreSQL type schema associated with the operation, if known.
  * @property oid The PostgreSQL OID associated with the operation, if known.
  * @property kotlinClass The Kotlin class associated with the operation, if known.
  */
 class CodecException(
     val action: CodecAction,
     val value: Any?,
-    val pgType: PgType? = null,
+    val name: String,
+    val schema: String = "",
     val oid: Int? = null,
     val kotlinClass: KClass<*>? = null,
     cause: Throwable? = null
@@ -28,11 +29,12 @@ class CodecException(
 
     override fun getDetailedMessage(): String = buildString {
         val actionStr = if (action == CodecAction.ENCODING) "encode" else "decode"
-        val typeInfo = pgType?.name ?: oid?.toString() ?: "unknown"
+        val typeInfo = name
         val classInfo = kotlinClass?.qualifiedName ?: "unknown"
 
         appendLine("message: Failed to $actionStr value [${formatValue(value)}] for PostgreSQL type '$typeInfo' and Kotlin class '$classInfo'")
-        if (pgType != null) appendLine("PgType: ${pgType.name}")
+        appendLine("Name: $name")
+        if (schema.isNotEmpty()) appendLine("Schema: $schema")
         if (oid != null) appendLine("OID: $oid")
         if (kotlinClass != null) appendLine("Kotlin Class: ${kotlinClass.qualifiedName}")
     }
