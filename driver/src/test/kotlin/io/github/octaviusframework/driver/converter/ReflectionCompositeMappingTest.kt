@@ -46,10 +46,8 @@ class ReflectionCompositeMappingTest {
     private val dummyTypeManager = TypeManager(dummyRegistry)
 
     private fun registerPersonComposite(
-        pgConvention: CaseConvention,
-        kotlinConvention: CaseConvention
     ): PgType.Composite {
-        dummyTypeManager.registerAutoComposite<Person>("person_type", "public", pgConvention, kotlinConvention)
+        dummyTypeManager.registerAutoComposite<Person>("person_type", "public")
         return type
     }
 
@@ -61,8 +59,8 @@ class ReflectionCompositeMappingTest {
     }
 
     @Test
-    fun `test deserialization with MapKey and conventions`() {
-        val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
+    fun `test deserialization with PgName`() {
+        val type = registerPersonComposite()
 
         val registry = ResultConverterRegistry()
         registry.addConverter(ReflectionCompositeConverter)
@@ -84,8 +82,8 @@ class ReflectionCompositeMappingTest {
     }
 
     @Test
-    fun `test serialization with MapKey and conventions`() {
-        val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
+    fun `test serialization with PgName`() {
+        val type = registerPersonComposite()
         val converter = ReflectionCompositeParameterConverter
         val dummyTypeManager = TypeManager(dummyRegistry)
         val context = object : SerializationContext {

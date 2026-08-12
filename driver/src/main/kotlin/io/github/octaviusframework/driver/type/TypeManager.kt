@@ -87,11 +87,9 @@ class TypeManager(
      */
     inline fun <reified T : Any> registerAutoComposite(
         typeName: String = "",
-        schema: String = "",
-        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
-        kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+        schema: String = ""
     ) {
-        registerAutoComposite(T::class, typeName, schema, pgConvention, kotlinConvention)
+        registerAutoComposite(T::class, typeName, schema)
     }
 
     /**
@@ -100,22 +98,18 @@ class TypeManager(
      * @param kClass The Kotlin data class representing the composite type.
      * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name.
      * @param schema Optional schema where the type is defined.
-     * @param pgConvention Naming convention in the database.
-     * @param kotlinConvention Naming convention in Kotlin.
      */
     fun registerAutoComposite(
         kClass: KClass<*>,
         typeName: String = "",
-        schema: String = "",
-        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
-        kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+        schema: String = ""
     ) {
         val qName = typeName.takeIf { it.isNotEmpty() } ?: CaseConverter.convert(
             kClass.simpleName!!,
             CaseConvention.PASCAL_CASE,
             CaseConvention.SNAKE_CASE_LOWER
         )
-        converterRegistry.registerAutoCompositeType(kClass, qName, schema, pgConvention, kotlinConvention)
+        converterRegistry.registerAutoCompositeType(kClass, qName, schema)
     }
 
     /**

@@ -21,7 +21,6 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
-import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -87,7 +86,7 @@ class ConverterRegistry {
      * A thread-safe map holding registration details for custom Kotlin composite data classes.
      */
     @Volatile
-    var registeredComposites: Map<KClass<*>, CompositeRegistration> = emptyMap()
+    var registeredComposites: Map<KClass<*>, QualifiedName> = emptyMap()
 
     /**
      * A thread-safe map mapping database composite names to their corresponding Kotlin classes.
@@ -101,25 +100,21 @@ class ConverterRegistry {
      * @param kClass the Kotlin data class to register.
      * @param name the name of the composite type in PostgreSQL.
      * @param schema the schema of the composite type (defaults to an empty string for the search path).
-     * @param pgConvention the casing convention used for fields in the database.
-     * @param kotlinConvention the casing convention used for properties in the Kotlin class.
      */
     fun registerAutoCompositeType(
         kClass: KClass<*>,
         name: String,
-        schema: String = "",
-        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
-        kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+        schema: String = ""
     ) = lock.withLock {
         val newMap = registeredComposites.toMutableMap()
         val qName = QualifiedName(schema, name)
-        newMap[kClass] = CompositeRegistration(qName, pgConvention, kotlinConvention)
+        newMap[kClass] = qName
         registeredComposites = newMap
 
         val newNameMap = compositeClassByName.toMutableMap()
         newNameMap[qName] = kClass
         compositeClassByName = newNameMap
 
-        ReflectionCache.getOrCreateDataObjectMetadata(kClass, pgConvention, kotlinConvention)
+        ReflectionCache.getOrCreateDataObjectMetadata(kClass)
     }
 }

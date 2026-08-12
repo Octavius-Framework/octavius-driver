@@ -84,7 +84,7 @@ class MappingExceptionTest {
 
         val details = ex.getDetailedMessage()
         assertTrue(details.contains("Path: employees -> [1] -> address -> city"), "Expected path missing, got: $details")
-        assertTrue(details.contains("Missing non-nullable attribute 'city' in composite"), "Expected missing attribute message, got: $details")
+        assertTrue(details.contains("Missing non-nullable attribute 'city'"), "Expected missing attribute message, got: $details")
     }
 
     @Test

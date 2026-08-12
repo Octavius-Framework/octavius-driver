@@ -39,14 +39,7 @@ internal object ReflectionCompositeConverter : ResultConverter<PgComposite, Any>
             expectedClass
         } as KClass<Any>
 
-        val registration = context.typeManager.converterRegistry.registeredComposites[kClass]
-            ?: error("Missing composite registration for class")
-
-        val metadata = ReflectionCache.getOrCreateDataObjectMetadata(
-            kClass,
-            registration.pgConvention,
-            registration.kotlinConvention
-        )
+        val metadata = ReflectionCache.getOrCreateDataObjectMetadata(kClass)
 
         return instantiateDataObject(kClass, metadata) { meta ->
             val columnName = meta.keyName

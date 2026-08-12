@@ -48,9 +48,7 @@ object ReflectionCache {
 
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> getOrCreateDataObjectMetadata(
-        kClass: KClass<T>,
-        pgConvention: CaseConvention,
-        kotlinConvention: CaseConvention
+        kClass: KClass<T>
     ): DataObjectClassMetadata<T> {
         return dataObjectCache.getOrPut(kClass) {
             val constructor = kClass.primaryConstructor
@@ -62,7 +60,7 @@ object ReflectionCache {
                 val property = propertiesByName[param.name]!!
 
                 val keyName = property.findAnnotation<PgName>()?.name
-                    ?: CaseConverter.convert(param.name!!, kotlinConvention, pgConvention)
+                    ?: CaseConverter.convert(param.name!!, CaseConvention.CAMEL_CASE, CaseConvention.SNAKE_CASE_LOWER)
 
                 ConstructorParamMetadata(
                     parameter = param,

@@ -2,7 +2,6 @@ package io.github.octaviusframework.driver.util.reflection
 
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.identifier.CaseConvention
 import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
@@ -31,7 +30,7 @@ fun <T : Any> instantiateDataObject(
             if (!param.isOptional && !meta.type.isMarkedNullable) {
                 throw MappingException(
                     MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, 
-                    "Missing non-nullable attribute '${meta.keyName}' for class $kClass", 
+                    "Missing non-nullable attribute '${meta.keyName}' for $kClass",
                     path = mutableListOf(meta.keyName)
                 )
             }
@@ -43,7 +42,7 @@ fun <T : Any> instantiateDataObject(
                 if (!meta.type.isMarkedNullable && !param.isOptional) {
                     throw MappingException(
                         MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, 
-                        "Null value for non-nullable attribute '${meta.keyName}' for class $kClass", 
+                        "Null value for non-nullable attribute '${meta.keyName}' for $kClass",
                         path = mutableListOf(meta.keyName)
                     )
                 }
@@ -63,11 +62,8 @@ fun <T : Any> instantiateDataObject(
  * Converts a map to a data class instance.
  * Keys in the map will be matched to data class properties according to the configured case conventions.
  */
-inline fun <reified T : Any> Map<String, Any?>.toDataObject(
-    pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
-    kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
-): T {
-    return toDataObject(T::class, pgConvention, kotlinConvention)
+inline fun <reified T : Any> Map<String, Any?>.toDataObject(): T {
+    return toDataObject(T::class)
 }
 
 /**
@@ -75,11 +71,9 @@ inline fun <reified T : Any> Map<String, Any?>.toDataObject(
  * Keys in the map will be matched to data class properties according to the configured case conventions.
  */
 fun <T : Any> Map<String, Any?>.toDataObject(
-    kClass: KClass<T>,
-    pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
-    kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+    kClass: KClass<T>
 ): T {
-    val metadata = ReflectionCache.getOrCreateDataObjectMetadata(kClass, pgConvention, kotlinConvention)
+    val metadata = ReflectionCache.getOrCreateDataObjectMetadata(kClass)
     
     return instantiateDataObject(kClass, metadata) { meta ->
         if (this.containsKey(meta.keyName)) {
@@ -103,13 +97,11 @@ fun <T : Any> Map<String, Any?>.toDataObject(
  * @param excludeKeys Keys to exclude from the resulting map.
  */
 fun <T : Any> T.toDataMap(
-    vararg excludeKeys: String,
-    pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
-    kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+    vararg excludeKeys: String
 ): Map<String, Any?> {
     @Suppress("UNCHECKED_CAST")
     val kClass = this::class as KClass<T>
-    val metadata = ReflectionCache.getOrCreateDataObjectMetadata(kClass, pgConvention, kotlinConvention)
+    val metadata = ReflectionCache.getOrCreateDataObjectMetadata(kClass)
     
     val exclusionSet = if (excludeKeys.isNotEmpty()) excludeKeys.toSet() else emptySet()
 

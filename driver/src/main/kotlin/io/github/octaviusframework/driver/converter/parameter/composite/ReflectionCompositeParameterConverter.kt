@@ -30,15 +30,13 @@ internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> 
         val type = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as PgType.Composite
         } else {
-            val qName = registration.qualifiedName
+            val qName = registration
             context.typeManager.typeDictionary.getPgType(context.typeManager.resolveOid(qName.name, qName.schema)) as PgType.Composite
         }
 
         @Suppress("UNCHECKED_CAST")
         val metadata = ReflectionCache.getOrCreateDataObjectMetadata(
-            source::class as KClass<Any>,
-            registration.pgConvention,
-            registration.kotlinConvention
+            source::class as KClass<Any>
         )
 
         val propertiesByMapKey = metadata.constructorProperties.associateBy { it.keyName }
