@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.message.ServerErrorMessage
+
 /**
  * Exception thrown when a generic database system error occurs.
  *

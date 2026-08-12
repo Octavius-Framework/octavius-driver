@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.message.ServerErrorMessage
+
 /**
  * Categorizes the specific reason why a [ExecutionAbortedException] was thrown.
  */

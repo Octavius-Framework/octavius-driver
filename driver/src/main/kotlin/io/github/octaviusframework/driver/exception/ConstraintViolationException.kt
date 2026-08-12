@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.message.ServerErrorMessage
+
 /**
  * Represents specific types of database constraint violations that can occur during query execution.
  *

@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.message.ServerErrorMessage
+import io.github.octaviusframework.driver.query.QueryContext
+
 /**
  * Base exception for all errors in the Octavius JDBC driver.
  */

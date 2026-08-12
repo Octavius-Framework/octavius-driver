@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.exception
+package io.github.octaviusframework.driver.query
 
 /**
  * Context of a database operation execution.

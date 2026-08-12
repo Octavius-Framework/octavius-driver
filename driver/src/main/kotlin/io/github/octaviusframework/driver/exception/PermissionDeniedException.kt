@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.message.ServerErrorMessage
+
 /**
  * Exception thrown when the current database user lacks the required privileges to execute a statement or access an object.
  *

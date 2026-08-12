@@ -1,11 +1,9 @@
 package io.github.octaviusframework.driver.jdbc
 
-import io.github.octaviusframework.driver.copy.CopyManager
 import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
-import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.query.QueryExecutor
 import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry

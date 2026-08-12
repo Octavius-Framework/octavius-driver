@@ -1,10 +1,10 @@
-package io.github.octaviusframework.driver.exception
+package io.github.octaviusframework.driver.message
 
 import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
 
 /**
  * A publicly exposed data class containing all detailed fields provided by the PostgreSQL backend
- * when an error occurs. 
+ * when an error occurs.
  */
 data class ServerErrorMessage(
     val severity: String?,

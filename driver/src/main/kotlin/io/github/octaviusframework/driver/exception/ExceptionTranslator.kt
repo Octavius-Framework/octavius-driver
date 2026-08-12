@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.message.ServerErrorMessage
 import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
 
 /**
