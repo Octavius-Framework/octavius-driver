@@ -61,7 +61,9 @@ subprojects {
         }
     }
 
-    if (project.name != "hikari") {
+    val publishedProjects = listOf("driver", "driver-spring-integration")
+
+    if (publishedProjects.contains(project.name)) {
         apply(plugin = "com.vanniktech.maven.publish")
 
         extensions.configure<MavenPublishBaseExtension> {
