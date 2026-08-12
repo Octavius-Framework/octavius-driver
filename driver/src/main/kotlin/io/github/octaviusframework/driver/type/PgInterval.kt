@@ -71,7 +71,7 @@ fun PgInterval.toDateTimePeriod(): DateTimePeriod = when (this) {
  * Converts a Kotlinx [DateTimePeriod] to a [PgInterval].
  *
  * @return The equivalent [PgInterval].
- * @throws TypeException if the calendar fields or time units overflow during conversion.
+ * @throws IllegalArgumentException if the calendar fields or time units overflow during conversion.
  */
 fun DateTimePeriod.toPgInterval(): PgInterval = when (this) {
     DateTimePeriod.INFINITY -> Infinity
