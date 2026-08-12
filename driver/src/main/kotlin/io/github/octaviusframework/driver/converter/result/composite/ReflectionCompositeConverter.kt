@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.result.composite
 
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.converter.ReflectionCache
+import io.github.octaviusframework.driver.util.reflection.ReflectionCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
@@ -9,8 +9,9 @@ import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass
-import kotlin.reflect.KParameter
 import kotlin.reflect.KType
+import io.github.octaviusframework.driver.util.reflection.MissingToken
+import io.github.octaviusframework.driver.util.reflection.instantiateDataObject
 
 internal object ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
@@ -47,36 +48,20 @@ internal object ReflectionCompositeConverter : ResultConverter<PgComposite, Any>
             registration.kotlinConvention
         )
 
-        val constructorArgs = mutableMapOf<KParameter, Any?>()
-
-        for (meta in metadata.constructorProperties) {
-            val param = meta.parameter
+        return instantiateDataObject(kClass, metadata) { meta ->
             val columnName = meta.keyName
             val index = source.type.nameToIndex[columnName] ?: -1
 
             if (index != -1) {
                 val rawValue = source.get<Any?>(index)
                 if (rawValue == null) {
-                    if (!meta.type.isMarkedNullable && !param.isOptional) {
-                        throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
-                    }
-                    if (!param.isOptional) {
-                        constructorArgs[param] = null
-                    }
+                    null
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, meta.type, source.getAttributeOid(index), columnName)
-                    constructorArgs[param] = convertedValue
+                    context.convert<Any>(rawValue, meta.type, source.getAttributeOid(index), columnName)
                 }
             } else {
-                if (!param.isOptional && !meta.type.isMarkedNullable) {
-                    throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Missing non-nullable attribute '$columnName' in composite for class $kClass", path = mutableListOf(columnName))
-                }
-                if (!param.isOptional) {
-                    constructorArgs[param] = null
-                }
+                MissingToken
             }
         }
-
-        return metadata.constructor.callBy(constructorArgs)
     }
 }

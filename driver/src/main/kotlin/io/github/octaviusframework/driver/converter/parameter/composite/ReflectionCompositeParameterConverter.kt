@@ -1,13 +1,12 @@
 package io.github.octaviusframework.driver.converter.parameter.composite
 
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.converter.ReflectionCache
+import io.github.octaviusframework.driver.util.reflection.ReflectionCache
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
-import kotlin.reflect.jvm.isAccessible
 
 internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> {
 
@@ -48,7 +47,6 @@ internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> 
             val meta = propertiesByMapKey[attrName]
 
             var value = if (meta != null) {
-                meta.property.isAccessible = true
                 meta.property.get(source)
             } else null
 

@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.converter
+package io.github.octaviusframework.driver.util.reflection
 
 import io.github.octaviusframework.driver.annotation.PgName
 import io.github.octaviusframework.driver.identifier.CaseConvention
