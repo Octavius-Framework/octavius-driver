@@ -43,7 +43,7 @@ class PgComposite internal constructor(
         val index = type.nameToIndex[columnName] ?: -1
         if (index == -1) throw MappingException(
             MappingExceptionReason.COLUMN_NOT_FOUND,
-            details = "Atrybut: $columnName"
+            details = "Attribute: $columnName"
         )
         return index
     }
@@ -60,7 +60,7 @@ class PgComposite internal constructor(
         val index = type.nameToIndex[name] ?: -1
         if (index == -1) throw MappingException(
             MappingExceptionReason.COLUMN_NOT_FOUND,
-            details = "Atrybut '$name' w kompozycie '${type.name}'"
+            details = "Attribute '$name' in composite '${type.name}'"
         )
         return get<T>(index)
     }
