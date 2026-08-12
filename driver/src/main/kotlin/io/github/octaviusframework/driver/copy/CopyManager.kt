@@ -33,7 +33,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                 when (msg) {
                     is ErrorResponseMessage -> errorResponse = msg
                     is CopyInResponseMessage -> {
-                        return CopyInImpl(stream)
+                        return CopyIn(stream)
                     }
                     is ReadyForQueryMessage -> {
                         if (errorResponse != null) {
@@ -67,7 +67,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                 when (msg) {
                     is ErrorResponseMessage -> errorResponse = msg
                     is CopyOutResponseMessage -> {
-                        return CopyOutImpl(stream)
+                        return CopyOut(stream)
                     }
                     is ReadyForQueryMessage -> {
                         if (errorResponse != null) {
@@ -130,17 +130,23 @@ class CopyManager internal constructor(private val stream: PgStream) {
     }
 }
 
-internal class CopyInImpl(private val stream: PgStream) : CopyIn {
+class CopyIn internal constructor(private val stream: PgStream) : CopyOperation {
     override var isActive: Boolean = true
         private set
 
-    override fun writeToCopy(data: ByteArray, offset: Int, length: Int) = stream.lock.withLock {
+    /**
+     * Writes a chunk of data to the server.
+     */
+    fun writeToCopy(data: ByteArray, offset: Int = 0, length: Int = data.size) = stream.lock.withLock {
         if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.UNEXPECTED_RESULT, "Copy operation is no longer active.")
         stream.sendMessage(FrontendCopyDataMessage(data, offset, length))
         stream.flush()
     }
 
-    override fun endCopy(): Long {
+    /**
+     * Ends the COPY IN operation and returns the number of rows affected.
+     */
+    fun endCopy(): Long {
         stream.lock.lock()
         try {
             if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.UNEXPECTED_RESULT, "Copy operation is no longer active.")
@@ -195,13 +201,17 @@ internal class CopyInImpl(private val stream: PgStream) : CopyIn {
     }
 }
 
-internal class CopyOutImpl(private val stream: PgStream) : CopyOut {
+class CopyOut internal constructor(private val stream: PgStream) : CopyOperation {
     override var isActive: Boolean = true
         private set
     
     private var errorResponse: ErrorResponseMessage? = null
 
-    override fun readFromCopy(): ByteArray? {
+    /**
+     * Reads a chunk of data from the server.
+     * Returns null if the copy operation has finished.
+     */
+    fun readFromCopy(): ByteArray? {
         stream.lock.lock()
         try {
             if (!isActive) return null
