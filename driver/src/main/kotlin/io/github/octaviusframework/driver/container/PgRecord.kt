@@ -34,7 +34,7 @@ class PgRecord internal constructor(
 
         throw MappingException(
             MappingExceptionReason.CONVERSION_ERROR,
-            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
+            details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
         )
     }
 

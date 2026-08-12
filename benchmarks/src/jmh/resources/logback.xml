@@ -1,0 +1,37 @@
+<configuration>
+
+    <!-- Appender 1: Logowanie do konsoli (dla developmentu) -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Appender 2: Logowanie do pliku -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/octavius.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Twórz nowy plik logu każdego dnia -->
+            <fileNamePattern>logs/octavius.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <!-- Przechowuj logi przez 10 dni -->
+            <maxHistory>10</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n%rEx{full}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Ustawienia logowania dla KONKRETNYCH PAKIETÓW -->
+    <logger name="io.github.octaviusframework" level="WARN"/>
+
+    <!-- Ucisz gadatliwe biblioteki, żeby nie zaśmiecały logów -->
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <logger name="org.springframework" level="WARN"/>
+
+    <!-- Główny (root) logger: Domyślny poziom i appender dla wszystkiego innego -->
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+
+</configuration>
