@@ -30,8 +30,9 @@ class NetworkException(
     val reason: NetworkExceptionReason,
     val details: String? = null,
     cause: Throwable? = null,
-    sqlState: String? = "08006"
-) : OctaviusException("NETWORK_EXCEPTION:${reason.name}", cause, sqlState) {
+    sqlState: String? = "08006",
+    serverErrorMessage: ServerErrorMessage? = null,
+) : OctaviusException("NETWORK_EXCEPTION:${reason.name}", sqlState, serverErrorMessage, cause) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")

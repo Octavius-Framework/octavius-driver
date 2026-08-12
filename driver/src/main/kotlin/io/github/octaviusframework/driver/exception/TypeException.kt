@@ -31,10 +31,8 @@ class TypeException(
     val reason: TypeExceptionReason,
     val oid: Int? = null,
     val typeName: String? = null,
-    val details: String? = null,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("TYPE_EXCEPTION:${reason.name}", cause, sqlState) {
+    val details: String? = null
+) : OctaviusException("TYPE_EXCEPTION:${reason.name}") {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (oid != null) appendLine("OID: $oid")

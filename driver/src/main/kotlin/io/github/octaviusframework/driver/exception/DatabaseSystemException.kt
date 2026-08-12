@@ -9,7 +9,8 @@ package io.github.octaviusframework.driver.exception
  */
 class DatabaseSystemException(
     val errorMessage: String,
-    sqlState: String? = null
-) : OctaviusException("DATABASE_SYSTEM_EXCEPTION", sqlState = sqlState) {
+    sqlState: String,
+    serverErrorMessage: ServerErrorMessage
+) : OctaviusException("DATABASE_SYSTEM_EXCEPTION", sqlState = sqlState, serverErrorMessage = serverErrorMessage) {
     override fun getDetailedMessage(): String = errorMessage
 }

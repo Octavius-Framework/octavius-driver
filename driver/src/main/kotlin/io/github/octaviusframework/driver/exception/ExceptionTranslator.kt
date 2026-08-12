@@ -14,12 +14,17 @@ import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
 internal object ExceptionTranslator {
 
     fun translate(errorMsg: ErrorResponseMessage): OctaviusException {
+        val serverErrorMessage = ServerErrorMessage.from(errorMsg)
         val state = errorMsg.code ?: ""
-        val message = errorMsg.message ?: "Unknown database error"
 
         return when {
             // Class 08 — Connection Exception
-            state.startsWith("08") -> NetworkException(NetworkExceptionReason.CONNECTION_ERROR, details = message, sqlState = state)
+            state.startsWith("08") -> NetworkException(
+                NetworkExceptionReason.CONNECTION_ERROR,
+                details = serverErrorMessage.message,
+                sqlState = state,
+                serverErrorMessage = serverErrorMessage,
+            )
 
             // Class 22 — Data Exception (Invalid data provided by the user)
             state.startsWith("22") -> {
@@ -36,28 +41,25 @@ internal object ExceptionTranslator {
                     else -> if (state.startsWith("2203")) DataExceptionReason.JSON_ERROR else DataExceptionReason.UNKNOWN
                 }
                 DataException(
-                    reason = reason,
-                    dbMessage = errorMsg.message,
-                    details = errorMsg.detail,
-                    where = errorMsg.whereContext,
-                    sqlState = state
+                    reason = reason, sqlState = state, serverErrorMessage = serverErrorMessage
                 )
             }
-            
+
             // Class 28 - Invalid Authorization Specification
             state.startsWith("28") -> InitializationException(
                 InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
-                details = message,
-                sqlState = state
+                details = serverErrorMessage.message,
+                sqlState = state,
+                serverErrorMessage = serverErrorMessage
             )
 
-            state.startsWith("21") || state.startsWith("0A") || state.startsWith("3D") || state.startsWith("3F") ->
-                StatementException(
-                    StatementExceptionReason.INVALID_DEFINITION,
-                    details = "Message: $message",
-                    position = errorMsg.position,
-                    sqlState = state
-                )
+            state.startsWith("21") || state.startsWith("0A") || state.startsWith("3D") || state.startsWith("3F") -> StatementException(
+                StatementExceptionReason.INVALID_DEFINITION,
+                details = serverErrorMessage.message,
+                position = errorMsg.position,
+                sqlState = state,
+                serverErrorMessage = serverErrorMessage
+            )
 
             // Class 23 — Integrity Constraint Violation
             state.startsWith("23") -> {
@@ -69,29 +71,24 @@ internal object ExceptionTranslator {
                     "23P01" -> ConstraintViolationExceptionReason.EXCLUSION_CONSTRAINT_VIOLATION
                     else -> ConstraintViolationExceptionReason.UNKNOWN
                 }
-                ConstraintViolationException(
-                    reason = reason,
-                    dbMessage = errorMsg.message,
-                    details = errorMsg.detail,
-                    where = errorMsg.whereContext,
-                    sqlState = state,
-                    schema = errorMsg.schema,
-                    table = errorMsg.table,
-                    column = errorMsg.column,
-                    constraint = errorMsg.constraint
-                )
+                ConstraintViolationException(reason, state, serverErrorMessage)
             }
 
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
                 if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or transaction_timeout
-                    ExecutionAbortedException(ExecutionAbortedExceptionReason.TRANSACTION_TIMEOUT, dbMessage = "Message: $message", sqlState = state)
+                    ExecutionAbortedException(
+                        ExecutionAbortedExceptionReason.TRANSACTION_TIMEOUT,
+                        sqlState = state,
+                        serverErrorMessage = serverErrorMessage
+                    )
                 } else {
                     StatementException(
                         StatementExceptionReason.INVALID_TRANSACTION_STATE,
-                        details = "Message: $message",
+                        details = serverErrorMessage.message,
                         position = errorMsg.position,
-                        sqlState = state
+                        sqlState = state,
+                        serverErrorMessage = serverErrorMessage
                     )
                 }
             }
@@ -105,34 +102,16 @@ internal object ExceptionTranslator {
                 }
 
                 if (state == "40002") {
-                    ConstraintViolationException(
-                        reason = ConstraintViolationExceptionReason.UNKNOWN,
-                        dbMessage = errorMsg.message,
-                        details = errorMsg.detail,
-                        where = errorMsg.whereContext,
-                        sqlState = state,
-                        schema = errorMsg.schema,
-                        table = errorMsg.table,
-                        column = errorMsg.column,
-                        constraint = errorMsg.constraint
-                    )
+                    ConstraintViolationException(ConstraintViolationExceptionReason.UNKNOWN, state, serverErrorMessage)
                 } else {
-                    ConcurrencyException(reason, dbMessage = "Message: $message", sqlState = state)
+                    ConcurrencyException(reason, state, serverErrorMessage)
                 }
             }
 
             // Class 42 — Syntax Error or Access Rule Violation
             state.startsWith("42") -> {
                 if (state == "42501") {
-                    PermissionDeniedException(
-                        dbMessage = message,
-                        sqlState = state,
-                        schema = errorMsg.schema,
-                        table = errorMsg.table,
-                        column = errorMsg.column,
-                        datatype = errorMsg.datatype,
-                        routine = errorMsg.routine
-                    )
+                    PermissionDeniedException(state, serverErrorMessage)
                 } else {
                     val reason = when (state) {
                         "42601", "42602", "42622", "42939", "42000" -> StatementExceptionReason.SYNTAX_ERROR
@@ -144,33 +123,44 @@ internal object ExceptionTranslator {
                     }
                     StatementException(
                         reason,
-                        details = message,
+                        details = serverErrorMessage.message,
                         position = errorMsg.position,
-                        sqlState = state
+                        sqlState = state,
+                        serverErrorMessage = ServerErrorMessage.from(errorMsg)
                     )
                 }
             }
 
-            state.startsWith("54") ->
-                StatementException(
-                    StatementExceptionReason.SYNTAX_ERROR,
-                    details = message,
-                    position = errorMsg.position,
-                    sqlState = state
-                )
+            state.startsWith("54") -> StatementException(
+                StatementExceptionReason.SYNTAX_ERROR,
+                details = serverErrorMessage.message,
+                position = errorMsg.position,
+                sqlState = state,
+                serverErrorMessage = ServerErrorMessage.from(errorMsg)
+            )
 
             state.startsWith("55") -> {
                 if (state == "55P03") { // lock_not_available
-                    ConcurrencyException(ConcurrencyExceptionReason.LOCK_NOT_AVAILABLE, dbMessage = message, sqlState = state)
+                    ConcurrencyException(ConcurrencyExceptionReason.LOCK_NOT_AVAILABLE, state, serverErrorMessage)
                 } else {
-                    DatabaseSystemException("Database object state error ($state): $message", sqlState = state)
+                    DatabaseSystemException(
+                        "Database object state error ($state): ${serverErrorMessage.message}",
+                        sqlState = state,
+                        serverErrorMessage = serverErrorMessage
+                    )
                 }
             }
 
-            state == "57014" -> ExecutionAbortedException(ExecutionAbortedExceptionReason.QUERY_CANCELED, dbMessage = message, sqlState = state)
-            state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
-                DatabaseSystemException("Database system error ($state): $message", sqlState = state)
-                
+            state == "57014" -> ExecutionAbortedException(
+                ExecutionAbortedExceptionReason.QUERY_CANCELED,
+                sqlState = state,
+                serverErrorMessage = serverErrorMessage
+            )
+
+            state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") -> DatabaseSystemException(
+                "Database system error ($state): ${serverErrorMessage.message}", sqlState = state, serverErrorMessage = serverErrorMessage
+            )
+
             // Class P0 — PL/pgSQL Error
             state.startsWith("P0") -> {
                 val reason = when (state) {
@@ -181,16 +171,15 @@ internal object ExceptionTranslator {
                     else -> RoutineExecutionExceptionReason.UNKNOWN
                 }
                 RoutineExecutionException(
-                    reason = reason, 
-                    dbMessage = message,
-                    dbDetail = errorMsg.detail,
-                    hint = errorMsg.hint,
-                    whereContext = errorMsg.whereContext,
-                    sqlState = state
+                    reason = reason,
+                    sqlState = state,
+                    serverErrorMessage = serverErrorMessage
                 )
             }
 
-            else -> OctaviusException("Unknown database error ($state): $message", sqlState = state)
+            else -> OctaviusException(
+                "Unknown database error ($state): ${serverErrorMessage.message}", sqlState = state, serverErrorMessage = serverErrorMessage
+            )
         }
     }
 }

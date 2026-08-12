@@ -33,8 +33,8 @@ companion object {
             }
             logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.RAISE_EXCEPTION, exception.reason)
-            assertNotNull(exception.whereContext)
-            assertTrue(exception.whereContext.isNotEmpty())
+            assertNotNull(exception.where)
+            assertTrue(exception.where!!.isNotEmpty())
         }
     }
 
@@ -54,8 +54,8 @@ companion object {
             }
             logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.NO_DATA_FOUND, exception.reason)
-            assertNotNull(exception.whereContext)
-            assertTrue(exception.whereContext.isNotEmpty())
+            assertNotNull(exception.where)
+            assertTrue(exception.where!!.isNotEmpty())
         }
     }
 
@@ -75,8 +75,8 @@ companion object {
             }
             logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.TOO_MANY_ROWS, exception.reason)
-            assertNotNull(exception.whereContext)
-            assertTrue(exception.whereContext.isNotEmpty())
+            assertNotNull(exception.where)
+            assertTrue(exception.where!!.isNotEmpty())
         }
     }
 
@@ -94,8 +94,8 @@ companion object {
             }
             logger.error(exception) { "" }
             assertEquals(RoutineExecutionExceptionReason.ASSERT_FAILURE, exception.reason)
-            assertNotNull(exception.whereContext)
-            assertTrue(exception.whereContext.isNotEmpty())
+            assertNotNull(exception.where)
+            assertTrue(exception.where!!.isNotEmpty())
         }
     }
 }

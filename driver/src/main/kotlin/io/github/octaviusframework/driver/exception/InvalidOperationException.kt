@@ -36,9 +36,7 @@ enum class InvalidOperationExceptionReason {
 class InvalidOperationException(
     val reason: InvalidOperationExceptionReason,
     val details: String? = null,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("INVALID_OPERATION_EXCEPTION:${reason.name}", cause, sqlState) {
+) : OctaviusException("INVALID_OPERATION_EXCEPTION:${reason.name}") {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")

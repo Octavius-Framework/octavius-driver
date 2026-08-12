@@ -30,23 +30,26 @@ enum class RoutineExecutionExceptionReason {
  * @property dbMessage Additional context or hints provided by the database regarding the error.
  * @property dbDetail Explicit DETAIL field provided by PostgreSQL.
  * @property hint Explicit HINT field provided by PostgreSQL.
- * @property whereContext Call stack or context (WHERE field) of the PL/pgSQL execution.
+ * @property where Call stack or context (WHERE field) of the PL/pgSQL execution.
  */
 class RoutineExecutionException(
     val reason: RoutineExecutionExceptionReason,
-    val dbMessage: String? = null,
-    val dbDetail: String? = null,
-    val hint: String? = null,
-    val whereContext: String? = null,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("ROUTINE_EXECUTION_EXCEPTION:${reason.name}", cause, sqlState) {
+    sqlState: String,
+    serverErrorMessage: ServerErrorMessage
+) : OctaviusException("ROUTINE_EXECUTION_EXCEPTION:${reason.name}", sqlState, serverErrorMessage) {
+
+    val dbMessage: String get() = serverErrorMessage!!.message
+    val dbDetail: String? get() = serverErrorMessage!!.detail
+    val hint: String? get() = serverErrorMessage!!.hint
+    val where: String? get() = serverErrorMessage!!.where
+
+
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
-        if (dbMessage != null) appendLine("DB Message: $dbMessage")
+        appendLine("DB Message: $dbMessage")
         if (dbDetail != null) appendLine("DB Detail: $dbDetail")
         if (hint != null) appendLine("Hint: $hint")
-        if (whereContext != null) appendLine("Where: $whereContext")
+        if (where != null) appendLine("Where: $where")
     }
 }
 

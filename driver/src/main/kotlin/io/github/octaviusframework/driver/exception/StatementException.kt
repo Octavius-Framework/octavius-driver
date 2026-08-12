@@ -33,9 +33,9 @@ class StatementException(
     val reason: StatementExceptionReason,
     val details: String? = null,
     val position: Int? = null,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("STATEMENT_EXCEPTION:${reason.name}", cause, sqlState) {
+    sqlState: String? = null,
+    serverErrorMessage: ServerErrorMessage? = null
+) : OctaviusException("STATEMENT_EXCEPTION:${reason.name}", sqlState, serverErrorMessage) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")

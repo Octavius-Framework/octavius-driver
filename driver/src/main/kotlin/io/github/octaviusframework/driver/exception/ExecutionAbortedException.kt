@@ -15,14 +15,13 @@ enum class ExecutionAbortedExceptionReason {
  */
 class ExecutionAbortedException(
     val reason: ExecutionAbortedExceptionReason,
-    val dbMessage: String? = null,
-    cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("EXECUTION_ABORTED_EXCEPTION:${reason.name}", cause, sqlState) {
+    sqlState: String,
+    serverErrorMessage: ServerErrorMessage
+) : OctaviusException("EXECUTION_ABORTED_EXCEPTION:${reason.name}", sqlState, serverErrorMessage) {
     
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
-        if (dbMessage != null) appendLine("DB message: $dbMessage")
+        if (serverErrorMessage?.message != null) appendLine("DB message: ${serverErrorMessage.message}")
     }
 }
 

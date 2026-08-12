@@ -47,18 +47,21 @@ enum class ConstraintViolationExceptionReason {
  */
 class ConstraintViolationException(
     val reason: ConstraintViolationExceptionReason,
-    val dbMessage: String? = null,
-    val details: String? = null,
-    val where: String? = null,
-    sqlState: String? = null,
-    val schema: String? = null,
-    val table: String? = null,
-    val column: String? = null,
-    val constraint: String? = null
+    sqlState: String,
+    serverErrorMessage: ServerErrorMessage
 ) : OctaviusException(
     message = "CONSTRAINT_VIOLATION_EXCEPTION:${reason.name}",
-    sqlState = sqlState
+    sqlState = sqlState,
+    serverErrorMessage = serverErrorMessage
 ) {
+    val dbMessage: String get() = serverErrorMessage!!.message
+    val details: String? get() = serverErrorMessage!!.detail
+    val where: String? get() = serverErrorMessage!!.where
+    val schema: String? get() = serverErrorMessage!!.schema
+    val table: String? get() = serverErrorMessage!!.table
+    val column: String? get() = serverErrorMessage!!.column
+    val constraint: String? get() = serverErrorMessage?.constraint
+
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (dbMessage != null) appendLine("Database Message: $dbMessage")

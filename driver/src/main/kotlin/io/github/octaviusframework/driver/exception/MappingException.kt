@@ -26,14 +26,13 @@ enum class MappingExceptionReason {
  */
 class MappingException(
     val reason: MappingExceptionReason,
-    val details: String? = null,
+    val details: String,
     cause: Throwable? = null,
-    sqlState: String? = null,
     val path: MutableList<String> = mutableListOf()
-) : OctaviusException("MAPPING_EXCEPTION:${reason.name}", cause, sqlState) {
+) : OctaviusException("MAPPING_EXCEPTION:${reason.name}", cause = cause) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
-        if (details != null) appendLine("Details: $details")
+        appendLine("Details: $details")
         if (path.isNotEmpty()) {
             appendLine("Path: ${path.asReversed().joinToString(" -> ")}")
         }

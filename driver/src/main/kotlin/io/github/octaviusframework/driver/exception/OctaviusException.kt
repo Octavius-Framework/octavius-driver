@@ -5,8 +5,9 @@ package io.github.octaviusframework.driver.exception
  */
 open class OctaviusException(
     message: String,
-    cause: Throwable? = null,
-    val sqlState: String? = null
+    val sqlState: String? = null,
+    val serverErrorMessage: ServerErrorMessage? = null,
+    cause: Throwable? = null
 ) : RuntimeException(message, cause) {
     
     var queryContext: QueryContext? = null

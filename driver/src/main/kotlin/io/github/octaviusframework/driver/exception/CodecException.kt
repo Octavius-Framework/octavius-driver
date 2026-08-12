@@ -24,8 +24,8 @@ class CodecException(
     val schema: String = "",
     val oid: Int? = null,
     val kotlinClass: KClass<*>? = null,
-    cause: Throwable? = null
-) : OctaviusException("CODEC_EXCEPTION:${action.name}", cause) {
+    cause: Exception
+) : OctaviusException("CODEC_EXCEPTION:${action.name}", cause = cause) {
 
     override fun getDetailedMessage(): String = buildString {
         val actionStr = if (action == CodecAction.ENCODING) "encode" else "decode"

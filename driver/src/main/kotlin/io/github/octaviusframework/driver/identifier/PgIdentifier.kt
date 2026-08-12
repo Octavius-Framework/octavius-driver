@@ -21,7 +21,7 @@ fun String.quoteAsPgIdentifier(): String {
             if (c == '\u0000') {
                 throw StatementException(
                     StatementExceptionReason.SYNTAX_ERROR,
-                    cause = IllegalArgumentException("PostgreSQL identifiers cannot contain the NUL (\\0) character.")
+                    details = "PostgreSQL identifiers cannot contain the NUL (\\0) character."
                 )
             }
             if (c == '"') append('"')

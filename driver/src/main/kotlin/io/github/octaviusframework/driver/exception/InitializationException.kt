@@ -37,8 +37,9 @@ class InitializationException(
     val reason: InitializationExceptionReason,
     val details: String? = null,
     cause: Throwable? = null,
-    sqlState: String? = null
-) : OctaviusException("INITIALIZATION_EXCEPTION:${reason.name}", cause, sqlState) {
+    sqlState: String? = null,
+    serverErrorMessage: ServerErrorMessage? = null
+) : OctaviusException("INITIALIZATION_EXCEPTION:${reason.name}", cause = cause, sqlState = sqlState, serverErrorMessage = serverErrorMessage) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         if (details != null) appendLine("Details: $details")
