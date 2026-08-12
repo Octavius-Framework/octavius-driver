@@ -5,6 +5,8 @@ import org.springframework.dao.DataAccessException
 
 /**
  * Spring-specific DataAccessException wrapper for Octavius exceptions.
+ *
+ * @property octaviusException The original [OctaviusException] that is being wrapped.
  */
 class OctaviusDataAccessException(
     val octaviusException: OctaviusException

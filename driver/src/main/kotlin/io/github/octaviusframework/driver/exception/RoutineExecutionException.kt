@@ -33,6 +33,8 @@ enum class RoutineExecutionExceptionReason {
  * @property dbDetail Explicit DETAIL field provided by PostgreSQL.
  * @property hint Explicit HINT field provided by PostgreSQL.
  * @property where Call stack or context (WHERE field) of the PL/pgSQL execution.
+ * @param sqlState The SQL state code returned by the database.
+ * @param serverErrorMessage The original error message from the database server.
  */
 class RoutineExecutionException(
     val reason: RoutineExecutionExceptionReason,

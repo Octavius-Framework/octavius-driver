@@ -34,6 +34,9 @@ enum class InitializationExceptionReason {
  *
  * @property reason The specific type of initialization failure.
  * @property details Additional, human-readable details about the failure.
+ * @param cause The underlying exception that caused this failure, if any.
+ * @param sqlState The SQL state code returned by the database, if available.
+ * @param serverErrorMessage The original error message from the database server, if available.
  */
 class InitializationException(
     val reason: InitializationExceptionReason,

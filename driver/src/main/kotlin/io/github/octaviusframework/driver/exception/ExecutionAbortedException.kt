@@ -14,6 +14,10 @@ enum class ExecutionAbortedExceptionReason {
 
 /**
  * Exception thrown when a query execution is aborted by the database engine (e.g. due to a statement timeout or manual cancel request).
+ *
+ * @property reason The reason the execution was aborted.
+ * @param sqlState The SQL state code returned by the database.
+ * @param serverErrorMessage The original error message from the database server.
  */
 class ExecutionAbortedException(
     val reason: ExecutionAbortedExceptionReason,

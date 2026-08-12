@@ -23,6 +23,7 @@ enum class MappingExceptionReason {
  * @property reason The reason the mapping failed.
  * @property details Additional details about the mapping failure.
  * @property path The path in the nested object structure where the mapping error occurred.
+ * @param cause The underlying exception that caused this failure, if any.
  */
 class MappingException(
     val reason: MappingExceptionReason,

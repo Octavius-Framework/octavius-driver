@@ -16,6 +16,7 @@ enum class CodecAction { ENCODING, DECODING }
  * @property schema The PostgreSQL type schema associated with the operation, if known.
  * @property oid The PostgreSQL OID associated with the operation, if known.
  * @property kotlinClass The Kotlin class associated with the operation, if known.
+ * @param cause The underlying exception that caused this failure.
  */
 class CodecException(
     val action: CodecAction,

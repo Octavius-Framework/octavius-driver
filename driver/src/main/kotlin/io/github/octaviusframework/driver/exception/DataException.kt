@@ -36,6 +36,10 @@ enum class DataExceptionReason {
  * Unlike syntax or definition errors, this occurs when the query structure is correct, 
  * but the runtime values (often parameters) cause an error. Examples include string truncation, 
  * numeric overflow, division by zero, or invalid text representation of a data type.
+ *
+ * @property reason The specific reason for the data error.
+ * @param sqlState The SQL state code returned by the database.
+ * @param serverErrorMessage The original error message from the database server.
  */
 class DataException(
     val reason: DataExceptionReason,

@@ -30,6 +30,8 @@ enum class StatementExceptionReason {
  * @property reason The categorized reason for the statement failure.
  * @property details Additional context or hints provided by the database regarding the error.
  * @property position The 1-based character position in the SQL string where the error occurred, if available.
+ * @param sqlState The SQL state code returned by the database, if available.
+ * @param serverErrorMessage The original error message from the database server, if available.
  */
 class StatementException(
     val reason: StatementExceptionReason,

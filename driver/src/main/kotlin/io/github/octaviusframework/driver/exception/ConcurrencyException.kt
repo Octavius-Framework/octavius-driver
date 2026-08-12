@@ -18,6 +18,10 @@ enum class ConcurrencyExceptionReason {
 
 /**
  * Exception thrown when a transaction fails due to concurrency issues like deadlocks, lock unavailability, or serialization failures.
+ *
+ * @property reason The specific type of concurrency issue.
+ * @param sqlState The SQL state code returned by the database.
+ * @param serverErrorMessage The original error message from the database server.
  */
 class ConcurrencyException(
     val reason: ConcurrencyExceptionReason,

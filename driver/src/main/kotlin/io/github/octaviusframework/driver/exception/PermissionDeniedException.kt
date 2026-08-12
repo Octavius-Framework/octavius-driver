@@ -13,6 +13,8 @@ import io.github.octaviusframework.driver.message.ServerErrorMessage
  * @property column The name of the column for which permission was denied, if applicable.
  * @property datatype The name of the datatype for which permission was denied, if applicable.
  * @property routine The name of the routine (function/procedure) for which permission was denied, if applicable.
+ * @param sqlState The SQL state code returned by the database.
+ * @param serverErrorMessage The original error message from the database server.
  */
 class PermissionDeniedException(
     sqlState: String,

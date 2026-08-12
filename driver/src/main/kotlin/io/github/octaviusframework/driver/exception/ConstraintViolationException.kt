@@ -46,6 +46,8 @@ enum class ConstraintViolationExceptionReason {
  * @property table The name of the table where the constraint violation occurred, if available.
  * @property column The name of the column associated with the constraint violation, if available.
  * @property constraint The specific name of the constraint that was violated, if available.
+ * @param sqlState The SQL state code returned by the database.
+ * @param serverErrorMessage The original error message from the database server.
  */
 class ConstraintViolationException(
     val reason: ConstraintViolationExceptionReason,
