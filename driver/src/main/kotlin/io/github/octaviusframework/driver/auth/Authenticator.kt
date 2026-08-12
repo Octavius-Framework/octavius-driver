@@ -144,6 +144,13 @@ internal class Authenticator(private val stream: PgStream) {
                     throw ExceptionTranslator.translate(msg)
                 }
 
+                is NegotiateProtocolVersionMessage -> {
+                    throw InitializationException(
+                        InitializationExceptionReason.UNSUPPORTED_SERVER_VERSION,
+                        details = "Server does not support the requested protocol version 3.2. Highest minor version supported by this server is 3.${msg.newestMinorVersion}."
+                    )
+                }
+
                 is BackendKeyDataMessage -> {
                     stream.processId = msg.processId
                     stream.secretKey = msg.secretKey

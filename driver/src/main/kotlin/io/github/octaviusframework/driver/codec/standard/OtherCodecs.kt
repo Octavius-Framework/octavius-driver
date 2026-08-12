@@ -57,3 +57,4 @@ internal object UuidCodec : TypeCodec<Uuid> {
         }
     }
 }
+

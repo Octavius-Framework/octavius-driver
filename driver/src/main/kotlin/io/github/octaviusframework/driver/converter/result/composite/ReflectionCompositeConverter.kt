@@ -19,12 +19,11 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
     override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         val kClass = expectedType.classifier as? KClass<*> ?: return false
         if (kClass == Any::class) {
-            val registry = context.typeManager.registry
-            return registry.converterRegistry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
-                   registry.converterRegistry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
+            return context.typeManager.converterRegistry.compositeClassByName.containsKey(QualifiedName(sourceType.schema, sourceType.name)) ||
+                    context.typeManager.converterRegistry.compositeClassByName.containsKey(QualifiedName("", sourceType.name))
         }
         if (!kClass.isData) return false
-        return context.typeManager.registry.converterRegistry.registeredComposites.containsKey(kClass)
+        return context.typeManager.converterRegistry.registeredComposites.containsKey(kClass)
     }
 
     override fun convert(source: PgComposite, expectedType: KType, sourceType: PgType, context: DeserializationContext): Any {
@@ -32,15 +31,14 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         
         @Suppress("UNCHECKED_CAST")
         val kClass = if (expectedClass == Any::class) {
-            val registry = context.typeManager.registry
-            registry.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)] 
-                ?: registry.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
+            context.typeManager.converterRegistry.compositeClassByName[QualifiedName(sourceType.schema, sourceType.name)]
+                ?: context.typeManager.converterRegistry.compositeClassByName[QualifiedName("", sourceType.name)]
                 ?: error("Missing composite registration for type")
         } else {
             expectedClass
         } as KClass<Any>
 
-        val registration = context.typeManager.registry.converterRegistry.registeredComposites[kClass]
+        val registration = context.typeManager.converterRegistry.registeredComposites[kClass]
             ?: error("Missing composite registration for class")
 
         val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
@@ -58,8 +56,6 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
             if (index != -1) {
                 val rawValue = source.get<Any?>(index)
-                val type = source.getAttributeType(index)
-
                 if (rawValue == null) {
                     if (!meta.type.isMarkedNullable && !param.isOptional) {
                         throw MappingException(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, "Null value for non-nullable attribute '$columnName' for class $kClass", path = mutableListOf(columnName))
@@ -68,7 +64,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
                         constructorArgs[param] = null
                     }
                 } else {
-                    val convertedValue = context.convert<Any>(rawValue, meta.type, type, columnName)
+                    val convertedValue = context.convert<Any>(rawValue, meta.type, source.getAttributeOid(index), columnName)
                     constructorArgs[param] = convertedValue
                 }
             } else {

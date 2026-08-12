@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.converter
 
-import io.github.octaviusframework.driver.annotation.MapKey
+import io.github.octaviusframework.driver.annotation.PgName
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
@@ -12,7 +12,6 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.registry.IntObjectMap
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
@@ -23,7 +22,7 @@ class ReflectionCompositeMappingTest {
     data class Person(
         val firstName: String,
         val lastName: String,
-        @MapKey("age_in_years") val age: Int
+        @PgName("age_in_years") val age: Int
     )
 
     val type = PgType.Composite(
@@ -50,7 +49,7 @@ class ReflectionCompositeMappingTest {
         pgConvention: CaseConvention,
         kotlinConvention: CaseConvention
     ): PgType.Composite {
-        dummyRegistry.converterRegistry.registerAutoCompositeType<Person>("person_type", "public", pgConvention, kotlinConvention)
+        dummyTypeManager.registerAutoComposite<Person>("person_type", "public", pgConvention, kotlinConvention)
         return type
     }
 
@@ -58,7 +57,7 @@ class ReflectionCompositeMappingTest {
         val fields = type.attributes.map { (key, _) ->
             attributes[key]
         }.toTypedArray()
-        return PgComposite(type, fields, dummyRegistry)
+        return PgComposite(type, fields)
     }
 
     @Test

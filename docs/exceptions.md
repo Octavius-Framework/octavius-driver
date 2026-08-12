@@ -131,18 +131,25 @@ Every `OctaviusException` can carry a `QueryContext`. Once you've caught the err
 | `CONNECTION_CLOSED`               | Operation attempted on an already closed connection. |
 | `CONNECTION_ABORTED`              | Connection explicitly aborted by the client.         |
 
-### 6. `TransactionException`
-**Thrown when:** a transaction fails due to environment or concurrency issues.
+### 6. `ConcurrencyException`
+**Thrown when:** a transaction fails due to concurrency issues.
 
-| Reason (`TransactionExceptionReason`) | Description                                                |
+| Reason (`ConcurrencyExceptionReason`) | Description                                                |
 |---------------------------------------|------------------------------------------------------------|
-| `TIMEOUT`                             | Transaction or statement timed out.                        |
 | `LOCK_NOT_AVAILABLE`                  | Required lock could not be obtained (`NOWAIT`).            |
 | `DEADLOCK_DETECTED`                   | Transaction deadlock detected.                             |
 | `SERIALIZATION_FAILURE`               | Transaction failed due to a serialization/isolation issue. |
-| `UNKNOWN`                             | Unknown transaction exception.                             |
+| `UNKNOWN`                             | Unknown concurrency exception.                             |
 
-### 7. `RoutineExecutionException`
+### 7. `ExecutionAbortedException`
+**Thrown when:** query execution is aborted by the server or canceled by the user/timeout.
+
+| Reason (`ExecutionAbortedExceptionReason`) | Description                                                |
+|----------------------------------------|------------------------------------------------------------|
+| `TRANSACTION_TIMEOUT`                  | Session or transaction timed out (`25P03`, `25P04`).       |
+| `QUERY_CANCELED`                       | Query canceled manually or via statement timeout (`57014`).|
+
+### 8. `RoutineExecutionException`
 **Thrown when:** an error occurs inside a PL/pgSQL routine (e.g. explicit `RAISE EXCEPTION` or a failed assertion).
 **Context / properties:** `dbDetail`, `hint`, `whereContext` (stack trace inside the procedure).
 
@@ -154,11 +161,11 @@ Every `OctaviusException` can carry a `QueryContext`. Once you've caught the err
 | `ASSERT_FAILURE`                           | Assertion failed during execution.                                           |
 | `UNKNOWN`                                  | Unknown PL/pgSQL execution error.                                            |
 
-### 8. `PermissionDeniedException`
+### 9. `PermissionDeniedException`
 **Thrown when:** the database user lacks the privileges to execute an action or access an object.
 **Context / properties:** `schema`, `table`, `column`, `routine`, `datatype` — identifies exactly what access was denied.
 
-### 9. `InvalidOperationException`
+### 10. `InvalidOperationException`
 **Thrown when:** the driver is asked to do something not allowed in its current state.
 
 | Reason (`InvalidOperationExceptionReason`) | Description                                                                          |
@@ -173,7 +180,7 @@ Every `OctaviusException` can carry a `QueryContext`. Once you've caught the err
 | `NULL_SQL`                                 | SQL string cannot be null.                                                           |
 | `UNEXPECTED_RESULT`                        | Execution returned rows when none were expected.                                     |
 
-### 10. `TypeException` & `CodecException`
+### 11. `TypeException` & `CodecException`
 **Thrown when:** the driver runs into trouble resolving PostgreSQL types or converting data.
 **Context (`CodecException`):** `action` (`ENCODING` / `DECODING`), `value`, `pgType`, `kotlinClass`.
 
@@ -190,7 +197,7 @@ Every `OctaviusException` can carry a `QueryContext`. Once you've caught the err
 | `ENCODING`             | Codec failed to encode the Kotlin object into PostgreSQL representation. |
 | `DECODING`             | Codec failed to decode the PostgreSQL data into a Kotlin object.         |
 
-### 11. `MappingException`
+### 12. `MappingException`
 **Thrown when:** a type conversion or data mapping operation fails.
 **Context / properties:** `path` — the object tree path where the mapping failed.
 
@@ -201,6 +208,6 @@ Every `OctaviusException` can carry a `QueryContext`. Once you've caught the err
 | `NO_CONVERTER_FOUND`              | No converter found for the specified types.                          |
 | `CONVERSION_ERROR`                | Error during type casting or conversion (e.g., `Int` to `String`).   |
 
-### 12. `DatabaseSystemException`
+### 13. `DatabaseSystemException`
 **Thrown when:** a generic database system error occurs (e.g. out of memory, disk full).
 **Context / properties:** `errorMessage`.

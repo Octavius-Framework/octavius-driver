@@ -10,4 +10,4 @@ package io.github.octaviusframework.driver.annotation
  */
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class MapKey(val name: String)
+annotation class PgName(val name: String)

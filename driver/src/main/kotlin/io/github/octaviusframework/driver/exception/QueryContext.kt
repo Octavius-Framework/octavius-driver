@@ -11,7 +11,6 @@ data class QueryContext(
     val parameters: Map<String, Any?>,
     val dbSql: String? = null,
     val dbParameters: List<Any?>? = null,
-    val transactionStepIndex: Int? = null
 ) {
     override fun toString(): String {
         val width = 80
@@ -25,11 +24,6 @@ data class QueryContext(
             appendLine(line)
             appendLine("DATABASE EXECUTION CONTEXT")
             appendLine(line)
-
-            if (transactionStepIndex != null) {
-                appendLine("Transaction Step Index: $transactionStepIndex")
-                appendLine(thinLine)
-            }
 
             appendLine("HIGH-LEVEL SQL:")
             appendLine(sql.trim())
@@ -51,6 +45,4 @@ data class QueryContext(
             appendLine(line)
         }
     }
-
-    fun withTransactionStep(stepIndex: Int) = this.copy(transactionStepIndex = stepIndex)
 }

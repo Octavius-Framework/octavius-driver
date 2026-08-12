@@ -26,15 +26,15 @@ class MappingExceptionTest {
             1 to PgType.Base(1, "dummy", "public"),
             2 to PgType.Array(2, "dummy_array", "public", 1)
         ))
-        converterRegistry.registerAutoCompositeType<Address>("address")
-        converterRegistry.registerAutoCompositeType<Person>("person")
-        converterRegistry.registerAutoCompositeType<Company>("company")
+        converterRegistry.registerAutoCompositeType(Address::class, "address")
+        converterRegistry.registerAutoCompositeType(Person::class, "person")
+        converterRegistry.registerAutoCompositeType(Company::class, "company")
     }
 
     private fun createComposite(attributes: Map<String, Any?>): PgComposite {
         val type = PgType.Composite(1, "dummy", "public", LinkedHashMap(attributes.keys.associateWith { 1 }))
         val fields = attributes.values.toTypedArray()
-        return PgComposite(type, fields, dummyRegistry)
+        return PgComposite(type, fields)
     }
 
     private fun createArray(elements: List<Any?>): PgArray {

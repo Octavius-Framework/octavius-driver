@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.converter
 
-import io.github.octaviusframework.driver.annotation.MapKey
+import io.github.octaviusframework.driver.annotation.PgName
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
 import java.util.concurrent.ConcurrentHashMap
@@ -61,7 +61,7 @@ object ReflectionCompositeCache {
             val constructorProperties = constructor.parameters.map { param ->
                 val property = propertiesByName[param.name]!!
 
-                val keyName = property.findAnnotation<MapKey>()?.name
+                val keyName = property.findAnnotation<PgName>()?.name
                     ?: CaseConverter.convert(param.name!!, kotlinConvention, pgConvention)
 
                 ConstructorParamMetadata(

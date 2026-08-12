@@ -23,6 +23,8 @@ internal fun <T : Any> TypeCodec<T>.decodeSafely(data: ByteArray, offset: Int, l
         throw CodecException(
             action = CodecAction.DECODING,
             value = valueToLog,
+            name = this.pgTypeName,
+            schema = this.pgSchema,
             oid = this.oid,
             kotlinClass = this.kotlinClass,
             cause = e
@@ -42,6 +44,8 @@ internal fun <T : Any> TypeCodec<T>.encodeSafely(value: T, writer: PgByteWriter)
         throw CodecException(
             action = CodecAction.ENCODING,
             value = value,
+            name = this.pgTypeName,
+            schema = this.pgSchema,
             oid = this.oid,
             kotlinClass = this.kotlinClass,
             cause = e

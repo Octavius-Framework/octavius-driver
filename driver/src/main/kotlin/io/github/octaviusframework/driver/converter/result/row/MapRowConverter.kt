@@ -24,8 +24,7 @@ class MapRowConverter : ResultConverter<Row, Map<String, Any?>> {
         for ((index, columnName) in source.columnNames.withIndex()) {
             val rawValue = source.getRaw(index)
             val oid = source.getOid(index)
-            val type = context.typeManager.typeDictionary.getPgType(oid)
-            result[columnName] = if (rawValue == null) null else context.convert<Any>(rawValue, valueType, type, columnName)
+            result[columnName] = if (rawValue == null) null else context.convert<Any>(rawValue, valueType, oid, columnName)
         }
         return result
     }

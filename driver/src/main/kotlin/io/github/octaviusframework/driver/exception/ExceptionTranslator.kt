@@ -8,7 +8,7 @@ import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
  *
  * This component categorizes PostgreSQL error messages based on their `SQLSTATE`
  * error codes, providing developers with actionable, high-level information.
- * Most of the specific exceptions (ConnectionException, TransactionException, etc.) 
+ * Most of the specific exceptions (ConnectionException, ConcurrencyException, etc.) 
  * are commented out or mapped to generic OctaviusException as placeholders for future implementation.
  */
 object ExceptionTranslator {
@@ -85,7 +85,7 @@ object ExceptionTranslator {
             // Class 25 — Invalid Transaction State
             state.startsWith("25") -> {
                 if (state == "25P03" || state == "25P04") { // idle_in_transaction_session_timeout or transaction_timeout
-                    TransactionException(TransactionExceptionReason.TIMEOUT, dbMessage = "Message: $message", sqlState = state)
+                    ExecutionAbortedException(ExecutionAbortedExceptionReason.TRANSACTION_TIMEOUT, dbMessage = "Message: $message", sqlState = state)
                 } else {
                     StatementException(
                         StatementExceptionReason.INVALID_TRANSACTION_STATE,
@@ -99,9 +99,9 @@ object ExceptionTranslator {
             // Class 40 — Transaction Rollback
             state.startsWith("40") -> {
                 val reason = when (state) {
-                    "40001" -> TransactionExceptionReason.SERIALIZATION_FAILURE
-                    "40P01" -> TransactionExceptionReason.DEADLOCK_DETECTED
-                    else -> TransactionExceptionReason.UNKNOWN
+                    "40001" -> ConcurrencyExceptionReason.SERIALIZATION_FAILURE
+                    "40P01" -> ConcurrencyExceptionReason.DEADLOCK_DETECTED
+                    else -> ConcurrencyExceptionReason.UNKNOWN
                 }
 
                 if (state == "40002") {
@@ -117,7 +117,7 @@ object ExceptionTranslator {
                         constraint = errorMsg.constraint
                     )
                 } else {
-                    TransactionException(reason, dbMessage = "Message: $message", sqlState = state)
+                    ConcurrencyException(reason, dbMessage = "Message: $message", sqlState = state)
                 }
             }
 
@@ -161,13 +161,13 @@ object ExceptionTranslator {
 
             state.startsWith("55") -> {
                 if (state == "55P03") { // lock_not_available
-                    TransactionException(TransactionExceptionReason.LOCK_NOT_AVAILABLE, dbMessage = message, sqlState = state)
+                    ConcurrencyException(ConcurrencyExceptionReason.LOCK_NOT_AVAILABLE, dbMessage = message, sqlState = state)
                 } else {
                     DatabaseSystemException("Database object state error ($state): $message", sqlState = state)
                 }
             }
 
-            state == "57014" -> TransactionException(TransactionExceptionReason.TIMEOUT, dbMessage = message, sqlState = state)
+            state == "57014" -> ExecutionAbortedException(ExecutionAbortedExceptionReason.QUERY_CANCELED, dbMessage = message, sqlState = state)
             state.startsWith("57") || state.startsWith("53") || state.startsWith("58") || state.startsWith("XX") ->
                 DatabaseSystemException("Database system error ($state): $message", sqlState = state)
                 

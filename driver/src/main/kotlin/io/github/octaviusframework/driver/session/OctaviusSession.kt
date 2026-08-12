@@ -97,9 +97,8 @@ interface OctaviusSessionOperations {
 
     /**
      * The transaction isolation level for this session.
-     * Maps to constants defined in `java.sql.Connection`.
      */
-    var transactionIsolationLevel: Int
+    var transactionIsolationLevel: TransactionIsolationLevel
 
     /**
      * Indicates whether this session is currently in read-only mode.
@@ -204,6 +203,29 @@ enum class TransactionState {
             'T' -> IN_TRANSACTION
             'E' -> FAILED
             else -> error("Unknown transaction state: $c")
+        }
+    }
+}
+
+/**
+ * Defines the available transaction isolation levels.
+ */
+enum class TransactionIsolationLevel(val jdbcValue: Int) {
+    READ_UNCOMMITTED(1),
+    READ_COMMITTED(2),
+    REPEATABLE_READ(4),
+    SERIALIZABLE(8);
+
+    companion object {
+        /**
+         * Maps a JDBC isolation level integer to the corresponding [TransactionIsolationLevel].
+         *
+         * @param level The JDBC isolation level constant.
+         * @return The matching [TransactionIsolationLevel].
+         * @throws IllegalArgumentException if the provided level does not match any known level.
+         */
+        fun fromJdbcValue(level: Int): TransactionIsolationLevel {
+            return entries.first { it.jdbcValue == level }
         }
     }
 }

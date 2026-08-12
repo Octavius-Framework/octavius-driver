@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertInstanceOf
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
@@ -13,6 +14,7 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Lazy
 import org.springframework.transaction.annotation.EnableTransactionManagement
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.annotation.Propagation
 
@@ -94,6 +96,30 @@ class OctaviusSpringIntegrationTest {
         assertTrue(ex.octaviusException is ConstraintViolationException)
         assertEquals("23505", (ex.octaviusException as ConstraintViolationException).sqlState) // unique_violation
     }
+
+    @Test
+    fun `should support read only transactions`() {
+        testService.createTable()
+        
+        try {
+            testService.insertReadOnly()
+        } catch (e: OctaviusDataAccessException) {
+            assertInstanceOf<StatementException>(e.octaviusException)
+        }
+        
+        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        assertEquals(0L, count) 
+    }
+
+    @Test
+    fun `should support serializable isolation level`() {
+        testService.createTable()
+        
+        testService.insertSerializable()
+        
+        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        assertEquals(1L, count)
+    }
 }
 
 @TestConfiguration
@@ -157,5 +183,15 @@ open class TestService(private val octaviusTemplate: OctaviusTemplate) {
     open fun nestedRollback() {
         octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('nested')").execute() }
         throw RuntimeException("Nested rollback")
+    }
+
+    @Transactional(readOnly = true)
+    open fun insertReadOnly() {
+        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('readonly')").execute() }
+    }
+
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    open fun insertSerializable() {
+        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('serializable')").execute() }
     }
 }

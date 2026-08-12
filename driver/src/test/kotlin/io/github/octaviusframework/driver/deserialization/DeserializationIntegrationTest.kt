@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.deserialization
 
-import io.github.octaviusframework.driver.annotation.MapKey
+import io.github.octaviusframework.driver.annotation.PgName
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
@@ -164,9 +164,8 @@ class DeserializationIntegrationTest {
                 ): TestUserData {
                     val code = source.get<String>("code")
                     val statusRaw = source.get<Any?>("status")
-                    val statusType = source.typeRegistry.dictionary.getPgType(source.type.attributes["status"]!!)
                     val status = if (statusRaw != null) {
-                        context.convert(statusRaw, typeOf<TestStatus>(), statusType)
+                        context.convert(statusRaw, typeOf<TestStatus>(), source.getAttributeOid("status"))
                     } else {
                         TestStatus.UNKNOWN
                     }
@@ -266,8 +265,8 @@ class DeserializationIntegrationTest {
 
     data class MapKeyIntegrationUser(
         val id: Int,
-        @MapKey("full_name") val name: String,
-        @MapKey("home_address") val address: IntegrationAddress
+        @PgName("full_name") val name: String,
+        @PgName("home_address") val address: IntegrationAddress
     )
 
     @Test

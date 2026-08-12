@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.registry.TypeRegistry
+import kotlin.reflect.KClass
 
 /**
  * Manages the registration and resolution of PostgreSQL types, codecs, and converters.
@@ -19,7 +20,7 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
  * @property registry The underlying [TypeRegistry] used for storing type information.
  */
 class TypeManager(
-    val registry: TypeRegistry,
+    private val registry: TypeRegistry,
     private val searchPathProvider: () -> List<String> = { emptyList() }
 ) {
     /**
@@ -90,9 +91,31 @@ class TypeManager(
         pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
         kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
     ) {
-        val qName = typeName.takeIf { it.isNotEmpty() } 
-            ?: CaseConverter.convert(T::class.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER)
-        converterRegistry.registerAutoCompositeType<T>(qName, schema, pgConvention, kotlinConvention)
+        registerAutoComposite(T::class, typeName, schema, pgConvention, kotlinConvention)
+    }
+
+    /**
+     * Registers a composite type with the given configuration using reflection.
+     *
+     * @param kClass The Kotlin data class representing the composite type.
+     * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name.
+     * @param schema Optional schema where the type is defined.
+     * @param pgConvention Naming convention in the database.
+     * @param kotlinConvention Naming convention in Kotlin.
+     */
+    fun registerAutoComposite(
+        kClass: KClass<*>,
+        typeName: String = "",
+        schema: String = "",
+        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_LOWER,
+        kotlinConvention: CaseConvention = CaseConvention.CAMEL_CASE
+    ) {
+        val qName = typeName.takeIf { it.isNotEmpty() } ?: CaseConverter.convert(
+            kClass.simpleName!!,
+            CaseConvention.PASCAL_CASE,
+            CaseConvention.SNAKE_CASE_LOWER
+        )
+        converterRegistry.registerAutoCompositeType(kClass, qName, schema, pgConvention, kotlinConvention)
     }
 
     /**
@@ -110,8 +133,25 @@ class TypeManager(
         pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_UPPER,
         kotlinConvention: CaseConvention = CaseConvention.PASCAL_CASE
     ) {
-        val enumClass = T::class
+        registerEnum(T::class, typeName, schema, pgConvention, kotlinConvention)
+    }
 
+    /**
+     * Registers an enum type, creating both parameter and result converters.
+     *
+     * @param enumClass The Kotlin enum class.
+     * @param typeName Optional custom type name in the database.
+     * @param schema Optional schema where the enum is defined.
+     * @param pgConvention The naming convention used for enum values in PostgreSQL.
+     * @param kotlinConvention The naming convention used for enum values in Kotlin.
+     */
+    fun <T : Enum<T>> registerEnum(
+        enumClass: KClass<T>,
+        typeName: String = "",
+        schema: String = "",
+        pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_UPPER,
+        kotlinConvention: CaseConvention = CaseConvention.PASCAL_CASE
+    ) {
         val actualTypeName = typeName.takeIf { it.isNotEmpty() } ?: CaseConverter.convert(
             enumClass.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER
         )

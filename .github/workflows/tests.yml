@@ -32,14 +32,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
         with:
-          java-version: '25'
+          java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Run Tests
         env:
@@ -47,3 +49,98 @@ jobs:
           DB_USERNAME: postgres
           DB_PASSWORD: 1234
         run: ./gradlew test
+
+  test-ssl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Generate SSL certificates and start Postgres
+        run: |
+          mkdir -p .ssl
+          cd .ssl
+          
+          # 1. Generate Root CA
+          openssl req -new -x509 -days 365 -nodes -out ca.crt -keyout ca.key -subj "/CN=root-ca"
+          
+          # 2. Generate Server Certificate
+          openssl req -new -nodes -out server.csr -keyout server.key -subj "/CN=localhost"
+          openssl x509 -req -in server.csr -days 365 -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
+          
+          # 3. Generate Client Certificate
+          openssl req -new -nodes -out client.csr -keyout client.key.tmp -subj "/CN=postgres"
+          openssl x509 -req -in client.csr -days 365 -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt
+          
+          # 4. Convert client key to PKCS8 format for Java
+          openssl pkcs8 -topk8 -inform PEM -outform PEM -in client.key.tmp -out client.key -nocrypt
+          
+          chmod 600 server.key ca.key client.key
+          sudo chown 999:999 server.key server.crt ca.crt
+          cd ..
+          
+          docker run -d --name postgres-ssl \
+            -e POSTGRES_PASSWORD=1234 \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=octavius_test \
+            -p 5432:5432 \
+            -v ${{ github.workspace }}/.ssl:/etc/ssl/postgres \
+            postgres:18 -c ssl=on -c ssl_cert_file=/etc/ssl/postgres/server.crt -c ssl_key_file=/etc/ssl/postgres/server.key -c ssl_ca_file=/etc/ssl/postgres/ca.crt
+          
+          until docker exec postgres-ssl pg_isready -h localhost; do sleep 1; done
+
+      - name: Run SSL Tests
+        env:
+          TEST_SSL: "true"
+          DB_URL: jdbc:postgresql://localhost:5432/octavius_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: 1234
+          SSL_ROOT_CERT: ${{ github.workspace }}/.ssl/ca.crt
+          SSL_CERT: ${{ github.workspace }}/.ssl/client.crt
+          SSL_KEY: ${{ github.workspace }}/.ssl/client.key
+        run: ./gradlew :driver:test --tests "*SslIntegrationTest*"
+
+  test-pg17:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: octavius_test
+          POSTGRES_PASSWORD: 1234
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run Unsupported Version Test
+        env:
+          TEST_UNSUPPORTED_PG_VERSION: "true"
+        run: ./gradlew :driver:test --tests "*UnsupportedVersionTest*"
