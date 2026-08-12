@@ -43,13 +43,21 @@ PARAMETERS:
 
 ---
 
-## Error Context (QueryContext)
+## Common Error Properties
 
-Every `OctaviusException` can carry a `QueryContext`. Once you've caught the error, this gives you:
+Whenever possible, every `OctaviusException` is enriched with both the application context (what you executed) and the raw database context (what PostgreSQL replied).
+
+### Application Context (`QueryContext`)
+If the error occurred during query execution, the `queryContext` property gives you:
 - **`sql`** — the high-level SQL query your application executed.
 - **`parameters`** — the map of parameters passed into the query.
 - **`dbSql`** — the actual SQL sent to the database, after translation.
 - **`dbParameters`** — the values sent directly to the database.
+
+### Database Context
+Direct access to the raw error details provided by the database:
+- **`sqlState`** — the standard SQL state code returned by PostgreSQL.
+- **`serverErrorMessage`** — the raw `ServerErrorMessage` data class containing the complete, parsed error response straight from PostgreSQL (including severity, detailed messages, hints, and internal positions).
 
 ---
 
@@ -211,3 +219,7 @@ Every `OctaviusException` can carry a `QueryContext`. Once you've caught the err
 ### 13. `DatabaseSystemException`
 **Thrown when:** a generic database system error occurs (e.g. out of memory, disk full).
 **Context / properties:** `errorMessage`.
+
+### 14. `UncategorizedDatabaseException`
+**Thrown when:** a generic or unknown database error occurs that cannot be mapped to a specific `OctaviusException` subclass.
+**Context / properties:** `details` — additional, human-readable details about the unknown error.
