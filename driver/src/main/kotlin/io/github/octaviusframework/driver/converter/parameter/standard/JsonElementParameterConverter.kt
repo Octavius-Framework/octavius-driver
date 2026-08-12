@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.identifier.QualifiedName
 import kotlinx.serialization.json.JsonElement
 import kotlin.reflect.KClass
 
-class JsonElementParameterConverter : ParameterConverter<JsonElement> {
+internal object JsonElementParameterConverter : ParameterConverter<JsonElement> {
 
     override val supportedClass: KClass<JsonElement> = JsonElement::class
 

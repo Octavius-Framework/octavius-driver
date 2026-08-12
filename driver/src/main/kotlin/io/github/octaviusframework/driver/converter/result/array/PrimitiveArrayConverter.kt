@@ -8,7 +8,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
+internal object PrimitiveArrayConverter : ResultConverter<PgArray, Any> {
 
     override val supportedSourceClass = PgArray::class
     

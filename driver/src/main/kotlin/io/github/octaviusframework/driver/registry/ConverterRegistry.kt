@@ -39,28 +39,28 @@ class ConverterRegistry {
      * The registry responsible for result conversion (PostgreSQL -> Kotlin).
      */
     val resultConverterRegistry = ResultConverterRegistry().apply {
-        addConverter(MapCompositeConverter())
-        addConverter(PrimitiveArrayConverter())
-        addConverter(CollectionArrayConverter())
-        addConverter(ReflectionCompositeConverter())
-        addConverter(ReflectionRowConverter())
-        addConverter(MapRowConverter())
-        addConverter(MapRecordConverter())
-        addConverter(JsonElementConverter())
-        addConverter(RangeResultConverter())
-        addConverter(MultiRangeResultConverter())
+        addConverter(MapCompositeConverter)
+        addConverter(PrimitiveArrayConverter)
+        addConverter(CollectionArrayConverter)
+        addConverter(ReflectionCompositeConverter)
+        addConverter(ReflectionRowConverter)
+        addConverter(MapRowConverter)
+        addConverter(MapRecordConverter)
+        addConverter(JsonElementConverter)
+        addConverter(RangeResultConverter)
+        addConverter(MultiRangeResultConverter)
     }
 
     /**
      * The registry responsible for parameter conversion (Kotlin -> PostgreSQL).
      */
     val parameterConverterRegistry = ParameterConverterRegistry().apply {
-        addConverter(PrimitiveArrayParameterConverter())
-        addConverter(CollectionArrayParameterConverter())
-        addConverter(ReflectionCompositeParameterConverter())
-        addConverter(JsonElementParameterConverter())
-        addConverter(RangeParameterConverter())
-        addConverter(MultiRangeParameterConverter())
+        addConverter(PrimitiveArrayParameterConverter)
+        addConverter(CollectionArrayParameterConverter)
+        addConverter(ReflectionCompositeParameterConverter)
+        addConverter(JsonElementParameterConverter)
+        addConverter(RangeParameterConverter)
+        addConverter(MultiRangeParameterConverter)
     }
 
     /**

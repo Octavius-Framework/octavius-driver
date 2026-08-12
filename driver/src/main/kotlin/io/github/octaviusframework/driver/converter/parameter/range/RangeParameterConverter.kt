@@ -10,25 +10,20 @@ import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 
-class RangeParameterConverter : ParameterConverter<Any> {
+internal object RangeParameterConverter : ParameterConverter<Range<*>> {
 
-    override val supportedClass: KClass<Any> = Any::class
+    override val supportedClass: KClass<Range<*>> = Range::class
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
-        return Range::class.java.isAssignableFrom(sourceClass.java)
-    }
-
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        val range = source as Range<*>
+    override fun convert(source: Range<*>, expectedOid: Int, context: SerializationContext): Any {
         val typeManager = context.typeManager
 
         val pgType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Range
         } else {
-            val elementOid = context.findConverterByClass(range.elementClass, UNRESOLVED_OID)?.getDefaultTypeName(context)
+            val elementOid = context.findConverterByClass(source.elementClass, UNRESOLVED_OID)?.getDefaultTypeName(context)
                 ?.let { context.typeManager.resolveOid(it.name, it.schema, it.isArray) }
                 ?.takeIf { it.isKnownOid }
-                ?: typeManager.codecDictionary.getCodecByClass(range.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
+                ?: typeManager.codecDictionary.getCodecByClass(source.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
 
             if (elementOid != null && elementOid.isKnownOid) {
                 context.typeManager.typeDictionary.getRangeType(elementOid)
@@ -43,12 +38,12 @@ class RangeParameterConverter : ParameterConverter<Any> {
         }
 
         val elementOid = pgType.subtypeOid
-        val boundConverter = context.findConverterByClass(range.elementClass, elementOid)
+        val boundConverter = context.findConverterByClass(source.elementClass, elementOid)
 
-        val convertedLower = range.lowerBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
-        val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
+        val convertedLower = source.lowerBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
+        val convertedUpper = source.upperBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
 
-        if (range.isEmpty) {
+        if (source.isEmpty) {
             return context.typeManager.containers.createEmptyRange(pgType.oid)
         }
 
@@ -56,12 +51,12 @@ class RangeParameterConverter : ParameterConverter<Any> {
             oid = pgType.oid,
             lower = convertedLower,
             upper = convertedUpper,
-            isLowerInclusive = range.isLowerInclusive,
-            isUpperInclusive = range.isUpperInclusive,
-            isLowerInfinite = range.isLowerInfinite,
-            isUpperInfinite = range.isUpperInfinite,
-            isLowerNull = range.isLowerNull,
-            isUpperNull = range.isUpperNull
+            isLowerInclusive = source.isLowerInclusive,
+            isUpperInclusive = source.isUpperInclusive,
+            isLowerInfinite = source.isLowerInfinite,
+            isUpperInfinite = source.isUpperInfinite,
+            isLowerNull = source.isLowerNull,
+            isUpperNull = source.isUpperNull
         )
     }
 }

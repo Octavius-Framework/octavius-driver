@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
+internal object MultiRangeResultConverter : ResultConverter<PgMultirange, MultiRange<*>> {
 
     override val supportedSourceClass = PgMultirange::class
 

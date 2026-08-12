@@ -9,7 +9,7 @@ import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 import kotlin.reflect.jvm.isAccessible
 
-class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
+internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> {
 
     override val supportedClass: KClass<Any> = Any::class
 

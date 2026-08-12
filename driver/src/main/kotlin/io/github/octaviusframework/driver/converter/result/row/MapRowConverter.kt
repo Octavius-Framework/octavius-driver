@@ -8,7 +8,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class MapRowConverter : ResultConverter<Row, Map<String, Any?>> {
+internal object MapRowConverter : ResultConverter<Row, Map<String, Any?>> {
 
     override val supportedSourceClass = Row::class
 

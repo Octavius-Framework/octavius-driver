@@ -14,7 +14,7 @@ import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 
-class CollectionArrayParameterConverter : ParameterConverter<Any> {
+internal object CollectionArrayParameterConverter : ParameterConverter<Any> {
 
     override val supportedClass: KClass<Any> = Any::class
 

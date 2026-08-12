@@ -12,7 +12,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
-class ReflectionRowConverter : ResultConverter<Row, Any> {
+internal object ReflectionRowConverter : ResultConverter<Row, Any> {
 
     override val supportedSourceClass = Row::class
 

@@ -12,7 +12,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 
-class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
+internal object ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
 
     override val supportedSourceClass = PgComposite::class
 

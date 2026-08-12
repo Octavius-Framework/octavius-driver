@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
+internal object CollectionArrayConverter : ResultConverter<PgArray, Collection<*>> {
 
     override val supportedSourceClass = PgArray::class
 

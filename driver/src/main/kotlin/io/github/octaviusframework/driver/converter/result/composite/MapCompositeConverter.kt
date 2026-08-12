@@ -9,7 +9,7 @@ import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
 
-class MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
+internal object MapCompositeConverter : ResultConverter<PgComposite, Map<String, Any?>> {
 
     override val supportedSourceClass = PgComposite::class
 

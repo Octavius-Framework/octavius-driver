@@ -10,25 +10,20 @@ import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 
-class MultiRangeParameterConverter : ParameterConverter<Any> {
+internal object MultiRangeParameterConverter : ParameterConverter<MultiRange<*>> {
 
-    override val supportedClass: KClass<Any> = Any::class
+    override val supportedClass: KClass<MultiRange<*>> = MultiRange::class
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
-        return MultiRange::class.java.isAssignableFrom(sourceClass.java)
-    }
-
-    override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
-        val multiRange = source as MultiRange<*>
+    override fun convert(source: MultiRange<*>, expectedOid: Int, context: SerializationContext): Any {
         val typeManager = context.typeManager
 
         val pgType = if (expectedOid.isKnownOid) {
             context.typeManager.typeDictionary.getPgType(expectedOid) as? PgType.Multirange
         } else {
-            val elementOid = context.findConverterByClass(multiRange.elementClass, UNRESOLVED_OID)?.getDefaultTypeName(context)
+            val elementOid = context.findConverterByClass(source.elementClass, UNRESOLVED_OID)?.getDefaultTypeName(context)
                 ?.let { context.typeManager.resolveOid(it.name, it.schema, it.isArray) }
                 ?.takeIf { it.isKnownOid }
-                ?: typeManager.codecDictionary.getCodecByClass(multiRange.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
+                ?: typeManager.codecDictionary.getCodecByClass(source.elementClass)?.let { typeManager.codecDictionary.getOidForCodec(it) ?: typeManager.resolveOid(it.pgTypeName, it.pgSchema) }
 
             if (elementOid != null && elementOid.isKnownOid) {
                 val rangeType = context.typeManager.typeDictionary.getRangeType(elementOid)
@@ -46,9 +41,9 @@ class MultiRangeParameterConverter : ParameterConverter<Any> {
         val rangeOid = pgType.rangeOid
         val rangePgType = context.typeManager.typeDictionary.getPgType(rangeOid) as PgType.Range
         val elementOid = rangePgType.subtypeOid
-        val boundConverter = context.findConverterByClass(multiRange.elementClass, elementOid)
+        val boundConverter = context.findConverterByClass(source.elementClass, elementOid)
 
-        val pgRanges = multiRange.ranges.map { range ->
+        val pgRanges = source.ranges.map { range ->
             val convertedLower = range.lowerBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
             val convertedUpper = range.upperBound?.let { boundConverter?.convert(it, elementOid, context) ?: it }
 

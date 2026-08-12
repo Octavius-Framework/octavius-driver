@@ -9,7 +9,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class RangeResultConverter : ResultConverter<PgRange, Range<*>> {
+internal object RangeResultConverter : ResultConverter<PgRange, Range<*>> {
 
     override val supportedSourceClass = PgRange::class
 

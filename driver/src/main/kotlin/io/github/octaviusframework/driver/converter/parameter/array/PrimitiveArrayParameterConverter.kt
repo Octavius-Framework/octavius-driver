@@ -11,7 +11,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
 
-class PrimitiveArrayParameterConverter : ParameterConverter<Any> {
+internal object PrimitiveArrayParameterConverter : ParameterConverter<Any> {
 
     override val supportedClass: KClass<Any> = Any::class
 

@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
+internal object MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
 
     override val supportedSourceClass = PgRecord::class
 

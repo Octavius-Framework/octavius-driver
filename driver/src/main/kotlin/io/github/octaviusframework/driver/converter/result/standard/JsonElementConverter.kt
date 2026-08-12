@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
-class JsonElementConverter : ResultConverter<String, JsonElement> {
+internal object JsonElementConverter : ResultConverter<String, JsonElement> {
 
     override val supportedSourceClass = String::class
 
