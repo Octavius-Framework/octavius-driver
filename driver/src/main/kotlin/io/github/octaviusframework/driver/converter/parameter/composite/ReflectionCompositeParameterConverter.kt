@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.parameter.composite
 
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
+import io.github.octaviusframework.driver.converter.ReflectionCache
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.type.PgType
@@ -36,7 +36,7 @@ class ReflectionCompositeParameterConverter : ParameterConverter<Any> {
         }
 
         @Suppress("UNCHECKED_CAST")
-        val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
+        val metadata = ReflectionCache.getOrCreateDataObjectMetadata(
             source::class as KClass<Any>,
             registration.pgConvention,
             registration.kotlinConvention

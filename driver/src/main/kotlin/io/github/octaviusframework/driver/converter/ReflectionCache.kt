@@ -43,7 +43,7 @@ data class DataObjectClassMetadata<T : Any>(
  * This prevents the expensive overhead of inspecting class properties and annotations
  * repeatedly during the serialization or deserialization of PostgreSQL composite types.
  */
-object ReflectionCompositeCache {
+object ReflectionCache {
     private val dataObjectCache = ConcurrentHashMap<KClass<*>, DataObjectClassMetadata<*>>()
 
     @Suppress("UNCHECKED_CAST")

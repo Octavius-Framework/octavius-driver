@@ -26,9 +26,7 @@ class MapRecordConverter : ResultConverter<PgRecord, Map<String, Any?>> {
             typeOf<Any?>()
         }
 
-        if (source.fields.size % 2 != 0) {
-            throw IllegalArgumentException("Record fields must be in key-value pairs (even number of fields expected)")
-        }
+        require(source.fields.size % 2 == 0) { "Record fields must be in key-value pairs (even number of fields expected)" }
 
         val result = mutableMapOf<String, Any?>()
         for (i in source.fields.indices step 2) {

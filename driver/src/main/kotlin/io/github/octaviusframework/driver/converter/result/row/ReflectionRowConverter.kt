@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.converter.result.row
 
-import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
+import io.github.octaviusframework.driver.converter.ReflectionCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
@@ -29,7 +29,7 @@ class ReflectionRowConverter : ResultConverter<Row, Any> {
         val pgConvention = registration?.pgConvention ?: CaseConvention.SNAKE_CASE_LOWER
         val kotlinConvention = registration?.kotlinConvention ?: CaseConvention.CAMEL_CASE
 
-        val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
+        val metadata = ReflectionCache.getOrCreateDataObjectMetadata(
             kClass,
             pgConvention,
             kotlinConvention

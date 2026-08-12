@@ -10,15 +10,11 @@ class JsonElementParameterConverter : ParameterConverter<JsonElement> {
 
     override val supportedClass: KClass<JsonElement> = JsonElement::class
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
-        return supportedClass.java.isAssignableFrom(sourceClass.java)
+    override fun convert(source: JsonElement, expectedOid: Int, context: SerializationContext): Any {
+        return source.toString()
     }
 
     override fun getDefaultTypeName(context: SerializationContext): QualifiedName {
         return QualifiedName("pg_catalog", "jsonb")
-    }
-
-    override fun convert(source: JsonElement, expectedOid: Int, context: SerializationContext): Any {
-        return source.toString()
     }
 }

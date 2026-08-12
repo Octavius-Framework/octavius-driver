@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.converter.result.composite
 
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.converter.ReflectionCompositeCache
+import io.github.octaviusframework.driver.converter.ReflectionCache
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
@@ -41,7 +41,7 @@ class ReflectionCompositeConverter : ResultConverter<PgComposite, Any> {
         val registration = context.typeManager.converterRegistry.registeredComposites[kClass]
             ?: error("Missing composite registration for class")
 
-        val metadata = ReflectionCompositeCache.getOrCreateDataObjectMetadata(
+        val metadata = ReflectionCache.getOrCreateDataObjectMetadata(
             kClass,
             registration.pgConvention,
             registration.kotlinConvention
