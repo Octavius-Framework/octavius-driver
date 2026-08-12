@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.jmh)
 }
 
 dependencies {
@@ -15,9 +14,4 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.logback.classic)
-}
-
-jmh {
-    profilers.add("gc")
-    profilers.add("stack")
 }
