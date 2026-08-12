@@ -19,7 +19,7 @@ import java.util.*
  * and authentication sequences. It ensures that the connected server meets the minimum 
  * version requirement (PostgreSQL 18+).
  */
-object OctaviusConnectionFactory {
+internal object OctaviusConnectionFactory {
     /**
      * Creates a new database connection using the provided JDBC URL and optional properties.
      *

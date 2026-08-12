@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets
  * like bytes, integers, shorts, and null-terminated C-style strings.
  * Internal buffering is used to minimize network reads and object allocations.
  */
-class PgInputStream(private var inputStream: InputStream) {
+internal class PgInputStream(private var inputStream: InputStream) {
     private val buffer = ByteArray(8192)
     private var position = 0
     private var limit = 0

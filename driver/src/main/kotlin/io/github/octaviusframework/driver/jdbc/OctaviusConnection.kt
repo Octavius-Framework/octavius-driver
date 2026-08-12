@@ -20,7 +20,7 @@ import java.util.concurrent.Executor
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-class OctaviusConnection internal constructor(
+internal class OctaviusConnection internal constructor(
     internal val stream: PgStream,
     internal val url: String,
     maxParameterWriterCapacity: Int? = null,

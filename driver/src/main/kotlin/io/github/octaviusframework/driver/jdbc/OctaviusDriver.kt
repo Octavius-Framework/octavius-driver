@@ -16,14 +16,10 @@ import java.util.logging.Logger
  * registered with the [DriverManager] when the class is loaded. It accepts URLs starting
  * with `jdbc:octavius:`.
  */
-class OctaviusDriver : Driver {
+internal class OctaviusDriver : Driver {
     companion object {
         init {
-            try {
-                DriverManager.registerDriver(OctaviusDriver())
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            DriverManager.registerDriver(OctaviusDriver())
         }
     }
 

@@ -11,7 +11,7 @@ import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
  * Most of the specific exceptions (ConnectionException, ConcurrencyException, etc.) 
  * are commented out or mapped to generic OctaviusException as placeholders for future implementation.
  */
-object ExceptionTranslator {
+internal object ExceptionTranslator {
 
     fun translate(errorMsg: ErrorResponseMessage): OctaviusException {
         val state = errorMsg.code ?: ""

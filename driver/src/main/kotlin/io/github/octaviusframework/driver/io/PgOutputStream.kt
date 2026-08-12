@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets
  * like bytes, integers, shorts, and null-terminated C-style strings.
  * Internal buffering minimizes the number of underlying network write operations.
  */
-class PgOutputStream(private var outputStream: OutputStream) {
+internal class PgOutputStream(private var outputStream: OutputStream) {
     private val buffer = ByteArray(8192)
     private var position = 0
 

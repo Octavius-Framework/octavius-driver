@@ -115,12 +115,3 @@ fun Connection.getOctaviusSession(): OctaviusSession {
 inline fun <reified T : Any> Connection.unwrap(): T {
     return this.unwrap(T::class.java)
 }
-
-/**
- * Unwraps this [Connection] to its underlying [OctaviusConnection] instance.
- *
- * @return The underlying [OctaviusConnection].
- */
-internal fun Connection.unwrapToOctavius(): OctaviusConnection {
-    return this.unwrap(OctaviusConnection::class.java)
-}

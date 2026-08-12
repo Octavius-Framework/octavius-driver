@@ -13,8 +13,6 @@ open class OctaviusException(
 
     open fun getDetailedMessage(): String? = null
 
-
-
     override fun toString(): String = buildString {
         appendLine(line)
         appendLine("MESSAGE: $message")
