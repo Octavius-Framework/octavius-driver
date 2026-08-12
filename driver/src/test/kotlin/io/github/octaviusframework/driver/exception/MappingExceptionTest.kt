@@ -53,8 +53,8 @@ class MappingExceptionTest {
     @Test
     fun `test nested composite mapping exception path for missing attribute`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
-        registry.addConverter(CollectionArrayConverter())
+        registry.addConverter(ReflectionCompositeConverter)
+        registry.addConverter(CollectionArrayConverter)
         val deserializer = ResultMapper(registry, TypeManager(dummyRegistry))
 
         // create valid person
@@ -90,8 +90,8 @@ class MappingExceptionTest {
     @Test
     fun `test nested composite mapping exception path for null in non-nullable property`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
-        registry.addConverter(CollectionArrayConverter())
+        registry.addConverter(ReflectionCompositeConverter)
+        registry.addConverter(CollectionArrayConverter)
         val deserializer = ResultMapper(registry, TypeManager(dummyRegistry))
 
         // create invalid person (name is null but expected String)
@@ -118,8 +118,8 @@ class MappingExceptionTest {
     @Test
     fun `test nested array mapping exception path for null in non-nullable array element`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
-        registry.addConverter(CollectionArrayConverter())
+        registry.addConverter(ReflectionCompositeConverter)
+        registry.addConverter(CollectionArrayConverter)
         val deserializer = ResultMapper(registry, TypeManager(dummyRegistry))
 
         // employees is List<Person> (non-nullable elements)

@@ -57,7 +57,7 @@ class DeserializationTest {
     @Test
     fun `test simple composite reflection mapping`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
+        registry.addConverter(ReflectionCompositeConverter)
         val deserializer = ResultMapper(registry, TypeManager(dummyRegistry))
 
         val composite = createComposite(mapOf("street" to "Baker St", "city" to "London"))
@@ -71,7 +71,7 @@ class DeserializationTest {
     @Test
     fun `test nested composite reflection mapping`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
+        registry.addConverter(ReflectionCompositeConverter)
         val deserializer = ResultMapper(registry,
             TypeManager(dummyRegistry)
         )
@@ -90,8 +90,8 @@ class DeserializationTest {
     @Test
     fun `test array to list mapping with nested composites`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
-        registry.addConverter(CollectionArrayConverter())
+        registry.addConverter(ReflectionCompositeConverter)
+        registry.addConverter(CollectionArrayConverter)
         val deserializer = ResultMapper(registry,
             TypeManager(dummyRegistry)
         )
@@ -125,8 +125,8 @@ class DeserializationTest {
     @Test
     fun `test fallback to PgComposite for composite when Any is requested and explicit map conversion`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
-        registry.addConverter(MapCompositeConverter())
+        registry.addConverter(ReflectionCompositeConverter)
+        registry.addConverter(MapCompositeConverter)
         val deserializer = ResultMapper(registry,
             TypeManager(dummyRegistry)
         )
@@ -145,7 +145,7 @@ class DeserializationTest {
     @Test
     fun `test missing non-nullable field throws exception`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
+        registry.addConverter(ReflectionCompositeConverter)
         val deserializer = ResultMapper(registry,
             TypeManager(dummyRegistry)
         )
@@ -161,7 +161,7 @@ class DeserializationTest {
     @Test
     fun `test optional parameters and nulls are handled correctly`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
+        registry.addConverter(ReflectionCompositeConverter)
         val deserializer = ResultMapper(registry,
             TypeManager(dummyRegistry)
         )
@@ -178,7 +178,7 @@ class DeserializationTest {
     @Test
     fun `test local registry overrides global registry`() {
         val globalRegistry = ResultConverterRegistry()
-        globalRegistry.addConverter(ReflectionCompositeConverter())
+        globalRegistry.addConverter(ReflectionCompositeConverter)
         val deserializer = ResultMapper(globalRegistry,
             TypeManager(dummyRegistry)
         )

@@ -65,7 +65,7 @@ class ReflectionCompositeMappingTest {
         val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
 
         val registry = ResultConverterRegistry()
-        registry.addConverter(ReflectionCompositeConverter())
+        registry.addConverter(ReflectionCompositeConverter)
         val deserializer = ResultMapper(registry,
             dummyTypeManager
         )
@@ -86,7 +86,7 @@ class ReflectionCompositeMappingTest {
     @Test
     fun `test serialization with MapKey and conventions`() {
         val type = registerPersonComposite(CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
-        val converter = ReflectionCompositeParameterConverter()
+        val converter = ReflectionCompositeParameterConverter
         val dummyTypeManager = TypeManager(dummyRegistry)
         val context = object : SerializationContext {
             override val typeManager = dummyTypeManager

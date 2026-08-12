@@ -43,7 +43,7 @@ class RangeConverterTest {
     @Test
     fun `test RangeResultConverter deserialization`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(RangeResultConverter())
+        registry.addConverter(RangeResultConverter)
         val deserializer = ResultMapper(registry,
             typeManager
         )
@@ -74,8 +74,8 @@ class RangeConverterTest {
     @Test
     fun `test MultiRangeResultConverter deserialization`() {
         val registry = ResultConverterRegistry()
-        registry.addConverter(RangeResultConverter())
-        registry.addConverter(MultiRangeResultConverter())
+        registry.addConverter(RangeResultConverter)
+        registry.addConverter(MultiRangeResultConverter)
         val deserializer = ResultMapper(registry,
             typeManager
         )
@@ -116,7 +116,7 @@ class RangeConverterTest {
 
     @Test
     fun `test RangeParameterConverter serialization`() {
-        val converter = RangeParameterConverter()
+        val converter = RangeParameterConverter
         
         val context = object : SerializationContext {
             override val typeManager = this@RangeConverterTest.typeManager
@@ -149,7 +149,7 @@ class RangeConverterTest {
 
     @Test
     fun `test MultiRangeParameterConverter serialization`() {
-        val converter = MultiRangeParameterConverter()
+        val converter = MultiRangeParameterConverter
 
         val context = object : SerializationContext {
             override val typeManager = this@RangeConverterTest.typeManager

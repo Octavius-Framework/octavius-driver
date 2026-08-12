@@ -9,7 +9,6 @@ import io.github.octaviusframework.driver.type.PgType
  *
  * @property type The composite type definition.
  * @property fields Array containing the values of the fields in this composite structure.
- * @property typeRegistry Registry used for resolving types.
  */
 class PgComposite internal constructor(
     val type: PgType.Composite,
