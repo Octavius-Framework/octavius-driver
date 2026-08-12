@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.query.QueryContext
 /**
  * Base exception for all errors in the Octavius JDBC driver.
  */
-open class OctaviusException(
+abstract class OctaviusException(
     message: String,
     val sqlState: String? = null,
     val serverErrorMessage: ServerErrorMessage? = null,

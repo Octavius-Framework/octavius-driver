@@ -178,8 +178,8 @@ internal object ExceptionTranslator {
                 )
             }
 
-            else -> OctaviusException(
-                "Unknown database error ($state): ${serverErrorMessage.message}", sqlState = state, serverErrorMessage = serverErrorMessage
+            else -> UncategorizedDatabaseException(
+                details = "Unknown database error ($state): ${serverErrorMessage.message}", sqlState = state, serverErrorMessage = serverErrorMessage
             )
         }
     }
