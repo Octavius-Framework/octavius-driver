@@ -79,8 +79,7 @@ object OctaviusConnectionFactory {
         stream.sendMessage(StartupMessage(startupParams))
         stream.flush()
 
-        val authenticator = Authenticator(stream)
-        authenticator.authenticate(password)
+        Authenticator.authenticate(stream, password)
 
         stream.networkTimeout = properties.socketTimeout?.let { it * 1000 } ?: 0
         properties.maxCachedRowSize?.let { stream.maxCachedRowSize = it }

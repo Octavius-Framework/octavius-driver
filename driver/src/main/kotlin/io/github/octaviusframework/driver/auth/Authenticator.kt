@@ -11,24 +11,25 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import java.nio.charset.StandardCharsets
 import java.util.*
 
-private val logger = KotlinLogging.logger {}
+
 
 /**
  * Handles the authentication process during the PostgreSQL connection startup phase.
  * It manages the state machine for exchanging authentication messages with the server.
- *
- * @property stream The underlying PostgreSQL communication stream used for message exchange.
  */
-internal class Authenticator(private val stream: PgStream) {
+internal object Authenticator {
+
+    private val logger = KotlinLogging.logger {}
 
     /**
      * Authenticates the user with the PostgreSQL server using the provided credentials.
      * Only SCRAM-SHA-256 authentication is supported.
      *
+     * @param stream The underlying PostgreSQL communication stream used for message exchange.
      * @param password The password for the user, can be null if not required.
      * @throws InitializationException If authentication fails, protocol is violated, or unsupported mechanism is requested.
      */
-    fun authenticate(password: String?) {
+    fun authenticate(stream: PgStream, password: String?) {
         while (true) {
             val msg = stream.receiveMessage()
 
