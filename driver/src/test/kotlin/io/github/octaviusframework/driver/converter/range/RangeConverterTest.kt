@@ -11,12 +11,12 @@ import io.github.octaviusframework.driver.converter.result.range.RangeResultConv
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.type.MultiRange
+import io.github.octaviusframework.driver.type.range.MultiRange
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
-import io.github.octaviusframework.driver.type.Range
-import io.github.octaviusframework.driver.type.rangeOf
-import io.github.octaviusframework.driver.type.multiRangeOf
+import io.github.octaviusframework.driver.type.range.Range
+import io.github.octaviusframework.driver.type.range.rangeOf
+import io.github.octaviusframework.driver.type.range.multiRangeOf
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass

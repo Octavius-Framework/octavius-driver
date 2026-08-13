@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.Serializati
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.Range
+import io.github.octaviusframework.driver.type.range.Range
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass

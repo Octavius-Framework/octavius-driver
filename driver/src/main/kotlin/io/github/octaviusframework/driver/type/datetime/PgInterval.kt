@@ -1,7 +1,7 @@
-package io.github.octaviusframework.driver.type
+package io.github.octaviusframework.driver.type.datetime
 
 
-import io.github.octaviusframework.driver.type.PgInterval.*
+import io.github.octaviusframework.driver.type.datetime.PgInterval.*
 import kotlinx.datetime.DateTimePeriod
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.microseconds

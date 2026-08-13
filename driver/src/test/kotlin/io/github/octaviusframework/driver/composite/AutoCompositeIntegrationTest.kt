@@ -2,10 +2,10 @@ package io.github.octaviusframework.driver.composite
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.row.get
-import io.github.octaviusframework.driver.type.MultiRange
-import io.github.octaviusframework.driver.type.Range
-import io.github.octaviusframework.driver.type.rangeOf
-import io.github.octaviusframework.driver.type.multiRangeOf
+import io.github.octaviusframework.driver.type.range.MultiRange
+import io.github.octaviusframework.driver.type.range.Range
+import io.github.octaviusframework.driver.type.range.rangeOf
+import io.github.octaviusframework.driver.type.range.multiRangeOf
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll

@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.type
+package io.github.octaviusframework.driver.type.datetime
 
 import kotlinx.datetime.*
 

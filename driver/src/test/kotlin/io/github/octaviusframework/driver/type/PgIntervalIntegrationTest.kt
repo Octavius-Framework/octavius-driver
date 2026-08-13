@@ -3,6 +3,13 @@ package io.github.octaviusframework.driver.type
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get
+import io.github.octaviusframework.driver.type.datetime.PgInterval
+import io.github.octaviusframework.driver.type.datetime.toDateTimePeriod
+import io.github.octaviusframework.driver.type.datetime.toDurationApproximate
+import io.github.octaviusframework.driver.type.datetime.toDurationExact
+import io.github.octaviusframework.driver.type.datetime.toPgInterval
+import io.github.octaviusframework.driver.type.datetime.toPgIntervalApproximate
+import io.github.octaviusframework.driver.type.datetime.toPgIntervalExact
 import kotlinx.datetime.DateTimePeriod
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

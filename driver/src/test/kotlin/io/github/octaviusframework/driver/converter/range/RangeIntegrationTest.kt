@@ -1,9 +1,9 @@
 package io.github.octaviusframework.driver.converter.range
 
-import io.github.octaviusframework.driver.type.MultiRange
-import io.github.octaviusframework.driver.type.Range
-import io.github.octaviusframework.driver.type.rangeOf
-import io.github.octaviusframework.driver.type.multiRangeOf
+import io.github.octaviusframework.driver.type.range.MultiRange
+import io.github.octaviusframework.driver.type.range.Range
+import io.github.octaviusframework.driver.type.range.rangeOf
+import io.github.octaviusframework.driver.type.range.multiRangeOf
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.row.get

@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterCo
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
-import io.github.octaviusframework.driver.type.MultiRange
+import io.github.octaviusframework.driver.type.range.MultiRange
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid

@@ -4,10 +4,10 @@ import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.io.getIntBE
 import io.github.octaviusframework.driver.io.getLongBE
-import io.github.octaviusframework.driver.type.DISTANT_FUTURE
-import io.github.octaviusframework.driver.type.DISTANT_PAST
-import io.github.octaviusframework.driver.type.MAX
-import io.github.octaviusframework.driver.type.PgInterval
+import io.github.octaviusframework.driver.type.datetime.DISTANT_FUTURE
+import io.github.octaviusframework.driver.type.datetime.DISTANT_PAST
+import io.github.octaviusframework.driver.type.datetime.MAX
+import io.github.octaviusframework.driver.type.datetime.PgInterval
 import kotlinx.datetime.*
 import kotlin.time.Instant
 
