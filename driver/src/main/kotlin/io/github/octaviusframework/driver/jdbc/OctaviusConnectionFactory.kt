@@ -68,8 +68,7 @@ internal object OctaviusConnectionFactory {
             throw InitializationException(InitializationExceptionReason.CONNECTION_ERROR, e.message, e)
         }
 
-        val sslNegotiator = SslNegotiator(stream)
-        sslNegotiator.negotiate(serverName, portNumber, properties)
+        SslNegotiator.negotiate(stream, serverName, portNumber, properties)
 
         val startupParams = properties.additionalProperties
         startupParams["client_encoding"] = "UTF8"

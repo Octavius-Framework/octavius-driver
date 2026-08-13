@@ -11,8 +11,8 @@ import io.github.octaviusframework.driver.notice.NoticeHandler
 import io.github.octaviusframework.driver.notice.PgNotice
 import io.github.octaviusframework.driver.notification.PgNotification
 import io.github.octaviusframework.driver.row.FieldDescription
-import io.github.octaviusframework.driver.ssl.PgSslUpgrader
 import io.github.octaviusframework.driver.ssl.SslConfiguration
+import io.github.octaviusframework.driver.ssl.SslNegotiator
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -80,7 +80,7 @@ internal class PgStream(
      * @param config The SSL configuration to use.
      */
     fun upgradeToSSL(host: String, port: Int, config: SslConfiguration) {
-        val sslSocket = PgSslUpgrader.upgrade(socket, host, port, config)
+        val sslSocket = SslNegotiator.upgrade(socket, host, port, config)
         socket = sslSocket
         inputStream.changeStream(socket.getInputStream())
         outputStream.changeStream(socket.getOutputStream())
