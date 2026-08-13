@@ -22,7 +22,7 @@ allprojects {
 
 dependencies {
     dokka(projects.driver)
-    dokka(projects.hikari)
+    dokka(projects.hikariIntegrationTests)
     dokka(projects.driverSpringIntegration)
 }
 
