@@ -24,6 +24,9 @@ open class InsertBenchmark {
     private lateinit var pgInsertBatchStatement: PreparedStatement
     private lateinit var pgUnnestStatement: PreparedStatement
 
+    private lateinit var pgRewriteConnection: Connection
+    private lateinit var pgRewriteBatchStatement: PreparedStatement
+
     private lateinit var octaviusSession: OctaviusSession
     private lateinit var octaviusInsertQuery: NativeQuery
     private lateinit var octaviusUnnestQuery: NativeQuery
@@ -45,6 +48,13 @@ open class InsertBenchmark {
 
         pgConnection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/octavius_test", props)
 
+        val rewriteProps = Properties()
+        rewriteProps["user"] = "postgres"
+        rewriteProps["password"] = "1234"
+        rewriteProps["reWriteBatchedInserts"] = "true"
+
+        pgRewriteConnection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/octavius_test", rewriteProps)
+
         pgConnection.createStatement().use { st ->
             st.execute("DROP TABLE IF EXISTS benchmark_insert")
             st.execute("CREATE TABLE benchmark_insert (id INT, text_data TEXT)")
@@ -53,6 +63,7 @@ open class InsertBenchmark {
         pgInsertStatement = pgConnection.prepareStatement("INSERT INTO benchmark_insert (id, text_data) VALUES (?, ?)")
         pgInsertBatchStatement = pgConnection.prepareStatement("INSERT INTO benchmark_insert (id, text_data) VALUES (?, ?)")
         pgUnnestStatement = pgConnection.prepareStatement("INSERT INTO benchmark_insert (id, text_data) SELECT * FROM UNNEST(?::int[], ?::text[])")
+        pgRewriteBatchStatement = pgRewriteConnection.prepareStatement("INSERT INTO benchmark_insert (id, text_data) VALUES (?, ?)")
 
         octaviusSession = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         octaviusInsertQuery = octaviusSession.createNativeQuery("INSERT INTO benchmark_insert (id, text_data) VALUES ($1, $2)")
@@ -76,10 +87,12 @@ open class InsertBenchmark {
         pgInsertStatement.close()
         pgInsertBatchStatement.close()
         pgUnnestStatement.close()
+        pgRewriteBatchStatement.close()
         pgConnection.createStatement().use { st ->
             st.execute("DROP TABLE IF EXISTS benchmark_insert")
         }
         pgConnection.close()
+        pgRewriteConnection.close()
         octaviusSession.close()
     }
 
@@ -111,6 +124,22 @@ open class InsertBenchmark {
             pgConnection.commit()
         } finally {
             pgConnection.autoCommit = true
+        }
+    }
+
+    @Benchmark
+    fun pgjdbc_rewrite_batch_inserts_tx() {
+        pgRewriteConnection.autoCommit = false
+        try {
+            for (i in 0 until insertCount) {
+                pgRewriteBatchStatement.setInt(1, ids[i])
+                pgRewriteBatchStatement.setString(2, texts[i])
+                pgRewriteBatchStatement.addBatch()
+            }
+            pgRewriteBatchStatement.executeBatch()
+            pgRewriteConnection.commit()
+        } finally {
+            pgRewriteConnection.autoCommit = true
         }
     }
 

@@ -35,10 +35,6 @@ class EnumParameterConverter<T : Enum<T>>(
 
     override val supportedClass: KClass<T> = enumClass
 
-    override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
-        return enumClass.java.isAssignableFrom(sourceClass.java)
-    }
-
     override fun convert(source: T, expectedOid: Int, context: SerializationContext): Any {
         return enumToPg[source]!!
     }
