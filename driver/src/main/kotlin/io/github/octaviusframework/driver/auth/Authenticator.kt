@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.auth
 
-import io.github.octaviusframework.driver.exception.ExceptionTranslator
+import io.github.octaviusframework.driver.message.translator.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream

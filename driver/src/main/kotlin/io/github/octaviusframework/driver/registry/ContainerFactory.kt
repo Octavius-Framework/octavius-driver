@@ -1,5 +1,6 @@
-package io.github.octaviusframework.driver.type
+package io.github.octaviusframework.driver.registry
 
+import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange

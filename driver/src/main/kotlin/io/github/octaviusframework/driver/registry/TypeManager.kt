@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.type
+package io.github.octaviusframework.driver.registry
 
 import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.converter.EnumParameterConverter

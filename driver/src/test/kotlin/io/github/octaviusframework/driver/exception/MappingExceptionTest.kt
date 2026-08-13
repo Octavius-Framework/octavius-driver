@@ -9,7 +9,7 @@ import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.ArrayDimension
 import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.registry.TypeManager
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

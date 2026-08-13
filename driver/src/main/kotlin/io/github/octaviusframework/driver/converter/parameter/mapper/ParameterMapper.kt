@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.converter.parameter.mapper
 
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.registry.TypeManager
 import kotlin.reflect.KClass
 
 class ParameterMapper(

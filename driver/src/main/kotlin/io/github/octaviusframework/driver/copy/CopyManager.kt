@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.copy
 
-import io.github.octaviusframework.driver.exception.ExceptionTranslator
+import io.github.octaviusframework.driver.message.translator.ExceptionTranslator
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream

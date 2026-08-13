@@ -1,12 +1,10 @@
-package io.github.octaviusframework.driver.exception
+package io.github.octaviusframework.driver.message.translator
 
+import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.message.ServerErrorMessage
 import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
 
 /**
- * A specialized translator that converts low-level database error messages into a structured hierarchy
- * of Octavius [OctaviusException]s.
- *
  * This component categorizes PostgreSQL error messages based on their `SQLSTATE`
  * error codes, providing developers with actionable, high-level information.
  * Most of the specific exceptions (ConnectionException, ConcurrencyException, etc.) 

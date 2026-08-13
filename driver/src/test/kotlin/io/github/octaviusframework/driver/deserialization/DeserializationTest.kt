@@ -14,7 +14,7 @@ import io.github.octaviusframework.driver.container.PgArray
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.registry.IntObjectMap
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.registry.TypeManager
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KType

@@ -3,9 +3,10 @@ package io.github.octaviusframework.driver.query
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.registry.TypeManager
 import org.junit.jupiter.api.Test
 import io.github.octaviusframework.driver.exception.TypeException
+import io.github.octaviusframework.driver.execution.ParameterSerializer
 import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.type.PgStandardType
 import io.github.octaviusframework.driver.type.withPgType

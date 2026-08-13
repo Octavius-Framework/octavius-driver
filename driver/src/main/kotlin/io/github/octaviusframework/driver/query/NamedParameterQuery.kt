@@ -2,11 +2,12 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
+import io.github.octaviusframework.driver.execution.QueryExecutor
 
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.registry.TypeManager
 import kotlin.reflect.typeOf
 
 /**

@@ -1,8 +1,9 @@
-package io.github.octaviusframework.driver.query
+package io.github.octaviusframework.driver.execution
 
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.io.PgStream
+import io.github.octaviusframework.driver.message.translator.ExceptionTranslator
 import io.github.octaviusframework.driver.message.backend.*
 import io.github.octaviusframework.driver.message.frontend.*
 import io.github.octaviusframework.driver.registry.TypeRegistry

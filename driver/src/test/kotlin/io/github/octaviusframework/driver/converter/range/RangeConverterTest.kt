@@ -10,7 +10,7 @@ import io.github.octaviusframework.driver.converter.result.range.MultiRangeResul
 import io.github.octaviusframework.driver.converter.result.range.RangeResultConverter
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.type.TypeManager
+import io.github.octaviusframework.driver.registry.TypeManager
 import io.github.octaviusframework.driver.type.range.MultiRange
 import io.github.octaviusframework.driver.container.PgMultirange
 import io.github.octaviusframework.driver.container.PgRange
