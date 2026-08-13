@@ -27,7 +27,7 @@ class ParameterConverterRegistry(
                 @Suppress("UNCHECKED_CAST")
                 var result = (converter as ParameterConverter<Any>).convert(source, expectedOid, context)
                 if (result !is PgTyped && !expectedOid.isKnownOid) {
-                    val defaultType = converter.getDefaultTypeName(context)
+                    val defaultType = converter.getDefaultTypeName(source::class, context)
                     if (defaultType != null) {
                         result = PgTyped(result, defaultType)
                     }

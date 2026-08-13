@@ -43,7 +43,7 @@ class EnumParameterConverter<T : Enum<T>>(
         return enumToPg[source]!!
     }
 
-    override fun getDefaultTypeName(context: SerializationContext): QualifiedName {
+    override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): QualifiedName {
         return qualifiedName
     }
 }

@@ -57,5 +57,9 @@ internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> 
 
         return PgComposite(type, fields)
     }
+
+    override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): io.github.octaviusframework.driver.identifier.QualifiedName? {
+        return context.typeManager.converterRegistry.registeredComposites[sourceClass]
+    }
 }
 

@@ -14,7 +14,7 @@ internal object JsonElementParameterConverter : ParameterConverter<JsonElement> 
         return source.toString()
     }
 
-    override fun getDefaultTypeName(context: SerializationContext): QualifiedName {
+    override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): QualifiedName {
         return QualifiedName("pg_catalog", "jsonb")
     }
 }

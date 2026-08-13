@@ -1,17 +1,16 @@
 package io.github.octaviusframework.driver.converter
 
 import io.github.octaviusframework.driver.annotation.PgName
+import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
-import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.TypeManager
-import io.github.octaviusframework.driver.container.PgComposite
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass

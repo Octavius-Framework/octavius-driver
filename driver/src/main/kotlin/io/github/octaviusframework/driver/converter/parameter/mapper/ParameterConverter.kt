@@ -12,6 +12,6 @@ interface ParameterConverter<T : Any> {
 
     fun convert(source: T, expectedOid: Int, context: SerializationContext): Any
 
-    fun getDefaultTypeName(context: SerializationContext): QualifiedName? = null
+    fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): QualifiedName? = null
 }
 

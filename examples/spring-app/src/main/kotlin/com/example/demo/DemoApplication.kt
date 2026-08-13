@@ -26,7 +26,7 @@ class MapParameterConverter(private val objectMapper: ObjectMapper) : ParameterC
         return objectMapper.writeValueAsString(source)
     }
 
-    override fun getDefaultTypeName(context: SerializationContext): QualifiedName = QualifiedName("pg_catalog", "jsonb")
+    override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): QualifiedName = QualifiedName("pg_catalog", "jsonb")
 }
 
 class MapResultConverter(private val objectMapper: ObjectMapper) : ResultConverter<String, Map<*, *>> {
