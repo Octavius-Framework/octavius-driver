@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.converter.parameter.mapper
 
+import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.type.isKnownOid
 import java.util.concurrent.locks.ReentrantLock
@@ -26,7 +27,9 @@ class ParameterConverterRegistry(
             if (converter.canConvert(source::class, expectedOid, context)) {
                 @Suppress("UNCHECKED_CAST")
                 var result = (converter as ParameterConverter<Any>).convert(source, expectedOid, context)
-                if (result !is PgTyped && !expectedOid.isKnownOid) {
+                // A PgContainer already carries its own OID, so wrapping it would only force
+                // the serializer to resolve a name it then discards in favour of containerOid.
+                if (result !is PgTyped && result !is PgContainer && !expectedOid.isKnownOid) {
                     val defaultType = converter.getDefaultTypeName(source::class, context)
                     if (defaultType != null) {
                         result = PgTyped(result, defaultType)
