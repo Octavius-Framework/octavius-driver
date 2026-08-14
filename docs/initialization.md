@@ -128,6 +128,8 @@ val session = pool.getOctaviusSession()
 
 Closing a session obtained from a pool returns its connection to the pool rather than shutting it down.
 
+Leave the pool's own auto-commit setting at its default (`true`). Configuring a pool with `auto-commit=false` makes every connection in it sit `idle in transaction` while waiting to be borrowed — see [Transactions](transactions.md#manual-control) for why, and what it collides with.
+
 ## What happens when a session opens
 
 The sequence is worth knowing, because two of its steps are where connections fail and one is why the *first* connection is slower than the rest:
