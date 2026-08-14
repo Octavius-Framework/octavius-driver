@@ -24,17 +24,18 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
 
     /**
      * Executes the given action within an [OctaviusSession], translating any exceptions thrown.
+     * The session is passed as the receiver of [action], so its operations are available directly.
      * Connection management and transaction synchronization are handled automatically.
      *
-     * @param action the action to execute
+     * @param action the action to execute, with the session as its receiver
      * @return the result of the action
      * @throws org.springframework.dao.DataAccessException if a database access error occurs or an exception is translated
      */
-    fun <T> execute(action: (OctaviusSessionOperations) -> T): T {
+    fun <T> execute(action: OctaviusSessionOperations.() -> T): T {
         val con = DataSourceUtils.doGetConnection(dataSource)
         try {
             val session = con.getOctaviusSession()
-            return action(session)
+            return session.action()
         } catch (ex: SQLException) {
             val translated = exceptionTranslator.translate("OctaviusTemplate execution", null, ex)
             if (translated != null) {

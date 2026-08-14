@@ -14,8 +14,8 @@ class UserController(private val octaviusTemplate: OctaviusTemplate) {
     @PostMapping("/users")
     @Transactional
     fun createUser(@RequestBody user: User): User {
-        return octaviusTemplate.execute { session ->
-            session.createNamedQuery(
+        return octaviusTemplate.execute {
+            createNamedQuery(
                 """
                 INSERT INTO users (name, role, primary_address, shipping_addresses, profile)
                 VALUES (@name, @role, @primary_address, @shipping_addresses, @profile)
@@ -34,16 +34,16 @@ class UserController(private val octaviusTemplate: OctaviusTemplate) {
     @GetMapping("/users")
     @Transactional(readOnly = true)
     fun getUsers(): List<User> {
-        return octaviusTemplate.execute { session ->
-            session.createNamedQuery("SELECT * FROM users")
+        return octaviusTemplate.execute {
+            createNamedQuery("SELECT * FROM users")
                 .fetchObjects<User>()
         }
     }
 
     @GetMapping("/users/{id}")
     fun getUser(@PathVariable id: Uuid): User {
-        return octaviusTemplate.execute { session ->
-            val row = session.createNamedQuery("SELECT * FROM users WHERE id = @id")
+        return octaviusTemplate.execute {
+            val row = createNamedQuery("SELECT * FROM users WHERE id = @id")
                 .fetchRowStrict("id" to id)
 
             User(
@@ -60,8 +60,8 @@ class UserController(private val octaviusTemplate: OctaviusTemplate) {
     @PostMapping("/users/demo-rollback")
     @Transactional
     fun demoRollback(@RequestBody user: User): User {
-        octaviusTemplate.execute { session ->
-            session.createNamedQuery(
+        octaviusTemplate.execute {
+            createNamedQuery(
                 """
                 INSERT INTO users (name, role, primary_address, shipping_addresses, profile)
                 VALUES (@name, @role, @primary_address, @shipping_addresses, @profile)
@@ -81,8 +81,8 @@ class UserController(private val octaviusTemplate: OctaviusTemplate) {
     @PostMapping("/users/demo-readonly")
     @Transactional(readOnly = true)
     fun demoReadOnly(@RequestBody user: User): User {
-        return octaviusTemplate.execute { session ->
-            session.createNamedQuery(
+        return octaviusTemplate.execute {
+            createNamedQuery(
                 """
                 INSERT INTO users (name, role, primary_address, shipping_addresses, profile)
                 VALUES (@name, @role, @primary_address, @shipping_addresses, @profile)

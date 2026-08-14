@@ -34,7 +34,7 @@ spring:
 
 ## Using `OctaviusTemplate`
 
-Once auto-configured, you can inject `OctaviusTemplate` into your services. It manages getting the connection, extracting the `OctaviusSession`, and translating exceptions.
+Once auto-configured, you can inject `OctaviusTemplate` into your services. It manages getting the connection, extracting the `OctaviusSession`, and translating exceptions. The session is the receiver of the `execute` block, so its operations are called directly on `this`.
 
 ```kotlin
 import io.github.octaviusframework.driver.spring.OctaviusTemplate
@@ -46,16 +46,16 @@ class UserService(private val template: OctaviusTemplate) {
 
     @Transactional
     fun createUser(id: Int, name: String) {
-        template.execute { session ->
-            session.createNamedQuery("INSERT INTO users (id, name) VALUES (@id, @name)")
+        template.execute {
+            createNamedQuery("INSERT INTO users (id, name) VALUES (@id, @name)")
                 .update("id" to id, "name" to name)
         }
     }
     
     @Transactional(readOnly = true)
     fun getUser(id: Int): String {
-        return template.execute { session ->
-            val row = session.createNamedQuery("SELECT name FROM users WHERE id = @id")
+        return template.execute {
+            val row = createNamedQuery("SELECT name FROM users WHERE id = @id")
                 .fetchRow("id" to id)
                 
             row?.get<String>("name") ?: throw RuntimeException("User not found")

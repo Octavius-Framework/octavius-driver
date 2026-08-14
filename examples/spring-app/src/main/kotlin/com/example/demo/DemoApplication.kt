@@ -53,21 +53,21 @@ class DemoApplication {
         // Lokalny mapper tylko do jsonb w bazie, bez ruszania Springa
         val dbObjectMapper = jacksonObjectMapper()
 
-        octaviusTemplate.execute { session ->
+        octaviusTemplate.execute {
             // 0. Register custom JSON converters for Map to JSONB mapping
-            session.typeManager.registerParameterConverter(MapParameterConverter(dbObjectMapper))
-            session.typeManager.registerResultConverter(MapResultConverter(dbObjectMapper))
+            typeManager.registerParameterConverter(MapParameterConverter(dbObjectMapper))
+            typeManager.registerResultConverter(MapResultConverter(dbObjectMapper))
 
             // Register Enum
-            session.typeManager.registerEnum<UserRole>()
+            typeManager.registerEnum<UserRole>()
 
             // 1. Register our data classes as PostgreSQL composites using reflection
             // It automatically converts PascalCase (Kotlin) to snake_case (Postgres) by default.
-            session.typeManager.registerAutoComposite<Address>()
-            session.typeManager.registerAutoComposite<UserProfile>()
+            typeManager.registerAutoComposite<Address>()
+            typeManager.registerAutoComposite<UserProfile>()
 
             // 2. Create the types in the database
-            session.createNativeQuery(
+            createNativeQuery(
                 """
                 DROP TABLE IF EXISTS users;
                 DROP TYPE IF EXISTS address CASCADE;
@@ -101,7 +101,7 @@ class DemoApplication {
             ).execute()
 
             // Reload types so the session driver discovers the newly created OIDs
-            session.reloadTypes()
+            reloadTypes()
         }
     }
 }

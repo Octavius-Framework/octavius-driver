@@ -35,7 +35,7 @@ class OctaviusSpringIntegrationTest {
     @Test
     fun `should autoconfigure OctaviusTemplate`() {
         assertNotNull(octaviusTemplate)
-        val row = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT 1 as num").fetchRowStrict() }
+        val row = octaviusTemplate.execute { createNativeQuery("SELECT 1 as num").fetchRowStrict() }
         assertEquals(1, row.get<Int>("num"))
     }
 
@@ -49,11 +49,11 @@ class OctaviusSpringIntegrationTest {
             // expected
         }
 
-        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        val count = octaviusTemplate.execute { createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(0L, count)
         
         testService.insertWithCommit()
-        val countAfterCommit = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        val countAfterCommit = octaviusTemplate.execute { createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(1L, countAfterCommit)
     }
     
@@ -67,15 +67,15 @@ class OctaviusSpringIntegrationTest {
             // expected
         }
         
-        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        val count = octaviusTemplate.execute { createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(1L, count) // Outer insert should be there, nested should be rolled back
     }
 
     @Test
     fun `should translate octavius exceptions to OctaviusDataAccessException`() {
         val ex = assertThrows(OctaviusDataAccessException::class.java) {
-            octaviusTemplate.execute { session -> 
-                session.createNativeQuery("SELECT * FROM non_existent_table_12345").execute() 
+            octaviusTemplate.execute {
+                createNativeQuery("SELECT * FROM non_existent_table_12345").execute() 
             }
         }
         
@@ -107,7 +107,7 @@ class OctaviusSpringIntegrationTest {
             assertInstanceOf<StatementException>(e.octaviusException)
         }
         
-        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        val count = octaviusTemplate.execute { createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(0L, count) 
     }
 
@@ -117,7 +117,7 @@ class OctaviusSpringIntegrationTest {
         
         testService.insertSerializable()
         
-        val count = octaviusTemplate.execute { session -> session.createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
+        val count = octaviusTemplate.execute { createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }
         assertEquals(1L, count)
     }
 }
@@ -135,33 +135,33 @@ open class TestApplication {
 open class TestService(private val octaviusTemplate: OctaviusTemplate) {
 
     open fun createTable() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("CREATE TABLE IF NOT EXISTS test_spring (id SERIAL PRIMARY KEY, val TEXT)").execute() }
-        octaviusTemplate.execute { session -> session.createNativeQuery("TRUNCATE test_spring").execute() }
+        octaviusTemplate.execute { createNativeQuery("CREATE TABLE IF NOT EXISTS test_spring (id SERIAL PRIMARY KEY, val TEXT)").execute() }
+        octaviusTemplate.execute { createNativeQuery("TRUNCATE test_spring").execute() }
     }
 
     open fun createTableWithDeferredConstraint() {
-        octaviusTemplate.execute { session ->
-            session.createNativeQuery("CREATE TABLE IF NOT EXISTS test_deferred (id INT, CONSTRAINT unique_id UNIQUE (id) DEFERRABLE INITIALLY DEFERRED)").execute()
-            session.createNativeQuery("TRUNCATE test_deferred").execute()
+        octaviusTemplate.execute {
+            createNativeQuery("CREATE TABLE IF NOT EXISTS test_deferred (id INT, CONSTRAINT unique_id UNIQUE (id) DEFERRABLE INITIALLY DEFERRED)").execute()
+            createNativeQuery("TRUNCATE test_deferred").execute()
         }
     }
 
     @Transactional
     open fun insertWithRollback() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('test')").execute() }
+        octaviusTemplate.execute { createNativeQuery("INSERT INTO test_spring (val) VALUES ('test')").execute() }
         throw RuntimeException("Rollback")
     }
 
     @Transactional
     open fun insertWithCommit() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('test')").execute() }
+        octaviusTemplate.execute { createNativeQuery("INSERT INTO test_spring (val) VALUES ('test')").execute() }
     }
     
     @Transactional
     open fun insertWithDeferredConstraintViolation() {
-        octaviusTemplate.execute { session -> 
-            session.createNativeQuery("INSERT INTO test_deferred (id) VALUES (1)").execute()
-            session.createNativeQuery("INSERT INTO test_deferred (id) VALUES (1)").execute()
+        octaviusTemplate.execute {
+            createNativeQuery("INSERT INTO test_deferred (id) VALUES (1)").execute()
+            createNativeQuery("INSERT INTO test_deferred (id) VALUES (1)").execute()
         }
     }
 
@@ -171,7 +171,7 @@ open class TestService(private val octaviusTemplate: OctaviusTemplate) {
 
     @Transactional
     open fun insertWithNestedRollback() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('outer')").execute() }
+        octaviusTemplate.execute { createNativeQuery("INSERT INTO test_spring (val) VALUES ('outer')").execute() }
         try {
             self.nestedRollback()
         } catch (e: RuntimeException) {
@@ -181,17 +181,17 @@ open class TestService(private val octaviusTemplate: OctaviusTemplate) {
 
     @Transactional(propagation = Propagation.NESTED)
     open fun nestedRollback() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('nested')").execute() }
+        octaviusTemplate.execute { createNativeQuery("INSERT INTO test_spring (val) VALUES ('nested')").execute() }
         throw RuntimeException("Nested rollback")
     }
 
     @Transactional(readOnly = true)
     open fun insertReadOnly() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('readonly')").execute() }
+        octaviusTemplate.execute { createNativeQuery("INSERT INTO test_spring (val) VALUES ('readonly')").execute() }
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     open fun insertSerializable() {
-        octaviusTemplate.execute { session -> session.createNativeQuery("INSERT INTO test_spring (val) VALUES ('serializable')").execute() }
+        octaviusTemplate.execute { createNativeQuery("INSERT INTO test_spring (val) VALUES ('serializable')").execute() }
     }
 }
