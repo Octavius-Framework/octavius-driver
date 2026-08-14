@@ -9,7 +9,8 @@ Add the integration module to your project:
 **Gradle (Kotlin DSL):**
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver-spring-integration:<version>")
+    // Brings the driver in transitively - no separate dependency needed
+    implementation("io.github.octavius-framework:driver-spring-integration:0.9.4")
 }
 ```
 
@@ -37,6 +38,7 @@ spring:
 Once auto-configured, you can inject `OctaviusTemplate` into your services. It manages getting the connection, extracting the `OctaviusSession`, and translating exceptions. The session is the receiver of the `execute` block, so its operations are called directly on `this`.
 
 ```kotlin
+import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.spring.OctaviusTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -63,6 +65,14 @@ class UserService(private val template: OctaviusTemplate) {
     }
 }
 ```
+
+### Connection lifetime
+
+`execute` takes its connection through `DataSourceUtils`, so it joins an active `@Transactional` transaction rather than opening its own, and hands the connection back at the end. The session it wraps around that connection is never closed — the connection's lifetime belongs to Spring, not to the session.
+
+One consequence follows from that: **the tidying a session does when you close it yourself does not happen here.** A `LISTEN` registered inside an `execute` block stays on the connection and rides back into the pool with it; so does a `COPY` you started and never finished. Measured on a pool of one, a channel registered inside a block was still registered afterwards.
+
+Nothing exotic belongs in a template block, then. Keep it to queries, and give anything that outlives a single statement — a listener, a bulk transfer — a session of its own through [`getOctaviusSession`](initialization.md#getting-a-session), closed by you. A `COPY` you do finish inside the block is fine; only an abandoned one is a problem. See [What survives a return to the pool](initialization.md#what-survives-a-return-to-the-pool) for the wider rule.
 
 ## Transaction Management
 

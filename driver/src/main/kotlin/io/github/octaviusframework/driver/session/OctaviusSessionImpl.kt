@@ -125,6 +125,20 @@ internal class OctaviusSessionImpl(
     // -------------------------------------------Close/Abort-----------------------------------------------------------
 
     /**
+     * Undoes the per-session state this session left on its connection, so the next borrower of
+     * a pooled connection finds it as it was: a `COPY` that was never finished, any `LISTEN`
+     * registrations, and a transaction opened by a hand-written `BEGIN`.
+     *
+     * Only reachable from [close]. Code that hands the connection back some other way - Spring's
+     * `DataSourceUtils`, for instance - never closes the session and so never runs this.
+     */
+    private fun resetConnectionState() {
+        copy.cancelActiveOperation()
+        notifications.releaseSubscriptions()
+        rollbackTransactionTheDriverNeverOpened()
+    }
+
+    /**
      * Undoes a transaction the driver did not open, which in practice means one started by a
      * hand-written `BEGIN`.
      *
@@ -162,9 +176,7 @@ internal class OctaviusSessionImpl(
                 // here instead of being left for whoever borrows it next: a COPY the caller
                 // never finished, and any LISTEN registrations this session made.
                 try {
-                    copy.cancelActiveOperation()
-                    notifications.releaseSubscriptions()
-                    rollbackTransactionTheDriverNeverOpened()
+                    resetConnectionState()
                 } catch (_: Exception) {
                     abort()
                     return
