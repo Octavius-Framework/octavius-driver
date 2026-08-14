@@ -1,34 +1,50 @@
 # PostgreSQL Listen / Notify
 
-Octavius wraps PostgreSQL's `LISTEN` / `NOTIFY` mechanism in a fully asynchronous, coroutine-based API, so you can build applications that react to database events as they happen. It isn't a bad mental model to picture the *cursus publicus* — Rome's state courier network:
-channels are the roads, notifications are the dispatches, and your listener is the officer waiting at the way-station for the next rider.
+Octavius wraps PostgreSQL's `LISTEN` / `NOTIFY` in a coroutine-based API, so an application can react to database events as they happen rather than polling a table. The *cursus publicus* is not a bad mental model — Rome's state courier network: channels are the roads, notifications are the dispatches, and your listener is the officer waiting at the way-station for the next rider.
 
-Everything here lives behind `session.notifications`, an instance of `NotificationManager`.
+Everything lives behind `session.notifications`, an instance of `NotificationManager`.
 
-## Subscribing and Emitting
+Contents:
+* [Subscribing and emitting](#subscribing-and-emitting)
+* [When a notification is actually delivered](#when-a-notification-is-actually-delivered)
+* [Receiving them](#receiving-them)
+* [Listener loops](#listener-loops)
+* [Practical rules](#practical-rules)
 
-### Listening to Channels
-Register the connection on one or more channels with `listen`:
+## Subscribing and emitting
+
 ```kotlin
+// Register this connection on one or more channels
 session.notifications.listen("senatus_curia", "province_updates")
-```
 
-### Unlistening
-Drop a specific channel, or every subscription on the current connection:
-```kotlin
+// Drop one subscription, or all of them
 session.notifications.unlisten("senatus_curia")
 session.notifications.unlistenAll()
-```
 
-### Emitting Notifications
-Dispatch a message to a channel with `notify`, optionally carrying a text payload:
-```kotlin
+// Dispatch a message, with or without a text payload
 session.notifications.notify("province_updates", "consul_elected=42")
+session.notifications.notify("province_updates")
 ```
 
-## Receiving Notifications
+Subscriptions belong to the **connection**, not to your session object: `listen` registers the physical connection behind that session. Because that connection outlives the session when it came from a pool, closing a session that subscribed to anything issues an `UNLISTEN *` on the way out — otherwise the next borrower would inherit the registrations and start receiving your notifications. Sessions that never called `listen` pay nothing for this.
 
-Incoming dispatches arrive on a `SharedFlow<PgNotification>`, collected like any other coroutine flow:
+What that cleanup cannot do is survive the connection itself: a dropped or replaced connection loses its subscriptions, silently and without an error, so anything long-lived has to re-subscribe after reconnecting.
+
+Channel names are quoted as PostgreSQL identifiers, so a name with capitals or spaces survives intact and means the same thing on both `listen` and `notify`. Watch out only when something *else* emits the notification with hand-written SQL: `NOTIFY MyChannel` without quotes is folded to `mychannel` by PostgreSQL and will not reach a listener registered on `MyChannel`. Payloads are bound as parameters, never spliced into SQL.
+
+## When a notification is actually delivered
+
+Three rules decide whether a dispatch reaches you, and all three are PostgreSQL's:
+
+**Only on commit.** A `notify` issued inside a transaction is held until that transaction commits. Verified: with the notifier sitting in an open transaction, the listener saw nothing; the moment the notifier committed, the message arrived. A rolled-back transaction sends nothing at all.
+
+**Including back to the sender.** A session listening on a channel receives its own notifications too — it is not excluded.
+
+**Payloads are limited to under 8000 bytes.** 7999 bytes go through; 8000 is refused by the server with a `DataException`. Send an identifier and let the receiver fetch the rest; a payload is a doorbell, not a delivery van. A `notify` without a payload arrives with `payload` as an empty string rather than null.
+
+## Receiving them
+
+Notifications surface as a `SharedFlow<PgNotification>`, collected like any other flow. Each carries the channel, the payload, and the backend process id of the sender:
 
 ```kotlin
 coroutineScope.launch {
@@ -40,27 +56,54 @@ coroutineScope.launch {
 }
 ```
 
-> [!NOTE]
-> **Buffer capacity.** The `messages` flow sits on a buffer sized by `notificationBufferCapacity` (default **256**) — think of it as how many riders the way-station can hold before it runs out of room. Once full, the driver discards the oldest, not-yet-processed notification to make space for the newest one (a **DROP_OLDEST** strategy). Adjust the capacity through the connection properties or the JDBC URL (`?notificationBufferCapacity=N`).
+> [!WARNING]
+> **The flow has no replay: a notification that arrives while nothing is collecting is gone.** It is not queued for a collector that shows up later. Start collecting *before* you subscribe, or at least before anything can notify the channel — otherwise the first events, which are usually the ones that matter at startup, are silently lost.
 
-## Listener Loops
+Once there *is* a collector, the buffer sized by `notificationBufferCapacity` (default **256**) absorbs bursts. When it fills, the driver discards the oldest unprocessed notification to make room for the newest — a `DROP_OLDEST` strategy, so a slow collector loses history rather than blocking the connection. The capacity is set through the connection properties or the URL (`?notificationBufferCapacity=N`).
 
-Subscribing alone doesn't pull anything off the wire — the driver has to actively read the socket to feed the `messages` flow. Octavius offers two suspendable loops for this; launch one of them in a coroutine right after subscribing.
+### Notifications ride along with anything the connection reads
 
-### 1. Polling Listener Loop
+The driver picks up notifications while reading *any* message from the server, which has a practical consequence worth knowing: **a session that keeps running queries needs no listener loop at all.** A plain `SELECT` on the listening session delivers whatever has arrived in the meantime.
+
+A listener loop is what you need when the connection would otherwise sit idle — nobody is reading the socket, so nothing reaches the flow.
+
+## Listener loops
+
+Both are suspending functions; launch one in a coroutine after subscribing.
+
+> [!IMPORTANT]
+> A running loop **holds the connection for its entire duration.** A query issued on that same session from another thread blocks until the loop is canceled — measured at over two seconds against a loop that was simply left running. Give a listener its own session; do not share it with query traffic.
+
+### Polling loop
+
 ```kotlin
-session.notifications.startPollingListenerLoop(pollTimeoutMs = 500)
+val job = launch { session.notifications.startPollingListenerLoop(pollTimeoutMs = 500) }
+// ...
+job.cancelAndJoin()
 ```
-This is the sentry doing rounds: it checks the socket on a timeout instead of staying fixed at one post.
-- **Graceful cancellation** — cancelling the coroutine simply ends the rounds; the connection itself stays open.
-- **Reusable** — since the connection survives, it can go straight back into a pool or be reused for further queries.
-- **Best for** applications where connections are pooled or shared across responsibilities.
 
-### 2. Interruptible Listener Loop
+The sentry doing rounds: it waits on the socket with a timeout and tries again, so it can notice cancellation between attempts.
+
+- **Graceful cancellation** — the loop simply ends, the connection stays open and in sync.
+- **Reusable** — the session can go on to run queries, or return to a pool.
+- **Best for** pooled or shared connections, and anywhere the connection must survive the listener.
+
+### Interruptible loop
+
 ```kotlin
-session.notifications.startInterruptibleListenerLoop()
+val job = launch { session.notifications.startInterruptibleListenerLoop() }
 ```
-This is the sentry standing fixed watch: it blocks indefinitely on the socket read and doesn't budge until something arrives.
-- **Hard cancellation** — because the underlying socket read blocks hard, cancelling the coroutine forces the driver to abort the physical connection to break out of it.
-- **Not reusable** — the connection is closed for good after cancellation.
-- **Best for** dedicated, long-lived background workers, where paying for polling isn't worth it and a disposable connection on shutdown is fine.
+
+The sentry standing fixed watch: it blocks on the socket read indefinitely and never wakes up on its own.
+
+- **Hard cancellation** — the blocking read cannot be interrupted politely, so cancelling forces the driver to abort the physical connection to break out of it.
+- **Not reusable** — that connection is finished afterwards, by design.
+- **Best for** dedicated long-lived workers, where polling is not worth paying for and throwing the connection away at shutdown costs nothing.
+
+## Practical rules
+
+* **Give the listener its own session.** It holds the connection while it runs, and the interruptible variant destroys it on shutdown.
+* **Collect before you subscribe.** No collector means no delivery, with nothing queued and no error.
+* **Treat the payload as a pointer.** Under 8000 bytes, and the receiver should fetch the real data itself — the payload cannot be trusted to carry state that matters.
+* **Expect duplicates and gaps.** A dropped connection loses its subscription silently, and the buffer discards the oldest entries under load. `LISTEN`/`NOTIFY` is a hint that something changed, not a durable queue.
+* **Re-subscribe after reconnecting.** Subscriptions live on the connection, and a session that borrows a different physical connection is listening to nothing until it says so again.

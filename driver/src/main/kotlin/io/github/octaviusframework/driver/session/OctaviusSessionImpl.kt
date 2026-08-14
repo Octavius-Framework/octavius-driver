@@ -139,11 +139,12 @@ internal class OctaviusSessionImpl(
                 // we force an abort on the pool connection to evict it from the pool.
                 abort()
             } else {
-                // A COPY the caller never finished leaves the connection in copy mode.
-                // Resynchronize it, or evict it if that fails - otherwise the next borrower
-                // of a pooled connection inherits a transfer in progress.
+                // Both of these outlive the session on a pooled connection, so they are undone
+                // here instead of being left for whoever borrows it next: a COPY the caller
+                // never finished, and any LISTEN registrations this session made.
                 try {
                     copy.cancelActiveOperation()
+                    notifications.releaseSubscriptions()
                 } catch (_: Exception) {
                     abort()
                     return

@@ -110,12 +110,24 @@ class NotificationManager internal constructor(private val session: OctaviusSess
     }
 
     /**
+     * Whether this session has ever subscribed to anything.
+     *
+     * Subscriptions live on the physical connection, which outlives the session when it came
+     * from a pool, so the session has to know whether it left any behind. Tracked as a plain
+     * "ever subscribed" flag rather than a set of channels: `UNLISTEN *` is idempotent, and
+     * one redundant round trip on close is cheaper than keeping an accurate tally.
+     */
+    @Volatile
+    private var hasSubscribed: Boolean = false
+
+    /**
      * Registers this connection to listen for notifications on the specified channel(s).
      */
     fun listen(vararg channels: String) {
         if (channels.isEmpty()) return
         val sql = channels.joinToString("; ") { "LISTEN ${it.quoteAsPgIdentifier()}" }
         session.createNativeQuery(sql).execute()
+        hasSubscribed = true
     }
 
     /**
@@ -132,6 +144,20 @@ class NotificationManager internal constructor(private val session: OctaviusSess
      */
     fun unlistenAll() {
         session.createNativeQuery("UNLISTEN *").execute()
+        hasSubscribed = false
+    }
+
+    /**
+     * Drops whatever this session subscribed to, if anything.
+     *
+     * Called when a session closes over a connection that will outlive it: leaving the
+     * registrations in place would hand the next borrower of a pooled connection someone
+     * else's subscriptions, and let them pile up over the connection's lifetime. Sessions
+     * that never called [listen] pay nothing.
+     */
+    internal fun releaseSubscriptions() {
+        if (!hasSubscribed) return
+        unlistenAll()
     }
 
     /**
