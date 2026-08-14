@@ -142,14 +142,14 @@ class ComplexDataIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             session.reloadTypes()
-            session.types.registerEnum<TestStatus>("test_status", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
-            session.types.registerEnum<TestPriority>("test_priority", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
-            session.types.registerEnum<TestCategory>("test_category", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
+            session.typeManager.registerEnum<TestStatus>("test_status", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
+            session.typeManager.registerEnum<TestPriority>("test_priority", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
+            session.typeManager.registerEnum<TestCategory>("test_category", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
             
-            session.types.registerAutoComposite<TestMetadata>("test_metadata")
-            session.types.registerAutoComposite<TestPerson>("test_person")
-            session.types.registerAutoComposite<TestTask>("test_task")
-            session.types.registerAutoComposite<TestProject>("test_project")
+            session.typeManager.registerAutoComposite<TestMetadata>("test_metadata")
+            session.typeManager.registerAutoComposite<TestPerson>("test_person")
+            session.typeManager.registerAutoComposite<TestTask>("test_task")
+            session.typeManager.registerAutoComposite<TestProject>("test_project")
 
             val newProject = createSampleProject()
 
@@ -191,14 +191,14 @@ class ComplexDataIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             session.reloadTypes()
-            session.types.registerEnum<TestStatus>("test_status", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
-            session.types.registerEnum<TestPriority>("test_priority", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
-            session.types.registerEnum<TestCategory>("test_category", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
+            session.typeManager.registerEnum<TestStatus>("test_status", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
+            session.typeManager.registerEnum<TestPriority>("test_priority", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
+            session.typeManager.registerEnum<TestCategory>("test_category", pgConvention = CaseConvention.SNAKE_CASE_LOWER)
             
-            session.types.registerAutoComposite<TestMetadata>("test_metadata")
-            session.types.registerAutoComposite<TestPerson>("test_person")
-            session.types.registerAutoComposite<TestTask>("test_task")
-            session.types.registerAutoComposite<TestProject>("test_project")
+            session.typeManager.registerAutoComposite<TestMetadata>("test_metadata")
+            session.typeManager.registerAutoComposite<TestPerson>("test_person")
+            session.typeManager.registerAutoComposite<TestTask>("test_task")
+            session.typeManager.registerAutoComposite<TestProject>("test_project")
 
             val newProject = createSampleProject()
             

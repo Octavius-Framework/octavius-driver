@@ -28,7 +28,7 @@ internal class OctaviusSessionImpl(
 
     internal val octaviusConnection: OctaviusConnection = rawConnection.unwrap()
 
-    override val types: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
+    override val typeManager: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
 
     override val notifications: NotificationManager = NotificationManager(this)
 
@@ -67,12 +67,12 @@ internal class OctaviusSessionImpl(
 
     override fun createNativeQuery(sql: String): NativeQuery {
         octaviusConnection.checkClosed()
-        return NativeQuery(sql, octaviusConnection.queryExecutor, types)
+        return NativeQuery(sql, octaviusConnection.queryExecutor, typeManager)
     }
 
     override fun createNamedQuery(sql: String): NamedParameterQuery {
         octaviusConnection.checkClosed()
-        return NamedParameterQuery(sql, octaviusConnection.queryExecutor, types)
+        return NamedParameterQuery(sql, octaviusConnection.queryExecutor, typeManager)
     }
 
     override fun cancelQuery() {

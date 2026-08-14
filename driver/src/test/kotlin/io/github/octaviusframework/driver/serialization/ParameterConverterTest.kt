@@ -34,8 +34,8 @@ class ParameterConverterTest {
         session.createNativeQuery("CREATE TYPE complex_user AS (id int, name text, address simple_address, tags text[])").execute()
         
         session.reloadTypes()
-        session.types.registerAutoComposite<SimpleAddress>("simple_address")
-        session.types.registerAutoComposite<ComplexUser>("complex_user")
+        session.typeManager.registerAutoComposite<SimpleAddress>("simple_address")
+        session.typeManager.registerAutoComposite<ComplexUser>("complex_user")
     }
 
     @AfterAll

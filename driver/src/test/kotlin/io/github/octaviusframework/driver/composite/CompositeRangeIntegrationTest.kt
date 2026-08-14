@@ -51,7 +51,7 @@ class CompositeRangeIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             session.reloadTypes()
-            session.types.registerAutoComposite<SimpleData>("simple_data")
+            session.typeManager.registerAutoComposite<SimpleData>("simple_data")
 
             val dataRange = rangeOf(
                 lowerBound = SimpleData(10, 10),
@@ -74,7 +74,7 @@ class CompositeRangeIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             session.reloadTypes()
-            session.types.registerAutoComposite<SimpleData>("simple_data")
+            session.typeManager.registerAutoComposite<SimpleData>("simple_data")
 
             val dataRange1 = rangeOf(
                 lowerBound = SimpleData(10, 10),

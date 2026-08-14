@@ -32,8 +32,8 @@ class DeserializationIntegrationTest {
             session.createNativeQuery("CREATE TYPE integ_user AS (id int, name text, address integ_address)").execute()
 
             session.reloadTypes()
-            session.types.registerAutoComposite<IntegrationAddress>("integ_address")
-            session.types.registerAutoComposite<IntegrationUser>("integ_user")
+            session.typeManager.registerAutoComposite<IntegrationAddress>("integ_address")
+            session.typeManager.registerAutoComposite<IntegrationUser>("integ_user")
 
             val result = session.createNativeQuery("SELECT ROW(10, 'Jan Kowalski', ROW('Marszałkowska', 'Warszawa')::integ_address)::integ_user AS usr").fetchRowStrict()
             
@@ -65,7 +65,7 @@ class DeserializationIntegrationTest {
             session.createNativeQuery("CREATE TYPE integ_address AS (street text, city text)").execute()
 
             session.reloadTypes()
-            session.types.registerAutoComposite<IntegrationAddress>("integ_address")
+            session.typeManager.registerAutoComposite<IntegrationAddress>("integ_address")
 
             val result = session.createNativeQuery("SELECT ARRAY[ROW('M1', 'W1')::integ_address, ROW('M2', 'W2')::integ_address] AS addresses").fetchRowStrict()
 
@@ -135,7 +135,7 @@ class DeserializationIntegrationTest {
 
         try {
             // Rejestracja własnych, jawnych konwerterów
-            session.types.registerResultConverter(object : ResultConverter<Any, TestStatus> {
+            session.typeManager.registerResultConverter(object : ResultConverter<Any, TestStatus> {
                 override val supportedSourceClass = Any::class
                 override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
                     return expectedType.classifier == TestStatus::class || sourceType.name == "test_status_enum"
@@ -151,7 +151,7 @@ class DeserializationIntegrationTest {
                 }
             })
             
-            session.types.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
+            session.typeManager.registerResultConverter(object : ResultConverter<PgComposite, TestUserData> {
                 override val supportedSourceClass = PgComposite::class
                 override fun canConvert(sourceClass: kotlin.reflect.KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
                     return expectedType.classifier == TestUserData::class || sourceType.name == "test_user_data"
@@ -228,7 +228,7 @@ class DeserializationIntegrationTest {
             session.createNativeQuery("CREATE TYPE domain_user AS (id positive_int, age positive_int)").execute()
 
             session.reloadTypes()
-            session.types.registerAutoComposite<DomainUser>("domain_user")
+            session.typeManager.registerAutoComposite<DomainUser>("domain_user")
 
             // Test deserialization of pure domain
             val res1 = session.createNativeQuery("SELECT 42::positive_int AS num").fetchRowStrict()
@@ -281,8 +281,8 @@ class DeserializationIntegrationTest {
             session.createNativeQuery("CREATE TYPE integ_user_mapkey AS (id int, full_name text, home_address integ_address)").execute()
 
             session.reloadTypes()
-            session.types.registerAutoComposite<IntegrationAddress>("integ_address")
-            session.types.registerAutoComposite<MapKeyIntegrationUser>("integ_user_mapkey")
+            session.typeManager.registerAutoComposite<IntegrationAddress>("integ_address")
+            session.typeManager.registerAutoComposite<MapKeyIntegrationUser>("integ_user_mapkey")
 
             // Test deserialization
             val result = session.createNativeQuery("SELECT ROW(15, 'Anna Nowak', ROW('Mickiewicza', 'Kraków')::integ_address)::integ_user_mapkey AS usr").fetchRowStrict()

@@ -63,8 +63,8 @@ class AutoCompositeIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             session.reloadTypes()
-            session.types.registerAutoComposite<PersonProfile>("person_profile")
-            session.types.registerAutoComposite<EmployeeData>("employee_data")
+            session.typeManager.registerAutoComposite<PersonProfile>("person_profile")
+            session.typeManager.registerAutoComposite<EmployeeData>("employee_data")
 
             val activePeriod = rangeOf(
                 lowerBound = LocalDate(2023, 1, 1),
@@ -124,8 +124,8 @@ class AutoCompositeIntegrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", "postgres", "1234")
         try {
             session.reloadTypes()
-            session.types.registerAutoComposite<PersonProfile>("person_profile")
-            session.types.registerAutoComposite<EmployeeData>("employee_data")
+            session.typeManager.registerAutoComposite<PersonProfile>("person_profile")
+            session.typeManager.registerAutoComposite<EmployeeData>("employee_data")
 
             val activePeriod = rangeOf(
                 lowerBound = LocalDate(2023, 1, 1),

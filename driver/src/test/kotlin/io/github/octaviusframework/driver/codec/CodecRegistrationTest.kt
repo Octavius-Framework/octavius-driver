@@ -36,11 +36,11 @@ class CodecRegistrationTest {
         val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
         
         val codec = CircleCodec()
-        session.types.registerCodec(codec)
+        session.typeManager.registerCodec(codec)
         
-        val oid = session.types.resolveOid("circle")
+        val oid = session.typeManager.resolveOid("circle")
         
-        val retrievedCodec = session.types.codecDictionary.getCodecByOid<Circle>(oid)
+        val retrievedCodec = session.typeManager.codecDictionary.getCodecByOid<Circle>(oid)
         
         assertNotNull(retrievedCodec, "Codec should be registered and retrievable by resolved OID")
         assertEquals(Circle::class, retrievedCodec?.kotlinClass)

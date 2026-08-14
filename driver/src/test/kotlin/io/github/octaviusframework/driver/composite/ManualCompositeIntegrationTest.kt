@@ -92,8 +92,8 @@ class ManualCompositeIntegrationTest {
             conn.reloadTypes()
             
             // Rejestrujemy nasze ręczne mappery
-            conn.types.registerResultConverter(PaymentInfoResultConverter())
-            conn.types.registerParameterConverter(PaymentInfoParameterConverter())
+            conn.typeManager.registerResultConverter(PaymentInfoResultConverter())
+            conn.typeManager.registerParameterConverter(PaymentInfoParameterConverter())
 
             conn.transaction.required {
                 val payment = PaymentInfo(1500, "PLN")

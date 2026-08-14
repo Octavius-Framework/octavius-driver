@@ -18,7 +18,7 @@ interface OctaviusSessionOperations {
     /**
      * Manages PostgreSQL types and their OIDs, providing functionality for registration and resolution.
      */
-    val types: TypeManager
+    val typeManager: TypeManager
 
     /**
      * Handles asynchronous PostgreSQL notifications (`LISTEN` / `NOTIFY` mechanism).

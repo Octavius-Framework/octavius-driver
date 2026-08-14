@@ -133,8 +133,8 @@ class JsonElementIntegrationTest {
             conn.reloadTypes()
 
             // Rejestrujemy ręczne konwertery dla naszego kompozytu
-            conn.types.registerResultConverter(MetadataHolderResultConverter())
-            conn.types.registerParameterConverter(MetadataHolderParameterConverter())
+            conn.typeManager.registerResultConverter(MetadataHolderResultConverter())
+            conn.typeManager.registerParameterConverter(MetadataHolderParameterConverter())
 
             val inputJson = buildJsonObject {
                 put("status", JsonPrimitive("active"))

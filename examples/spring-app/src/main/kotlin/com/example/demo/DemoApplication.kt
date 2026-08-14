@@ -55,16 +55,16 @@ class DemoApplication {
 
         octaviusTemplate.execute { session ->
             // 0. Register custom JSON converters for Map to JSONB mapping
-            session.types.registerParameterConverter(MapParameterConverter(dbObjectMapper))
-            session.types.registerResultConverter(MapResultConverter(dbObjectMapper))
+            session.typeManager.registerParameterConverter(MapParameterConverter(dbObjectMapper))
+            session.typeManager.registerResultConverter(MapResultConverter(dbObjectMapper))
 
             // Register Enum
-            session.types.registerEnum<UserRole>()
+            session.typeManager.registerEnum<UserRole>()
 
             // 1. Register our data classes as PostgreSQL composites using reflection
             // It automatically converts PascalCase (Kotlin) to snake_case (Postgres) by default.
-            session.types.registerAutoComposite<Address>()
-            session.types.registerAutoComposite<UserProfile>()
+            session.typeManager.registerAutoComposite<Address>()
+            session.typeManager.registerAutoComposite<UserProfile>()
 
             // 2. Create the types in the database
             session.createNativeQuery(
