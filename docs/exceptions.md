@@ -406,6 +406,8 @@ The object-identifying fields come straight from the server's error message, so 
 | `FEATURE_NOT_SUPPORTED`                    | A legacy JDBC feature Octavius deliberately does not implement.                                                                                                                |
 | `NULL_SQL`                                 | SQL string passed to a statement was null.                                                                                                                                     |
 | `UNEXPECTED_RESULT`                        | `execute()`/`update()` received result rows — use a `fetch*` method for DQL. Also raised when a `COPY` did not start, or when a `DataRow` arrives before its `RowDescription`. |
+| `COPY_IN_PROGRESS`                         | The connection is in copy mode. Anything else on that session — a query, a second `COPY`, a notification listener — is refused until the transfer ends. See [COPY](copy.md).   |
+| `COPY_NOT_ACTIVE`                          | A `CopyIn` / `CopyOut` handle was used after it was ended or cancelled. Handles are single-use — start a new one through the `CopyManager`.                                    |
 
 ### 11. `TypeException`
 

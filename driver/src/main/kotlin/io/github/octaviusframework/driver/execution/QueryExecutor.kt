@@ -39,6 +39,7 @@ class QueryExecutor internal constructor(
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
     fun execute(sql: String) = stream.lock.withLock {
+        stream.checkNotInCopyMode()
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -82,6 +83,7 @@ class QueryExecutor internal constructor(
         params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = stream.lock.withLock {
+        stream.checkNotInCopyMode()
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
         val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
@@ -167,6 +169,7 @@ class QueryExecutor internal constructor(
         maxRows: Int = 0,
         transform: (Row) -> R
     ): List<R> = stream.lock.withLock {
+        stream.checkNotInCopyMode()
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
         val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
@@ -258,6 +261,7 @@ class QueryExecutor internal constructor(
         transform: (Row) -> R,
         block: (R) -> Unit
     ) = stream.lock.withLock {
+        stream.checkNotInCopyMode()
         val paramTypes = parameterSerializer.serializeAll(params, parameterWriter)
         val paramValues = parameterWriter.data
         val paramValuesLength = parameterWriter.position

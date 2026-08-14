@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.copy
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -10,18 +12,24 @@ import org.junit.jupiter.api.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 class CopyManagerTest {
 
     private lateinit var session: OctaviusSession
 
-    @BeforeEach
-    fun setup() {
+    private fun newSession(): OctaviusSession {
         val props = OctaviusProperties()
         props.user = "postgres"
         props.password = "1234"
-        session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
-        
+        return getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+    }
+
+    @BeforeEach
+    fun setup() {
+        session = newSession()
+
         session.createNativeQuery("CREATE TABLE IF NOT EXISTS copy_test (id INT, name TEXT)").execute()
         session.createNativeQuery("TRUNCATE TABLE copy_test").execute()
     }
@@ -78,5 +86,46 @@ class CopyManagerTest {
         
         val outputData = resultBytes.toString(Charsets.UTF_8.name())
         assertEquals("4,Test4\n5,Test5\n", outputData)
+    }
+
+    @Test
+    fun testQueriesAreRejectedWhileCopyIsInProgress() {
+        val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
+        copyIn.writeToCopy("6,Test6\n".toByteArray(Charsets.UTF_8))
+
+        val error = assertFailsWith<InvalidOperationException> {
+            session.createNativeQuery("SELECT 1").fetchFieldStrict<Int>()
+        }
+        assertEquals(InvalidOperationExceptionReason.COPY_IN_PROGRESS, error.reason)
+
+        // The rejection must not disturb the transfer itself
+        assertEquals(1, copyIn.endCopy())
+        assertEquals(1L, session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>())
+    }
+
+    @Test
+    fun testSecondCopyOnTheSameSessionIsRejected() {
+        val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
+        try {
+            val error = assertFailsWith<InvalidOperationException> {
+                session.copy.copyOut("COPY copy_test TO STDOUT WITH (FORMAT CSV)")
+            }
+            assertEquals(InvalidOperationExceptionReason.COPY_IN_PROGRESS, error.reason)
+        } finally {
+            copyIn.cancelCopy()
+        }
+    }
+
+    @Test
+    fun testClosingSessionAbortsAnUnfinishedCopy() {
+        val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
+        copyIn.writeToCopy("7,Test7\n".toByteArray(Charsets.UTF_8))
+
+        session.close() // No endCopy() - closing must abort the transfer, not commit it
+        assertFalse(copyIn.isActive)
+
+        session = newSession()
+        val count = session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>()
+        assertEquals(0L, count)
     }
 }

@@ -139,9 +139,17 @@ internal class OctaviusSessionImpl(
                 // we force an abort on the pool connection to evict it from the pool.
                 abort()
             } else {
+                // A COPY the caller never finished leaves the connection in copy mode.
+                // Resynchronize it, or evict it if that fails - otherwise the next borrower
+                // of a pooled connection inherits a transfer in progress.
+                try {
+                    copy.cancelActiveOperation()
+                } catch (_: Exception) {
+                    abort()
+                    return
+                }
                 rawConnection.close()
             }
-        } catch (ignored: Exception) {
-        }
+        } catch (_: Exception) {}
     }
 }

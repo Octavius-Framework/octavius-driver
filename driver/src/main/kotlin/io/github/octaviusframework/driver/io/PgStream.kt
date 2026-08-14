@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.io
 
 import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.NetworkException
 import io.github.octaviusframework.driver.exception.NetworkExceptionReason
 import io.github.octaviusframework.driver.message.backend.*
@@ -53,6 +55,29 @@ internal class PgStream(
     var secretKey: ByteArray = ByteArray(0)
     var isBroken: Boolean = false
     var maxCachedRowSize: Int = 65536
+
+    /**
+     * True while a COPY operation holds the connection in copy mode.
+     *
+     * Set and cleared by the copy operations themselves, always under [lock], so it is only
+     * ever observed by others while the lock is free - at which point it accurately says
+     * whether a transfer is still in flight.
+     */
+    var copyInProgress: Boolean = false
+
+    /**
+     * Guards any exchange that needs the protocol stream to itself.
+     *
+     * While a COPY is in progress the connection speaks only the copy sub-protocol: another
+     * exchange interleaved into it would consume the transfer's messages and desynchronize
+     * the connection, so this fails fast instead. Note that [lock] alone cannot catch this -
+     * it is reentrant, so the thread running the COPY would pass straight through it.
+     */
+    fun checkNotInCopyMode() {
+        if (copyInProgress) {
+            throw InvalidOperationException(InvalidOperationExceptionReason.COPY_IN_PROGRESS)
+        }
+    }
 
     /**
      * Shared buffers used to reduce memory allocations during 'DataRow' deserialization.

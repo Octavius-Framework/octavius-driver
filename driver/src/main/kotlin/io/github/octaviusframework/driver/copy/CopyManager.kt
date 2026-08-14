@@ -18,12 +18,25 @@ import kotlin.concurrent.withLock
  */
 class CopyManager internal constructor(private val stream: PgStream) {
 
+    companion object {
+        /** Chunk size used by the [InputStream] overload of [copyIn] when none is given. */
+        const val DEFAULT_BUFFER_SIZE: Int = 65536
+    }
+
+    /**
+     * The most recently started operation, kept only so a closing session can abort a transfer
+     * the caller left open. Never cleared: [CopyOperation.isActive] is the authority on whether
+     * it still refers to anything live.
+     */
+    private var lastOperation: CopyOperation? = null
+
     /**
      * Initiates a COPY IN operation allowing manual chunk writing.
      */
     fun copyIn(sql: String): CopyIn {
         stream.lock.lock()
         try {
+            stream.checkNotInCopyMode()
             stream.sendMessage(SimpleQueryMessage(sql))
             stream.flush()
 
@@ -33,7 +46,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                 when (msg) {
                     is ErrorResponseMessage -> errorResponse = msg
                     is CopyInResponseMessage -> {
-                        return CopyIn(stream)
+                        return CopyIn(stream).also { lastOperation = it }
                     }
                     is ReadyForQueryMessage -> {
                         if (errorResponse != null) {
@@ -58,6 +71,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
     fun copyOut(sql: String): CopyOut {
         stream.lock.lock()
         try {
+            stream.checkNotInCopyMode()
             stream.sendMessage(SimpleQueryMessage(sql))
             stream.flush()
 
@@ -67,7 +81,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                 when (msg) {
                     is ErrorResponseMessage -> errorResponse = msg
                     is CopyOutResponseMessage -> {
-                        return CopyOut(stream)
+                        return CopyOut(stream).also { lastOperation = it }
                     }
                     is ReadyForQueryMessage -> {
                         if (errorResponse != null) {
@@ -89,11 +103,15 @@ class CopyManager internal constructor(private val stream: PgStream) {
     /**
      * Reads all data from the provided InputStream and writes it to the COPY IN operation.
      * Returns the number of updated rows.
+     *
+     * @param bufferSize Size of the chunks the input is forwarded in. Each chunk is one message
+     *   and one flush, so very small values turn a bulk load back into per-chunk round trips.
      */
-    fun copyIn(sql: String, inputStream: InputStream): Long {
+    fun copyIn(sql: String, inputStream: InputStream, bufferSize: Int = DEFAULT_BUFFER_SIZE): Long {
+        require(bufferSize > 0) { "Copy buffer size must be positive, was $bufferSize" }
         val copyIn = copyIn(sql)
         try {
-            val buffer = ByteArray(65536)
+            val buffer = ByteArray(bufferSize)
             var bytesRead: Int
             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                 copyIn.writeToCopy(buffer, 0, bytesRead)
@@ -128,17 +146,39 @@ class CopyManager internal constructor(private val stream: PgStream) {
             throw e
         }
     }
+
+    /**
+     * Aborts a transfer the caller never finished, if there is one.
+     *
+     * Called when a session closes: a connection left in copy mode would otherwise be handed
+     * to the next borrower of a pooled connection in the middle of a transfer.
+     */
+    internal fun cancelActiveOperation() {
+        lastOperation?.takeIf { it.isActive }?.cancelCopy()
+    }
 }
 
 class CopyIn internal constructor(private val stream: PgStream) : CopyOperation {
+    /**
+     * Kept in step with [PgStream.copyInProgress] through the setter below, so the rest of the
+     * driver can tell that the connection is in copy mode without holding this handle. The
+     * initializer bypasses the setter, hence the init block.
+     */
     override var isActive: Boolean = true
-        private set
+        private set(value) {
+            field = value
+            stream.copyInProgress = value
+        }
+
+    init {
+        stream.copyInProgress = true
+    }
 
     /**
      * Writes a chunk of data to the server.
      */
     fun writeToCopy(data: ByteArray, offset: Int = 0, length: Int = data.size) = stream.lock.withLock {
-        if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.UNEXPECTED_RESULT, "Copy operation is no longer active.")
+        if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.COPY_NOT_ACTIVE, "Copy operation is no longer active.")
         stream.sendMessage(FrontendCopyDataMessage(data, offset, length))
         stream.flush()
     }
@@ -149,7 +189,7 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
     fun endCopy(): Long {
         stream.lock.lock()
         try {
-            if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.UNEXPECTED_RESULT, "Copy operation is no longer active.")
+            if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.COPY_NOT_ACTIVE, "Copy operation is no longer active.")
             stream.sendMessage(FrontendCopyDoneMessage())
             stream.flush()
             
@@ -202,9 +242,17 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
 }
 
 class CopyOut internal constructor(private val stream: PgStream) : CopyOperation {
+    /** Kept in step with [PgStream.copyInProgress]; see the equivalent property on [CopyIn]. */
     override var isActive: Boolean = true
-        private set
-    
+        private set(value) {
+            field = value
+            stream.copyInProgress = value
+        }
+
+    init {
+        stream.copyInProgress = true
+    }
+
     private var errorResponse: ErrorResponseMessage? = null
 
     /**
