@@ -43,12 +43,18 @@ internal class PgInputStream(private var inputStream: InputStream) {
     }
 
     private fun fillBuffer() {
-        position = 0
-        limit = inputStream.read(buffer, 0, buffer.size)
-        if (limit == -1) {
+        // The buffer state is only advanced once the read has actually succeeded. Resetting
+        // position beforehand would, on a SocketTimeoutException - which polling hits on every
+        // idle tick - leave position at 0 with the previous limit intact, replaying bytes that
+        // were already consumed and desynchronizing every later exchange on the connection.
+        val read = inputStream.read(buffer, 0, buffer.size)
+        if (read == -1) {
+            position = 0
             limit = 0
             throw EOFException()
         }
+        position = 0
+        limit = read
     }
 
     fun readByte(): Byte {
