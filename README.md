@@ -2,6 +2,7 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
 [![Build and Test](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml)
+[![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-driver/)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
@@ -83,7 +84,9 @@ session.close() // Safely returns the connection to the pool
 
 ## Documentation
 
-More detail lives in the `docs/` folder:
+**[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every declaration across `driver`, `driver-spring-integration` and `hikari-integration-tests`. Rebuilt and published on each push to `master`. Reach for it when you need a signature, a property, or the full set of values in an enum.
+
+The guides below cover the things a signature can't show — how the pieces behave together:
 - [**Octavius vs Legacy JDBC (why this driver breaks the mold)**](docs/octavius-vs-jdbc.md)
 - [Quickstart](docs/quickstart.md)
 - [Session Initialization and Configuration](docs/initialization.md)
@@ -92,7 +95,7 @@ More detail lives in the `docs/` folder:
 - [Transaction Management](docs/transactions.md)
 - [Type System & Mapping](docs/type-system.md)
 - [Listen & Notify (Asynchronous Flow)](docs/listen-notify.md)
-- [Exception Translation](docs/exceptions.md)
+- [Error Handling & Exceptions](docs/exceptions.md)
 - [Functions and Procedures](docs/functions-procedures.md)
 - [COPY Protocol (Bulk Data Transfers)](docs/copy.md)
 - [Large Objects (LO)](docs/large-objects.md)
