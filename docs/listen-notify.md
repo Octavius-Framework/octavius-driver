@@ -28,7 +28,7 @@ session.notifications.notify("province_updates")
 
 Subscriptions belong to the **connection**, not to your session object: `listen` registers the physical connection behind that session. Because that connection outlives the session when it came from a pool, closing a session that subscribed to anything issues an `UNLISTEN *` on the way out — otherwise the next borrower would inherit the registrations and start receiving your notifications. Sessions that never called `listen` pay nothing for this.
 
-What that cleanup cannot do is survive the connection itself: a dropped or replaced connection loses its subscriptions, silently and without an error, so anything long-lived has to re-subscribe after reconnecting.
+That cleanup only covers subscriptions made through `listen`. A hand-written `LISTEN` sent as an ordinary query is invisible to it and stays on the connection — one instance of a [general rule about connection state](initialization.md#what-survives-a-return-to-the-pool). Nor can any of it survive the connection itself: a dropped or replaced connection loses its subscriptions silently, so anything long-lived has to re-subscribe after reconnecting.
 
 Channel names are quoted as PostgreSQL identifiers, so a name with capitals or spaces survives intact and means the same thing on both `listen` and `notify`. Watch out only when something *else* emits the notification with hand-written SQL: `NOTIFY MyChannel` without quotes is folded to `mychannel` by PostgreSQL and will not reach a listener registered on `MyChannel`. Payloads are bound as parameters, never spliced into SQL.
 

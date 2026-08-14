@@ -130,6 +130,27 @@ Closing a session obtained from a pool returns its connection to the pool rather
 
 Leave the pool's own auto-commit setting at its default (`true`). Configuring a pool with `auto-commit=false` makes every connection in it sit `idle in transaction` while waiting to be borrowed — see [Transactions](transactions.md#manual-control) for why, and what it collides with.
 
+## What survives a return to the pool
+
+A pooled connection outlives the session you borrowed it through, so whatever is left set on it becomes the next borrower's starting state. Some of that is cleaned up for you:
+
+| Connection state                                       | Undone when the session closes?                                              |
+|:-------------------------------------------------------|:-----------------------------------------------------------------------------|
+| `autoCommit`, `readOnly`, `transactionIsolationLevel`  | Yes — HikariCP tracks these through its own proxy and restores its defaults. |
+| A `COPY` the caller never finished                     | Yes — the session aborts it before handing the connection back.              |
+| `LISTEN` registrations made via `notifications.listen` | Yes — the session issues `UNLISTEN *` if it subscribed to anything.          |
+| A transaction left open by a hand-written `BEGIN`      | Yes — rolled back, since the driver cannot know what that work was for.      |
+| **Anything else you set by running the SQL yourself**  | **No.**                                                                      |
+
+That last row is the one to internalize, because it is not a gap anyone can close: neither the pool nor the driver parses the statements you send, so neither can know that a `SET search_path`, a `SET statement_timeout`, a `SET SESSION CHARACTERISTICS AS TRANSACTION ...`, a hand-written `LISTEN`, or a temporary table ever happened. All of it stays on the connection until the connection itself dies, and the next borrower inherits it.
+
+Two habits keep you out of that:
+
+* **Prefer the typed API wherever one exists** — `session.transactionIsolationLevel` over `SET SESSION CHARACTERISTICS`, `session.notifications.listen` over a raw `LISTEN`. Those are exactly the paths that are tracked and undone.
+* **Put per-connection defaults in [startup parameters](#startup-parameters)** rather than setting them after connecting. A `search_path` supplied at connect time is part of every connection's identity, so there is nothing to leak and nothing to restore.
+
+Queries themselves leave nothing behind: the driver executes through unnamed statements and portals, so nothing accumulates server-side from ordinary traffic.
+
 ## What happens when a session opens
 
 The sequence is worth knowing, because two of its steps are where connections fail and one is why the *first* connection is slower than the rest:

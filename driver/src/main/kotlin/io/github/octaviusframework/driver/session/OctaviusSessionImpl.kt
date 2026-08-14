@@ -124,6 +124,25 @@ internal class OctaviusSessionImpl(
 
     // -------------------------------------------Close/Abort-----------------------------------------------------------
 
+    /**
+     * Undoes a transaction the driver did not open, which in practice means one started by a
+     * hand-written `BEGIN`.
+     *
+     * With auto-commit on, neither this driver nor the pool believes a transaction exists, so
+     * nothing else would clean it up and the connection would go back carrying somebody's
+     * uncommitted work - which the next borrower could then commit without ever knowing. The
+     * transaction status comes from the server's own `ReadyForQuery`, so noticing this costs
+     * nothing; only actually finding one costs a round trip.
+     *
+     * It is rolled back rather than committed on purpose: the driver has no idea what that
+     * work was, and discarding it is the recoverable mistake.
+     */
+    private fun rollbackTransactionTheDriverNeverOpened() {
+        if (!autoCommit) return // a real manual transaction; the pool resets those itself
+        if (transactionState == TransactionState.IDLE) return
+        octaviusConnection.queryExecutor.execute("ROLLBACK")
+    }
+
     override fun abort() {
         try {
             rawConnection.abort(OctaviusDispatchers.VirtualExecutor)
@@ -145,6 +164,7 @@ internal class OctaviusSessionImpl(
                 try {
                     copy.cancelActiveOperation()
                     notifications.releaseSubscriptions()
+                    rollbackTransactionTheDriverNeverOpened()
                 } catch (_: Exception) {
                     abort()
                     return
