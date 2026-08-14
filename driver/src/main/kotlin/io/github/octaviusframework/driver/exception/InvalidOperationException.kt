@@ -10,16 +10,17 @@ enum class InvalidOperationExceptionReason {
     INVALID_SAVEPOINT,
     /** Attempted to operate on a closed object (e.g. Large Object or Statement). */
     OBJECT_CLOSED,
-    /** Requested transaction isolation level is not supported. */
-    UNSUPPORTED_ISOLATION_LEVEL,
-    /** Timeout value is negative. */
-    INVALID_TIMEOUT,
+    /**
+     * An argument supplied by the caller is not acceptable - out of range, null, or unsupported.
+     * Covers negative timeouts, a null SQL string, an unknown isolation level, and the like.
+     * The offending value is named in `details`; there is nothing to branch on here, since no
+     * caller can react to its own bad argument at runtime.
+     */
+    INVALID_ARGUMENT,
     /** JDBC unwrap() failed. */
     UNWRAP_ERROR,
     /** The JDBC feature is not implemented by this driver. */
     FEATURE_NOT_SUPPORTED,
-    /** SQL string passed to statement was null. */
-    NULL_SQL,
     /** update or execute returned result. */
     UNEXPECTED_RESULT,
     /** The connection is in copy mode and cannot be used for anything else until the COPY ends. */
@@ -52,11 +53,9 @@ private fun generateDeveloperMessage(reason: InvalidOperationExceptionReason): S
         InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION -> "Operation (like setting a savepoint or commit/rollback) is not allowed when auto-commit is enabled."
         InvalidOperationExceptionReason.INVALID_SAVEPOINT -> "Invalid savepoint operation."
         InvalidOperationExceptionReason.OBJECT_CLOSED -> "Operation cannot be performed because the object is closed."
-        InvalidOperationExceptionReason.UNSUPPORTED_ISOLATION_LEVEL -> "The requested transaction isolation level is not supported."
-        InvalidOperationExceptionReason.INVALID_TIMEOUT -> "Timeout value cannot be negative."
+        InvalidOperationExceptionReason.INVALID_ARGUMENT -> "An argument passed to this operation is not acceptable. See the details for the value the driver rejected."
         InvalidOperationExceptionReason.UNWRAP_ERROR -> "Cannot unwrap the connection/statement to the requested interface."
         InvalidOperationExceptionReason.FEATURE_NOT_SUPPORTED -> "This feature is not supported by the Octavius Driver."
-        InvalidOperationExceptionReason.NULL_SQL -> "SQL string cannot be null."
         InvalidOperationExceptionReason.UNEXPECTED_RESULT -> "Execution returned a result set (rows) when none were expected. Use query() for DQL statements like SELECT."
         InvalidOperationExceptionReason.COPY_IN_PROGRESS -> "A COPY operation is still in progress on this connection. Finish it (endCopy/cancelCopy, or read the export to its end) before using the session for anything else."
         InvalidOperationExceptionReason.COPY_NOT_ACTIVE -> "This COPY operation has already finished. Handles are single-use - start a new one through the CopyManager."

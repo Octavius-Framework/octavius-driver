@@ -117,6 +117,21 @@ class CopyManagerTest {
     }
 
     @Test
+    fun testNonPositiveBufferSizeIsRejectedBeforeTheCopyStarts() {
+        val error = assertFailsWith<InvalidOperationException> {
+            session.copy.copyIn(
+                "COPY copy_test FROM STDIN WITH (FORMAT CSV)",
+                ByteArrayInputStream("8,Test8\n".toByteArray(Charsets.UTF_8)),
+                0
+            )
+        }
+        assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, error.reason)
+
+        // Rejected before the statement went out, so the session is untouched
+        assertEquals(0L, session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>())
+    }
+
+    @Test
     fun testClosingSessionAbortsAnUnfinishedCopy() {
         val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
         copyIn.writeToCopy("7,Test7\n".toByteArray(Charsets.UTF_8))

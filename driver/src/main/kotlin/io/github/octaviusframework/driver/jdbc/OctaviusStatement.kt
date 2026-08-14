@@ -25,14 +25,20 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
 
     override fun execute(sql: String?): Boolean {
         checkClosed()
-        if (sql == null) throw InvalidOperationException(InvalidOperationExceptionReason.NULL_SQL)
+        if (sql == null) throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "SQL string passed to execute() cannot be null"
+        )
         connection.queryExecutor.execute(sql)
         return false // Return true only if the first result is a ResultSet
     }
 
     override fun executeUpdate(sql: String?): Int {
         checkClosed()
-        if (sql == null) throw InvalidOperationException(InvalidOperationExceptionReason.NULL_SQL)
+        if (sql == null) throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "SQL string passed to executeUpdate() cannot be null"
+        )
         val affected = connection.queryExecutor.update(sql)
         return affected.toInt()
     }

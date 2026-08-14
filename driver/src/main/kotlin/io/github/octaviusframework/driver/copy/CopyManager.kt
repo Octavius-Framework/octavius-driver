@@ -108,7 +108,12 @@ class CopyManager internal constructor(private val stream: PgStream) {
      *   and one flush, so very small values turn a bulk load back into per-chunk round trips.
      */
     fun copyIn(sql: String, inputStream: InputStream, bufferSize: Int = DEFAULT_BUFFER_SIZE): Long {
-        require(bufferSize > 0) { "Copy buffer size must be positive, was $bufferSize" }
+        if (bufferSize <= 0) {
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                "Copy buffer size must be positive, was $bufferSize."
+            )
+        }
         val copyIn = copyIn(sql)
         try {
             val buffer = ByteArray(bufferSize)

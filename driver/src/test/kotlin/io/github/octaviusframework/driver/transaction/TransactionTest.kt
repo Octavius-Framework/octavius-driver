@@ -230,6 +230,6 @@ class TransactionTest {
             internalSession.octaviusConnection.transactionIsolation = java.sql.Connection.TRANSACTION_NONE
         }
         val innerEx = wrapper.wrappedException as InvalidOperationException
-        assertEquals(InvalidOperationExceptionReason.UNSUPPORTED_ISOLATION_LEVEL, innerEx.reason)
+        assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, innerEx.reason)
     }
 }

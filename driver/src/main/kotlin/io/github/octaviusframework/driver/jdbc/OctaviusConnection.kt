@@ -91,7 +91,10 @@ internal class OctaviusConnection internal constructor(
 
 
     override fun isValid(timeout: Int): Boolean { // required by Hikari
-        if (timeout < 0) throw InvalidOperationException(InvalidOperationExceptionReason.INVALID_TIMEOUT)
+        if (timeout < 0) throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "Timeout for isValid() cannot be negative, was $timeout"
+        )
         if (isClosed()) return false
 
         val originalTimeout = stream.networkTimeout
@@ -143,8 +146,8 @@ internal class OctaviusConnection internal constructor(
     override fun setNetworkTimeout(executor: Executor?, milliseconds: Int) = wrapSqlException { // required by Hikari
         checkClosed()
         if (milliseconds < 0) throw InvalidOperationException(
-            InvalidOperationExceptionReason.INVALID_TIMEOUT,
-            details = "Network timeout cannot be negative"
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "Network timeout cannot be negative, was $milliseconds"
         )
         stream.networkTimeout = milliseconds
     }
@@ -310,7 +313,10 @@ internal class OctaviusConnection internal constructor(
             Connection.TRANSACTION_READ_COMMITTED -> "READ COMMITTED"
             Connection.TRANSACTION_REPEATABLE_READ -> "REPEATABLE READ"
             Connection.TRANSACTION_SERIALIZABLE -> "SERIALIZABLE"
-            else -> throw InvalidOperationException(InvalidOperationExceptionReason.UNSUPPORTED_ISOLATION_LEVEL)
+            else -> throw InvalidOperationException(
+                InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                details = "Unsupported transaction isolation level: $level"
+            )
         }
         val query = buildString {
             append("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL $levelStr")
