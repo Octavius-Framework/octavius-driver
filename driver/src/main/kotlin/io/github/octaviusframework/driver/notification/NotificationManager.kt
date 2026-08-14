@@ -38,7 +38,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
         withContext(dispatcher ?: OctaviusDispatchers.Virtual) {
             val context = currentCoroutineContext()
             connection.stream.lock.withLock {
-                connection.stream.checkNotInCopyMode()
+                connection.stream.checkAvailable()
                 val originalTimeout = connection.stream.networkTimeout
                 try {
                     connection.stream.networkTimeout = pollTimeoutMs
@@ -86,7 +86,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
 
             val context = currentCoroutineContext()
             connection.stream.lock.withLock {
-                connection.stream.checkNotInCopyMode()
+                connection.stream.checkAvailable()
                 try {
                     connection.stream.networkTimeout = 0
 

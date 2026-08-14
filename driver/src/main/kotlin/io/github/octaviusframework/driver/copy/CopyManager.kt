@@ -36,7 +36,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
     fun copyIn(sql: String): CopyIn {
         stream.lock.lock()
         try {
-            stream.checkNotInCopyMode()
+            stream.checkAvailable()
             stream.sendMessage(SimpleQueryMessage(sql))
             stream.flush()
 
@@ -71,7 +71,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
     fun copyOut(sql: String): CopyOut {
         stream.lock.lock()
         try {
-            stream.checkNotInCopyMode()
+            stream.checkAvailable()
             stream.sendMessage(SimpleQueryMessage(sql))
             stream.flush()
 

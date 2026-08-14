@@ -35,11 +35,26 @@ class QueryExecutor internal constructor(
         private set
 
     /**
+     * Runs one exchange with the server: takes the connection, marks it busy, and releases it
+     * whatever happens.
+     *
+     * The busy mark is what makes a reentrant call fail cleanly instead of interleaving its
+     * messages into an exchange already in flight - the lock alone cannot, being reentrant.
+     */
+    private inline fun <T> exchange(block: () -> T): T = stream.lock.withLock {
+        stream.beginExchange()
+        try {
+            block()
+        } finally {
+            stream.endExchange()
+        }
+    }
+
+    /**
      * Uses Simple Query Protocol (Q). 
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
-    fun execute(sql: String) = stream.lock.withLock {
-        stream.checkNotInCopyMode()
+    fun execute(sql: String) = exchange {
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -82,8 +97,7 @@ class QueryExecutor internal constructor(
         sql: String,
         params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer? = null
-    ): Long = stream.lock.withLock {
-        stream.checkNotInCopyMode()
+    ): Long = exchange {
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
         val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
@@ -152,9 +166,7 @@ class QueryExecutor internal constructor(
         parameterSerializer: ParameterSerializer? = null,
         mapper: ResultMapper,
         maxRows: Int = 0
-    ): List<Row> = stream.lock.withLock {
-        query(sql, params, parameterSerializer, mapper, maxRows) { it }
-    }
+    ): List<Row> = query(sql, params, parameterSerializer, mapper, maxRows) { it }
 
     /**
      * Uses Extended Query Protocol.
@@ -168,8 +180,7 @@ class QueryExecutor internal constructor(
         mapper: ResultMapper,
         maxRows: Int = 0,
         transform: (Row) -> R
-    ): List<R> = stream.lock.withLock {
-        stream.checkNotInCopyMode()
+    ): List<R> = exchange {
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
         val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
@@ -260,8 +271,7 @@ class QueryExecutor internal constructor(
         fetchSize: Int,
         transform: (Row) -> R,
         block: (R) -> Unit
-    ) = stream.lock.withLock {
-        stream.checkNotInCopyMode()
+    ) = exchange {
         val paramTypes = parameterSerializer.serializeAll(params, parameterWriter)
         val paramValues = parameterWriter.data
         val paramValuesLength = parameterWriter.position

@@ -66,17 +66,46 @@ internal class PgStream(
     var copyInProgress: Boolean = false
 
     /**
-     * Guards any exchange that needs the protocol stream to itself.
+     * True while a statement is being executed on this connection, from the first message sent
+     * until the exchange is fully drained.
      *
-     * While a COPY is in progress the connection speaks only the copy sub-protocol: another
-     * exchange interleaved into it would consume the transfer's messages and desynchronize
-     * the connection, so this fails fast instead. Note that [lock] alone cannot catch this -
-     * it is reentrant, so the thread running the COPY would pass straight through it.
+     * Set by [beginExchange] and cleared by [endExchange], both under [lock], so it is only
+     * observed by others while the lock is free - at which point it is always false. What it
+     * really catches is *reentrant* use: code called back into during an exchange (a `forEach`
+     * block, a `ResultConverter`) trying to run its own statement on the same connection.
      */
-    fun checkNotInCopyMode() {
+    var exchangeInProgress: Boolean = false
+
+    /**
+     * Guards any operation that needs the protocol stream to itself.
+     *
+     * A connection can carry exactly one exchange at a time. Anything interleaved into a
+     * transfer or a result being read would consume the other's messages and desynchronize
+     * the connection, so this fails fast instead. Note that [lock] cannot catch this on its
+     * own - it is reentrant, so the very thread that owns the exchange passes straight
+     * through it, and that is precisely the thread a callback runs on.
+     */
+    fun checkAvailable() {
         if (copyInProgress) {
             throw InvalidOperationException(InvalidOperationExceptionReason.COPY_IN_PROGRESS)
         }
+        if (exchangeInProgress) {
+            throw InvalidOperationException(InvalidOperationExceptionReason.EXECUTION_IN_PROGRESS)
+        }
+    }
+
+    /**
+     * Marks the start of an exchange, refusing to begin one while another is already running.
+     * Every call must be paired with [endExchange] in a `finally`.
+     */
+    fun beginExchange() {
+        checkAvailable()
+        exchangeInProgress = true
+    }
+
+    /** Marks the end of an exchange. */
+    fun endExchange() {
+        exchangeInProgress = false
     }
 
     /**
