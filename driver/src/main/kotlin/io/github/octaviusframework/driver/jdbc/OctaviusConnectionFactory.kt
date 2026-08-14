@@ -70,7 +70,9 @@ internal object OctaviusConnectionFactory {
 
         SslNegotiator.negotiate(stream, serverName, portNumber, properties)
 
-        val startupParams = properties.additionalProperties
+        // Copied, not used in place: the driver's own startup parameters must not leak back
+        // into the caller's properties object, which may be reused for further connections.
+        val startupParams = HashMap(properties.additionalProperties)
         startupParams["client_encoding"] = "UTF8"
         startupParams["user"] = user
         startupParams["database"] = databaseName

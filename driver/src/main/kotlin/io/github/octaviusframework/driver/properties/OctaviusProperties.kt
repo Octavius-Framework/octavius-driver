@@ -136,6 +136,13 @@ class OctaviusProperties {
         }
     }
 
+    /**
+     * Renders these properties as a JDBC URL.
+     *
+     * The password is deliberately left out: the result is a string that tends to end up in
+     * logs and diagnostics, and nothing in the driver reconstructs a connection from it.
+     * Use [copy] when you need a complete, lossless duplicate of the configuration.
+     */
     fun toUrl(): String {
         val h = serverName ?: "localhost"
         val p = portNumber ?: 5432
@@ -145,7 +152,6 @@ class OctaviusProperties {
 
         val queryParams = mutableMapOf<String, String>()
         user?.let { queryParams["user"] = it }
-        password?.let { queryParams["password"] = it }
         loginTimeout?.let { queryParams["loginTimeout"] = it.toString() }
         socketTimeout?.let { queryParams["socketTimeout"] = it.toString() }
         maxCachedRowSize?.let { queryParams["maxCachedRowSize"] = it.toString() }
@@ -160,7 +166,7 @@ class OctaviusProperties {
         sslkey?.let { queryParams["sslkey"] = it }
         sslpassword?.let { queryParams["sslpassword"] = it }
 
-        queryParams.putAll(additionalProperties.toSortedMap())
+        queryParams.putAll(additionalProperties)
 
         if (queryParams.isNotEmpty()) {
             urlBuilder.append("?")

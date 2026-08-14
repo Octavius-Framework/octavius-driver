@@ -25,6 +25,9 @@ class OctaviusDataSource : DataSource {
     /**
      * The JDBC URL used to connect to the database.
      * Setting this property will parse the URL and merge the properties.
+     *
+     * Reading it back renders the current configuration **without the password** - see
+     * [OctaviusProperties.toUrl]. The password remains available through [password].
      */
     var url: String
         get() = octaviusProperties.toUrl()

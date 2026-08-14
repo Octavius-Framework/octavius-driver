@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.ssl.SslMode
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class OctaviusDataSourceInitializationTest {
@@ -33,6 +35,21 @@ class OctaviusDataSourceInitializationTest {
         assertEquals(30, ds.loginTimeout)
         assertEquals("myhost", ds.serverName)
         assertEquals(5432, ds.portNumber)
+    }
+
+    @Test
+    fun `should never render the password into the url`() {
+        val ds = OctaviusDataSource()
+        ds.url = "jdbc:octavius://myhost:5433/mydb?user=testuser&password=testpass&sslmode=require"
+
+        val rendered = ds.url
+        assertFalse(rendered.contains("testpass"), "Password leaked into the URL: $rendered")
+        assertFalse(rendered.contains("password"), "Password key present in the URL: $rendered")
+
+        // Everything else still round-trips, and the password is still readable on its own
+        assertTrue(rendered.contains("user=testuser"), rendered)
+        assertTrue(rendered.contains("sslmode=require"), rendered)
+        assertEquals("testpass", ds.password)
     }
 
     @Test

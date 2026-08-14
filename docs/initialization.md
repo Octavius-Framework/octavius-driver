@@ -82,8 +82,8 @@ val dataSource = OctaviusDataSource().apply {
 }
 ```
 
-> [!WARNING]
-> Reading `dataSource.url` back rebuilds the URL from every property that is set — **including the password, in clear text**. It is a configuration round-trip, not something to log or expose in diagnostics.
+> [!NOTE]
+> Reading `dataSource.url` back renders the current configuration as a URL, but **never the password** — that string is the one most likely to reach a log. The password stays readable through `dataSource.password`, and `OctaviusProperties.copy()` is the lossless way to duplicate a full configuration.
 
 ## Adding HikariCP Connection Pooling
 
