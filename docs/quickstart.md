@@ -9,7 +9,10 @@ Add the Octavius driver to your project dependencies.
 **Gradle (Kotlin DSL):**
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:<version>")
+    implementation("io.github.octavius-framework:driver:0.9.4")
+
+    // Optional, but used by the example below
+    implementation("com.zaxxer:HikariCP:5.1.0")
 }
 ```
 
@@ -47,6 +50,8 @@ fun main() {
 Once you have a session, you can execute named queries and extract strongly-typed results without dealing with `ResultSet`s.
 
 ```kotlin
+import io.github.octaviusframework.driver.row.get
+
 // Run a query with named parameters
 val rows = session.createNamedQuery("SELECT id, name FROM users WHERE active = @active")
     .fetchRows("active" to true)
@@ -64,6 +69,7 @@ session.createNamedQuery("INSERT INTO users (id, name, active) VALUES (@id, @nam
 ```
 
 ## Next Steps
-- Learn more about [Type System](type-system.md)
-- Configure [Connection Pooling with HikariCP](hikari.md)
-- Integrate with [Spring Boot](spring-integration.md)
+- [Executing Queries](queries.md) — the full `fetch*` family, streaming, and named parameters
+- [Session Initialization](initialization.md) — every connection option, and connection pooling in depth
+- [Type System](type-system.md) — how columns become Kotlin types, and how to extend that
+- [Spring Integration](spring-integration.md) — `OctaviusTemplate` and autoconfiguration

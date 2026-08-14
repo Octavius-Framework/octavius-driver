@@ -69,7 +69,7 @@ Selecting such a column throws `TypeException(MISSING_CODEC)` naming the OID, ra
 * **Cast in SQL** — `SELECT to_tsvector('latin') :: text` or `SELECT amount::numeric`. Cheap, and usually enough.
 * **Write the codec** — implement `TypeCodec<T>` against PostgreSQL's binary format for that type and `registerCodec` it. See [Custom codecs](#custom-codecs).
 
-The same applies inside containers: an `int4[]` decodes fine, a `tsquery[]` fails on its elements, since the array codec still has to decode each element through the element type's codec.
+The same applies inside containers: an `int4[]` decodes fine, a `tsquery[]` fails on its elements, since the array codec still has to decode each element through the element type's codec. It surfaces under a different name there, though — the gap is reported by the container's own decode, so you get `CodecException(DECODING)` rather than the `TypeException(MISSING_CODEC)` the bare column would have given you.
 
 ### Keeping the catalog fresh — `reloadTypes()`
 

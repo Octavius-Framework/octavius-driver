@@ -58,6 +58,7 @@ Octavius replaces the legacy, stateful JDBC `ResultSet` with its own modern API 
 
 ```kotlin
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
+import io.github.octaviusframework.driver.row.get
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 
@@ -71,9 +72,9 @@ val dataSource = HikariDataSource(config)
 // 1. Pull a session through HikariCP via the custom jdbc:octavius protocol
 val session = dataSource.getOctaviusSession()
 
-// 2. Run a query with named parameters
+// 2. Run a query with named parameters (Strict = exactly one row, or an exception)
 val row = session.createNamedQuery("SELECT id, cognomen FROM senators WHERE id = @id")
-    .fetchRow("id" to 1)
+    .fetchRowStrict("id" to 1)
 
 // 3. Strongly typed extraction, no ResultSet in sight
 val id: Int = row.get("id")
