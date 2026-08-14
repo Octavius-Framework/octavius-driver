@@ -20,7 +20,7 @@ fun getOctaviusSession(
 ): OctaviusSession {
     val mergedProps = OctaviusProperties.parse(url)
     mergedProps.merge(properties)
-    val conn = OctaviusConnectionFactory.createConnection(url, mergedProps)
+    val conn = OctaviusConnectionFactory.createConnection(mergedProps)
     return OctaviusSessionImpl(conn)
 }
 
@@ -33,7 +33,7 @@ fun getOctaviusSession(
 fun getOctaviusSession(
     properties: OctaviusProperties
 ): OctaviusSession {
-    val conn = OctaviusConnectionFactory.createConnection(properties.toUrl(), properties)
+    val conn = OctaviusConnectionFactory.createConnection(properties)
     return OctaviusSessionImpl(conn)
 }
 
@@ -52,7 +52,7 @@ fun getOctaviusSession(
     val props = OctaviusProperties.parse(url)
     props.user = user
     props.password = password
-    val conn = OctaviusConnectionFactory.createConnection(url, props)
+    val conn = OctaviusConnectionFactory.createConnection(props)
     return OctaviusSessionImpl(conn)
 }
 

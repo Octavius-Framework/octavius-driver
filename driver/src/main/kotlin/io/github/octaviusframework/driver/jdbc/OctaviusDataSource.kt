@@ -123,7 +123,7 @@ class OctaviusDataSource : DataSource {
         if (username != null) props.user = username
         if (pass != null) props.password = pass
         
-        return OctaviusConnectionFactory.createConnection(url, props)
+        return OctaviusConnectionFactory.createConnection(props)
     }
 
     override fun getLogWriter(): PrintWriter? = logWriter

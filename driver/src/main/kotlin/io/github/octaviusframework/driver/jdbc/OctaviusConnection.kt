@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
 import io.github.octaviusframework.driver.execution.QueryExecutor
 import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.registry.RegistryKey
 import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.transaction.OctaviusSavepointImpl
 import java.sql.*
@@ -20,11 +21,11 @@ import java.util.concurrent.Executor
  */
 internal class OctaviusConnection internal constructor(
     internal val stream: PgStream,
-    internal val url: String,
+    internal val registryKey: RegistryKey,
     maxParameterWriterCapacity: Int? = null,
     initialParameterWriterCapacity: Int? = null
 ) : Connection {
-    val typeRegistry = GlobalTypeRegistry.getRegistry(url)
+    val typeRegistry = GlobalTypeRegistry.getRegistry(registryKey)
 
     internal val queryExecutor = QueryExecutor(
         stream,
@@ -33,7 +34,7 @@ internal class OctaviusConnection internal constructor(
         initialParameterWriterCapacity
     )
     init {
-        GlobalTypeRegistry.ensureLoaded(url, queryExecutor, getSearchPath())
+        GlobalTypeRegistry.ensureLoaded(registryKey, queryExecutor)
     }
 
     @Volatile

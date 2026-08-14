@@ -59,9 +59,8 @@ internal class OctaviusSessionImpl(
 
     override fun reloadTypes() {
         GlobalTypeRegistry.reload(
-            octaviusConnection.url,
-            octaviusConnection.queryExecutor,
-            octaviusConnection.getSearchPath()
+            octaviusConnection.registryKey,
+            octaviusConnection.queryExecutor
         )
     }
 

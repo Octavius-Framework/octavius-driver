@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.StartupMessage
 import io.github.octaviusframework.driver.notice.NoticeHandler
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.octaviusframework.driver.registry.RegistryKey
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import java.sql.Connection
 import java.sql.DriverManager
@@ -30,18 +31,17 @@ internal object OctaviusConnectionFactory {
      */
     fun createConnection(url: String, info: Properties? = null): Connection {
         val properties = OctaviusProperties.parse(url, info)
-        return createConnection(url, properties)
+        return createConnection(properties)
     }
 
     /**
-     * Creates a new database connection using the provided JDBC URL and pre-parsed [OctaviusProperties].
+     * Creates a new database connection using the pre-parsed [OctaviusProperties].
      *
-     * @param url The JDBC URL.
      * @param properties The parsed configuration properties.
      * @return A newly established [Connection].
      * @throws InitializationException if the connection cannot be established or the server version is unsupported.
      */
-    fun createConnection(url: String, properties: OctaviusProperties): Connection {
+    fun createConnection(properties: OctaviusProperties): Connection {
         val serverName = properties.serverName ?: "localhost"
         val portNumber = properties.portNumber ?: 5432
         val databaseName = properties.databaseName ?: "postgres"
@@ -96,9 +96,9 @@ internal object OctaviusConnectionFactory {
         }
 
         return OctaviusConnection(
-            stream, 
-            url, 
-            properties.maxParameterWriterCapacity, 
+            stream,
+            RegistryKey(serverName, portNumber, databaseName),
+            properties.maxParameterWriterCapacity,
             properties.initialParameterWriterCapacity
         )
     }
