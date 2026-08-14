@@ -23,23 +23,23 @@ Contents:
 
 PostgreSQL identifies every type by an **OID** (Object Identifier). Built-in OIDs are stable (`int4` is always `23`), but the OIDs of anything *you* create — `CREATE TYPE legio_status AS ENUM (...)`, a composite, a domain, even the implicit row type of a table — are assigned per database and per `CREATE`. They cannot be baked into a driver.
 
-So the driver asks. On the first physical connection to a given database within the JVM, `GlobalTypeRegistry.ensureLoaded` fires `TypeRegistryLoader`, which runs a **single** query joining `pg_type` with `pg_namespace`, `pg_enum`, `pg_range` and `pg_attribute`. One round trip, then every later connection to the same database reuses the result.
+So the driver asks. On the first physical connection to a given database within the JVM, `GlobalTypeRegistry.ensureLoaded` fires `TypeRegistryLoader`, which reads the whole catalog in a **single** query. One round trip, paid by whoever connects first; every later connection to the same database reuses the result.
 
 The loader deliberately skips noise: composites belonging to `pg_catalog` and `information_schema`, and all pseudo-types except `void`, `record` and `_record`.
 
 What comes back is classified into a sealed `PgType` hierarchy:
 
-| `PgType` variant    | PostgreSQL `typtype`   | Extra information carried         |
-|:--------------------|:-----------------------|:----------------------------------|
-| `PgType.Base`       | `b`                    | —                                 |
-| `PgType.Array`      | (element type present) | `elementOid`                      |
-| `PgType.Composite`  | `c`                    | ordered `attributes` (name → OID) |
-| `PgType.Enum`       | `e`                    | `values` in declaration order     |
-| `PgType.Domain`     | `d`                    | `baseTypeOid`                     |
-| `PgType.Range`      | `r`                    | `subtypeOid`                      |
-| `PgType.Multirange` | `m`                    | `rangeOid`                        |
-| `PgType.Record`     | `p` (`record`)         | the anonymous row pseudo-type     |
-| `PgType.Void`       | `p` (`void`)           | return type of void functions     |
+| `PgType` variant    | Extra information carried         |
+|:--------------------|:----------------------------------|
+| `PgType.Base`       | —                                 |
+| `PgType.Array`      | `elementOid`                      |
+| `PgType.Composite`  | ordered `attributes` (name → OID) |
+| `PgType.Enum`       | `values` in declaration order     |
+| `PgType.Domain`     | `baseTypeOid`                     |
+| `PgType.Range`      | `subtypeOid`                      |
+| `PgType.Multirange` | `rangeOid`                        |
+| `PgType.Record`     | the anonymous row pseudo-type     |
+| `PgType.Void`       | return type of void functions     |
 
 The result is a `TypeDictionary` — an **immutable snapshot** with pre-computed lookups by OID, by name+schema, array-by-element, range-by-subtype and multirange-by-range. Reloading swaps the whole snapshot atomically rather than mutating it in place, so readers never see a half-updated catalog.
 
@@ -132,7 +132,7 @@ Thanks to this split, adding support for a specific custom PostgreSQL type is us
 
 ### Reading (database → Kotlin)
 
-1. A `DataRow` message arrives. For **every** column, the driver looks up a codec by the column's OID and decodes the bytes immediately — a `Row` is fully decoded at construction time. Missing codec for an OID means `TypeException(MISSING_CODEC)`.
+1. A row arrives. For **every** column, the driver looks up a codec by the column's OID and decodes the bytes immediately — a `Row` is fully decoded at construction time. Missing codec for an OID means `TypeException(MISSING_CODEC)`.
 2. The results are *intermediate* values: `Int`, `String`, `PgComposite`, `PgArray`, and so on.
 3. Nothing else happens until you ask. `row.get<Senator>("senator")` hands the intermediate value, the requested `KType` and the source `PgType` to the `ResultMapper`.
 4. The mapper picks a `ResultConverter` (see [precedence](#how-a-converter-gets-chosen)) and calls it. Converters recurse through `context.convert(...)` for nested attributes, elements and fields.
@@ -304,9 +304,9 @@ The tie-break is `isDefaultForKotlinType`. Exactly one codec claims each Kotlin 
 
 This is the **common** path, not a rare fallback — so it's worth knowing where those OIDs come from.
 
-The client decides them. Parameters are serialized first, the driver derives an OID for each one, and those OIDs are declared to PostgreSQL in the `Parse` message; the `Describe` that follows targets the portal, i.e. the shape of the *result*, not the parameters. That's ordinary PostgreSQL driver behavior rather than anything specific to Octavius — pgjdbc likewise takes its parameter types from the `setXxx` call you made, not from the server.
+The client decides them. Parameters are serialized first, the driver derives an OID for each one, and those OIDs are what it declares to PostgreSQL in the `Parse` message. That's ordinary PostgreSQL driver behavior rather than anything specific to Octavius — pgjdbc likewise takes its parameter types from the `setXxx` call you made, not from the server.
 
-Octavius has even less room to defer, because it is **binary in both directions**: `Bind` declares format code 1 for every parameter and every result column. The classic escape hatch — declaring a parameter with the unspecified OID and letting the server coerce it from context, which is what pgjdbc's `stringtype=unspecified` buys you — depends on the text format. A binary representation is specific to one type, so the codec has to be chosen *before* a single byte is written. There is nothing to defer.
+Octavius has even less room to defer, because it is **binary in both directions**. The classic escape hatch — declaring a parameter with the unspecified OID and letting the server coerce it from context, which is what pgjdbc's `stringtype=unspecified` buys you — depends on the text format. A binary representation is specific to one type, so the codec has to be chosen *before* a single byte is written. There is nothing to defer.
 
 The one exception is a null with no type hint: it's declared as OID `0` and carries no bytes at all, so the server resolves it from context.
 
