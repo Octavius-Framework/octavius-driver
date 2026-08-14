@@ -1,7 +1,9 @@
 # Octavius Driver
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
+[![Build and Test](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
 A native, high-performance, lightweight PostgreSQL driver for Kotlin.
 
@@ -26,12 +28,15 @@ The driver is organized in clear, modular layers:
 - **`driver` module** — core driver logic.
   - **IO & SSL** — efficient socket stream handling (`PgStream`), buffering, and secure connection negotiation.
   - **Message** — parsing and building of PostgreSQL Wire Protocol v3 packets.
-  - **Query** — the operational core, running queries through the Extended Query Protocol with named-parameter support.
+  - **Query & Execution** — the operational core, running queries through the Extended Query Protocol with named-parameter support.
   - **Codec, Converter & Registry** — a type system (`GlobalTypeRegistry`) mapping raw binary/text data to and from Kotlin types, including composites, arrays, records, and enums.
   - **Session & Transaction** — `OctaviusSession` and `OctaviusSavepoint` provide a native Kotlin interface for database work and transaction control.
+  - **Notification & LO** — `LISTEN`/`NOTIFY` support and native Large Object handling.
   - **JDBC** — the compatibility layer bridging the native Octavius API with legacy JDBC infrastructure, for pools like HikariCP.
 - **`driver-spring-integration` module** — native Spring Framework / Spring Boot integration (`OctaviusTemplate`, exception translation, autoconfiguration).
-- **`hikari` module** — dedicated integration testing layer for HikariCP.
+- **`hikari-integration-tests` module** — dedicated integration testing layer for HikariCP.
+- **`benchmarks` module** — JMH benchmarks comparing Octavius against `pgjdbc` (see [Performance](docs/performance.md)).
+- **`examples/spring-app`** — a runnable sample Spring Boot application demonstrating `driver-spring-integration` end to end.
 
 ## Requirements
 
@@ -91,3 +96,8 @@ More detail lives in the `docs/` folder:
 - [Functions and Procedures](docs/functions-procedures.md)
 - [COPY Protocol (Bulk Data Transfers)](docs/copy.md)
 - [Large Objects (LO)](docs/large-objects.md)
+- [Performance (JMH benchmarks vs pgjdbc)](docs/performance.md)
+
+## License
+
+Octavius Driver is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
