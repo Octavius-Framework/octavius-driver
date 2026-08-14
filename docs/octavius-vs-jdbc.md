@@ -25,7 +25,7 @@ val session = dataSource.getOctaviusSession()
 
 ## What Is Explicitly Unsupported?
 
-Calling any of the following legacy methods on the underlying `OctaviusConnection` throws an `InvalidOperationException` with reason `FEATURE_NOT_SUPPORTED`.
+Reaching for any of the following on the underlying `OctaviusConnection` throws an `InvalidOperationException` with reason `FEATURE_NOT_SUPPORTED` — with one deliberate exception, noted at the end.
 
 ### 1. `PreparedStatement` and `CallableStatement`
 No index-based binding (`stmt.setString(1, "value")`). Octavius replaces both with `createNativeQuery` and `createNamedQuery`, removing the statement lifecycle entirely and making parameter binding harder to get wrong.
@@ -34,7 +34,7 @@ No index-based binding (`stmt.setString(1, "value")`). Octavius replaces both wi
 There's no mutable cursor to walk with `.next()`. Octavius hydrates results straight into memory — as `List<Row>`, a single typed field via `fetchField<T>()`, or fully-formed Kotlin data classes via `fetchObject<T>()`.
 
 ### 3. JDBC Batching
-`addBatch()` / `executeBatch()` aren't implemented in their standard JDBC shape. Octavius favors PostgreSQL-native bulk techniques — array binding, structured inserts — instead.
+`addBatch()` / `executeBatch()` aren't implemented in their standard JDBC shape. Octavius favors PostgreSQL-native bulk techniques instead: `UNNEST`-based inserts, which [outperform classic batching by roughly 3× in the benchmarks](performance.md), and the [`COPY` protocol](copy.md) for genuinely large loads.
 
 ### 4. Legacy LOBs (BLOB, CLOB)
 `createBlob()` / `createClob()` don't exist here. Binary and text data map directly to plain Kotlin `ByteArray` and `String`, backed by PostgreSQL's `bytea` and `text` through the `GlobalTypeRegistry`.
@@ -42,16 +42,16 @@ There's no mutable cursor to walk with `.next()`. Octavius hydrates results stra
 ### 5. DatabaseMetaData
 The heavyweight JDBC metadata API is skipped entirely. If you need metadata, query `pg_catalog` directly through `OctaviusSession`.
 
-### 6. SQL Warnings
-The JDBC spec handles database notices by silently accumulating `SQLWarning` objects in a linked list on the `Connection` or `Statement`. 
-If you forget to manually call `clearWarnings()` after every execution, this creates a silent, application-killing memory leak over millions of queries.
-Octavius drops this pull-based trap entirely. 
-Instead, it uses a push-based, event-driven `NoticeHandler` — you get your database notices immediately as they arrive, 
-and the garbage collector handles the rest.
+### 6. SQL Warnings — the one that stays quiet instead of throwing
+The JDBC spec handles database notices by silently accumulating `SQLWarning` objects in a linked list on the `Connection` or `Statement`. Forget to call `clearWarnings()` after every execution and that list becomes a slow, application-killing leak over millions of queries.
+
+Octavius drops the pull-based trap entirely and pushes instead: notices reach a `NoticeHandler` the moment they arrive, and nothing accumulates. Configure one through the [`noticeHandler` property](initialization.md#network-and-limits).
+
+This is the exception to the rule above: `getWarnings()` **returns `null`** and `clearWarnings()` does nothing, rather than throwing. Connection pools call both routinely on every borrow, so failing there would break pooling for no gain. The practical consequence for anyone migrating: your existing `getWarnings()` calls will not fail — they will quietly report nothing forever. Move that logic to a `NoticeHandler`.
 
 ## Summary
 
 Dropping JDBC's historical baggage buys Octavius:
 - **No resource-leak busywork** — no nested `try-with-resources` blocks just to close a `ResultSet` and a `Statement`.
 - **A genuinely Kotlin-idiomatic API** — reified generics and safe mapping in place of old Java patterns.
-- **Protocol-level safety** — the Extended Query Protocol (v3) is enforced at the wire level, not emulated by the driver.
+- **Protocol-level safety** — queries and DML go through the Extended Query Protocol's Parse/Bind/Execute cycle, spoken directly rather than emulated on top of another driver. (Statements with nothing to bind — `execute()`, transaction control, `LISTEN`, `COPY` — use the Simple Query Protocol, which is what those are for.)
