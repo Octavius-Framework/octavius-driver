@@ -19,7 +19,7 @@ val senators: List<Senator> = session
 ## Key Features
 
 - **Native protocol implementation** — Wire Protocol v3.2 spoken directly, nothing wrapped underneath.
-- **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them.
+- **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them. [How it behaves under concurrency](docs/concurrency.md).
 - **Parameters bound, not interpolated** — queries and DML go through the Extended Query Protocol's Parse/Bind/Execute cycle, in binary. Statements with nothing to bind (DDL, `SET`, `LISTEN`, `COPY`) use the simple protocol, which is what it is for.
 - **A type system that reads your database** — the catalog is loaded from *your* schema at connect time, so a type you created is never an unknown OID: enums, composites, domains, ranges and table row types all come back as usable values without being taught to the driver. Binding one to a class of your own is a single `registerEnum<T>()` or `registerAutoComposite<T>()` at startup, and nested structures like `List<YourDataClass>` follow from there.
 - **PostgreSQL's own types, not just the portable ones** — `json`/`jsonb` as Kotlinx Serialization elements, `uuid`, `interval`, `inet`/`cidr`/`macaddr`, `bit`/`varbit`, the geometric family, and dates and times as `kotlinx.datetime` values. [The full table](docs/type-system.md#basic-codecs) fits on one page.
@@ -121,6 +121,7 @@ The guides cover what a signature cannot show — how the pieces behave together
 - [Spring Integration](docs/spring-integration.md) — `OctaviusTemplate` and autoconfiguration.
 
 **Specialized**
+- [Concurrency and Virtual Threads](docs/concurrency.md) — what one connection serializes, and where the real limit is.
 - [Functions and Procedures](docs/functions-procedures.md) — no `CallableStatement` required.
 - [COPY Protocol](docs/copy.md) — bulk import and export.
 - [Listen & Notify](docs/listen-notify.md) — asynchronous events as a flow.

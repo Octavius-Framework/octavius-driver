@@ -89,6 +89,7 @@ Worth knowing about a reload:
 * Custom **codecs survive**: registered codecs are replayed and re-bound against the new OIDs.
 * Custom **converters and composite registrations are untouched** — they live in the converter registry, which a reload doesn't rebuild.
 * In an application with a static schema, you typically never call it. In tests, migrations, or anything that creates types at runtime, call it once after the DDL.
+* **Call it when nothing else is querying.** A reload is not isolated from statements already in flight — see [Thread safety and cost](#thread-safety-and-cost). Startup, a migration step, or a test fixture is the natural place; midway through serving traffic is not.
 
 ### One registry per database, not per URL
 
@@ -237,6 +238,8 @@ val senators = session.createNamedQuery("SELECT * FROM senators WHERE ordo = @or
 
 The child registry is consulted first and falls back to the global one, so a query-scoped converter overrides a global converter for that query and disappears with the query object. Nothing global is mutated.
 
+The rows a query produced stay attached to that registry: a `Row` holds the query's `ResultMapper`, and `row.get<T>()` resolves through it whenever you call it. Registering a converter on a query object *after* its rows came back therefore changes how those rows convert. It takes a deliberately odd shape to notice — a query kept and reconfigured between fetches — but if you hold rows for a while, hold the query steady too.
+
 | Registered on              | Visible to                                          | Lifetime                                        |
 |:---------------------------|:----------------------------------------------------|:------------------------------------------------|
 | `query.register*Converter` | that one query instance                             | until the query is discarded                    |
@@ -251,6 +254,8 @@ All registries are built for **many readers, rare writers**:
 * Reads — every query, every row, every conversion — take no locks at all.
 
 The flip side is that each registration copies the collection it touches. Cheap a handful of times at startup, wasteful in a hot path.
+
+Be precise about what the immutability buys, though: **each lookup sees one coherent dictionary, not each query.** Readers take no lock and re-read the field every time, and `dictionary` and `codecs` are two fields published one after the other — so a registration or a `reloadTypes()` landing in the middle of a running query can leave part of its result resolved against the state before and part against the state after. Nothing is corrupted, since every read still gets a whole valid object; it is inconsistency rather than a race, and it only arises if the registries are written to while queries are in flight. [Concurrency](concurrency.md#what-a-reload-does-not-promise) has the details.
 
 ## Basic codecs
 
@@ -366,7 +371,7 @@ If your application consistently wants, say, an approximate `Duration`, writing 
 
 `PgTyped` wraps a value so you can explicitly declare the PostgreSQL type it should be sent as. It matters wherever the driver can't work the type out on its own — an empty collection being the classic case.
 
-Why an empty collection is a problem is worth spelling out, because the blame lies on this side of the wire. When no target OID is known, the array converter infers the element type by looking at the **first non-null element's runtime class**. The JVM erases generics, so an empty `List<Int>` and an empty `List<String>` are the same object at runtime with nothing to inspect — Kotlin's `reified` doesn't help either, since by the time the value reaches the serializer it is an `Any?` in an array of parameters. The driver refuses to guess and throws `TypeException(TYPE_NOT_FOUND)`; the same happens for a collection holding only nulls.
+Why an empty collection is a problem is worth spelling out, because the blame lies on this side of the wire. When no target OID is known, the array converter infers the element type by looking at the **first non-null element's runtime class**. The JVM erases generics, so an empty `List<Int>` and an empty `List<String>` are the same object at runtime with nothing to inspect — Kotlin's `reified` doesn't help either, since by the time the value reaches the serializer it is an `Any?` in an array of parameters. The driver refuses to guess: the array converter raises `TypeException(TYPE_NOT_FOUND)`, which reaches you wrapped as `MappingException(CONVERSION_ERROR)` with that `TypeException` as its `cause` — so read the cause, since it is the half naming the real problem. A collection holding only nulls fails identically.
 
 Wrap any value with the `.withPgType(...)` extension functions:
 * `value.withPgType(PgStandardType.INT4_ARRAY)`

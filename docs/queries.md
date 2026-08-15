@@ -5,10 +5,12 @@ Every query in Octavius is built from a session and executed in one call. There 
 Contents:
 * [Two ways to pass parameters](#two-ways-to-pass-parameters)
 * [Choosing a fetch method](#choosing-a-fetch-method)
+* [Reading a `Row`](#reading-a-row)
 * [Nullability and the Strict variants](#nullability-and-the-strict-variants)
 * [Streaming large results](#streaming-large-results)
 * [Do not re-enter the session while rows are being read](#do-not-re-enter-the-session-while-rows-are-being-read)
 * [Statements that return nothing](#statements-that-return-nothing)
+* [Cancelling a query in flight](#cancelling-a-query-in-flight)
 * [Per-query converters](#per-query-converters)
 
 ## Two ways to pass parameters
@@ -69,6 +71,42 @@ val total: Long = session.createNativeQuery("SELECT count(*) FROM legions").fetc
 ```
 
 Object mapping goes through the internal `ResultMapper`, which is also where [custom converters](#per-query-converters) hook in; how columns find their way onto constructor parameters is described in [Type System](type-system.md).
+
+## Reading a `Row`
+
+`Row` is decoded up front, not a cursor. Every column is decoded when the row is built, so nothing is read off the connection afterwards and a row can be kept, passed to another thread, or read in any order.
+
+What is *not* finished at that point is the conversion: `row.get<T>()` resolves a converter when you call it, through the registries the row's query is attached to. In practice that only matters if those registries change while you are still holding rows — see [Concurrency](concurrency.md#what-can-cross-a-thread-boundary).
+
+Values come out through `get`, by name or by zero-based index:
+
+```kotlin
+val cognomen: String = row.get("cognomen")
+val id: Int          = row.get(0)
+val profile: Senator = row.get("profile")   // any type a converter can produce
+```
+
+Each has a non-reified twin taking a `KType` — `get<T>(index, targetType)` — which is what the reified one delegates to, and the only form reachable from Java.
+
+The rest of the surface is metadata, useful when the shape of the result is not known in advance:
+
+| Member                 | Gives                                                                              |
+|:-----------------------|:-----------------------------------------------------------------------------------|
+| `columnNames`          | Every column name, in order.                                                       |
+| `getColumnIndex(name)` | The index for a name, or `MappingException(COLUMN_NOT_FOUND)`.                     |
+| `getRaw(index)`        | The decoded value *before* conversion — `Int`, `String`, `PgComposite`, `PgArray`. |
+| `getOid(index)`        | The PostgreSQL OID of that column's type.                                          |
+| `metadata`             | `RowMetadata` — the field descriptors behind all of the above.                     |
+
+Because decoding is eager and conversion is lazy, asking one row for two different shapes costs one decode and two conversions:
+
+```kotlin
+val asMap: Map<String, Any?> = row.get(0)
+val asClass: Senator = row.get(0)     // same bytes, not decoded again
+```
+
+> [!NOTE]
+> **A duplicated column name resolves to the first one.** `SELECT s.id, p.id FROM senators s JOIN provinces p …` produces two columns called `id`, and `row.get<Int>("id")` returns the first without complaining — the name-to-index map keeps the earliest entry. That is JDBC's behaviour too, where `ResultSet.findColumn` has always answered with the first match, so it is one habit that carries over unchanged. Alias the columns in the SQL (`p.id AS province_id`) when you need both, or read them by index.
 
 ## Nullability and the Strict variants
 
@@ -144,6 +182,31 @@ Handing `execute()` a row-returning statement is an error, not a silent discard:
 > val newId: Long = session.createNativeQuery("INSERT INTO senators (cognomen) VALUES ($1) RETURNING id")
 >     .fetchFieldStrict("Cato")
 > ```
+
+## Cancelling a query in flight
+
+`session.cancelQuery()` asks the server to abandon whatever that session is currently running. It has to be called **from a different thread**: the one that issued the query is blocked inside it and will not reach the call. The request does not queue behind the running statement either — it travels over a separate short-lived connection, which is how PostgreSQL cancellation works at the protocol level.
+
+That second connection is negotiated under the session's own [`sslmode`](initialization.md#ssl), so the cancel key it carries is encrypted wherever the session itself is. Under `REQUIRE` or stronger, a server that will not encrypt means the request is *not sent* rather than sent in the clear. Its connect and its reads are bounded by [`cancelSignalTimeout`](initialization.md#network-and-limits) — 10 seconds by default, and a budget of its own because a cancel can get stuck on a server the session is not stuck on.
+
+`cancelQuery()` is not instantaneous, either: after sending the request it waits for the backend to close the cancel connection, which is how PostgreSQL acknowledges one. That is normally immediate, and it is what distinguishes "the server read it" from "we wrote it into a socket and hung up".
+
+```kotlin
+val work = OctaviusDispatchers.VirtualExecutor.submit {
+    session.createNativeQuery("SELECT count(*) FROM census_of_every_citizen").fetchFieldStrict<Long>()
+}
+
+// Elsewhere, once it has gone on long enough
+session.cancelQuery()
+```
+
+The blocked call then fails with `ExecutionAbortedException(QUERY_CANCELED)` (SQLSTATE `57014`), the session stays usable, and the next statement runs normally.
+
+Two things it does not promise. **It never throws** — if the cancel request cannot be delivered, the failure is swallowed and the query simply keeps running, so a return means "asked", not "stopped".
+
+And **it can hit the wrong statement.** A cancel request carries a backend process id and a key; there is no statement identifier in it. The server signals that connection to abandon whatever it is running when the signal is handled — so if the statement you meant finished first and another has since started on that connection, the cancel takes that one instead. On a session only one thread ever touches, the statement is still running while you cancel it and the question does not arise; where several threads share a session, or where a cancel is fired at a session about to go back to the pool, it can. [Concurrency](concurrency.md#why-a-cancel-can-hit-the-wrong-statement) walks through the sequence.
+
+For a limit that should apply to every statement rather than one, set `statement_timeout` as a [startup parameter](initialization.md#startup-parameters) — no second thread, no second connection, and it covers the whole session. See [Concurrency](concurrency.md#cancelling-a-query-in-flight) for how this interacts with the connection lock.
 
 ## Per-query converters
 

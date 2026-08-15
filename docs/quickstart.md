@@ -16,6 +16,16 @@ dependencies {
 }
 ```
 
+Three Kotlin libraries come with the driver as `api` dependencies, because they appear in its public API — there is nothing to add for them, and no version to keep in step:
+
+| Library                      | Where it surfaces                                                                      |
+|:-----------------------------|:---------------------------------------------------------------------------------------|
+| `kotlinx-datetime`           | `date`, `time` and `timestamp` columns as `LocalDate` / `LocalTime` / `LocalDateTime`. |
+| `kotlinx-serialization-json` | `json` and `jsonb` columns as `JsonElement`.                                           |
+| `kotlinx-coroutines-core`    | `LISTEN`/`NOTIFY` as a `SharedFlow`, and `OctaviusDispatchers`.                        |
+
+`timestamptz` and `uuid` need nothing at all: they map to `kotlin.time.Instant` and `kotlin.uuid.Uuid` from the standard library.
+
 ## 2. Establish a Connection
 
 While Octavius uses the standard JDBC `Connection` as an entry point, it replaces legacy JDBC `ResultSet`s with its own modern API.
