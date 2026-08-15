@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.util.reflection.ReflectionCache
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
+import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.type.isKnownOid
 import kotlin.reflect.KClass
@@ -58,7 +59,7 @@ internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> 
         return PgComposite(type, fields)
     }
 
-    override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): io.github.octaviusframework.driver.identifier.QualifiedName? {
+    override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext): QualifiedName? {
         return context.typeManager.converterRegistry.registeredComposites[sourceClass]
     }
 }
