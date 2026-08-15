@@ -22,6 +22,7 @@ val senators: List<Senator> = session
 - **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them.
 - **Parameters bound, not interpolated** — queries and DML go through the Extended Query Protocol's Parse/Bind/Execute cycle, in binary. Statements with nothing to bind (DDL, `SET`, `LISTEN`, `COPY`) use the simple protocol, which is what it is for.
 - **A type system that reads your database** — the catalog is loaded from *your* schema at connect time, so a type you created is never an unknown OID: enums, composites, domains, ranges and table row types all come back as usable values without being taught to the driver. Binding one to a class of your own is a single `registerEnum<T>()` or `registerAutoComposite<T>()` at startup, and nested structures like `List<YourDataClass>` follow from there.
+- **PostgreSQL's own types, not just the portable ones** — `json`/`jsonb` as Kotlinx Serialization elements, `uuid`, `interval`, `inet`/`cidr`/`macaddr`, `bit`/`varbit`, the geometric family, and dates and times as `kotlinx.datetime` values. [The full table](docs/type-system.md#basic-codecs) fits on one page.
 - **Results in the shape you asked for** — `fetchRows`, `fetchObjects<T>`, `fetchField<T>`, each with single-row and strict variants, plus `forEach*` for streaming results too large to hold.
 - **Exceptions you can act on** — a flat hierarchy keyed by SQLSTATE, each carrying the server's own error fields plus the SQL and parameters your application sent.
 - **Asynchronous notifications** — `LISTEN` / `NOTIFY` as a Kotlin Coroutines `SharedFlow`.
@@ -33,11 +34,13 @@ val senators: List<Senator> = session
 ## Requirements
 
 - **Java 21+**
+- **Kotlin 2.4+** — Octavius is a Kotlin library, not a JVM one. Every ergonomic entry point is `inline` with a `reified` parameter — `fetchObjects<T>`, `fetchField<T>`, `row.get<T>()`, `registerEnum<T>()` — and a reified function can only be inlined into Kotlin, never called. The non-reified layer underneath it is reachable from Java, but it means hand-building a `KType` for every column you read: possible, not usable. Columns also come back as `kotlin.time.Instant` and `kotlin.uuid.Uuid`.
 - **PostgreSQL 18+** — Octavius speaks **Wire Protocol v3.2** exclusively, introduced in PostgreSQL 18. Older servers expect v3.0 and the connection fails during the handshake.
+- **Spring Boot 4.x** — for `driver-spring-integration` only. It builds against `spring-boot-starter-jdbc` 4.x and registers its autoconfiguration for that generation. The core driver has no Spring dependency at all.
 
 ## Project Status
 
-Octavius is pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, including a separate job that generates certificates and exercises the TLS modes end to end.
+Octavius is pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that generates certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to prove the handshake refuses it rather than half-working.
 
 What the badge means in practice: the API is not frozen. Signatures can still change before 1.0, and the [release notes](https://github.com/Octavius-Framework/octavius-driver/releases) say what moved. It has not seen long production use — the numbers below come from benchmarks, not from a year of traffic.
 
@@ -46,7 +49,7 @@ What the badge means in practice: the API is not frozen. Signatures can still ch
 ```kotlin
 dependencies {
     implementation("io.github.octavius-framework:driver:0.9.5")
-    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("com.zaxxer:HikariCP:7.1.0")
 
     // Or, for Spring Boot - brings the driver in transitively
     // implementation("io.github.octavius-framework:driver-spring-integration:0.9.5")

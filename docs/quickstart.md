@@ -12,7 +12,7 @@ dependencies {
     implementation("io.github.octavius-framework:driver:0.9.5")
 
     // Optional, but used by the example below
-    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("com.zaxxer:HikariCP:7.1.0")
 }
 ```
 
