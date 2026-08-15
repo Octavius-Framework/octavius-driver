@@ -13,6 +13,7 @@ import io.github.octaviusframework.driver.transaction.OctaviusSavepointImpl
 import java.sql.*
 import java.util.*
 import java.util.concurrent.Executor
+import kotlin.concurrent.withLock
 
 /**
  * Represents a connection to a database within the Octavius Framework.
@@ -97,18 +98,37 @@ internal class OctaviusConnection internal constructor(
         )
         if (isClosed()) return false
 
-        val originalTimeout = stream.networkTimeout
-        return try {
-            // In JDBC, the timeout for isValid is in seconds (0 means no limit)
-            stream.networkTimeout = timeout * 1000
-            queryExecutor.execute("")
-            true
-        } catch (e: Exception) {
-            false
-        } finally {
+        // The timeout is a property of the whole connection, so it is swapped under the same lock
+        // that serializes exchanges - otherwise this would shorten the deadline of a query already
+        // in flight on another thread, and kill a healthy connection with a read timeout.
+        return stream.lock.withLock {
+            val originalTimeout = stream.networkTimeout
+            // In JDBC, the timeout for isValid is in seconds (0 means no limit). Widened to Long
+            // first, so a large value saturates instead of overflowing into a negative timeout.
+            val requested = (timeout.toLong() * 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            // Only ever tighten the deadline. Relaxing it would let a probe outlive the timeout the
+            // connection was configured with - and isValid(0) would drop that timeout altogether,
+            // leaving the check to hang forever on exactly the dead socket it was meant to detect.
+            val tightens = requested != 0 && (originalTimeout == 0 || requested < originalTimeout)
+
             try {
-                stream.networkTimeout = originalTimeout
-            } catch (ignore: Exception) {
+                if (tightens) stream.networkTimeout = requested
+                queryExecutor.execute("")
+                true
+            } catch (e: InvalidOperationException) {
+                // Misuse, not ill health: this very thread already owns an exchange or a COPY on
+                // this connection, which is only reachable from inside a streaming block or a
+                // converter. The connection is fine, so answering "invalid" would bury a caller
+                // bug under a wrong answer - and lose the reason enum that names it.
+                throw e
+            } catch (_: Exception) {
+                false
+            } finally {
+                if (tightens) {
+                    try {
+                        stream.networkTimeout = originalTimeout
+                    } catch (_: Exception) {}
+                }
             }
         }
     }

@@ -251,10 +251,30 @@ The full hierarchy, the reason enums worth branching on, and a longer `@Controll
 | `JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient` | No    | Need `PreparedStatement` and `ResultSet`.                                 |
 | Spring Data JDBC, Spring Data JPA, Hibernate               | No    | The same, plus `DatabaseMetaData`.                                        |
 | Flyway, Liquibase                                          | No    | Both identify the database through `DatabaseMetaData`.                    |
-| Actuator's `db` health indicator                           | No    | Calls `getMetaData().getDatabaseProductName()` on every check.            |
+| Actuator's `db` health indicator                           | No    | Calls `getMetaData().getDatabaseProductName()`. Replaceable, see below.   |
 
-Two of those come with a footnote. `spring.sql.init` needs `spring.sql.init.mode: always` — PostgreSQL is not an embedded database, so Boot skips the scripts otherwise. And Actuator's health check fails rather than throws: `AbstractHealthIndicator` catches it, so the symptom is a datasource permanently `DOWN`. Turn it off with `management.health.db.enabled: false`.
+`spring.sql.init` comes with a footnote: it needs `spring.sql.init.mode: always`, because PostgreSQL is not an embedded database and Boot skips the scripts otherwise.
 
 Reaching for anything else in the `No` rows does not produce a tidy Spring exception either. `prepareStatement` throws `InvalidOperationException(FEATURE_NOT_SUPPORTED)`, which is a `RuntimeException` that was never a `SQLException` — so there is nothing for the translator to translate, and `jdbcTemplate.queryForObject("SELECT 1", Int::class.java)` fails with the raw Octavius exception.
 
 Where a tool genuinely needs full JDBC — running Flyway migrations at startup, for instance — the practical answer is a second `DataSource` on `pgjdbc`, dedicated to that tool, with the Octavius one left to the application.
+
+### Replacing Actuator's database health check
+
+If Actuator is on the classpath, `DataSourceHealthIndicator` contributes the `db` component of `/actuator/health` — usually the thing a Kubernetes readiness probe reads. It fails here for a shallow reason: before checking anything it labels the response with `getMetaData().getDatabaseProductName()`, and that is precisely the call Octavius refuses. The exception does not escape — `AbstractHealthIndicator` catches it — so the symptom is not a broken endpoint but a `db` component permanently `DOWN`, carrying `INVALID_OPERATION_EXCEPTION:FEATURE_NOT_SUPPORTED` as its `error` detail.
+
+What that label was standing in front of is `connection.isValid()`, which Octavius *does* implement. So keep the check and drop the label. Boot's auto-configuration backs off from a bean named `dbHealthIndicator` or `dbHealthContributor`, which means declaring one replaces it outright — nothing to disable, and `db` stays in the response:
+
+```kotlin
+@Bean
+fun dbHealthIndicator(template: OctaviusTemplate) = HealthIndicator {
+    try {
+        if (template.execute { isValid(1) }) Health.up().withDetail("database", "PostgreSQL").build()
+        else Health.down().withDetail("database", "PostgreSQL").build()
+    } catch (ex: Exception) {
+        Health.down(ex).build()
+    }
+}
+```
+
+`management.health.db.enabled: false` stays available if you would rather have no database component at all.
