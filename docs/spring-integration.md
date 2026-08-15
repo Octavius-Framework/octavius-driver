@@ -243,15 +243,15 @@ The full hierarchy, the reason enums worth branching on, and a longer `@Controll
 
 `driver-spring-integration` depends on `spring-boot-starter-jdbc`, so Boot auto-configures `JdbcTemplate` and `JdbcClient` beans alongside `OctaviusTemplate`. Those beans exist. They do not work: `JdbcTemplate` binds parameters through `Connection.prepareStatement` and reads rows through `ResultSet`, and Octavius implements neither — see [Octavius vs Legacy JDBC](octavius-vs-jdbc.md).
 
-| Feature                                                    | Works | Notes                                                                     |
-|:-----------------------------------------------------------|:------|:--------------------------------------------------------------------------|
-| `OctaviusTemplate`, `@Transactional`, `Propagation.NESTED` | Yes   | The supported path.                                                       |
-| HikariCP and `spring.datasource.hikari.*`                  | Yes   | Validation runs through `isValid()`; no `connection-test-query` needed.   |
-| `spring.sql.init` — `schema.sql` and `data.sql`            | Yes   | Those scripts run through a plain `Statement`, which Octavius implements. |
-| `JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient` | No    | Need `PreparedStatement` and `ResultSet`.                                 |
-| Spring Data JDBC, Spring Data JPA, Hibernate               | No    | The same, plus `DatabaseMetaData`.                                        |
-| Flyway, Liquibase                                          | No    | Both identify the database through `DatabaseMetaData`.                    |
-| Actuator's `db` health indicator                           | No    | Calls `getMetaData().getDatabaseProductName()`. Replaceable, see below.   |
+| Feature                                                    | Works | Notes                                                                                         |
+|:-----------------------------------------------------------|:------|:----------------------------------------------------------------------------------------------|
+| `OctaviusTemplate`, `@Transactional`, `Propagation.NESTED` | Yes   | The supported path.                                                                           |
+| HikariCP and `spring.datasource.hikari.*`                  | Yes   | Validation runs through `isValid()`. Leave `connection-test-query` unset — `SELECT 1` throws. |
+| `spring.sql.init` — `schema.sql` and `data.sql`            | Yes   | Those scripts run through a plain `Statement`, which Octavius implements.                     |
+| `JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient` | No    | Need `PreparedStatement` and `ResultSet`.                                                     |
+| Spring Data JDBC, Spring Data JPA, Hibernate               | No    | The same, plus `DatabaseMetaData`.                                                            |
+| Flyway, Liquibase                                          | No    | Both identify the database through `DatabaseMetaData`.                                        |
+| Actuator's `db` health indicator                           | No    | Calls `getMetaData().getDatabaseProductName()`. Replaceable, see below.                       |
 
 `spring.sql.init` comes with a footnote: it needs `spring.sql.init.mode: always`, because PostgreSQL is not an embedded database and Boot skips the scripts otherwise.
 
