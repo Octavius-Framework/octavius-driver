@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  release:
+    types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -21,8 +24,25 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout snapshot (master)
         uses: actions/checkout@v7
+        with:
+          ref: master
+          path: snapshot-src
+
+      - name: Get latest release tag
+        id: latest_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(gh release view --repo "${{ github.repository }}" --json tagName -q .tagName)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release (${{ steps.latest_release.outputs.tag }})
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.latest_release.outputs.tag }}
+          path: release-src
 
       - name: Set up JDK
         uses: actions/setup-java@v5
@@ -34,8 +54,29 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Generate Dokka documentation
+      - name: Generate snapshot docs
+        working-directory: snapshot-src
         run: ./gradlew dokkaGenerateHtml
+
+      - name: Generate release docs
+        working-directory: release-src
+        run: ./gradlew dokkaGenerateHtml
+
+      - name: Extract version numbers
+        id: versions
+        run: |
+          SNAPSHOT_VERSION=$(grep -oP 'version = "\K[^"]+' snapshot-src/build.gradle.kts | head -1)
+          echo "snapshot=$SNAPSHOT_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble site
+        run: |
+          mkdir -p site/snapshot site/release
+          cp -r snapshot-src/build/dokka/html/. site/snapshot/
+          cp -r release-src/build/dokka/html/. site/release/
+          sed \
+            -e "s/{{SNAPSHOT_VERSION}}/${{ steps.versions.outputs.snapshot }}/g" \
+            -e "s/{{RELEASE_VERSION}}/${{ steps.latest_release.outputs.tag }}/g" \
+            snapshot-src/.github/pages/index.html > site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
@@ -43,7 +84,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: build/dokka/html
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deployment

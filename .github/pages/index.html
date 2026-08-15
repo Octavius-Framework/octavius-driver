@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Octavius Driver — Documentation</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #191919;
+    --muted: #6f6f6f;
+    --card-bg: #f4f4f4;
+    --border: #dcdcdc;
+    --accent: #4d7cff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --fg: #e8e8e8;
+      --muted: #a0a0a0;
+      --card-bg: #242424;
+      --border: #3a3a3a;
+      --accent: #7fa6ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main {
+    width: 100%;
+    max-width: 640px;
+    padding: 2.5rem 1.5rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem;
+  }
+  p.lead {
+    color: var(--muted);
+    margin: 0 0 2rem;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 520px) {
+    .cards { grid-template-columns: 1fr; }
+  }
+  a.card {
+    display: block;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card-bg);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease;
+  }
+  a.card:hover {
+    border-color: var(--accent);
+  }
+  .card .kind {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .card .version {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
+  }
+  .card .desc {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.35rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Octavius Driver</h1>
+  <p class="lead">API documentation</p>
+  <div class="cards">
+    <a class="card" href="release/index.html">
+      <div class="kind">Release</div>
+      <div class="version">{{RELEASE_VERSION}}</div>
+      <div class="desc">Matches the artifact published on Maven Central</div>
+    </a>
+    <a class="card" href="snapshot/index.html">
+      <div class="kind">Snapshot</div>
+      <div class="version">{{SNAPSHOT_VERSION}}</div>
+      <div class="desc">Built from the latest commit on master</div>
+    </a>
+  </div>
+</main>
+</body>
+</html>
