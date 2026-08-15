@@ -20,3 +20,6 @@ out/
 .vscode/
 
 .antigravitycli
+
+### Benchmarks ###
+benchmarks/logs/

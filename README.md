@@ -19,6 +19,7 @@ val senators: List<Senator> = session
 ## Key Features
 
 - **Native protocol implementation** — Wire Protocol v3.2 spoken directly, nothing wrapped underneath.
+- **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them.
 - **Parameters bound, not interpolated** — queries and DML go through the Extended Query Protocol's Parse/Bind/Execute cycle, in binary. Statements with nothing to bind (DDL, `SET`, `LISTEN`, `COPY`) use the simple protocol, which is what it is for.
 - **A type system that reads your database** — the catalog is loaded from *your* schema at connect time, so a type you created is never an unknown OID: enums, composites, domains, ranges and table row types all come back as usable values without being taught to the driver. Binding one to a class of your own is a single `registerEnum<T>()` or `registerAutoComposite<T>()` at startup, and nested structures like `List<YourDataClass>` follow from there.
 - **Results in the shape you asked for** — `fetchRows`, `fetchObjects<T>`, `fetchField<T>`, each with single-row and strict variants, plus `forEach*` for streaming results too large to hold.
@@ -26,12 +27,19 @@ val senators: List<Senator> = session
 - **Asynchronous notifications** — `LISTEN` / `NOTIFY` as a Kotlin Coroutines `SharedFlow`.
 - **Bulk paths that are actually fast** — native `COPY` support, and `UNNEST` inserts that beat classic JDBC batching by ~3×.
 - **Large Objects as a first-class API** — `lo` support without unwrapping to a vendor interface.
+- **TLS with the property names you already know** — the full `sslmode` ladder from `prefer` to `verify-full`, client certificates and root CA included, with the handshake restricted to TLS 1.2 and 1.3.
 - **Connection pool ready** — designed around HikariCP, with the Kotlin session API layered on top.
 
 ## Requirements
 
 - **Java 21+**
 - **PostgreSQL 18+** — Octavius speaks **Wire Protocol v3.2** exclusively, introduced in PostgreSQL 18. Older servers expect v3.0 and the connection fails during the handshake.
+
+## Project Status
+
+Octavius is pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, including a separate job that generates certificates and exercises the TLS modes end to end.
+
+What the badge means in practice: the API is not frozen. Signatures can still change before 1.0, and the [release notes](https://github.com/Octavius-Framework/octavius-driver/releases) say what moved. It has not seen long production use — the numbers below come from benchmarks, not from a year of traffic.
 
 ## Quick Start
 
@@ -120,17 +128,20 @@ The guides cover what a signature cannot show — how the pieces behave together
 ## Architecture
 
 - **`driver`** — the core.
-  - **IO & SSL** — socket handling (`PgStream`), buffering, TLS negotiation.
+  - **IO, SSL & Auth** — socket handling (`PgStream`), buffering, TLS negotiation, SCRAM-SHA-256.
   - **Message** — parsing and building Wire Protocol v3.2 packets.
   - **Query & Execution** — the operational core: Extended Query Protocol with named-parameter support.
   - **Codec, Converter & Registry** — the two-layer type system, from raw binary through to your own classes.
+  - **Type & Container** — the PostgreSQL value model the layer above hands back: `Row`, `PgArray`, `PgComposite`, `PgRange`, `PgMultirange`.
   - **Session & Transaction** — `OctaviusSession`, transaction blocks and savepoints.
-  - **Notification & LO** — `LISTEN`/`NOTIFY` and Large Objects.
+  - **COPY & LO** — bulk import and export, and Large Objects.
+  - **Notification & Notice** — `LISTEN`/`NOTIFY` as a flow, and server notices routed to a `NoticeHandler`.
+  - **Exception** — the SQLSTATE-keyed hierarchy, built from the server's own error fields.
   - **JDBC** — the compatibility layer that lets pools like HikariCP manage the connection.
 - **`driver-spring-integration`** — `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.
 - **`hikari-integration-tests`** — integration tests against a real HikariCP pool.
 - **`benchmarks`** — JMH benchmarks against `pgjdbc`.
-- **`examples/spring-app`** — a runnable Spring Boot sample.
+- **`examples/spring-app`** — a runnable Spring Boot sample. Not a subproject: it is its own build, pulling the driver in through `includeBuild`.
 
 ## License
 
