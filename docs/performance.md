@@ -1,61 +1,79 @@
-# Octavius Driver Performance
+# Performance
 
-This document presents a summary of JMH benchmark results for the **Octavius** database driver compared to the official PostgreSQL JDBC driver (**pgjdbc**).
+JMH benchmarks comparing Octavius against the official PostgreSQL JDBC driver (`pgjdbc`).
 
-The tests were executed using the JMH framework, measuring both throughput (operations per millisecond) for data reading and average execution time for data insertion.
+Every figure below carries JMH's ± confidence interval over 5 measurement iterations, and that number is the point of this page: **a difference smaller than the intervals it sits between is not a result.** Two of the rows here are ties for exactly that reason, and saying so is more useful than reporting a 3% win.
 
-## Environment and Test Suite
+> [!NOTE]
+> **Environment.** One developer machine, JDK 25, JMH 1.37, PostgreSQL 18.4 over a local connection, 3 warmup and 5 measurement iterations in a single fork. Both drivers do identical work in the same JVM. Absolute throughput will not reproduce on your hardware — the ratios between the two columns are what travels.
 
-The benchmarks cover the following scenarios:
-- **Simple Type Reading (SimpleTypeBenchmark)**: Fetching basic database rows.
-- **Structural Data Reading (SimpleDataBenchmark)**: Fetching and mapping slightly more complex records.
-- **Array Type Reading (ArrayTypeBenchmark)**: Fetching rows containing arrays.
-- **Data Insertion (InsertBenchmark)**:
-  - Single row inserts in a transaction (`single_inserts_tx`).
-  - Inserts using the UNNEST function (`unnest_inserts_tx`), which provides an efficient bulk loading mechanism.
-  - Traditional batch inserts (available in pgjdbc - `batch_inserts_tx`).
-  - Optimized batch inserts using `reWriteBatchedInserts=true` (available in pgjdbc - `rewrite_batch_inserts_tx`).
+## What is measured
 
-## Throughput Results
+| Benchmark             | Mode         | Work per operation                                                     |
+|:----------------------|:-------------|:-----------------------------------------------------------------------|
+| `SimpleTypeBenchmark` | Throughput   | Read 10 000 rows of `int4`, `text`, `boolean`, `float8` as raw values. |
+| `SimpleDataBenchmark` | Throughput   | The same 10 000 rows, mapped onto objects.                             |
+| `ArrayTypeBenchmark`  | Throughput   | Read 10 000 rows, each with an `int4[]` and a `text[]`.                |
+| `InsertBenchmark`     | Average time | Insert 10 000 rows inside one transaction, by several strategies.      |
 
-Higher values indicate better performance (more operations per millisecond).
+Run them yourself with `./gradlew :benchmarks:jmh`, or narrow to one class with `-Pjmh="InsertBenchmark"`.
 
-| Benchmark (Read) | Octavius (ops/ms) | pgjdbc (ops/ms) | Difference             |
-|:-----------------|:------------------|:----------------|:-----------------------|
-| **Simple Data**  | 0.217             | 0.215           | Octavius is ~1% faster |
-| **Simple Types** | 0.181             | 0.216           | pgjdbc is ~19% faster  |
-| **Array Types**  | 0.084             | 0.101           | pgjdbc is ~20% faster  |
+## Reading
 
-**Read Conclusions:**
-For basic data mapping workloads, the Octavius driver delivers performance directly comparable to `pgjdbc`. In scenarios involving intensive array decoding or high-frequency basic type reads, `pgjdbc` currently maintains a lead of approximately 20%.
+Operations per millisecond — higher is better.
 
-## Execution Time Results (Inserts)
+| Benchmark                  | Octavius      | pgjdbc        | Verdict                     |
+|:---------------------------|:--------------|:--------------|:----------------------------|
+| **Mapped to objects**      | 0.206 ± 0.027 | 0.199 ± 0.008 | Tie — the intervals overlap |
+| **Raw values, no mapping** | 0.179 ± 0.008 | 0.212 ± 0.022 | pgjdbc ~18% ahead           |
+| **Arrays**                 | 0.083 ± 0.002 | 0.101 ± 0.007 | pgjdbc ~22% ahead           |
 
-Lower values indicate better performance (fewer milliseconds per operation).
+The first row is the one most applications live on, and it is a genuine dead heat: Octavius is nominally 3% ahead, but its own spread is ±13%, so the honest answer is that the two are indistinguishable at this sample size.
 
-| Benchmark (Write)                  | Octavius (ms/op) | pgjdbc (ms/op) |
-|:-----------------------------------|:-----------------|:---------------|
-| **Single Inserts (TX)**            | 319.49 ms        | 234.24 ms      |
-| **UNNEST Inserts (TX)**            | 8.78 ms          | 5.74 ms        |
-| **Batch Inserts (TX)**             | N/A              | 27.53 ms       |
-| **Rewrite Batch Inserts (TX)**     | N/A              | 8.32 ms        |
+The other two rows are real — the intervals do not come close to touching. Both are worth understanding rather than just noting, because they are not the same kind of gap.
 
-**Write Conclusions:**
-1. Single row inserts within a transaction show `pgjdbc` executing faster (~234 ms compared to ~319 ms in Octavius).
-2. Utilizing the `UNNEST` function for bulk inserts is highly efficient in both Octavius and pgjdbc. For pgjdbc, it is slightly faster than the `reWriteBatchedInserts=true` optimization (5.74 ms vs 8.32 ms).
-3. Most notably, bulk inserting in Octavius using `UNNEST` (8.78 ms) is **significantly faster than standard batching (Batch Inserts)** in pgjdbc (27.53 ms) and closely matches the highly optimized `reWriteBatchedInserts=true` performance (8.32 ms).
-4. **Note on `reWriteBatchedInserts`:** This pgjdbc optimization exclusively works for `INSERT` statements. For bulk `UPDATE` or `DELETE` operations, standard batching must be used (with its degraded performance). In contrast, the `UNNEST` approach used by Octavius is highly versatile and can easily be adapted for mass updates and deletions while maintaining top performance.
+Arrays are slower by construction. Octavius decodes every element through the same conversion machinery that maps composites, ranges and nested arrays, which is precisely what makes a `List<Tribute>` of composites work at all. A driver that treats `int4[]` as a special case can be quicker at `int4[]`; the price of that is having no answer for the general one. This is a trade rather than a defect, and closing it would mean adding a specialized fast path for primitive element types alongside the general one — not fixing something broken.
 
-## Memory Allocation
+## Writing
 
-Comparing memory footprint (Garbage Collector Allocation Rate - measured in bytes per operation):
-- For basic data mapping (`SimpleDataBenchmark`), the allocation rates of both drivers are very close (~2.57 MB/op for Octavius and ~2.33 MB/op for pgjdbc).
-- Octavius allocates more memory in array benchmarks (~11.6 MB/op vs 7.7 MB/op) and single row inserts (~7.2 MB/op vs 2.6 MB/op).
-- For `UNNEST` mass inserts, Octavius allocates ~930 KB/op, while pgjdbc allocates ~795 KB/op. Standard batching in pgjdbc allocates ~2.94 MB/op, while the optimized `reWriteBatchedInserts` uses ~2.44 MB/op.
+Milliseconds per operation, each operation being 10 000 rows in one transaction — lower is better.
+
+| Strategy                    | Octavius    | pgjdbc      |
+|:----------------------------|:------------|:------------|
+| **Single inserts**          | 315.5 ± 2.6 | 239.5 ± 3.7 |
+| **`UNNEST` bulk insert**    | 7.99 ± 0.62 | 5.95 ± 0.55 |
+| **JDBC batching**           | n/a         | 25.9 ± 0.2  |
+| **JDBC batching + rewrite** | n/a         | 7.72 ± 1.10 |
+
+**Strategy dominates the driver.** Row-at-a-time insertion costs ~315 ms against ~240 ms, but the same 10 000 rows go in **39× faster** through `UNNEST` in either driver. If you take one thing from this page, take that one.
+
+**Octavius's `UNNEST` matches pgjdbc's fastest batching.** 7.99 ± 0.62 against `reWriteBatchedInserts=true` at 7.72 ± 1.10 — overlapping intervals, so a tie — and **3.2× faster** than plain JDBC batching at 25.9 ms. That last gap is far outside the noise.
+
+**Against pgjdbc doing `UNNEST` too, Octavius is behind**: 7.99 vs 5.95, intervals well apart. That is the fair like-for-like comparison, and it puts the gap in per-value serialization rather than in the strategy — the same place the read benchmarks point.
+
+Worth knowing about `reWriteBatchedInserts`: it only rewrites `INSERT`, so bulk `UPDATE` and `DELETE` fall back to ordinary batching and its worse figures, while `UNNEST` applies unchanged to all three. For loads beyond this scale, neither column is the answer — use [`COPY`](copy.md).
+
+## Memory
+
+Bytes allocated per operation, from JMH's `gc` profiler.
+
+| Benchmark               | Octavius | pgjdbc  |
+|:------------------------|:---------|:--------|
+| Mapped to objects       | 2.57 MB  | 2.33 MB |
+| Raw values, no mapping  | 2.25 MB  | 2.33 MB |
+| Arrays                  | 11.62 MB | 8.89 MB |
+| Single inserts          | 7.20 MB  | 2.59 MB |
+| `UNNEST` bulk insert    | 0.93 MB  | 0.80 MB |
+| JDBC batching           | n/a      | 2.94 MB |
+| JDBC batching + rewrite | n/a      | 2.44 MB |
+
+One row here is worth pausing on. Reading raw values is ~18% slower in Octavius while allocating **less** than pgjdbc (2.25 MB against 2.33 MB), so whatever costs the time on that path, it is not garbage — and looking for it among allocations would be looking in the wrong place.
+
+Arrays allocate 31% more, which is the per-element conversion described above doing its work; the generality has a memory cost as well as a time one. Single-row inserts allocate nearly 3× more, matching their throughput gap.
 
 ## Summary
 
-The JMH results demonstrate strong performance characteristics for Octavius:
-- It effectively matches `pgjdbc` in throughput for everyday data mapping (`SimpleDataBenchmark`).
-- The native support for PostgreSQL's `UNNEST` bulk operations allows write operations that are **over 3 times faster** than the classic `addBatch()` / `executeBatch()` interface in standard JDBC, offering performance on par with pgjdbc's optimized `reWriteBatchedInserts=true`.
-- While memory allocation and specific intensive read operations show a slight edge for `pgjdbc`, Octavius delivers highly competitive overall performance.
+* **Object mapping ties with `pgjdbc`** — the path most applications spend their time on.
+* **`UNNEST` bulk writes are 3.2× faster than classic JDBC batching** and tie with pgjdbc's rewrite optimization, while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
+* **Array decoding costs ~22% for being general** — every element goes through the machinery that also maps composites and nested structures. Expect it to stay that way; it is what buys you `List<YourDataClass>`.
+* **Raw value decoding is slower without allocating more** — a genuinely different problem from the array one, and not one to look for among allocations.

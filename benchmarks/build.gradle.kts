@@ -22,10 +22,7 @@ jmh {
     threads.set(1)
     jmhVersion.set("1.37")
     profilers.add("gc")
-    
-    // Obsługa flagi -Pjmh="..." z wiersza poleceń
-    if (project.hasProperty("jmh")) {
-        includes.add(project.property("jmh").toString())
-    }
+
+    providers.gradleProperty("jmh").orNull?.let { includes.add(it) }
     profilers.add("stack")
 }
