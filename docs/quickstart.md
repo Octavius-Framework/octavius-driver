@@ -50,8 +50,6 @@ fun main() {
 Once you have a session, you can execute named queries and extract strongly-typed results without dealing with `ResultSet`s.
 
 ```kotlin
-import io.github.octaviusframework.driver.row.get
-
 // Run a query with named parameters
 val rows = session.createNamedQuery("SELECT id, name FROM users WHERE active = @active")
     .fetchRows("active" to true)

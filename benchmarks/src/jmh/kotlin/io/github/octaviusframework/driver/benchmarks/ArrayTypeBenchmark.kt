@@ -3,7 +3,6 @@ package io.github.octaviusframework.driver.benchmarks
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.query.NativeQuery
-import io.github.octaviusframework.driver.row.get
 import org.openjdk.jmh.annotations.*
 import java.sql.Connection
 import java.sql.DriverManager

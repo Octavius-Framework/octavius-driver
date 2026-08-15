@@ -6,7 +6,6 @@ import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
-import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

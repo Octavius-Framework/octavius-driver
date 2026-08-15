@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.composite
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.range.MultiRange
 import io.github.octaviusframework.driver.type.range.Range
 import io.github.octaviusframework.driver.type.range.multiRangeOf

@@ -7,7 +7,6 @@ import io.github.octaviusframework.driver.exception.ExecutionAbortedExceptionRea
 import io.github.octaviusframework.driver.exception.ExecutionAbortedException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
-import io.github.octaviusframework.driver.row.get
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance

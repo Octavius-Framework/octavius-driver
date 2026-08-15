@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
-import io.github.octaviusframework.driver.row.get
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

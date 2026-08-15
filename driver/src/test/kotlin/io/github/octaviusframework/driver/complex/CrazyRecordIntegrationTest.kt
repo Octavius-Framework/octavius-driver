@@ -2,7 +2,6 @@ package io.github.octaviusframework.driver.complex
 
 import io.github.octaviusframework.driver.identifier.CaseConvention
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.row.get
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals

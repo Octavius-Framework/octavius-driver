@@ -1,7 +1,6 @@
 package com.example.demo.controller
 
 import com.example.demo.domain.User
-import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.spring.OctaviusTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.*

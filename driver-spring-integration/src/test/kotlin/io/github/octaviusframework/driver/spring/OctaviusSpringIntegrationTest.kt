@@ -2,7 +2,6 @@ package io.github.octaviusframework.driver.spring
 
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.StatementException
-import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test

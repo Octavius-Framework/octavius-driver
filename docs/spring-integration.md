@@ -118,7 +118,6 @@ A key the driver does not recognize is not an error — it is kept aside and sen
 Once auto-configured, you can inject `OctaviusTemplate` into your services. It manages getting the connection, extracting the `OctaviusSession`, and translating exceptions. The session is the receiver of the `execute` block, so its operations are called directly on `this`.
 
 ```kotlin
-import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.spring.OctaviusTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

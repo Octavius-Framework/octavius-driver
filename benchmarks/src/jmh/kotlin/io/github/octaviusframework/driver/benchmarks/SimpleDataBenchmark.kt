@@ -4,7 +4,6 @@ import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.query.NativeQuery
 import io.github.octaviusframework.driver.row.Row
-import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.type.PgType

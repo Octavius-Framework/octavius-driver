@@ -7,7 +7,6 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.Serializati
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import io.github.octaviusframework.driver.row.get
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.driver.container.PgComposite
 import org.junit.jupiter.api.AfterAll
