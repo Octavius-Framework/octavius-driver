@@ -165,20 +165,20 @@ The caret is drawn against `queryContext.dbSql` when there is one, falling back 
 
 `QueryContext` is what makes a failure reproducible. It carries both altitudes of the same statement:
 
-| Property        | Type                  | Meaning                                                              |
-|:----------------|:----------------------|:---------------------------------------------------------------------|
-| `sql`           | `String`              | The high-level SQL your application wrote, `@names` and all.         |
-| `parameters`    | `Map<String, Any?>`   | The parameters as you supplied them.                                 |
-| `dbSql`         | `String?`             | The statement actually sent to the server, after transformation.     |
-| `dbParameters`  | `List<Any?>?`         | The positional values actually bound.                                |
+| Property       | Type                | Meaning                                                          |
+|:---------------|:--------------------|:-----------------------------------------------------------------|
+| `sql`          | `String`            | The high-level SQL your application wrote, `@names` and all.     |
+| `parameters`   | `Map<String, Any?>` | The parameters as you supplied them.                             |
+| `dbSql`        | `String?`           | The statement actually sent to the server, after transformation. |
+| `dbParameters` | `List<Any?>?`       | The positional values actually bound.                            |
 
 How it is populated depends on the query type and on *when* things broke:
 
-| Query                                          | `sql`         | `parameters`                   | `dbSql`               | `dbParameters` |
-|:-----------------------------------------------|:--------------|:-------------------------------|:----------------------|:---------------|
-| `createNativeQuery` (`$1` placeholders)        | as written    | `{"1": …, "2": …}` positional  | identical to `sql`    | the values     |
-| `createNamedQuery`, failing at execution       | as written    | your named map                 | the `$n` rewrite      | the values     |
-| `createNamedQuery`, failing *before* rewriting | as written    | your named map                 | `null`                | `null`         |
+| Query                                          | `sql`      | `parameters`                  | `dbSql`            | `dbParameters` |
+|:-----------------------------------------------|:-----------|:------------------------------|:-------------------|:---------------|
+| `createNativeQuery` (`$1` placeholders)        | as written | `{"1": …, "2": …}` positional | identical to `sql` | the values     |
+| `createNamedQuery`, failing at execution       | as written | your named map                | the `$n` rewrite   | the values     |
+| `createNamedQuery`, failing *before* rewriting | as written | your named map                | `null`             | `null`         |
 
 That last row is the parser and missing-parameter case: an `UNCLOSED_QUOTE` or `MISSING_NAMED_PARAMETER` is detected before the SQL is transformed, so there is no database-level form to show.
 
@@ -440,12 +440,12 @@ The object-identifying fields come straight from the server's error message, so 
 **Raised by:** `ResultMapper`, `ReflectionMappingUtils`, and the `PgComposite` / `PgRecord` / `PgArray` / `PgRange` accessors.
 **Properties:** `reason`, `details`, `path`.
 
-| Reason (`MappingExceptionReason`) | Description                                                                                  |
-|:----------------------------------|:---------------------------------------------------------------------------------------------|
-| `COLUMN_NOT_FOUND`                | The requested column, index, or composite attribute does not exist.                          |
-| `REQUIRED_ATTRIBUTE_MISSING`      | The database returned `NULL` (or nothing) for a non-nullable Kotlin property.                |
-| `NO_CONVERTER_FOUND`              | No converter registered for the source/target type pair.                                     |
-| `CONVERSION_ERROR`                | Cast or conversion failed; also the wrapper for foreign exceptions escaping a mapping block. |
+| Reason (`MappingExceptionReason`) | Description                                                                                                                                                       |
+|:----------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `COLUMN_NOT_FOUND`                | The requested column, index, or composite attribute does not exist.                                                                                               |
+| `REQUIRED_ATTRIBUTE_MISSING`      | The database returned `NULL` (or nothing) for a non-nullable Kotlin property.                                                                                     |
+| `NO_CONVERTER_FOUND`              | No converter registered for the source/target type pair.                                                                                                          |
+| `CONVERSION_ERROR`                | Cast or conversion failed, including a converter returning a type other than the one requested; also the wrapper for foreign exceptions escaping a mapping block. |
 
 `path` accumulates as the exception unwinds through nested structures — each frame appends its own key name — and is printed reversed, outermost first: `Path: consul -> province -> founded`. That tells you *which* field five levels down in a nested composite was the problem.
 

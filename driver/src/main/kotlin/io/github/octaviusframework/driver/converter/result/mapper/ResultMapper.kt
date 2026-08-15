@@ -31,15 +31,31 @@ internal class DefaultDeserializationContext(
             return null as T
         }
 
+        val kClass = expectedType.classifier as? KClass<*>
+
         val converter = registry.findConverter(source::class, expectedType, sourceType, this)
         if (converter != null) {
+            val converted = converter.convert(source, expectedType, sourceType, this)
+
+            // The cast below is erased, so a converter that answered canConvert() and then produced
+            // something else would sail through here and blow up as a ClassCastException in the
+            // caller's own frame - with nothing in the stack naming the converter responsible.
+            // Checking here is what turns that into an exception that can say who did it.
+            if (converted != null && kClass != null && !kClass.isInstance(converted)) {
+                throw MappingException(
+                    MappingExceptionReason.CONVERSION_ERROR,
+                    details = "Converter ${converter::class.qualifiedName ?: converter::class} returned " +
+                            "${converted::class.qualifiedName ?: converted::class} but $expectedType was expected. " +
+                            "A converter whose canConvert() accepts more than it can produce is the usual cause."
+                )
+            }
+
             @Suppress("UNCHECKED_CAST")
-            return converter.convert(source, expectedType, sourceType, this) as T
+            return converted as T
         }
 
         // Fallback: if the source is already of the appropriate type, just cast it
         // np. String -> String
-        val kClass = expectedType.classifier as? KClass<*>
         if (kClass != null && kClass.isInstance(source)) {
             @Suppress("UNCHECKED_CAST")
             return source as T

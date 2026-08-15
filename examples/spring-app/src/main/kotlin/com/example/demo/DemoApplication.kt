@@ -31,7 +31,7 @@ class MapParameterConverter(private val objectMapper: ObjectMapper) : ParameterC
 
 class MapResultConverter(private val objectMapper: ObjectMapper) : ResultConverter<String, Map<*, *>> {
     override val supportedSourceClass = String::class
-    
+
     override fun canConvert(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType, context: DeserializationContext): Boolean {
         return (expectedType.classifier == Map::class) && (sourceType.name == "json" || sourceType.name == "jsonb")
     }

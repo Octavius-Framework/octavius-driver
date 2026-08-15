@@ -104,7 +104,9 @@ Bytes allocated per operation, from JMH's `gc` profiler.
 
 One row here is worth pausing on. Reading raw values is ~29% slower in Octavius while allocating **less** than pgjdbc (2.25 MB against 2.33 MB), so whatever costs the time on that path, it is not garbage — and looking for it among allocations would be looking in the wrong place.
 
-Arrays allocate 50% more, which is the per-element conversion described above doing its work; the generality has a memory cost as well as a time one. Single-row inserts allocate nearly 3× more, matching their throughput gap.
+Arrays allocate materially more, which is the per-element conversion described above doing its work; the generality has a memory cost as well as a time one. Put no weight on the exact ratio, though: pgjdbc's figure for this one benchmark is the only number on this page that moves between runs — 7.77 MB here, 8.89 MB in another run of the identical code, each with a tight interval inside its own run — so the gap is somewhere between a third and a half. Octavius's 11.62 MB held to five significant figures across both.
+
+Single-row inserts allocate nearly 3× more, matching their throughput gap.
 
 ## Summary
 
