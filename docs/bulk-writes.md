@@ -1,5 +1,10 @@
 # Bulk Writes
 
+*Rome did not feed a million people by sending a cart to each household. The grain fleet sailed from Alexandria,
+unloaded at Portus, and the whole harvest of a province crossed the sea in one passage. The arithmetic on this page is
+the same one: ten thousand rows sent a statement at a time pay for ten thousand crossings, and the same rows sent as
+arrays in a single statement pay for one.*
+
 Past a handful of rows, the shape of the statement matters far more than the driver underneath it. Inserting 10 000 senators one `INSERT` at a time costs ~327 ms; the same rows go in through a single statement carrying arrays in **~8 ms** — [43× faster](performance.md#writing), and the same ratio holds for `pgjdbc`.
 
 Octavius has no `addBatch()` / `executeBatch()`: JDBC batching is [one of the things it dropped](octavius-vs-jdbc.md#3-jdbc-batching). What replaces it is PostgreSQL's own answer — pass each column as an array, let the server zip them back into rows — which is not a workaround for a missing feature but the faster path in both drivers, and the only one of the two that works for `UPDATE` and `DELETE` as well.

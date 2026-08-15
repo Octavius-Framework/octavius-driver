@@ -1,5 +1,10 @@
 # Session Initialization and Configuration
 
+*A governor leaving for his province carried one sealed set of instructions — the mandata. He might sail from Ostia,
+ride the Via Appia, or take ship at Brundisium; the document was the same whichever road he took, and nothing he did out
+there went beyond what it said. `OctaviusProperties` is that document, and everything below is only a different road to
+the same province.*
+
 Every connection Octavius opens is configured through one strongly-typed class — `OctaviusProperties`. Everything else on this page is a different route to filling it in: native factory functions take it directly, `OctaviusDataSource` exposes its common fields as bean properties, and `DriverManager` parses it out of a JDBC URL. String keys from a URL or a `java.util.Properties` object are matched case-insensitively against its fields; anything it does not recognize is kept aside and [sent to the server as a startup parameter](#startup-parameters).
 
 ## Getting a session

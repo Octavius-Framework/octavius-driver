@@ -1,5 +1,10 @@
 # Spring Integration
 
+*The legions were Roman, but half the army was not. Auxiliary cohorts marched in Roman order and took orders from Roman
+officers while keeping their own weapons and their own way of fighting — useful precisely because they had not been made
+into legionaries. This module is that arrangement: Octavius takes its orders from Spring's transaction manager and
+reports failure in Spring's vocabulary, without pretending to be the JDBC driver it never was.*
+
 Octavius provides seamless integration with the Spring Framework and Spring Boot via the `driver-spring-integration` module.
 
 The module is deliberately small — one template, one transaction manager, one exception translator. What it does *not* do is turn Octavius into an ordinary JDBC driver: `JdbcTemplate`, Spring Data and Hibernate all need the JDBC surface Octavius throws away, and none of them work here. [What else in Spring works](#what-else-in-spring-works) is the section to read before planning an application around it.

@@ -1,5 +1,10 @@
 # Error Handling and Exceptions
 
+*A magistrate who rejected a petition did not simply wave the petitioner away. The refusal went into the record with its
+grounds attached, the petitioner left knowing exactly which part of his claim had failed, and the court moved on to the
+next case without adjourning. Octavius treats a rejected statement the same way: the exception carries what the server
+actually said, down to the field it objected to, and a refusal does not close the session it was raised on.*
+
 Octavius builds its error handling around a single base class — `OctaviusException` — that carries rich diagnostic context. Specific subclasses represent distinct categories of failure, so you're rarely left guessing what went wrong.
 
 Three things are worth internalizing before the details:

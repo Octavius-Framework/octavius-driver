@@ -1,5 +1,10 @@
 # Queries
 
+*Rome's oldest civil procedure demanded exact words and prescribed gestures: a claimant who said "vines" where the
+statute said "trees" lost his case on the spot, having been right about everything except the ritual. It was eventually
+replaced by the formula — one written statement of what was claimed and what was to be decided. A query here is a
+formula, not a ritual: say what you are asking and what shape you want it back in, and it is done in one call.*
+
 Every query in Octavius is built from a session and executed in one call. There is no statement object to close, no `ResultSet` to walk, and no lifecycle to get wrong — you choose how parameters go in, and what shape you want back.
 
 Contents:

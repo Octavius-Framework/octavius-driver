@@ -1,5 +1,10 @@
 # Performance
 
+*The aediles kept the official weights in the temple and checked the market's scales against them. A pan that sat a
+grain low was not yet fraud — the scales themselves were not that fine, and everyone in the market knew it. Every figure
+below is reported with its tolerance for the same reason, and where two drivers sit closer together than that tolerance,
+this page says so instead of declaring a winner.*
+
 JMH benchmarks comparing Octavius against the official PostgreSQL JDBC driver (`pgjdbc`).
 
 Every figure below carries JMH's ± confidence interval over 5 measurement iterations, and that number is the point of this page: **a difference smaller than the intervals it sits between is not a result.** Several rows here are ties for exactly that reason, and saying so is more useful than reporting a 2% win.

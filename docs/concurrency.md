@@ -1,5 +1,9 @@
 # Concurrency and Virtual Threads
 
+*A Roman road carried the traffic of an empire, and then narrowed to a bridge over a gorge that took one cart at a time.
+The queue that formed there was not a failure of the road — it was the one place the width was fixed. A connection is
+that bridge: everything around it scales, and the wire itself stays exactly one conversation wide.*
+
 Octavius is a **blocking** driver by design. There is no reactive layer, no callback API, and no `CompletableFuture` on the query path — a `fetchObjects<T>()` occupies its thread until the rows are there. That sounds like a throughput ceiling and stopped being one with Java 21: a blocking call on a virtual thread parks and costs nothing while it waits, which buys the scalability an async API is usually reached for without the API.
 
 Getting that for free depends on one property, and it is the reason it is worth stating up front: **nothing in the driver is `synchronized`.** Every lock it takes is a `ReentrantLock` — not a stylistic preference but the condition under which a virtual thread blocked in the driver releases its carrier thread instead of holding it.

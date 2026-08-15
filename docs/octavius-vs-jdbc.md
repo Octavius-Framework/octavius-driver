@@ -1,5 +1,9 @@
 # Octavius vs Legacy JDBC
 
+*The Republic was never abolished. Consuls were still elected, the Senate still met, the old titles were still spoken
+aloud in the Forum — and behind those familiar forms the machinery of government had been replaced entirely. Octavius
+keeps the JDBC interfaces on the outside for much the same reason, and asks to be judged by what runs underneath them.*
+
 Octavius takes a deliberately radical stance on database access in the JVM world. 
 It technically implements `java.sql.Driver` and `java.sql.Connection` — but it strips out and disables most of what the JDBC specification actually asks of a driver. `jdbcCompliant()` returns `false`, and means it.
 

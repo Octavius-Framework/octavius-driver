@@ -1,5 +1,9 @@
 # Large Objects (LO)
 
+*Wine travelled in amphorae — sealed, carried whole, opened once. It was kept in dolia: jars too large for any man to
+lift, sunk into the floor of the cella and drawn from where they stood. `bytea` is the amphora and a Large Object is the
+dolium, and this page is about the point where what you are storing is no longer something you pick up.*
+
 PostgreSQL Large Objects store data that would be awkward in a `bytea` column — `bytea` tops out at 1 GB and is read and written whole, while a Large Object goes to 4 TB and can be seeked through and updated in place. Where `pgjdbc` hides its Large Object API behind vendor-specific connection unwrapping, Octavius makes it a first-class citizen through `LargeObjectManager`, reachable at `session.largeObjects`.
 
 Reach for one when you need random access into a big blob, or when the data genuinely exceeds what `bytea` can hold. For anything that comfortably fits and is always read in full, a `bytea` column mapped to `ByteArray` is simpler and needs no transaction ceremony.

@@ -1,5 +1,10 @@
 # Transactions
 
+*A commander in the field could agree terms with an enemy, but the agreement bound Rome only once the Senate ratified
+it. After the Caudine Forks the Senate refused, and the terms simply ceased to exist — the war resumed as though nothing
+had ever been agreed. A transaction is that arrangement: the work is real while it runs, and it counts only if the
+commit is granted.*
+
 Octavius offers two ways to manage transactions: scoped blocks that handle commit and rollback for you, and direct control over the boundaries yourself. The block API is what you want almost always; the direct model exists for the cases where the decision to commit is made far away from the code that runs the queries.
 
 Contents:

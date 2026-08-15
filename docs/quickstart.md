@@ -1,5 +1,9 @@
 # Quickstart
 
+*Every road in the empire measured itself from a single gilded column standing in the Forum — the Milliarium Aureum,
+mile zero, the point from which all distances were counted. This page is that column: the shortest way from an empty
+project to a row coming back.*
+
 > **Note:** Octavius requires **Java 21+** and **PostgreSQL 18+**. Attempting to connect to older PostgreSQL versions will fail because the driver uses Protocol v3.2 exclusively.
 
 ## 1. Add the Dependency

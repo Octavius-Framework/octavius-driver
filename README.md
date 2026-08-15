@@ -107,7 +107,7 @@ Measured against `pgjdbc` on the same machine, same JVM, same work ([full number
 
 **[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every declaration across `driver`, `driver-spring-integration` and `hikari-integration-tests`, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the values of an enum.
 
-The guides cover what a signature cannot show — how the pieces behave together.
+The guides cover what a signature cannot show — how the pieces behave together. [The documentation index](docs/README.md) lists every one of them section by section; below is the shortlist.
 
 **Start here**
 - [Quickstart](docs/quickstart.md) — from an empty project to a first query.

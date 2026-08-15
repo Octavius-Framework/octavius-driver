@@ -1,5 +1,10 @@
 # Functions and Procedures
 
+*Rome distinguished sharply between a question put to an official and an order given to one. Ask the censor for a
+citizen's rating and you are owed an answer; instruct a lictor and you are owed the act, not a reply. PostgreSQL keeps
+that same distinction between a function and a procedure, and most of this page follows from it — starting with which
+command you use to invoke each.*
+
 Calling PostgreSQL functions and procedures through Octavius uses the same query API as everything else — `createNativeQuery` and `createNamedQuery`, the same `fetch*` and `update()` methods, the same type mapping. There is **no `CallableStatement`**: no `{call ...}` escape syntax, no `registerOutParameter(2, Types.INTEGER)` before execution, no `getInt(2)` after it. A routine call is ordinary SQL that happens to name a routine.
 
 What is left to know is therefore not about the driver but about PostgreSQL itself: which command invokes what, and what shape comes back. Those are the parts worth reading below, borrowing a small slice of the Roman civil service for its examples.

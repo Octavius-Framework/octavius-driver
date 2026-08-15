@@ -1,6 +1,12 @@
 # PostgreSQL Listen / Notify
 
-Octavius wraps PostgreSQL's `LISTEN` / `NOTIFY` in a coroutine-based API, so an application can react to database events as they happen rather than polling a table. The *cursus publicus* is not a bad mental model — Rome's state courier network: channels are the roads, notifications are the dispatches, and your listener is the officer waiting at the way-station for the next rider.
+*The cursus publicus kept riders and fresh horses stationed along every imperial road, so a dispatch from the frontier
+reached Rome in days instead of months. Nothing was ever delivered to an officer who was not at the station when the
+rider came through. That is the shape of `LISTEN` / `NOTIFY`: channels are the roads, notifications are the dispatches,
+your listener is the officer at the way-station — and only the sessions standing there at that moment are handed
+anything.*
+
+Octavius wraps PostgreSQL's `LISTEN` / `NOTIFY` in a coroutine-based API, so an application can react to database events as they happen rather than polling a table.
 
 Everything lives behind `session.notifications`, an instance of `NotificationManager`.
 

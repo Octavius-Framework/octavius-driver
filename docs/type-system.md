@@ -1,5 +1,10 @@
 # Type System and Mapping
 
+*When Rome took a province its first act was not to impose a template but to write one — a survey of every community in
+it, its status and its obligations, drawn up on arrival because nobody back in Rome could have known in advance what was
+there. Octavius does the same on its first connection to a database: it reads the catalog rather than assuming it, which
+is why a type you created yourself is never an unknown OID.*
+
 Type mapping in `octavius-driver` rests on a flexible **2-layer architecture** that keeps low-level binary wire communication cleanly separated from high-level mapping onto Kotlin objects.
 
 Two things are worth internalizing before the details:
