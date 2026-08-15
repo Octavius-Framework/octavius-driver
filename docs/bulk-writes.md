@@ -63,7 +63,11 @@ session.createNamedQuery(
 
 ### The casts, and when they matter
 
-The `::int[]` casts above are belt and braces. The driver already declares an OID for each array it sends, so the statement works without them — but they are worth keeping for the case where the inferred type and the column type are not the same. A `List<Int>` goes out as `int4[]`; if the column is `bigint`, the cast tells PostgreSQL to widen it rather than leaving the server to reject the mismatch. Writing `$1::int8[]` there is cheaper than remembering to build a `List<Long>`.
+The `::int[]` casts above are belt and braces. The driver declares an OID for every array it sends, so the statement works without them — and it also works when the column is wider than what you sent, since `INSERT` is an assignment context and PostgreSQL widens `int4[]` into a `bigint[]` column by itself.
+
+Where a cast earns its place is the context that is *not* an assignment. `UNNEST($1)` is one: what comes out of it is whatever went in, so if the surrounding query joins that against a `bigint` column or feeds it to a function expecting `int8`, say so in the SQL — `UNNEST($1::int8[])` — and let the server convert. Keeping the casts on a bulk statement is cheap insurance for exactly that reason.
+
+What will *not* work is naming the wider type on the Kotlin side. `withPgType` declares what you are sending, and the OID it names picks the codec that encodes your values, so `ids.withPgType(PgStandardType.INT8_ARRAY)` on a `List<Int>` asks the `int8` codec to encode `Int`s and fails with `CodecException(ENCODING)` before anything is sent. Build a `List<Long>` if you want `int8` on the wire; cast in SQL if you want the server to widen it. See [Arrays](arrays-ranges-json.md#writing) for the two layers side by side.
 
 ### Empty batches need a type
 

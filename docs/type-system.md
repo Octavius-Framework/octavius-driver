@@ -378,7 +378,9 @@ Wrap any value with the `.withPgType(...)` extension functions:
 * `value.withPgType("legio_status")` — a custom enum type, say, for a legion's current campaign status
 * `value.withPgType("legio_status", schema = "imperium", isArray = true)` — pinned to a schema, as an array
 
-The wrapped name is resolved through the session's search path while the parameter is serialized, and the resulting OID is what the driver declares in `Parse` — which is why `PgTyped` is the right escape hatch for ambiguous parameters and `::cast` in the SQL usually isn't necessary. Nesting one `PgTyped` inside another throws — the wrapper is meant to be the outermost layer. Data classes registered with `registerAutoComposite` get their type attached automatically, so wrapping them by hand is unnecessary.
+The wrapped name is resolved through the session's search path while the parameter is serialized, and the resulting OID is what the driver declares in `Parse` — which is why `PgTyped` is the right escape hatch for ambiguous parameters and `::cast` in the SQL usually isn't necessary.
+
+That OID also selects the **codec that encodes the value**, which bounds what you can usefully name: it has to be a type that codec can produce from the class you are actually holding. `PgTyped` resolves an ambiguity, it does not convert — `listOf(1, 2, 3).withPgType(PgStandardType.INT8_ARRAY)` asks the `int8` codec for `Int` values and fails with `CodecException(ENCODING)` before anything is sent. Converting what you sent into something else is what a SQL cast does, on the server, afterwards. Nesting one `PgTyped` inside another throws — the wrapper is meant to be the outermost layer. Data classes registered with `registerAutoComposite` get their type attached automatically, so wrapping them by hand is unnecessary.
 
 ## Basic converters
 

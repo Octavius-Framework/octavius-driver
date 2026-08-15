@@ -118,6 +118,7 @@ The guides cover what a signature cannot show — how the pieces behave together
 - [Executing Queries](docs/queries.md) — parameters, the `fetch*` family, streaming.
 - [Transaction Management](docs/transactions.md) — block API, manual control, savepoints, isolation.
 - [Type System & Mapping](docs/type-system.md) — how columns become Kotlin types, and how to extend that.
+- [Arrays, Ranges and JSON](docs/arrays-ranges-json.md) — reading and writing the three that have corners worth knowing.
 - [Bulk Writes](docs/bulk-writes.md) — thousands of rows in one statement, and what replaced `addBatch()`.
 - [Error Handling & Exceptions](docs/exceptions.md) — the hierarchy, and catching at the right altitude.
 - [Spring Integration](docs/spring-integration.md) — `OctaviusTemplate` and autoconfiguration.
