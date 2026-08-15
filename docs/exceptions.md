@@ -566,7 +566,9 @@ Going the other way, `OctaviusSessionImpl` unwraps automatically: session-level 
 
 ### Spring
 
-`OctaviusExceptionTranslator` plugs into Spring's `SQLExceptionTranslator` contract. It checks the incoming `SQLException`, then walks its cause chain for a nested `SQLExceptionWrapper` (which is how an exception wrapped by HikariCP is still recognized), and produces an `OctaviusDataAccessException`. Anything it doesn't recognize falls through to Spring's own `SQLStateSQLExceptionTranslator`, so you never lose the standard hierarchy.
+`OctaviusExceptionTranslator` plugs into Spring's `SQLExceptionTranslator` contract. It searches the incoming `SQLException` and its entire cause chain for anything Octavius-shaped — a `SQLExceptionWrapper`, or a bare `OctaviusException` such as the `InitializationException` a pool reports when it could not open a connection at all — and produces an `OctaviusDataAccessException` carrying the original. Searching the whole chain is what keeps a driver failure recognizable after HikariCP has wrapped it in an exception of its own. Anything it doesn't recognize falls through to Spring's own `SQLStateSQLExceptionTranslator`, so you never lose the standard hierarchy.
+
+**Spring users never see the wrapper either**: whatever the layers on the way, `octaviusException` is the driver's exception itself.
 
 `OctaviusDataAccessException` keeps the original available as `octaviusException`:
 

@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.spring.exception
 
+import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
 import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.support.SQLExceptionTranslator
@@ -15,7 +16,13 @@ class OctaviusExceptionTranslator : SQLExceptionTranslator {
 
     /**
      * Translates the given [SQLException] into a generic [DataAccessException].
-     * If the exception cannot be translated locally, it falls back to the default [SQLStateSQLExceptionTranslator].
+     *
+     * The cause chain is searched for anything Octavius-shaped - a [SQLExceptionWrapper] thrown by the
+     * JDBC surface, or a bare [OctaviusException] such as the [io.github.octaviusframework.driver.exception.InitializationException]
+     * a pool reports when it cannot open a connection. Either one yields an [OctaviusDataAccessException]
+     * carrying the original, so a driver failure keeps its type instead of collapsing into a generic one.
+     *
+     * If nothing Octavius-shaped is found, it falls back to the default [SQLStateSQLExceptionTranslator].
      *
      * @param task readable text describing the task being attempted
      * @param sql the SQL query or update that caused the problem (may be null)
@@ -29,8 +36,9 @@ class OctaviusExceptionTranslator : SQLExceptionTranslator {
 
         var cause: Throwable? = ex.cause
         while (cause != null) {
-            if (cause is SQLExceptionWrapper) {
-                return OctaviusDataAccessException(cause.wrappedException)
+            when (cause) {
+                is SQLExceptionWrapper -> return OctaviusDataAccessException(cause.wrappedException)
+                is OctaviusException -> return OctaviusDataAccessException(cause)
             }
             cause = cause.cause
         }

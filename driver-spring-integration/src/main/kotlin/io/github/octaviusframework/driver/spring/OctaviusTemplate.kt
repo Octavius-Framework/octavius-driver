@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
 import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
 import io.github.octaviusframework.driver.spring.exception.OctaviusExceptionTranslator
+import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.UncategorizedSQLException
 import org.springframework.jdbc.datasource.DataSourceUtils
 import org.springframework.jdbc.support.SQLExceptionTranslator
@@ -32,16 +33,19 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
      * @throws org.springframework.dao.DataAccessException if a database access error occurs or an exception is translated
      */
     fun <T> execute(action: OctaviusSessionOperations.() -> T): T {
-        val con = DataSourceUtils.doGetConnection(dataSource)
+        // Acquisition is translated too, so a pool timeout or a refused connection still arrives
+        // as an OctaviusDataAccessException rather than a raw SQLException.
+        val con = try {
+            DataSourceUtils.doGetConnection(dataSource)
+        } catch (ex: SQLException) {
+            throw translate("OctaviusTemplate connection acquisition", ex)
+        }
+
         try {
             val session = con.getOctaviusSession()
             return session.action()
         } catch (ex: SQLException) {
-            val translated = exceptionTranslator.translate("OctaviusTemplate execution", null, ex)
-            if (translated != null) {
-                throw translated
-            }
-            throw UncategorizedSQLException("OctaviusTemplate execution", null, ex)
+            throw translate("OctaviusTemplate execution", ex)
         } catch (ex: OctaviusException) {
             throw OctaviusDataAccessException(ex)
         } catch (ex: RuntimeException) {
@@ -59,4 +63,15 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
             DataSourceUtils.releaseConnection(con, dataSource)
         }
     }
+
+    /**
+     * Runs [ex] through the configured [exceptionTranslator], falling back to [UncategorizedSQLException]
+     * when it declines to translate.
+     *
+     * @param task readable text describing the task being attempted
+     * @param ex the offending SQLException
+     * @return the translated exception, ready to be thrown
+     */
+    private fun translate(task: String, ex: SQLException): DataAccessException =
+        exceptionTranslator.translate(task, null, ex) ?: UncategorizedSQLException(task, null, ex)
 }
