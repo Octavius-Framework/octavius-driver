@@ -37,11 +37,11 @@ val senators: List<Senator> = session
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:0.9.4")
+    implementation("io.github.octavius-framework:driver:0.9.5")
     implementation("com.zaxxer:HikariCP:5.1.0")
 
     // Or, for Spring Boot - brings the driver in transitively
-    // implementation("io.github.octavius-framework:driver-spring-integration:0.9.4")
+    // implementation("io.github.octavius-framework:driver-spring-integration:0.9.5")
 }
 ```
 
