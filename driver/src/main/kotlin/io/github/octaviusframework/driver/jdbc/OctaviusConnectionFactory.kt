@@ -50,6 +50,9 @@ internal object OctaviusConnectionFactory {
         val password = properties.password
         val loginTimeout = properties.loginTimeout ?: DriverManager.getLoginTimeout()
         val notificationBufferCapacity = properties.notificationBufferCapacity ?: 256
+        val cancelSignalTimeout = properties.cancelSignalTimeout ?: 10
+
+        val sslConfiguration = SslNegotiator.configurationOf(properties)
 
         val stream = try {
             val handler = properties.noticeHandler?.let { className ->
@@ -63,12 +66,20 @@ internal object OctaviusConnectionFactory {
                 kClass.objectInstance as? NoticeHandler
                     ?: clazz.getDeclaredConstructor().newInstance() as NoticeHandler
             }
-            PgStream(serverName, portNumber, loginTimeout, notificationBufferCapacity, handler)
+            PgStream(
+                host = serverName,
+                port = portNumber,
+                loginTimeoutSecs = loginTimeout,
+                notificationBufferCapacity = notificationBufferCapacity,
+                noticeHandler = handler,
+                sslConfiguration = sslConfiguration,
+                cancelSignalTimeoutSecs = cancelSignalTimeout
+            )
         } catch (e: Exception) {
             throw InitializationException(InitializationExceptionReason.CONNECTION_ERROR, e.message, e)
         }
 
-        SslNegotiator.negotiate(stream, serverName, portNumber, properties)
+        SslNegotiator.negotiate(stream, serverName, portNumber, sslConfiguration)
 
         // Copied, not used in place: the driver's own startup parameters must not leak back
         // into the caller's properties object, which may be reused for further connections.

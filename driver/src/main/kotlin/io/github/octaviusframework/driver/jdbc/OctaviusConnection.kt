@@ -9,6 +9,7 @@ import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
 import io.github.octaviusframework.driver.registry.RegistryKey
 import io.github.octaviusframework.driver.session.TransactionState
+import io.github.octaviusframework.driver.ssl.SslNegotiator
 import io.github.octaviusframework.driver.transaction.OctaviusSavepointImpl
 import java.sql.*
 import java.util.*
@@ -179,13 +180,33 @@ internal class OctaviusConnection internal constructor(
 
     internal fun cancelQuery() {
         checkClosed()
+
+        // The cancel request cannot travel on this connection - the protocol requires a fresh one -
+        // and it carries the backend's process id and cancel key. cancelSignalTimeout bounds both
+        // its connect and its reads, because a cancel can get stuck on a server the session itself
+        // is not stuck on.
+        val cancelStream = try {
+            PgStream(stream.host, stream.port, stream.cancelSignalTimeoutSecs)
+        } catch (_: Exception) {
+            return // Never opened, so there is nothing to clean up and nothing to report.
+        }
+
         try {
-            val cancelStream = PgStream(stream.host, stream.port)
+            // The key gets the same TLS treatment the session asked for: under REQUIRE and stronger
+            // a server that will not encrypt makes negotiate() throw, so the request is never sent
+            // rather than being sent in the clear.
+            stream.sslConfiguration?.let {
+                SslNegotiator.negotiate(cancelStream, stream.host, stream.port, it)
+            }
             cancelStream.sendMessage(CancelRequestMessage(stream.processId, stream.secretKey))
             cancelStream.flush()
-            cancelStream.close()
-        } catch (e: Exception) {
+            // The backend replies to a CancelRequest by closing the connection. Waiting for that is
+            // what makes this "delivered" rather than "written to a buffer we then closed".
+            cancelStream.awaitServerClose()
+        } catch (_: Exception) {
             // Ignore errors during cancellation
+        } finally {
+            cancelStream.dropSocket()
         }
     }
 

@@ -32,15 +32,21 @@ import java.util.concurrent.locks.ReentrantLock
  *
  * @property host The hostname or IP address of the PostgreSQL server.
  * @property port The port number of the PostgreSQL server.
- * @param loginTimeoutSecs Timeout in seconds for the initial connection and login process.
+ * @property loginTimeoutSecs Timeout in seconds for the initial connection and login process.
  * @param notificationBufferCapacity Capacity of the buffer for asynchronous notifications.
+ * @property sslConfiguration The SSL settings this connection was established with, kept so that a
+ *   second connection opened on its behalf - a cancel request - can be given the same treatment.
+ * @property cancelSignalTimeoutSecs Seconds allowed for a cancel request sent on this connection's
+ *   behalf, covering both its connect and its reads. Carried here for the same reason.
  */
 internal class PgStream(
     val host: String,
     val port: Int,
-    loginTimeoutSecs: Int = 10,
+    val loginTimeoutSecs: Int = 10,
     notificationBufferCapacity: Int = 256,
-    val noticeHandler: NoticeHandler? = null
+    val noticeHandler: NoticeHandler? = null,
+    val sslConfiguration: SslConfiguration? = null,
+    val cancelSignalTimeoutSecs: Int = 10
 ) : AutoCloseable {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -451,6 +457,42 @@ internal class PgStream(
             fields[token] = value
         }
         return ErrorResponseMessage(fields)
+    }
+
+    /**
+     * Blocks until the server closes this connection, discarding anything it sends beforehand.
+     *
+     * A backend answers a CancelRequest by closing the connection rather than replying, so waiting
+     * for that is what confirms the request was read - instead of leaving it in a socket buffer
+     * that an immediate close would race with. The socket timeout the stream was opened with
+     * bounds the wait, so a server that accepts the connection and then goes quiet cannot park
+     * the caller here.
+     */
+    fun awaitServerClose() {
+        try {
+            val raw = socket.getInputStream()
+            @Suppress("ControlFlowWithEmptyBody")
+            while (raw.read() != -1) {
+            }
+        } catch (_: Exception) {
+            // A timeout, a reset, an already-closed socket: all say the same thing here, which is
+            // that nothing more is coming.
+        }
+    }
+
+    /**
+     * Closes the socket without the Terminate that [close] sends first.
+     *
+     * For a connection the server is expected to hang up on by itself - a cancel request - a
+     * Terminate is only bytes written at a backend that has already gone.
+     */
+    fun dropSocket() {
+        if (!socket.isClosed) {
+            try {
+                socket.close()
+            } catch (_: Exception) {
+            }
+        }
     }
 
     /**

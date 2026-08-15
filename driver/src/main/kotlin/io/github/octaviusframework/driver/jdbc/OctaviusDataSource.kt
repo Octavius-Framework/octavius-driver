@@ -17,7 +17,11 @@ import javax.sql.DataSource
  * such as the server URL, credentials, and SSL settings.
  *
  * Configuration properties can be set either via the [url] property or individually
- * using the respective accessor properties.
+ * using the respective accessor properties. Every field of
+ * [OctaviusProperties][io.github.octaviusframework.driver.properties.OctaviusProperties] has an
+ * accessor here, so a pool that configures a `DataSource` through JavaBean setters - HikariCP's
+ * `addDataSourceProperty`, for one - can reach all of them; anything else goes through
+ * [setProperty], including server startup parameters.
  */
 class OctaviusDataSource : DataSource {
     private val octaviusProperties = OctaviusProperties()
@@ -72,11 +76,11 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.password = value }
 
     /**
-     * Controls whether SSL is required ("true" or "false").
+     * Shorthand raising the default SSL mode to `REQUIRE`. Ignored when [sslmode] is set explicitly.
      */
-    var ssl: String?
-        get() = octaviusProperties.ssl?.toString()
-        set(value) { octaviusProperties.ssl = value?.toBoolean() }
+    var ssl: Boolean?
+        get() = octaviusProperties.ssl
+        set(value) { octaviusProperties.ssl = value }
 
     /**
      * The SSL mode to use (e.g., disable, require, verify-ca, verify-full).
@@ -112,6 +116,66 @@ class OctaviusDataSource : DataSource {
     var sslpassword: String?
         get() = octaviusProperties.sslpassword
         set(value) { octaviusProperties.sslpassword = value }
+
+    /**
+     * Seconds to wait on a socket read before failing. `0` waits forever.
+     */
+    var socketTimeout: Int
+        get() = octaviusProperties.socketTimeout ?: 0
+        set(value) { octaviusProperties.socketTimeout = value }
+
+    /**
+     * Seconds allowed for a cancel request, covering both its connect and its reads.
+     */
+    var cancelSignalTimeout: Int
+        get() = octaviusProperties.cancelSignalTimeout ?: 10
+        set(value) { octaviusProperties.cancelSignalTimeout = value }
+
+    /**
+     * Largest row, in bytes, kept in the reusable row buffer.
+     */
+    var maxCachedRowSize: Int
+        get() = octaviusProperties.maxCachedRowSize ?: 65536
+        set(value) { octaviusProperties.maxCachedRowSize = value }
+
+    /**
+     * Capacity of the `LISTEN`/`NOTIFY` buffer.
+     */
+    var notificationBufferCapacity: Int
+        get() = octaviusProperties.notificationBufferCapacity ?: 256
+        set(value) { octaviusProperties.notificationBufferCapacity = value }
+
+    /**
+     * Fully-qualified class name of a `NoticeHandler` for server notices.
+     */
+    var noticeHandler: String?
+        get() = octaviusProperties.noticeHandler
+        set(value) { octaviusProperties.noticeHandler = value }
+
+    /**
+     * Starting size, in bytes, of the per-connection parameter buffer.
+     */
+    var initialParameterWriterCapacity: Int
+        get() = octaviusProperties.initialParameterWriterCapacity ?: 1024
+        set(value) { octaviusProperties.initialParameterWriterCapacity = value }
+
+    /**
+     * Cap for the per-connection parameter buffer; it shrinks back to
+     * [initialParameterWriterCapacity] after a query that exceeded it.
+     */
+    var maxParameterWriterCapacity: Int
+        get() = octaviusProperties.maxParameterWriterCapacity ?: 65536
+        set(value) { octaviusProperties.maxParameterWriterCapacity = value }
+
+    /**
+     * Sets any property this class does not expose directly, by the same name a JDBC URL would
+     * use. Anything the driver does not recognise is sent to the server as a startup parameter,
+     * which is what makes this the programmatic route to `application_name`, `search_path` and
+     * friends.
+     */
+    fun setProperty(name: String, value: String) {
+        octaviusProperties.setProperty(name, value)
+    }
 
     private var logWriter: PrintWriter? = null
 

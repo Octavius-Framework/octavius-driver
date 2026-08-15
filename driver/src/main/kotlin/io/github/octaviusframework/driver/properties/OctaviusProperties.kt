@@ -23,7 +23,17 @@ class OctaviusProperties {
 
     var loginTimeout: Int? = null
     var socketTimeout: Int? = null
-    
+
+    /**
+     * Seconds allowed for a cancel request, covering both its connect and its reads.
+     *
+     * A cancel travels on a connection of its own, so it can get stuck on a server that the
+     * session's own connection is not stuck on - which is why it has a budget separate from
+     * [loginTimeout] and [socketTimeout]. Defaults to 10 seconds.
+     */
+    var cancelSignalTimeout: Int? = null
+
+
     var maxCachedRowSize: Int? = null
     var notificationBufferCapacity: Int? = null
     var noticeHandler: String? = null
@@ -48,6 +58,7 @@ class OctaviusProperties {
             "databasename", "database" -> databaseName = value
             "logintimeout" -> loginTimeout = value.toIntOrNull()
             "sockettimeout" -> socketTimeout = value.toIntOrNull()
+            "cancelsignaltimeout" -> cancelSignalTimeout = value.toIntOrNull()
             "maxcachedrowsize" -> maxCachedRowSize = value.toIntOrNull()
             "notificationbuffercapacity" -> notificationBufferCapacity = value.toIntOrNull()
             "noticehandler" -> noticeHandler = value
@@ -71,6 +82,7 @@ class OctaviusProperties {
         other.databaseName?.let { databaseName = it }
         other.loginTimeout?.let { loginTimeout = it }
         other.socketTimeout?.let { socketTimeout = it }
+        other.cancelSignalTimeout?.let { cancelSignalTimeout = it }
         other.maxCachedRowSize?.let { maxCachedRowSize = it }
         other.notificationBufferCapacity?.let { notificationBufferCapacity = it }
         other.noticeHandler?.let { noticeHandler = it }
@@ -154,6 +166,7 @@ class OctaviusProperties {
         user?.let { queryParams["user"] = it }
         loginTimeout?.let { queryParams["loginTimeout"] = it.toString() }
         socketTimeout?.let { queryParams["socketTimeout"] = it.toString() }
+        cancelSignalTimeout?.let { queryParams["cancelSignalTimeout"] = it.toString() }
         maxCachedRowSize?.let { queryParams["maxCachedRowSize"] = it.toString() }
         notificationBufferCapacity?.let { queryParams["notificationBufferCapacity"] = it.toString() }
         noticeHandler?.let { queryParams["noticeHandler"] = it }

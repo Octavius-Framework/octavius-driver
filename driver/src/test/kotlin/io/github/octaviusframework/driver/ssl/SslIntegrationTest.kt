@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.ssl
 
+import io.github.octaviusframework.driver.exception.ExecutionAbortedException
+import io.github.octaviusframework.driver.exception.ExecutionAbortedExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslMode
@@ -7,6 +9,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.concurrent.Executors
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class SslIntegrationTest {
@@ -169,6 +173,45 @@ class SslIntegrationTest {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
             assertTrue(isSsl, "Connection should be SSL encrypted with client certificates")
         } finally {
+            session.close()
+        }
+    }
+
+    @Test
+    fun testCancelQueryOverSsl() {
+        val runSslTest = System.getenv("TEST_SSL") == "true"
+        assumeTrue(runSslTest, "Skipping SSL tests locally. Set TEST_SSL=true.")
+
+        val properties = OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+            ssl = true
+            sslmode = SslMode.REQUIRE
+        }
+
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val executor = Executors.newSingleThreadExecutor()
+
+        try {
+            // A cancel request cannot travel on the session's own connection, so it opens a second
+            // one - which has to negotiate TLS for itself before the request can land. If it did
+            // not, the request would never reach the server under REQUIRE and pg_sleep would run
+            // to completion instead of being aborted.
+            executor.submit {
+                Thread.sleep(200)
+                session.cancelQuery()
+            }
+
+            val exception = assertFailsWith<ExecutionAbortedException> {
+                session.createNativeQuery("SELECT pg_sleep(5)").fetchRowStrict()
+            }
+            assertEquals(ExecutionAbortedExceptionReason.QUERY_CANCELED, exception.reason)
+            assertEquals("57014", exception.sqlState)
+
+            val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
+            assertTrue(isSsl, "Session should survive the cancellation, still encrypted")
+        } finally {
+            executor.shutdown()
             session.close()
         }
     }

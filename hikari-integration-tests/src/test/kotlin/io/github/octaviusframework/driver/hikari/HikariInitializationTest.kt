@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.hikari
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.github.octaviusframework.driver.jdbc.OctaviusDataSource
+import io.github.octaviusframework.driver.ssl.SslMode
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
@@ -26,6 +28,79 @@ class HikariInitializationTest {
             }
         }
         ds.close()
+    }
+
+    @Test
+    fun `should set tuning knobs through addDataSourceProperty`() {
+        val config = HikariConfig()
+        config.dataSourceClassName = "io.github.octaviusframework.driver.jdbc.OctaviusDataSource"
+        config.addDataSourceProperty("serverName", "localhost")
+        config.addDataSourceProperty("portNumber", "5432")
+        config.addDataSourceProperty("databaseName", "octavius_test")
+        config.addDataSourceProperty("user", "postgres")
+        config.addDataSourceProperty("password", "1234")
+
+        // Every value a string, which is what a properties file or Spring's data-source-properties
+        // would hand over - Hikari coerces to the accessor's type, and only manages that for
+        // primitives, boxed Boolean and String. Accessor types on OctaviusDataSource are chosen
+        // to stay inside that set.
+        config.addDataSourceProperty("ssl", "false")
+        config.addDataSourceProperty("socketTimeout", "30")
+        config.addDataSourceProperty("cancelSignalTimeout", "3")
+        config.addDataSourceProperty("maxCachedRowSize", "8192")
+        config.addDataSourceProperty("notificationBufferCapacity", "512")
+        config.addDataSourceProperty("initialParameterWriterCapacity", "2048")
+        config.addDataSourceProperty("maxParameterWriterCapacity", "131072")
+
+        val ds = HikariDataSource(config)
+        assertDoesNotThrow {
+            ds.connection.use { conn ->
+                assertNotNull(conn)
+            }
+        }
+        ds.close()
+    }
+
+    @Test
+    fun `should accept a preconfigured OctaviusDataSource instance`() {
+        // Handing Hikari the instance skips its reflective property setting entirely, so the
+        // configuration is typed all the way - including sslmode, which cannot be set as a string
+        // through addDataSourceProperty.
+        val octavius = OctaviusDataSource().apply {
+            serverName = "localhost"
+            portNumber = 5432
+            databaseName = "octavius_test"
+            user = "postgres"
+            password = "1234"
+            sslmode = SslMode.DISABLE
+            socketTimeout = 30
+            cancelSignalTimeout = 3
+        }
+
+        val config = HikariConfig()
+        config.dataSource = octavius
+        config.maximumPoolSize = 1
+
+        val ds = HikariDataSource(config)
+        assertDoesNotThrow {
+            ds.connection.use { conn ->
+                assertNotNull(conn)
+            }
+        }
+        ds.close()
+    }
+
+    @Test
+    fun `should reject a property name that has no accessor`() {
+        val config = HikariConfig()
+        config.dataSourceClassName = "io.github.octaviusframework.driver.jdbc.OctaviusDataSource"
+        config.addDataSourceProperty("serverName", "localhost")
+        config.addDataSourceProperty("databaseName", "octavius_test")
+        config.addDataSourceProperty("thisIsNotAProperty", "1")
+
+        // Hikari fails the pool rather than dropping the setting silently, which is the reason
+        // every field of OctaviusProperties needs an accessor here.
+        assertThrows<RuntimeException> { HikariDataSource(config) }
     }
 
     @Test

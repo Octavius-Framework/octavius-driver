@@ -23,17 +23,21 @@ import javax.net.ssl.*
  */
 internal object SslNegotiator {
 
-    fun negotiate(stream: PgStream, host: String, port: Int, properties: OctaviusProperties) {
-        val sslMode = properties.sslmode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER
+    /**
+     * Builds the effective SSL configuration for a connection.
+     *
+     * Kept separate from [negotiate] because the configuration outlives the handshake: a cancel
+     * request travels on a second connection of its own and has to be given the same treatment.
+     */
+    fun configurationOf(properties: OctaviusProperties): SslConfiguration = SslConfiguration(
+        mode = properties.sslmode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER,
+        rootCertPath = properties.sslrootcert,
+        certPath = properties.sslcert,
+        keyPath = properties.sslkey,
+        keyPassword = properties.sslpassword
+    )
 
-        val config = SslConfiguration(
-            mode = sslMode,
-            rootCertPath = properties.sslrootcert,
-            certPath = properties.sslcert,
-            keyPath = properties.sslkey,
-            keyPassword = properties.sslpassword
-        )
-
+    fun negotiate(stream: PgStream, host: String, port: Int, config: SslConfiguration) {
         if (config.mode == SslMode.DISABLE) return
 
         stream.sendMessage(SSLRequestMessage())
