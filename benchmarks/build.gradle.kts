@@ -16,13 +16,12 @@ dependencies {
 }
 
 jmh {
-    iterations.set(5)
-    warmupIterations.set(3)
-    fork.set(1)
-    threads.set(1)
     jmhVersion.set("1.37")
+
+    // gc reports allocation per operation; stack samples thread states and the frames underneath
+    // them, which is where a difference too small for the clock still shows up.
     profilers.add("gc")
+    profilers.add("stack")
 
     providers.gradleProperty("jmh").orNull?.let { includes.add(it) }
-    profilers.add("stack")
 }

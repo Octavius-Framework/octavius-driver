@@ -80,4 +80,5 @@ session.createNamedQuery("INSERT INTO users (id, name, active) VALUES (@id, @nam
 - [Executing Queries](queries.md) — the full `fetch*` family, streaming, and named parameters
 - [Session Initialization](initialization.md) — every connection option, and connection pooling in depth
 - [Type System](type-system.md) — how columns become Kotlin types, and how to extend that
+- [Bulk Writes](bulk-writes.md) — inserting thousands of rows in one statement
 - [Spring Integration](spring-integration.md) — `OctaviusTemplate` and autoconfiguration

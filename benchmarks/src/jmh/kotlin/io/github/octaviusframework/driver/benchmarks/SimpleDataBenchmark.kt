@@ -21,6 +21,11 @@ data class SimpleData(val i: Int, val s: String, val b: Boolean, val d: Double)
 @State(Scope.Benchmark)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @BenchmarkMode(Mode.Throughput)
+@Fork(1)
+@Threads(1)
+// No `time` here on purpose: throughput iterations keep JMH's 10 s default.
+@Warmup(iterations = 3)
+@Measurement(iterations = 5)
 open class SimpleDataBenchmark {
 
     private lateinit var pgConnection: Connection
@@ -28,6 +33,7 @@ open class SimpleDataBenchmark {
 
     private lateinit var octaviusSession: OctaviusSession
     private lateinit var octaviusQuery: NativeQuery
+    private lateinit var octaviusReflectionQuery: NativeQuery
 
     @Setup(Level.Trial)
     fun setup() {
@@ -63,6 +69,13 @@ open class SimpleDataBenchmark {
                     return SimpleData(source.get(0), source.get(1), source.get(2), source.get(3))
                 }
             })
+
+        // The same work with no converter registered, so mapping falls to ReflectionRowConverter.
+        // It matches constructor parameters to columns by name, hence the aliases.
+        octaviusReflectionQuery = octaviusSession.createNativeQuery(
+            "SELECT i::int4 AS i, ('hello world ' || i::text) AS s, (i % 2 = 0)::boolean AS b, (i * 3.14)::float8 AS d " +
+                    "FROM generate_series(1, 10000) AS i"
+        )
     }
 
     @TearDown(Level.Trial)
@@ -88,6 +101,16 @@ open class SimpleDataBenchmark {
     fun octavius_simpleData(): Int {
         var count = 0
         val rows = octaviusQuery.fetchObjects<SimpleData>()
+        for (data in rows) {
+            count += data.i + (if(data.b) 1 else 0) + data.s.length + data.d.toInt()
+        }
+        return count
+    }
+
+    @Benchmark
+    fun octavius_simpleData_reflection(): Int {
+        var count = 0
+        val rows = octaviusReflectionQuery.fetchObjects<SimpleData>()
         for (data in rows) {
             count += data.i + (if(data.b) 1 else 0) + data.s.length + data.d.toInt()
         }

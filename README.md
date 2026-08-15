@@ -26,7 +26,7 @@ val senators: List<Senator> = session
 - **Results in the shape you asked for** — `fetchRows`, `fetchObjects<T>`, `fetchField<T>`, each with single-row and strict variants, plus `forEach*` for streaming results too large to hold.
 - **Exceptions you can act on** — a flat hierarchy keyed by SQLSTATE, each carrying the server's own error fields plus the SQL and parameters your application sent.
 - **Asynchronous notifications** — `LISTEN` / `NOTIFY` as a Kotlin Coroutines `SharedFlow`.
-- **Bulk paths that are actually fast** — native `COPY` support, and `UNNEST` inserts that beat classic JDBC batching by ~3×.
+- **Bulk paths that are actually fast** — native `COPY` support, and [`UNNEST` inserts](docs/bulk-writes.md) that beat classic JDBC batching by ~3×.
 - **Large Objects as a first-class API** — `lo` support without unwrapping to a vendor interface.
 - **TLS with the property names you already know** — the full `sslmode` ladder from `prefer` to `verify-full`, client certificates and root CA included, with the handshake restricted to TLS 1.2 and 1.3.
 - **Connection pool ready** — designed around HikariCP, with the Kotlin session API layered on top.
@@ -98,9 +98,10 @@ session.close() // Safely returns the connection to the pool
 
 Measured against `pgjdbc` on the same machine, same JVM, same work ([full numbers and caveats](docs/performance.md)):
 
-- **Object mapping ties** — 0.206 ± 0.027 against 0.199 ± 0.008 ops/ms, a dead heat on the path most applications live on.
-- **`UNNEST` bulk inserts are 3.2× faster than classic JDBC batching**, and tie with pgjdbc's `reWriteBatchedInserts` optimization — while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
-- **Array decoding costs ~22%** for going through the general conversion machinery — the same machinery that makes a `List<Senator>` of composites work.
+- **Object mapping ties** — 0.220 ± 0.004 against 0.216 ± 0.029 ops/ms, a dead heat on the path most applications live on.
+- **`UNNEST` bulk inserts are 3.5× faster than classic JDBC batching**, and tie with pgjdbc's `reWriteBatchedInserts` optimization — while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
+- **Array decoding costs ~26%** for going through the general conversion machinery — the same machinery that makes a `List<Senator>` of composites work.
+- **Reflective mapping allocates more than a hand-written converter does** — ~2.5× on the two-field row benchmarked, in both directions. Worth replacing on your hottest path, and nowhere else.
 
 ## Documentation
 
@@ -117,6 +118,7 @@ The guides cover what a signature cannot show — how the pieces behave together
 - [Executing Queries](docs/queries.md) — parameters, the `fetch*` family, streaming.
 - [Transaction Management](docs/transactions.md) — block API, manual control, savepoints, isolation.
 - [Type System & Mapping](docs/type-system.md) — how columns become Kotlin types, and how to extend that.
+- [Bulk Writes](docs/bulk-writes.md) — thousands of rows in one statement, and what replaced `addBatch()`.
 - [Error Handling & Exceptions](docs/exceptions.md) — the hierarchy, and catching at the right altitude.
 - [Spring Integration](docs/spring-integration.md) — `OctaviusTemplate` and autoconfiguration.
 
