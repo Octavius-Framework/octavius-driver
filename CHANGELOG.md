@@ -1,3 +1,29 @@
+## Version 0.9.6 (v0.9.6)
+
+#### Added
+
+- **SCRAM-SHA-256-PLUS with channel binding** - the client proof now covers a hash of the certificate the server presented, so an intermediary that terminates TLS with a certificate of its own produces a proof the real server rejects. New `ChannelBinding` enum (`DISABLE`, `PREFER`, `REQUIRE`) and a `channelBinding` property defaulting to `PREFER`, plus `tls-server-end-point` binding data derived from the peer certificate
+- `cancelSignalTimeout` - seconds allowed for a cancel request, covering both its connect and its reads. A cancel travels on a connection of its own, so it gets a budget separate from `loginTimeout` and `socketTimeout`. Defaults to 10
+- Every `OctaviusProperties` setting is now exposed on `OctaviusDataSource` - `ssl`, `socketTimeout`, `cancelSignalTimeout`, `maxCachedRowSize`, `notificationBufferCapacity`, `noticeHandler`, `initialParameterWriterCapacity`, `maxParameterWriterCapacity` - alongside a generic `setProperty(name, value)`
+- Five new documentation pages - a documentation index, bulk writes, concurrency and virtual threads, arrays/ranges/JSON, and composites with reflective mapping - alongside reworked README, `octavius-vs-jdbc`, `spring-integration`, `performance` and `queries`, and a Roman lore intro on every page
+- `CHANGELOG.md` lives in the repository rather than only on the releases page
+- `LICENSE`
+- KDoc is published for release and snapshot versions side by side, behind a landing page
+- Benchmarks measuring what reflection costs against a hand-written converter, in both directions - `CompositeInsertBenchmark` for the write path, a reflective variant in `SimpleDataBenchmark` for the read path
+- Tests for channel binding and `tls-server-end-point`, local SSL test infrastructure driven by `scripts/ssl-test-server.ps1`, HikariCP initialization, greedy-converter diagnostics, reflective missing-value handling and parameter type mismatches
+
+#### Changed
+
+- `kotlinx.coroutines.core`, `kotlinx.serialization.json` and `kotlinx.datetime` are `api` dependencies, so the types they contribute to the public surface arrive with the driver instead of having to be declared again
+- `Row.get` is a member function instead of an extension, so nothing has to be imported at the call site
+- A cancel request's socket performs the same SSL handshake as the connection it cancels, instead of connecting in the clear
+- `ResultMapper` compares what a converter produced against the type that was requested. A converter whose `canConvert` accepts more than it can produce now raises `MappingException(CONVERSION_ERROR)` naming the converter, rather than surfacing as a `ClassCastException` in the caller's own frame with nothing in the stack to identify it
+- The `unknown` pseudo-type is loaded into the type catalog, so uncast literals convert wherever a value's type has to be resolved - inside a `ROW(...)` read as a `Map`, in arrays, and as nested values
+- A default value in a data class constructor now covers an **absent** column or attribute only. SQL `NULL` is a value: it reaches a nullable property as `null` and raises `REQUIRED_ATTRIBUTE_MISSING` for a non-nullable one, whether or not a default is declared. Previously a default silently replaced any `NULL`, leaving a real `NULL` indistinguishable from a missing column
+- `registerAutoComposite` rejects a class that is not a data class with `InvalidOperationException(INVALID_ARGUMENT)`, at registration time instead of at query time. Reflective mapping reads every primary constructor parameter back as a property, which only a data class guarantees; previously such a class registered without complaint and then resolved only through `row.get<Any>`
+- `ReflectionCompositeParameterConverter` no longer claims an unregistered data class when the expected OID happens to name a composite, so it declines instead of failing inside `convert`
+- A parameter that reaches the end of the converter chain unclaimed is now checked against the codec bound to its target OID, where one is known. A class that codec cannot encode raises `MappingException(NO_CONVERTER_FOUND)` naming both sides, with the attribute or element index in `path` - matching how the read direction reports the same mistake. Previously these surfaced one layer down as `CodecException(ENCODING)` with no path: an unregistered nested data class as a bare `ClassCastException`, and a width mismatch such as an `Int` bound for `int8` (including array elements, as in `listOf(1, 2, 3).withPgType(INT8_ARRAY)`) as an encoding failure. Values a converter does claim are unaffected
+
 ## Version 0.9.5 (v0.9.5)
 
 #### Added
