@@ -24,34 +24,33 @@ fun <T : Any> instantiateDataObject(
 
     for (meta in metadata.constructorProperties) {
         val param = meta.parameter
-        
-        val result = resolveValue(meta)
-        if (result === MissingToken) {
-            if (!param.isOptional && !meta.type.isMarkedNullable) {
-                throw MappingException(
-                    MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, 
-                    "Missing non-nullable attribute '${meta.keyName}' for $kClass",
-                    path = mutableListOf(meta.keyName)
-                )
+
+        when (val result = resolveValue(meta)) {
+            // Nothing in the result set under this name: the default is what covers it.
+            MissingToken -> {
+                if (!param.isOptional) {
+                    if (!meta.type.isMarkedNullable) {
+                        throw MappingException(
+                            MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING,
+                            "Missing non-nullable attribute '${meta.keyName}' for $kClass",
+                            path = mutableListOf(meta.keyName)
+                        )
+                    }
+                    constructorArgs[param] = null
+                }
             }
-            if (!param.isOptional) {
-                constructorArgs[param] = null
-            }
-        } else {
-            if (result == null) {
-                if (!meta.type.isMarkedNullable && !param.isOptional) {
+            // Present and NULL: a value
+            null -> {
+                if (!meta.type.isMarkedNullable) {
                     throw MappingException(
-                        MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, 
+                        MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING,
                         "Null value for non-nullable attribute '${meta.keyName}' for $kClass",
                         path = mutableListOf(meta.keyName)
                     )
                 }
-                if (!param.isOptional) {
-                    constructorArgs[param] = null
-                }
-            } else {
-                constructorArgs[param] = result
+                constructorArgs[param] = null
             }
+            else -> constructorArgs[param] = result
         }
     }
 
