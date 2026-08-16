@@ -394,10 +394,10 @@ There is no property selecting an authentication method: [SCRAM-SHA-256 is the o
 |:-----------------|:---------------------------------------|:---------------------------------------------------------------------------------------------|
 | `sslmode`        | `PREFER`, or `REQUIRE` if `ssl = true` | Negotiation mode; see the table below.                                                       |
 | `ssl`            | unset                                  | Shorthand: `true` raises the default to `REQUIRE`. Ignored when `sslmode` is set explicitly. |
-| `sslrootcert`    | none                                   | Path to the root CA certificate.                                                             |
-| `sslcert`        | none                                   | Path to the client certificate.                                                              |
-| `sslkey`         | none                                   | Path to the client private key.                                                              |
-| `sslpassword`    | none                                   | Password protecting the client private key.                                                  |
+| `sslrootcert`    | JVM default trust store                | Path to the root CA certificate. Optional — see the mode table below.                        |
+| `sslcert`        | none                                   | Path to the client certificate. Needs `sslkey` too, or neither is used.                      |
+| `sslkey`         | none                                   | Path to the client private key. Unencrypted PKCS#8 RSA, in PEM form.                         |
+| `sslpassword`    | none                                   | Applied to the driver's in-memory keystore; does **not** decrypt `sslkey`.                   |
 | `channelBinding` | `PREFER`                               | How hard to insist on [channel binding](#channel-binding) for authentication.                |
 
 | `SslMode`     | Behaviour                                                                                                                  |

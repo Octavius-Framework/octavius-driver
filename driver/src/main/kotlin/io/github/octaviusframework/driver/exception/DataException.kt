@@ -38,6 +38,9 @@ enum class DataExceptionReason {
  * numeric overflow, division by zero, or invalid text representation of a data type.
  *
  * @property reason The specific reason for the data error.
+ * @property dbMessage The primary error message the database raised.
+ * @property details Additional, human-readable details provided by the database.
+ * @property where The call stack the error arose in, for one raised inside a trigger or function.
  * @param sqlState The SQL state code returned by the database.
  * @param serverErrorMessage The original error message from the database server.
  */

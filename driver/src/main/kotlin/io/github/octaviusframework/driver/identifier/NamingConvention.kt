@@ -34,6 +34,18 @@ enum class CaseConvention {
  * Utility for converting strings between different naming conventions.
  */
 object CaseConverter {
+    /**
+     * Rewrites [value] from one convention into another.
+     *
+     * The string is split into words according to [from] and rejoined according to [to]. An acronym is
+     * kept whole where the next character makes that unambiguous — `parseXMLDocument` splits as
+     * `parse` / `XML` / `Document` — and a digit-to-letter boundary starts a new word.
+     *
+     * @param value The identifier to rewrite.
+     * @param from The convention [value] is written in.
+     * @param to The convention to produce.
+     * @return The rewritten identifier, or [value] unchanged when the conventions match or it is empty.
+     */
     fun convert(value: String, from: CaseConvention, to: CaseConvention): String {
         if (from == to || value.isEmpty()) {
             return value

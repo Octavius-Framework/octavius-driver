@@ -6,17 +6,29 @@ import io.github.octaviusframework.driver.message.ServerErrorMessage
  * Represents specific reasons for a SQL statement execution failure.
  */
 enum class StatementExceptionReason {
+    /** The statement contains a syntax error. */
     SYNTAX_ERROR,
+    /** The statement contains an unclosed string or identifier quote. */
     UNCLOSED_QUOTE,
+    /** The statement contains an unclosed dollar-quoted string. */
     UNCLOSED_DOLLAR_QUOTE,
+    /** The statement contains an unclosed multi-line comment. */
     UNCLOSED_COMMENT,
+    /** An object's definition or current state does not permit what was asked of it. */
     INVALID_DEFINITION,
+    /** The statement references a table, column, function or type that does not exist. */
     UNDEFINED_OBJECT,
+    /** The statement creates an object under a name that is already taken. */
     DUPLICATE_OBJECT,
+    /** A name in the statement matches more than one candidate; qualify it. */
     AMBIGUOUS_OBJECT,
+    /** A value's type does not fit where it was used, and no implicit cast applies. */
     DATA_TYPE_ERROR,
+    /** The statement is not permitted in the session's current transaction state. */
     INVALID_TRANSACTION_STATE,
+    /** Raised by the driver: the statement names a parameter the supplied values do not include. */
     MISSING_NAMED_PARAMETER,
+    /** Raised by the driver: the query returned a number of rows the chosen fetch method forbids. */
     INCORRECT_RESULT_SIZE
 }
 

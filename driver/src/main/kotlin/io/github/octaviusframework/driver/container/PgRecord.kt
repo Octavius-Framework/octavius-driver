@@ -18,6 +18,17 @@ class PgRecord internal constructor(
 ) : PgContainer {
     override val containerOid: Int get() = type.oid
 
+    /**
+     * Returns the field at [index], cast to [T].
+     *
+     * A record is anonymous, so fields are reachable by position only - there are no names to ask by.
+     *
+     * @param T The expected field type. Declare it nullable to accept a SQL `NULL`.
+     * @param index Zero-based index in the order the record's columns were selected.
+     * @return The field value.
+     * @throws MappingException `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is
+     *   not a [T].
+     */
     inline fun <reified T> get(index: Int): T {
         val value = fields[index]
 
@@ -38,8 +49,13 @@ class PgRecord internal constructor(
         )
     }
 
+    /**
+     * Returns the PostgreSQL OID of the field at [index].
+     *
+     * @param index Zero-based index in the order the record's columns were selected.
+     * @return The field's type OID.
+     */
     fun getAttributeOid(index: Int): Int {
-        
         return fieldOids[index]
     }
 }

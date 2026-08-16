@@ -16,13 +16,28 @@ import java.util.*
  * converting the properties back into a valid JDBC URL.
  */
 class OctaviusProperties {
+    /** The user to authenticate as. */
     var user: String? = null
+
+    /** The password to authenticate with. */
     var password: String? = null
+
+    /** Hostname or IP address of the server. Defaults to `localhost`. */
     var serverName: String? = null
+
+    /** Port the server listens on. Defaults to `5432`. */
     var portNumber: Int? = null
+
+    /** The database to connect to. Defaults to `postgres`. */
     var databaseName: String? = null
 
+    /**
+     * Seconds to wait for the socket connect and login. Falls back to `DriverManager.getLoginTimeout()`,
+     * or 10 seconds when that is `0`.
+     */
     var loginTimeout: Int? = null
+
+    /** Seconds to wait on a socket read before failing. Defaults to `0`, which waits forever. */
     var socketTimeout: Int? = null
 
     /**
@@ -35,17 +50,56 @@ class OctaviusProperties {
     var cancelSignalTimeout: Int? = null
 
 
+    /** Largest row, in bytes, kept in the reusable row buffer. Defaults to `65536`. */
     var maxCachedRowSize: Int? = null
+
+    /** Capacity of the `LISTEN`/`NOTIFY` buffer. Defaults to `256`. */
     var notificationBufferCapacity: Int? = null
+
+    /**
+     * Fully-qualified class name of a [NoticeHandler][io.github.octaviusframework.driver.notice.NoticeHandler]
+     * for server notices. A Kotlin `object` is reused as a singleton across connections; a class is
+     * instantiated per connection through its no-arg constructor.
+     */
     var noticeHandler: String? = null
+
+    /**
+     * Cap, in bytes, for the per-connection parameter buffer; it shrinks back to
+     * [initialParameterWriterCapacity] after a query that exceeded it. Defaults to `65536`.
+     */
     var maxParameterWriterCapacity: Int? = null
+
+    /** Starting size, in bytes, of the per-connection parameter buffer. Defaults to `1024`. */
     var initialParameterWriterCapacity: Int? = null
 
+    /** Shorthand raising the default SSL mode to [SslMode.REQUIRE]. Ignored when [sslmode] is set. */
     var ssl: Boolean? = null
+
+    /** How much protection the connection demands. Defaults to [SslMode.PREFER]. */
     var sslmode: SslMode? = null
+
+    /**
+     * Path to the CA certificate the server's chain is verified against, for `verify-ca` and above.
+     * Optional: left unset, the JVM's default trust store is used.
+     */
     var sslrootcert: String? = null
+
+    /**
+     * Path to the client certificate, for certificate authentication. Takes effect only together with
+     * [sslkey]; with either missing, no client certificate is presented.
+     */
     var sslcert: String? = null
+
+    /**
+     * Path to the client private key that goes with [sslcert]. Must be an unencrypted PKCS#8 RSA key
+     * in PEM form.
+     */
     var sslkey: String? = null
+
+    /**
+     * Applied to the in-memory keystore built from [sslcert] and [sslkey]. It does not decrypt the key
+     * file — see [SslConfiguration.keyPassword][io.github.octaviusframework.driver.ssl.SslConfiguration.keyPassword].
+     */
     var sslpassword: String? = null
 
     /**
@@ -54,8 +108,26 @@ class OctaviusProperties {
      */
     var channelBinding: ChannelBinding? = null
 
+    /**
+     * Everything the driver does not recognise, sent to the server as startup parameters. This is what
+     * carries `application_name`, `search_path` and the rest of PostgreSQL's own settings.
+     */
     val additionalProperties: MutableMap<String, String> = mutableMapOf()
 
+    /**
+     * Sets one property by name, using the same names a JDBC URL would.
+     *
+     * Names are matched case-insensitively, and several have aliases - `host` for `serverName`, `port`
+     * for `portNumber`, `database` for `databaseName`. A name that matches nothing goes to
+     * [additionalProperties] and reaches the server as a startup parameter, so a typo in a known name
+     * is not rejected here; it becomes a startup parameter and the server complains instead.
+     *
+     * A value that will not parse as the property's type leaves that property `null` rather than
+     * throwing, so its default applies.
+     *
+     * @param key The property name.
+     * @param value The value, as a string.
+     */
     fun setProperty(key: String, value: String) {
         when (key.lowercase()) {
             "user" -> user = value
@@ -82,6 +154,14 @@ class OctaviusProperties {
         }
     }
 
+    /**
+     * Copies every set property of [other] over this one.
+     *
+     * A property left `null` in [other] is not copied, so it does not erase what is already here;
+     * [additionalProperties] are merged key by key, with [other]'s winning on a collision.
+     *
+     * @param other The properties to overlay.
+     */
     fun merge(other: OctaviusProperties) {
         other.user?.let { user = it }
         other.password?.let { password = it }
@@ -106,6 +186,13 @@ class OctaviusProperties {
         additionalProperties.putAll(other.additionalProperties)
     }
 
+    /**
+     * Returns a complete, independent duplicate of this configuration, password included.
+     *
+     * This is the lossless counterpart to [toUrl], which deliberately omits the password.
+     *
+     * @return A new instance holding the same values.
+     */
     fun copy(): OctaviusProperties {
         val newProps = OctaviusProperties()
         newProps.merge(this)
@@ -113,6 +200,30 @@ class OctaviusProperties {
     }
 
     companion object {
+        /**
+         * Parses a JDBC URL, optionally overlaid on a [Properties] set.
+         *
+         * The expected form is `jdbc:octavius://host:port/database?key=value&…`, with the host, port,
+         * database and query string all optional. A URL that does not start with that prefix is not an
+         * error: nothing is parsed out of it and only [info] takes effect.
+         *
+         * **Later wins, and silence is not a value.** [info] is applied first and the URL over it, so
+         * the URL overrides it - but only where the URL actually states something. A URL that omits the
+         * host, the port or the database leaves whatever [info] supplied for it in place rather than
+         * replacing it with a default. Within the URL the same rule applies left to right, so a
+         * query-string `host` or `port` parameter beats the authority that precedes it.
+         *
+         * Nothing here fills in defaults for an unstated host, port or database: they stay `null` and
+         * are resolved to `localhost`, `5432` and `postgres` when the connection is opened.
+         *
+         * Keys and values are URL-decoded, and only the first `=` in a parameter separates them, so a
+         * value containing more of them - a password, an `options=-c search_path=curia` string - arrives
+         * intact.
+         *
+         * @param url The JDBC URL.
+         * @param info Additional properties, applied beneath the URL.
+         * @return The parsed properties.
+         */
         fun parse(url: String, info: Properties? = null): OctaviusProperties {
             val octaviusProperties = OctaviusProperties()
 

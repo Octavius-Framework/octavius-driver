@@ -29,7 +29,7 @@ enum class RoutineExecutionExceptionReason {
  * errors explicitly raised by database developers (e.g., via RAISE EXCEPTION) or assertion failures inside the database.
  *
  * @property reason The categorized reason for the routine failure.
- * @property dbMessage Additional context or hints provided by the database regarding the error.
+ * @property dbMessage The primary error message the routine raised (the PostgreSQL MESSAGE field).
  * @property dbDetail Explicit DETAIL field provided by PostgreSQL.
  * @property hint Explicit HINT field provided by PostgreSQL.
  * @property where Call stack or context (WHERE field) of the PL/pgSQL execution.

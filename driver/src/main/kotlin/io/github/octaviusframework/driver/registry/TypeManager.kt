@@ -77,13 +77,16 @@ class TypeManager(
     fun registerCodec(codec: TypeCodec<*>) = registry.registerCodec(codec)
 
     /**
-     * Registers a composite type with the given configuration using reflection.
+     * Registers a composite type mapped reflectively onto the data class [T].
+     *
+     * Property names are matched to attribute names by converting `camelCase` to `snake_case`;
+     * [PgName][io.github.octaviusframework.driver.annotation.PgName] overrides that per property.
      *
      * @param T The Kotlin data class representing the composite type.
-     * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name.
-     * @param schema Optional schema where the type is defined.
-     * @param pgConvention Naming convention in the database.
-     * @param kotlinConvention Naming convention in Kotlin.
+     * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name
+     *   by converting `PascalCase` to `snake_case`.
+     * @param schema Optional schema where the type is defined. If empty, the type is resolved through the search path.
+     * @throws io.github.octaviusframework.driver.exception.InvalidOperationException if [T] is not a data class.
      */
     inline fun <reified T : Any> registerAutoComposite(
         typeName: String = "",
@@ -93,11 +96,13 @@ class TypeManager(
     }
 
     /**
-     * Registers a composite type with the given configuration using reflection.
+     * Registers a composite type mapped reflectively onto the data class [kClass].
      *
      * @param kClass The Kotlin data class representing the composite type.
-     * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name.
-     * @param schema Optional schema where the type is defined.
+     * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name
+     *   by converting `PascalCase` to `snake_case`.
+     * @param schema Optional schema where the type is defined. If empty, the type is resolved through the search path.
+     * @throws io.github.octaviusframework.driver.exception.InvalidOperationException if [kClass] is not a data class.
      */
     fun registerAutoComposite(
         kClass: KClass<*>,

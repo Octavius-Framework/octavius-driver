@@ -5,8 +5,17 @@ import io.github.octaviusframework.driver.registry.TypeManager
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
+/**
+ * What a [ResultConverter] is handed to convert the values nested inside the one it was given.
+ *
+ * Going through [convert] rather than converting a nested value by hand is what keeps the failure
+ * legible: each call contributes a segment to the `path` of any `MappingException` raised below it,
+ * so an error deep in a composite arrives naming the attribute it happened in.
+ */
 interface DeserializationContext {
+    /** The session's type manager, for resolving OIDs and looking up type definitions. */
     val typeManager: TypeManager
+
     /**
      * Converts a raw value to the expected type using registered converters.
      *
@@ -16,8 +25,18 @@ interface DeserializationContext {
      * @param pathSegment Optional segment name (e.g., property name or array index) for debugging purposes. 
      * If a MappingException occurs during conversion, this segment is added to the exception's path
      * to help trace the exact location of the error in nested structures.
+     * @return The converted value.
      */
     fun <T> convert(source: Any?, expectedType: KType, sourceType: PgType, pathSegment: String? = null): T
+
+    /**
+     * Looks up the converter that would claim a value, without converting anything.
+     *
+     * @param sourceClass The class of the decoded value.
+     * @param expectedType The Kotlin type wanted.
+     * @param sourceType The PostgreSQL type of the value.
+     * @return The converter that would be used, or `null` if none claims it.
+     */
     fun findConverter(sourceClass: KClass<*>, expectedType: KType, sourceType: PgType): ResultConverter<Any, *>?
 
     /**
@@ -29,6 +48,8 @@ interface DeserializationContext {
      * @param pathSegment Optional segment name (e.g., property name or array index) for debugging purposes.
      * If a MappingException occurs during conversion, this segment is added to the exception's path
      * to help trace the exact location of the error in nested structures.
+     * @return The converted value.
+     * @throws io.github.octaviusframework.driver.exception.TypeException if [sourceOid] names no known type.
      */
     fun <T> convert(source: Any?, expectedType: KType, sourceOid: Int, pathSegment: String? = null): T {
         return convert(source, expectedType, typeManager.typeDictionary.getPgType(sourceOid), pathSegment)

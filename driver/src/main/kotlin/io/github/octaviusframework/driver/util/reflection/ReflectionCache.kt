@@ -46,6 +46,19 @@ data class DataObjectClassMetadata<T : Any>(
 object ReflectionCache {
     private val dataObjectCache = ConcurrentHashMap<KClass<*>, DataObjectClassMetadata<*>>()
 
+    /**
+     * Returns the cached metadata for [kClass], computing it on first request.
+     *
+     * The cache is global and never evicted, which is what makes registering a composite type up front
+     * enough to keep reflection off the query path entirely. Mapped key names are resolved here, once:
+     * a property's [PgName][io.github.octaviusframework.driver.annotation.PgName] if it carries one,
+     * otherwise its name converted from `camelCase` to `snake_case`.
+     *
+     * @param T The data class to inspect.
+     * @param kClass Its [KClass].
+     * @return The metadata, shared with every other caller for the same class.
+     * @throws IllegalArgumentException if [kClass] has no primary constructor.
+     */
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> getOrCreateDataObjectMetadata(
         kClass: KClass<T>

@@ -62,7 +62,23 @@ enum class PgStandardType(val typeName: String, val isArray: Boolean = false, va
     XML_ARRAY("xml", true, 143),
 }
 
+/**
+ * The OID standing for "no type resolved".
+ *
+ * PostgreSQL never assigns `0` to a real type, so it is safe to use as the absence marker. It is what a
+ * converter sees as its `expectedOid` for a top-level parameter, since the driver does not ask the
+ * server what it wants: a type is known up front only where the value carries one - wrapped in
+ * [PgTyped], or a [PgContainer][io.github.octaviusframework.driver.container.PgContainer] holding its
+ * own OID - or where the value is nested inside a composite or array whose attribute and element types
+ * the catalog already knows.
+ *
+ * Unresolved is not the same as undeclared. A value that reaches the wire without a type resolved is
+ * declared from the codec registered for its Kotlin class, so a `String` goes out as `text`; `0` itself
+ * is only ever sent as the parameter type for a bare `null`, which is what makes an untyped `null`
+ * ambiguous to the server.
+ */
 const val UNRESOLVED_OID = 0
 
+/** Whether this OID names an actual type rather than being [UNRESOLVED_OID]. */
 inline val Int.isKnownOid: Boolean
     get() = this != UNRESOLVED_OID

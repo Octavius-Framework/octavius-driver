@@ -41,7 +41,10 @@ enum class ConstraintViolationExceptionReason {
  * ([reason]), and optional metadata such as the schema, table, column, and constraint name involved in the error.
  *
  * @property reason The specific type of constraint violation mapped from the database error.
+ * @property dbMessage The primary error message the database raised.
  * @property details Additional, human-readable details about the violation provided by the database.
+ *   For a unique violation this is where the offending key and value appear.
+ * @property where The call stack the violation arose in, for one raised inside a trigger or function.
  * @property schema The name of the schema containing the table where the violation occurred, if available.
  * @property table The name of the table where the constraint violation occurred, if available.
  * @property column The name of the column associated with the constraint violation, if available.
@@ -68,7 +71,7 @@ class ConstraintViolationException(
 
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
-        if (dbMessage != null) appendLine("Database Message: $dbMessage")
+        appendLine("Database Message: $dbMessage")
         if (details != null) appendLine("Details: $details")
         if (where != null) appendLine("Context: $where")
         if (schema != null) appendLine("Schema: $schema")

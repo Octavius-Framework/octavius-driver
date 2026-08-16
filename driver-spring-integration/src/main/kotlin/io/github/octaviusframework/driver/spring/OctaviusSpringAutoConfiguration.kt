@@ -7,11 +7,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.context.annotation.Bean
-import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.jdbc.support.JdbcTransactionManager
 import org.springframework.transaction.PlatformTransactionManager
 import javax.sql.DataSource
 
+/**
+ * Spring Boot auto-configuration for the Octavius driver.
+ *
+ * Runs after Spring's own `DataSourceAutoConfiguration` and contributes an [OctaviusTemplate] and a
+ * [PlatformTransactionManager], each only when the application context does not already declare one
+ * of its own. Declaring either bean yourself takes precedence over everything here.
+ */
 @AutoConfiguration(after = [DataSourceAutoConfiguration::class])
 @ConditionalOnClass(OctaviusSession::class, DataSource::class)
 open class OctaviusSpringAutoConfiguration {
@@ -29,9 +35,13 @@ open class OctaviusSpringAutoConfiguration {
     }
 
     /**
-     * Creates and registers a [PlatformTransactionManager] bean using a [DataSourceTransactionManager]
+     * Creates and registers a [PlatformTransactionManager] bean backed by a [JdbcTransactionManager]
      * if one is not already present in the application context.
-     * Nested transactions are enabled by default.
+     *
+     * It is given an [OctaviusExceptionTranslator], so a failure raised while the manager itself is
+     * committing or rolling back arrives in Spring's `DataAccessException` hierarchy rather than as a
+     * raw `SQLException`. Nested transactions are enabled, which is what makes
+     * `@Transactional(propagation = NESTED)` resolve to a savepoint instead of being rejected.
      *
      * @param dataSource the underlying data source to use
      * @return a new instance of [PlatformTransactionManager]

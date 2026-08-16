@@ -5,6 +5,18 @@ package io.github.octaviusframework.driver.query
  *
  * Contains all the information needed to reproduce or debug a failed query,
  * including both the high-level query and the low-level SQL sent to the database.
+ *
+ * Attached to an [OctaviusException][io.github.octaviusframework.driver.exception.OctaviusException] as
+ * it propagates out of a query, and rendered into its `toString`. The two levels differ only for a named
+ * query, where the statement is rewritten before it is sent; for a native query they are the same text.
+ *
+ * @property sql The statement as it was written, named parameters and all.
+ * @property parameters The values as they were supplied — by name for a named query, by position as
+ *   `"1"`, `"2"`, … for a native one.
+ * @property dbSql The statement actually sent to the server, with names rewritten to `$n`.
+ *   `null` where the failure happened before that rewriting.
+ * @property dbParameters The values in the positional order they were bound in. `null` where the
+ *   failure happened before binding.
  */
 data class QueryContext(
     val sql: String,

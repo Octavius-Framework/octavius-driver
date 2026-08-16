@@ -19,8 +19,10 @@ data class ArrayDimension(
  *
  * @property arrayOid OID of the array type.
  * @property elementOid OID of the elements within the array.
- * @property dimensions List of dimensions for the array.
- * @property elements Flat list of elements contained in the array.
+ * @property dimensions List of dimensions for the array. A one-dimensional array has one entry;
+ *   PostgreSQL arrays are rectangular, so a multi-dimensional one describes each axis here.
+ * @property elements Flat list of elements contained in the array. Multi-dimensional arrays are stored
+ *   flattened in row-major order, so [dimensions] is what gives the flat list its shape.
  */
 class PgArray(
     val arrayOid: Int,
@@ -29,11 +31,20 @@ class PgArray(
     val elements: List<Any?>
 ) : PgContainer {
     override val containerOid: Int get() = arrayOid
+
+    /** The number of elements across every dimension, i.e. the size of the flat [elements] list. */
     val totalElements: Int
         get() = elements.size
 
-
-
+    /**
+     * Returns the element at [index] in the flat element list, cast to [T].
+     *
+     * @param T The expected element type. Declare it nullable to accept a SQL `NULL` element.
+     * @param index Zero-based index into [elements], regardless of the array's PostgreSQL lower bound.
+     * @return The element.
+     * @throws MappingException `CONVERSION_ERROR` if the element is not a [T].
+     * @throws IndexOutOfBoundsException if [index] is outside [elements].
+     */
     inline fun <reified T> get(index: Int): T {
         val value = elements[index]
         if (value is T) return value

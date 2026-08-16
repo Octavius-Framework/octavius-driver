@@ -31,5 +31,10 @@ data class QualifiedName(
         return if (isArray) "$quotedBase[]" else quotedBase
     }
 
+    /**
+     * Returns this name as the array type over it — `senator` becomes `senator[]`.
+     *
+     * @return A copy with [isArray] set.
+     */
     fun asArray(): QualifiedName = copy(isArray = true)
 }

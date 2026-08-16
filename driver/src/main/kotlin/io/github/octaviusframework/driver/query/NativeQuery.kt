@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.execution.QueryExecutor
@@ -24,6 +27,13 @@ class NativeQuery internal constructor(
 ) : OctaviusQuery<NativeQuery>(sql, queryExecutor, typeManager) {
 
     //--------------------------------------------Row-based Methods-----------------------------------------------------
+
+    /**
+     * Executes the query and returns every row, undecoded into any particular shape.
+     *
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return All matching rows; empty when nothing matched.
+     */
     fun fetchRows(vararg params: Any?): List<Row> {
         return withQueryContext(
             sql,
@@ -34,6 +44,16 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Executes the query and returns its single row, or `null` when nothing matched.
+     *
+     * At most two rows are requested, so a query that accidentally matches a million does not cross
+     * the wire before failing.
+     *
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The single row, or `null` if there were none.
+     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     */
     fun fetchRow(vararg params: Any?): Row? {
         return withQueryContext(
             sql,
@@ -49,6 +69,13 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Executes the query and returns its single row, requiring exactly one.
+     *
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The single row.
+     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     */
     fun fetchRowStrict(vararg params: Any?): Row {
         return withQueryContext(
             sql,
@@ -68,6 +95,19 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Streams the result, handing each row to [block] as it arrives.
+     *
+     * Rows are pulled in batches of [fetchSize] and only that many are held at a time, so memory stays
+     * flat however large the result is. The whole iteration is one running statement: `statement_timeout`
+     * covers time spent inside [block], and [block] must not issue another query on this same session.
+     *
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @param fetchSize Rows per batch. Required — there is no default.
+     * @param block Invoked once per row, on the calling thread.
+     * @throws MappingException `CONVERSION_ERROR` wrapping anything [block] throws that is not an
+     *   [OctaviusException], since the result has to be drained before it can be rethrown.
+     */
     fun forEachRow(vararg params: Any?, fetchSize: Int, block: (Row) -> Unit) {
         withQueryContext(
             sql,
@@ -80,6 +120,17 @@ class NativeQuery internal constructor(
 
     //----------------------------------------Object Mapping Methods----------------------------------------------------
 
+    /**
+     * Executes the query and maps every row onto [T].
+     *
+     * Each row is treated as an anonymous record and handed to the result converters, so [T] can be a
+     * data class, a `Map<String, Any?>`, or anything a registered converter produces.
+     *
+     * @param T The type each row is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return All matching rows, mapped; empty when nothing matched.
+     * @throws MappingException if a row cannot be mapped onto [T].
+     */
     inline fun <reified T : Any> fetchObjects(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
@@ -94,6 +145,15 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Executes the query and maps its single row onto [T], or returns `null` when nothing matched.
+     *
+     * @param T The type the row is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The mapped row, or `null` if there were none.
+     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws MappingException if the row cannot be mapped onto [T].
+     */
     inline fun <reified T : Any> fetchObject(vararg params: Any?): T? {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
@@ -113,6 +173,15 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Executes the query and maps its single row onto [T], requiring exactly one row.
+     *
+     * @param T The type the row is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The mapped row.
+     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws MappingException if the row cannot be mapped onto [T].
+     */
     inline fun <reified T : Any> fetchObjectStrict(vararg params: Any?): T {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
@@ -136,6 +205,19 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Streams the result, mapping each row onto [T] and handing it to [block].
+     *
+     * Carries the same constraints as [forEachRow]: batches of [fetchSize], one running statement for the
+     * whole iteration, and no re-entering this session from [block].
+     *
+     * @param T The type each row is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @param fetchSize Rows per batch. Required — there is no default.
+     * @param block Invoked once per mapped row, on the calling thread.
+     * @throws MappingException if a row cannot be mapped onto [T], or wrapping anything [block] throws
+     *   that is not an [OctaviusException].
+     */
     inline fun <reified T : Any> forEachObject(vararg params: Any?, fetchSize: Int, crossinline block: (T) -> Unit) {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
@@ -152,6 +234,16 @@ class NativeQuery internal constructor(
 
     //-----------------------------------------Single Column Methods----------------------------------------------------
 
+    /**
+     * Executes the query and returns the **first column** of every row, mapped to [T].
+     *
+     * Declare [T] nullable when the column can be SQL `NULL` — `fetchFields<String?>()`.
+     *
+     * @param T The type the column is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The first column of all matching rows; empty when nothing matched.
+     * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if a value is `NULL` and [T] is not nullable.
+     */
     inline fun <reified T> fetchFields(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
         return withQueryContext(
@@ -184,6 +276,18 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Executes the query and returns the first column of its single row, requiring exactly one row.
+     *
+     * `Strict` governs how many rows came back, not whether the value is `NULL`: a `NULL` under a nullable
+     * [T] is still returned as `null` here.
+     *
+     * @param T The type the column is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The value.
+     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if the value is `NULL` and [T] is not nullable.
+     */
     inline fun <reified T> fetchFieldStrict(vararg params: Any?): T {
         val targetType = typeOf<T>()
         return withQueryContext(
@@ -209,6 +313,18 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Streams the result, handing the first column of each row to [block] as [T].
+     *
+     * Carries the same constraints as [forEachRow].
+     *
+     * @param T The type the column is mapped to.
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @param fetchSize Rows per batch. Required — there is no default.
+     * @param block Invoked once per value, on the calling thread.
+     * @throws MappingException if a value cannot be mapped to [T], or wrapping anything [block] throws
+     *   that is not an [OctaviusException].
+     */
     inline fun <reified T> forEachField(vararg params: Any?, fetchSize: Int, crossinline block: (T) -> Unit) {
         val targetType = typeOf<T>()
         withQueryContext(
@@ -224,6 +340,15 @@ class NativeQuery internal constructor(
 
     //------------------------------------------Modification methods----------------------------------------------------
 
+    /**
+     * Executes a statement that changes rows without returning any — `INSERT`, `UPDATE`, `DELETE`.
+     *
+     * A statement with a `RETURNING` clause produces rows and belongs to the `fetch*` family instead.
+     *
+     * @param params Values for `$1`, `$2`, … in declaration order.
+     * @return The number of rows affected.
+     * @throws InvalidOperationException `UNEXPECTED_RESULT` if the statement returned rows.
+     */
     fun update(vararg params: Any?): Long {
         return withQueryContext(
             sql,
@@ -234,6 +359,16 @@ class NativeQuery internal constructor(
         }
     }
 
+    /**
+     * Executes a statement with no result and no row count — DDL, `SET`, administrative commands.
+     *
+     * This is the one method here that speaks the Simple Query Protocol, which has two consequences:
+     * it **cannot bind parameters**, so a `$1` in the SQL is an undefined object rather than a
+     * placeholder; and it accepts a whole script of statements separated by `;` in a single round trip,
+     * which PostgreSQL wraps in an implicit transaction.
+     *
+     * @throws InvalidOperationException `UNEXPECTED_RESULT` if any statement in the SQL returned rows.
+     */
     fun execute() {
         withQueryContext(sql, { emptyMap() }) {
             queryExecutor.execute(sql)

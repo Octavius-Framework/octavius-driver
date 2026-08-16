@@ -91,28 +91,32 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.sslmode = value }
 
     /**
-     * The path to the root certificate file for verifying the server's certificate.
+     * The path to the root certificate file for verifying the server's certificate. Optional: left
+     * unset, verification under `verify-ca` and above uses the JVM's default trust store.
      */
     var sslrootcert: String?
         get() = octaviusProperties.sslrootcert
         set(value) { octaviusProperties.sslrootcert = value }
 
     /**
-     * The path to the client certificate file for SSL authentication.
+     * The path to the client certificate file for SSL authentication. Takes effect only together with
+     * [sslkey]; with either missing, no client certificate is presented.
      */
     var sslcert: String?
         get() = octaviusProperties.sslcert
         set(value) { octaviusProperties.sslcert = value }
 
     /**
-     * The path to the client private key file for SSL authentication.
+     * The path to the client private key file for SSL authentication. Must be an unencrypted PKCS#8
+     * RSA key in PEM form.
      */
     var sslkey: String?
         get() = octaviusProperties.sslkey
         set(value) { octaviusProperties.sslkey = value }
 
     /**
-     * The password for the client private key file, if it is encrypted.
+     * Applied to the in-memory keystore built from [sslcert] and [sslkey]; it does not decrypt the key
+     * file — see [SslConfiguration.keyPassword][io.github.octaviusframework.driver.ssl.SslConfiguration.keyPassword].
      */
     var sslpassword: String?
         get() = octaviusProperties.sslpassword

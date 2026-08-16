@@ -9,6 +9,7 @@
 - `CHANGELOG.md` lives in the repository rather than only on the releases page
 - `LICENSE`
 - KDoc is published for release and snapshot versions side by side, behind a landing page
+- KDoc on the parts of the public surface that had none. Every execution method on `NativeQuery` and `NamedParameterQuery` now documents what it returns and what it throws, including the distinction the `Strict` suffix governs - how many rows came back - against the separate question of whether the value itself was `NULL`. `ResultConverter` and `ParameterConverter`, the two interfaces you implement to extend the driver, describe the order converters are consulted in and what a `canConvert` that over-claims costs; `SslMode`, `OctaviusProperties`, `ServerErrorMessage` and the `PgArray` / `PgComposite` / `PgRange` / `PgRecord` / `PgMultirange` accessors are documented too
 - Benchmarks measuring what reflection costs against a hand-written converter, in both directions - `CompositeInsertBenchmark` for the write path, a reflective variant in `SimpleDataBenchmark` for the read path
 - Tests for channel binding and `tls-server-end-point`, local SSL test infrastructure driven by `scripts/ssl-test-server.ps1`, HikariCP initialization, greedy-converter diagnostics, reflective missing-value handling and parameter type mismatches
 
@@ -28,6 +29,7 @@
 #### Fixed
 
 - A query-string value containing `=` is no longer dropped from the JDBC URL - only the first `=` separates the key from the value, so a password or an `options=-c search_path=curia` string arrives intact instead of being silently ignored
+- KDoc that described something the code no longer does. `EnumParameterConverter` and `EnumResultConverter` had their two case conventions illustrated with the wrong examples, `lower_snake_case` for the PostgreSQL side and `SNAKE_CASE_UPPER` for the Kotlin one, where `registerEnum` actually supplies the reverse; `registerAutoComposite` documented `pgConvention` and `kotlinConvention` parameters it does not take, and said nothing about rejecting a class that is not a data class; the Spring `transactionManager` bean was described as a `DataSourceTransactionManager` after it became a `JdbcTransactionManager` carrying an exception translator; `RoutineExecutionException.dbMessage` was described as hints when it is the primary message; and `LargeObjectManager.open` named a `READWRITE` mode constant that is spelled `READ_WRITE`
 
 ## Version 0.9.5 (v0.9.5)
 

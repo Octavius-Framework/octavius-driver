@@ -8,6 +8,7 @@ import io.github.octaviusframework.driver.message.ServerErrorMessage
  * This exception can include optional metadata identifying the specific schema, table, column, datatype,
  * or routine where the permission denial occurred, aiding in debugging access control issues.
  *
+ * @property dbMessage The primary error message the database raised.
  * @property schema The name of the schema for which permission was denied, if applicable.
  * @property table The name of the table for which permission was denied, if applicable.
  * @property column The name of the column for which permission was denied, if applicable.

@@ -7,11 +7,40 @@ import io.github.octaviusframework.driver.registry.TypeManager
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
+/**
+ * Entry point of the read conversion chain: hands a decoded value to the converters and checks the result.
+ *
+ * One of these belongs to each query, over that query's own [ResultConverterRegistry]. It is what
+ * [Row.get][io.github.octaviusframework.driver.row.Row.get] and the `fetchObject*` family call.
+ *
+ * @param registry The converters to consult, chained to the session's.
+ * @param typeManager The session's type manager.
+ */
 class ResultMapper(
     registry: ResultConverterRegistry,
     typeManager: TypeManager
 ) {
     internal val context = DefaultDeserializationContext(registry, typeManager)
+
+    /**
+     * Converts a decoded database value to [expectedType].
+     *
+     * A `null` source is returned as `null` when [expectedType] allows it. Where no converter claims the
+     * value, it is returned unchanged if it is already an instance of [expectedType]; otherwise this
+     * fails rather than casting blindly. What a converter produces is checked against [expectedType]
+     * too, so a converter that over-claims is named in the exception instead of surfacing as a
+     * `ClassCastException` in the caller's own frame.
+     *
+     * @param T The type to return.
+     * @param source The decoded value, or `null` for SQL `NULL`.
+     * @param expectedType The Kotlin type wanted, generic arguments included.
+     * @param sourceType The PostgreSQL type of the value.
+     * @return The converted value.
+     * @throws io.github.octaviusframework.driver.exception.MappingException
+     *   `REQUIRED_ATTRIBUTE_MISSING` if [source] is `null` and [expectedType] is not nullable,
+     *   `NO_CONVERTER_FOUND` if nothing can produce [expectedType],
+     *   `CONVERSION_ERROR` if a converter failed or returned the wrong type.
+     */
     fun <T> deserialize(source: Any?, expectedType: KType, sourceType: PgType): T {
         return context.convert(source, expectedType, sourceType)
     }

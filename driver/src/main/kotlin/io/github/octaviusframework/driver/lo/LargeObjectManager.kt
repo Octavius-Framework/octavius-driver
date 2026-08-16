@@ -37,7 +37,8 @@ class LargeObjectManager internal constructor(private val session: OctaviusSessi
     /**
      * Opens an existing Large Object and returns a descriptor allowing read/write operations.
      * @param oid The OID of the Large Object to open.
-     * @param mode The access mode (READ, WRITE, or READWRITE).
+     * @param mode The access mode: [LargeObjectMode.READ], [LargeObjectMode.WRITE] or
+     *   [LargeObjectMode.READ_WRITE], which is the default.
      * @return A [LargeObject] instance for reading/writing.
      */
     fun open(oid: Int, mode: Int = LargeObjectMode.READ_WRITE): LargeObject {

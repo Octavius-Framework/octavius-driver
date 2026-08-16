@@ -9,6 +9,18 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.reflect.KClass
 
+/**
+ * Holds [ParameterConverter]s and runs a value through the first one that claims it.
+ *
+ * Unlike the result side, converters are kept in one flat list rather than indexed by class, since a
+ * parameter converter decides for itself what it accepts. The list is searched most-recent-first and
+ * then handed on to the [parent] registry, so a registration overrides an earlier one without removing it.
+ *
+ * Registration is thread-safe and reads are lock-free: adding a converter replaces the list rather than
+ * mutating it, so a lookup already in flight completes against the list it started with.
+ *
+ * @param parent The registry to fall back to when nothing here claims a value.
+ */
 class ParameterConverterRegistry(
     private val parent: ParameterConverterRegistry? = null
 ) {
@@ -17,12 +29,36 @@ class ParameterConverterRegistry(
     @Volatile
     private var converters: List<ParameterConverter<*>> = emptyList()
 
+    /**
+     * Registers a converter ahead of everything already here.
+     *
+     * @param converter The converter to add.
+     */
     fun addConverter(converter: ParameterConverter<*>) = lock.withLock {
         val newList = converters.toMutableList()
         newList.add(0, converter)
         converters = newList
     }
 
+    /**
+     * Runs a value through the first converter that claims it.
+     *
+     * Where the target OID was not known and the converter named a default type for the value, the
+     * result is wrapped in [PgTyped] so the type reaches the server with it.
+     *
+     * A value nothing claims is returned untouched — correct for a scalar the codec already accepts.
+     * Where the target OID is known and its codec cannot accept that class, nothing downstream can
+     * either, so this fails here rather than one layer down as an encoding error: failing at this point
+     * is what keeps the attribute name or element index in the exception's `path`, since by the time the
+     * codec runs the structure the value sat in is gone.
+     *
+     * @param source The value being sent.
+     * @param expectedOid The OID the server expects, or `0` when it is not known.
+     * @param context Passed on to the converters.
+     * @return A value a registered codec can encode.
+     * @throws MappingException `NO_CONVERTER_FOUND` if nothing claims the value and the codec bound to
+     *   [expectedOid] cannot accept its class.
+     */
     fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
         for (i in converters.indices) {
             val converter = converters[i]
@@ -66,10 +102,26 @@ class ParameterConverterRegistry(
         )
     }
 
+    /**
+     * Finds the converter that would claim a value, without converting anything.
+     *
+     * @param source The value being sent.
+     * @param expectedOid The OID the server expects, or `0` when it is not known.
+     * @param context Passed on to each candidate's `canConvert`.
+     * @return The first converter to claim the value, or `null` if none does.
+     */
     fun findConverter(source: Any, expectedOid: Int, context: SerializationContext): ParameterConverter<Any>? {
         return findConverterByClass(source::class, expectedOid, context)
     }
 
+    /**
+     * Same as [findConverter], keyed on a class rather than an instance.
+     *
+     * @param sourceClass The class of the value being sent.
+     * @param expectedOid The OID the server expects, or `0` when it is not known.
+     * @param context Passed on to each candidate's `canConvert`.
+     * @return The first converter to claim the class, or `null` if none does.
+     */
     fun findConverterByClass(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): ParameterConverter<Any>? {
         for (i in converters.indices) {
             val converter = converters[i]
