@@ -34,7 +34,7 @@ object TypeRegistryLoader {
             LEFT JOIN pg_catalog.pg_range r ON t.oid = r.rngtypid
             LEFT JOIN pg_catalog.pg_attribute a ON t.typrelid = a.attrelid AND a.attnum > 0 AND a.attisdropped = false
             WHERE NOT (t.typtype = 'c' AND n.nspname IN ('pg_catalog', 'information_schema'))
-            AND NOT (t.typtype = 'p' AND t.typname NOT IN ('void', 'record', '_record'))
+            AND NOT (t.typtype = 'p' AND t.typname NOT IN ('void', 'record', '_record', 'unknown'))
             ORDER BY t.oid, e.enumsortorder, a.attnum
         """.trimIndent()
 
@@ -133,6 +133,7 @@ object TypeRegistryLoader {
                             "record" -> PgType.Record
                             "void" -> PgType.Void
                             "_record" -> PgType.Array(oid, info.name, info.schema, info.typelem)
+                            "unknown" -> PgType.Base(oid, info.name, info.schema)
                             else -> error("Unknown pseudo-type ${info.name}")
                         }
                     }
