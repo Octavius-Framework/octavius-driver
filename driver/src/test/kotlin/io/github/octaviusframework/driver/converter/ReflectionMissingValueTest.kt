@@ -4,6 +4,8 @@ import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.result.composite.ReflectionCompositeConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverterRegistry
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.registry.TypeManager
@@ -154,6 +156,33 @@ class ReflectionMissingValueTest {
         assertNull(absent.toDataObject<Nullable>().province)
         assertEquals("unknown", absent.toDataObject<Defaulted>().province)
         assertEquals("unknown", absent.toDataObject<NullableDefaulted>().province)
+    }
+
+    // --- registration rejects anything reflection cannot take apart ---------
+
+    class NotAData(val cognomen: String, val province: String)
+
+    @Test
+    fun `registerAutoComposite rejects a non-data class`() {
+        val ex = assertThrows<InvalidOperationException> {
+            typeManager.registerAutoComposite<NotAData>("not_a_data_t", "public")
+        }
+        assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, ex.reason)
+        assertTrue(
+            ex.details?.contains("NotAData") == true,
+            "expected the rejected class in details, got ${ex.details}"
+        )
+    }
+
+    @Test
+    fun `a rejected registration leaves the registry untouched`() {
+        val before = typeManager.converterRegistry.registeredComposites.size
+        val namesBefore = typeManager.converterRegistry.compositeClassByName.size
+        assertThrows<InvalidOperationException> {
+            typeManager.registerAutoComposite<NotAData>("not_a_data_t", "public")
+        }
+        assertEquals(before, typeManager.converterRegistry.registeredComposites.size)
+        assertEquals(namesBefore, typeManager.converterRegistry.compositeClassByName.size)
     }
 
     @Test

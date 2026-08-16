@@ -21,6 +21,8 @@ import io.github.octaviusframework.driver.converter.result.record.MapRecordConve
 import io.github.octaviusframework.driver.converter.result.row.MapRowConverter
 import io.github.octaviusframework.driver.converter.result.row.ReflectionRowConverter
 import io.github.octaviusframework.driver.converter.result.standard.JsonElementConverter
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -95,26 +97,42 @@ class ConverterRegistry {
     var compositeClassByName: Map<QualifiedName, KClass<*>> = emptyMap()
 
     /**
-     * Registers a Kotlin class to be automatically mapped to and from a PostgreSQL composite type.
+     * Registers a Kotlin data class to be automatically mapped to and from a PostgreSQL composite type.
      *
      * @param kClass the Kotlin data class to register.
      * @param name the name of the composite type in PostgreSQL.
      * @param schema the schema of the composite type (defaults to an empty string for the search path).
+     * @throws InvalidOperationException if [kClass] is not a data class.
      */
     fun registerAutoCompositeType(
         kClass: KClass<*>,
         name: String,
         schema: String = ""
-    ) = lock.withLock {
-        val newMap = registeredComposites.toMutableMap()
-        val qName = QualifiedName(schema, name)
-        newMap[kClass] = qName
-        registeredComposites = newMap
+    ) {
+        // Reflective mapping reads every primary constructor parameter back as a property, which is exactly what
+        // a data class guarantees. Rejecting anything else here beats a null property lookup at query time.
+        if (!kClass.isData) {
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                "Class ${kClass.qualifiedName ?: kClass.simpleName} is not a data class and cannot be registered " +
+                        "as composite type '$name'. Reflective mapping reads every primary constructor parameter " +
+                        "back as a property, which only a data class guarantees. Write a ResultConverter and " +
+                        "ParameterConverter pair for any other shape."
+            )
+        }
 
-        val newNameMap = compositeClassByName.toMutableMap()
-        newNameMap[qName] = kClass
-        compositeClassByName = newNameMap
-
+        // Warms the metadata cache before the registration is visible, so the first query does not pay for it.
         ReflectionCache.getOrCreateDataObjectMetadata(kClass)
+
+        lock.withLock {
+            val newMap = registeredComposites.toMutableMap()
+            val qName = QualifiedName(schema, name)
+            newMap[kClass] = qName
+            registeredComposites = newMap
+
+            val newNameMap = compositeClassByName.toMutableMap()
+            newNameMap[qName] = kClass
+            compositeClassByName = newNameMap
+        }
     }
 }

@@ -18,6 +18,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 | [Transaction Management](transactions.md)           | Block API, manual control, savepoints, transaction state, isolation levels and read-only mode             |
 | [Type System & Mapping](type-system.md)             | Catalog loading, the 2-layer architecture, codecs and converters, registering enums, composites and more  |
 | [Arrays, Ranges and JSON](arrays-ranges-json.md)    | Nullable elements, multiple dimensions, inclusive and exclusive bounds, multiranges, JSON DTOs            |
+| [Composites & Reflection](composites-reflection.md) | Rows and composites onto data classes, what reflection reads, hand-written converters, `PgComposite`      |
 | [Bulk Writes](bulk-writes.md)                       | `UNNEST` inserts, updates and deletes, upserts, `RETURNING`, batch sizing, when to reach for COPY instead |
 | [Error Handling & Exceptions](exceptions.md)        | The SQLSTATE-keyed hierarchy, message format, query context, catching at the right altitude               |
 | [Spring Integration](spring-integration.md)         | `OctaviusTemplate`, autoconfiguration, `application.yml`, transaction manager, exception translation      |
@@ -87,6 +88,16 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [Ranges and Multiranges](arrays-ranges-json.md#ranges-and-multiranges) — Bounds `ClosedRange` cannot express
 - [JSON and JSONB](arrays-ranges-json.md#json-and-jsonb) — `JsonElement`, your own DTOs, `json` against `jsonb`
 - [Practical Rules and Gotchas](arrays-ranges-json.md#practical-rules-and-gotchas) — The corners collected in one place
+
+### Composites and Reflection
+- [Two Reflective Mappers, One Asymmetry](composites-reflection.md#two-reflective-mappers-one-asymmetry) — Rows need no registration, composite values do
+- [Rows onto Data Classes](composites-reflection.md#rows-onto-data-classes) — And why `fetchObjects<T>()` is not `row.get<T>(0)`
+- [Composites onto Data Classes](composites-reflection.md#composites-onto-data-classes) — `registerAutoComposite`, and what a composite reads as without it
+- [What Reflection Reads](composites-reflection.md#what-reflection-reads-and-what-it-ignores) — The primary constructor, and everything it ignores
+- [When a Value Is Missing](composites-reflection.md#when-a-value-is-missing) — Absent, `NULL`, nullable, defaulted — the whole matrix
+- [Writing the Converters by Hand](composites-reflection.md#writing-the-converters-by-hand) — Replacing reflection, and what `getDefaultTypeName` is really for
+- [`PgComposite` and `PgRecord`](composites-reflection.md#the-raw-forms-pgcomposite-and-pgrecord) — The raw forms, and why `ROW(...)` is not a row
+- [`toDataObject` and `toDataMap`](composites-reflection.md#maps-in-and-out-todataobject-and-todatamap) — The same matching, without a database
 
 ### Bulk Writes
 - [Why One Statement Beats a Batch](bulk-writes.md#why-one-statement-beats-a-batch) — Round trips, not driver speed

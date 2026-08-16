@@ -492,9 +492,11 @@ Notes:
 * The type name defaults to the class name in `snake_case`, exactly like enums.
 * Attribute names default to each property name converted `camelCase` → `snake_case`; `@PgName` overrides an individual property.
 * Attributes are matched **by name**, not by position, and the reflection metadata is cached on registration.
-* A composite attribute that is missing from the class is simply written as `NULL`; a non-nullable Kotlin property with no matching attribute (or a `NULL` value) raises `MappingException(REQUIRED_ATTRIBUTE_MISSING)` with the offending path.
+* A composite attribute that is missing from the class is simply written as `NULL`. Coming the other way, a non-nullable Kotlin property with no matching attribute (or a `NULL` value) raises `MappingException(REQUIRED_ATTRIBUTE_MISSING)` with the offending path — unless the property declares a default, which is used instead, `NULL` included.
 * Registration is bidirectional: the class can be built from a `PgComposite`, and — because the mapping is also keyed by type name — `row.get<Any>("profile")` resolves back to `SenatorProfile`.
 * Nothing is resolved against the catalog at registration time, so the order of `registerAutoComposite` and `reloadTypes()` doesn't matter. The type only has to exist by the time a query uses it.
+
+[Composites and Reflective Mapping](composites-reflection.md) is the page for the rest of it: what the reflective mapper reads off your class, why a row needs no registration when a composite does, the whole missing-value matrix, and what a hand-written converter pair looks like next to this one.
 
 ### Custom converters
 
@@ -529,7 +531,8 @@ class TributeParameterConverter : ParameterConverter<Tribute> {
         return composite
     }
 
-    // Supplies the type name when there is no expected OID — the usual case at top level
+    // Not consulted for the composite itself — a PgContainer already carries its own OID.
+    // It is what lets a Range<Tribute> resolve its range type; see the link below.
     override fun getDefaultTypeName(sourceClass: KClass<*>, context: SerializationContext) =
         QualifiedName("", "tribute")
 }
@@ -539,6 +542,8 @@ session.typeManager.registerParameterConverter(TributeParameterConverter())
 ```
 
 `ContainerFactory` (`typeManager.containers`) is the clean way to build containers by name or OID: `createComposite`, `createRange`, `createEmptyRange`, `createMultirange`.
+
+`getDefaultTypeName` is worth reading carefully, because the composite case is the exception rather than the rule: step 4 of [Writing](#writing-kotlin--database) skips it whenever the converter's output is a `PgContainer`, which a composite converter's always is. [Composites and Reflective Mapping](composites-reflection.md#getdefaulttypename-is-not-for-the-composite) has the one place it still matters.
 
 ### Custom codecs
 

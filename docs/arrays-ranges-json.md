@@ -6,17 +6,18 @@ register could have anticipated. Arrays, ranges and JSON are those same three, a
 looks like at the call site.*
 
 [Type System](type-system.md) explains the machinery that maps PostgreSQL types onto Kotlin ones — which converter is
-chosen, how to replace it, what the registry does. This page is the other half, for three families where the machinery
-is not the question: what does the call site look like.
+chosen, how to replace it, what the registry does. This page asks the other question, for three families where the
+machinery is not the interesting part: what does the call site look like.
 
 Arrays and JSON are here because they map onto things you already know — `List`, `Set`, `JsonElement` — in ways with
 enough corners (nullable elements, more than one dimension, empty collections, `json` against `jsonb`) to be worth
 writing down. Ranges are here because they genuinely have no counterpart: `ClosedRange` cannot express an exclusive
 bound, an infinite one, or an empty range, so the driver brings its own `Range<T>`.
 
-Composites belong to the same everyday category and are deliberately not here — their story is about *registration*, and
-it is told under [Registering your own mappings](type-system.md#registering-your-own-mappings). They appear on this page
-only where they sit inside one of the three: as array elements, as range bounds, as the holder of a JSON attribute.
+Composites belong to the same everyday category and have a page of their own —
+[Composites and Reflective Mapping](composites-reflection.md) — because the registration their story turns on brings the
+reflective mapper with it. They appear on this page only where they sit inside one of the three: as array elements, as
+range bounds, as the holder of a JSON attribute.
 
 Every example here is exercised against PostgreSQL 18, including the ones that fail.
 
