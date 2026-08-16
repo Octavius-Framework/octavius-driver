@@ -103,7 +103,7 @@ That distinction has teeth, because the OID `withPgType` names is what selects t
 cannot widen anything:
 
 ```kotlin
-// CodecException(ENCODING) - it asks the int8 codec to encode Int values
+// MappingException(NO_CONVERTER_FOUND), path [0] - it asks the int8 codec to encode Int values
 listOf(1, 2, 3).withPgType(PgStandardType.INT8_ARRAY)
 
 // Fine - int4[] goes out, PostgreSQL widens it

@@ -17,6 +17,7 @@ Contents:
 * [Two reflective mappers, one asymmetry](#two-reflective-mappers-one-asymmetry)
 * [Rows onto data classes](#rows-onto-data-classes)
 * [Composites onto data classes](#composites-onto-data-classes)
+* [Writing a whole object as one parameter](#writing-a-whole-object-as-one-parameter)
 * [What reflection reads, and what it ignores](#what-reflection-reads-and-what-it-ignores)
 * [When a value is missing](#when-a-value-is-missing)
 * [Writing the converters by hand](#writing-the-converters-by-hand)
@@ -119,16 +120,136 @@ data class Assessment(val label: String, val payload: Tribute)
 session.typeManager.registerAutoComposite<Assessment>()
 // Tribute NOT registered
 
-// Writing:  MappingException(CONVERSION_ERROR), path = payload
 // Reading:  MappingException(NO_CONVERTER_FOUND), path = payload
+// Writing:  MappingException(NO_CONVERTER_FOUND), path = payload
 ```
 
-The `path` names the offending attribute in both directions, which is the fastest way to find the class you forgot.
+Both directions report it the same way, and the `path` names the offending attribute — the fastest way to find the
+class you forgot. A class registered nowhere at all and passed at top level has no attribute to name, so it says so
+directly instead: `TypeException(MISSING_CODEC)` — *"Codec not found for: Tribute"*.
 
 Registering two classes under one type name is not rejected, and the second one silently takes the name over: the
 class → name direction stays keyed by class, so `row.get<Address>` keeps working, while `row.get<Any>` starts returning
 the newcomer. Since the registry is shared per database, that lands on every session in the JVM. One class per type is
 the only arrangement that behaves predictably.
+
+## Writing a whole object as one parameter
+
+A registered data class *is* a composite value, so it can go into an `INSERT` as a single parameter, be expanded
+server-side with `(...).*`, and come back through `RETURNING *` as the same class with the generated key filled in:
+
+```kotlin
+data class Senator(val id: Int, val cognomen: String, val tags: List<String>)
+
+session.typeManager.registerAutoComposite<Senator>("senators")   // the table's own row type
+
+val saved: Senator = session.createNamedQuery(
+    "INSERT INTO senators OVERRIDING USER VALUE SELECT (@row).* RETURNING *"
+).fetchObjectStrict("row" to Senator(0, "Cicero", listOf("consul")))
+// Senator(id = 1, cognomen = Cicero, tags = [consul])
+```
+
+One round trip, one parameter, no column-by-column plumbing, and the object handed back is the row that was written.
+
+`OVERRIDING USER VALUE` is what makes the key column ignore whatever the object carried and take its sequence value
+instead. The `0` above is a placeholder and nothing more — `9999` is discarded just the same. Coming back, `RETURNING *`
+is read by the ordinary reflective row mapper, which needs no registration of its own; the registration is what the
+*parameter* side uses.
+
+### Nested values take their OID from the catalog
+
+Tidiness is the obvious half. The half worth the section is that an **empty collection inside the object needs no
+`withPgType`**:
+
+```kotlin
+// Column by column: MappingException(CONVERSION_ERROR), caused by TypeException(TYPE_NOT_FOUND)
+session.createNamedQuery("INSERT INTO senators (cognomen, tags) VALUES (@c, @t)")
+    .update("c" to "Brutus", "t" to emptyList<String>())
+
+// As a whole object: fine, and the array reads back as []
+session.createNamedQuery("INSERT INTO senators OVERRIDING USER VALUE SELECT (@row).* RETURNING *")
+    .fetchObjectStrict<Senator>("row" to Senator(0, "Brutus", emptyList()))
+```
+
+A bare `emptyList()` has to have its element type guessed from a first element that is not there, which is why it
+fails — see [Empty collections need their type stated](arrays-ranges-json.md#empty-collections-need-their-type-stated).
+Inside a composite there is nothing to guess: the attribute's OID comes from the enclosing type's catalog definition, so
+the inference never runs. That holds for every nested value, and it is
+[the by-OID branch](type-system.md#one-default-per-kotlin-class) of parameter serialization doing the work.
+
+### The key column decides which form you can use
+
+`SELECT (@row).*` sends every attribute, key included, so the key has to be neutralized server-side — which is what
+`OVERRIDING USER VALUE` does, and it works for identity columns **only**. Against a `serial` key it is silently a no-op:
+the placeholder is stored as written, the first call succeeds and reports `id = 0`, and the second fails with
+`ConstraintViolationException(UNIQUE_CONSTRAINT_VIOLATION)` naming `(id)=(0)` — one row later than its cause.
+
+Naming the fields leaves the key out of the statement instead, which works whatever kind of key it is:
+
+```kotlin
+session.createNamedQuery(
+    "INSERT INTO senators (cognomen, tags) SELECT (@row).cognomen, (@row).tags RETURNING *"
+).fetchObjectStrict<Senator>("row" to Senator(0, "Sulla", listOf("dictator")))
+// Senator(id = 2, cognomen = Sulla, tags = [dictator])
+```
+
+`VALUES` does the same with `DEFAULT` standing in for the key and no column list —
+`INSERT INTO senators VALUES (DEFAULT, (@row).cognomen, (@row).tags) RETURNING *`. `DEFAULT` is the uniform answer for a
+key: it works for `serial` and for both flavours of `GENERATED … AS IDENTITY`, and it is the only value a
+`GENERATED ALWAYS AS (…) STORED` column accepts, so a computed column written as `DEFAULT` is calculated normally
+instead of rejecting the statement.
+
+Both cost a field list in the SQL and give up nothing else. The object still travels as **one** composite parameter, so a
+nested empty collection still takes its OID from the catalog, and `RETURNING *` still hands the whole entity back.
+
+What does not work is combining the two. `VALUES (DEFAULT, (@row).*)` against a key-carrying composite is
+`StatementException(SYNTAX_ERROR)` — *"INSERT has more expressions than target columns"* — because `.*` already expanded
+the key. So: `.*` with no field list is what `OVERRIDING USER VALUE` exists for, and everything else names its fields.
+
+### Upsert, and what it costs
+
+`ON CONFLICT` turns the same statement into save-or-update, and returns the row either way:
+
+```kotlin
+session.createNamedQuery(
+    """
+    INSERT INTO senators SELECT (@row).*
+    ON CONFLICT (id) DO UPDATE SET cognomen = EXCLUDED.cognomen, tags = EXCLUDED.tags
+    RETURNING *
+    """
+).fetchObjectStrict<Senator>("row" to existing)
+```
+
+Note what is missing from it: `OVERRIDING USER VALUE`. The two do not compose. With it in place the key is replaced
+before the conflict is ever evaluated, so every call inserts a new row and the update branch never runs — and it does
+that silently rather than complaining. One statement can generate a key or conflict on one you supplied, not both; an
+entity that may be either new or existing needs those two paths kept apart.
+
+### Without the key in the class
+
+Where the object is an *insert shape* rather than an entity — no key at all — nothing has to be overridden:
+
+```kotlin
+data class NewSenator(val cognomen: String, val tags: List<String>)
+
+session.createNamedQuery("INSERT INTO senators (cognomen, tags) SELECT (@row).* RETURNING id")
+    .fetchField<Int>("row" to NewSenator("Cato", listOf("censor")))
+```
+
+This is the one shape where `.*` and `DEFAULT` do combine, since there is no key in the composite to collide with the
+placeholder: `INSERT INTO senators VALUES (DEFAULT, (@row).*)` drops the column list as well. Reach for `DEFAULT` per
+column anywhere the table's own default should win over what the object holds.
+
+The trade is a second type to keep in step with the table — though that type *is* the insert contract, which is an
+argument for it as much as against.
+
+> [!NOTE]
+> **The `VALUES` form is positional; the column-list form is not.** `VALUES (DEFAULT, (@row).*)` assumes the key is the
+> first column and that the composite's fields line up with the ones after it. Adding a column is survivable —
+> PostgreSQL appends, and a `VALUES` list shorter than the table gives the remaining columns their defaults — but
+> reordering or dropping one shifts the mapping with nothing to warn you. `INSERT INTO senators (cognomen, tags)
+> SELECT (@row).*` names what it writes and is unaffected by any of that, including a later `ADD COLUMN … NOT NULL
+> DEFAULT`, which simply takes its default. Prefer it unless you have a reason not to.
 
 ## What reflection reads, and what it ignores
 
@@ -397,6 +518,13 @@ This is the practical bridge for a composite you have chosen not to register: re
   makes `NULL` acceptable. A property may carry both.
 * **An unregistered composite is still readable** as `Map<String, Any?>` or `PgComposite` — pair the map with
   `toDataObject<T>()` when you want the class without the registration.
+* **Passing a whole object as one composite parameter dodges the empty-collection problem.** A nested `emptyList()`
+  takes its element OID from the attribute definition, so it needs no `withPgType`.
+* **`OVERRIDING USER VALUE` only affects identity columns.** It is the price of `(@row).*` with a key-carrying class,
+  and against a `serial` key it is silently a no-op whose collision surfaces a row later. Naming the fields instead —
+  or `DEFAULT` in a `VALUES` list — works with any kind of key and keeps the single-parameter benefits.
+* **A generated key and `ON CONFLICT` do not compose.** `OVERRIDING USER VALUE` replaces the key before the conflict is
+  evaluated, so the update branch never runs and nothing says so.
 * **A hand-written converter needs `canConvert` narrowed on both axes** — the Kotlin type asked for *and* the source
   PostgreSQL type.
 * **A hand-written converter has to claim `Any::class` too** if you want `row.get<Any>` — and therefore composites
