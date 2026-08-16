@@ -34,7 +34,11 @@ class NoticeHandlerTest {
         assertNotNull(notice)
         assertEquals("test notice from test", notice.message)
         assertEquals("NOTICE", notice.severity)
-        
+
+        // A shared handler tells connections apart by this, so it has to be the backend that raised it
+        val backendPid: Int = session.createNativeQuery("SELECT pg_backend_pid()").fetchFieldStrict()
+        assertEquals(backendPid, notice.processId)
+
         session.close()
     }
 }

@@ -261,14 +261,13 @@ internal class PgStream(
                             if (token == '\u0000') break
                             fields[token] = inputStream.readCString()
                         }
-                        val notice = PgNotice(fields)
-                        val logMsg = "[PID: $processId] $notice"
+                        val notice = PgNotice(processId, fields)
 
                         when (notice.severity) {
-                            "WARNING" -> noticeLogger.warn { logMsg }
-                            "NOTICE", "INFO", "LOG" -> noticeLogger.info { logMsg }
-                            "DEBUG" -> noticeLogger.debug { logMsg }
-                            else -> noticeLogger.info { logMsg }
+                            "WARNING" -> noticeLogger.warn { "$notice" }
+                            "NOTICE", "INFO", "LOG" -> noticeLogger.info { "$notice" }
+                            "DEBUG" -> noticeLogger.debug { "$notice" }
+                            else -> noticeLogger.info { "$notice" }
                         }
 
                         if (noticeHandler != null) {

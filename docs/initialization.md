@@ -340,6 +340,8 @@ properties.noticeHandler = "com.example.AuditNoticeHandler"
 
 A Kotlin `object` is reused as a singleton across every connection; a class is instantiated per connection through its no-arg constructor. `PgNotice` exposes `severity`, `code`, `message`, `detail`, `hint` and `where`, plus `rawFields` for anything the server sent that those don't cover.
 
+It also carries `processId`, the same backend process id the log line is prefixed with — which is what a singleton handler needs, since it sees the notices of every connection in the pool arriving on one method. The server does not send it as part of the notice; the driver takes it from the connection's startup handshake, so a notice raised before that handshake finished reports `-1`. Nothing reaches that window at the default verbosity — connecting with `client_min_messages=debug5` is what puts a message there, the backend's own catalog-reading transaction — but a handler that buckets by process id should expect the value to exist. It is not the same number as `PgNotification.processId`, which names the *foreign* backend that ran the `NOTIFY`.
+
 > [!WARNING]
 > **`handleNotice` runs synchronously on the connection's network thread**, in the middle of reading the protocol stream. Whatever it does, the query waiting behind it waits too — so no blocking calls, no database work, no HTTP. Hand anything slow to a queue or an executor and return immediately.
 
