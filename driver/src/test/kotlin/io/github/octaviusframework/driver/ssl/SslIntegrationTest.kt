@@ -9,17 +9,18 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import java.util.concurrent.Executors
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+@EnabledIfEnvironmentVariable(named = "TEST_SSL", matches = "true")
 class SslIntegrationTest {
+
+    private val url = "jdbc:octavius://localhost:5433/octavius_test"
 
     @Test
     fun testSslModeRequire() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
-        assumeTrue(runSslTest, "Skipping SSL tests locally. Set TEST_SSL=true.")
-
         val properties = OctaviusProperties().apply {
             user = "postgres"
             password = "1234"
@@ -27,7 +28,7 @@ class SslIntegrationTest {
             sslmode = SslMode.REQUIRE
         }
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
@@ -39,9 +40,6 @@ class SslIntegrationTest {
 
     @Test
     fun testSslModePrefer() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
-        assumeTrue(runSslTest, "Skipping SSL tests locally.")
-
         val properties = OctaviusProperties().apply {
             user = "postgres"
             password = "1234"
@@ -49,7 +47,7 @@ class SslIntegrationTest {
             sslmode = SslMode.PREFER
         }
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
@@ -61,9 +59,6 @@ class SslIntegrationTest {
 
     @Test
     fun testSslModeDisable() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
-        assumeTrue(runSslTest, "Skipping SSL tests locally.")
-
         val properties = OctaviusProperties().apply {
             user = "postgres"
             password = "1234"
@@ -71,7 +66,7 @@ class SslIntegrationTest {
             sslmode = SslMode.DISABLE
         }
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
 
         try {
             // Depending on the server configuration, it might reject non-SSL connections, but default postgres docker image allows both.
@@ -84,9 +79,6 @@ class SslIntegrationTest {
 
     @Test
     fun testSslModeVerifyCaFailsWithoutCert() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
-        assumeTrue(runSslTest, "Skipping SSL tests locally.")
-
         val properties = OctaviusProperties().apply {
             user = "postgres"
             password = "1234"
@@ -96,15 +88,14 @@ class SslIntegrationTest {
         }
 
         assertThrows<Exception>("Should throw because we haven't configured a valid CA certificate") {
-            getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+            getOctaviusSession(url, properties)
         }
     }
 
     @Test
     fun testSslModeVerifyCaWithCert() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
         val rootCert = System.getenv("SSL_ROOT_CERT")
-        assumeTrue(runSslTest && rootCert != null, "Skipping SSL tests locally or no root cert provided.")
+        assumeTrue(rootCert != null, "No root cert provided.")
 
         val properties = OctaviusProperties().apply {
             user = "postgres"
@@ -114,7 +105,7 @@ class SslIntegrationTest {
             sslrootcert = rootCert
         }
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
@@ -126,9 +117,8 @@ class SslIntegrationTest {
 
     @Test
     fun testSslModeVerifyFullWithCert() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
         val rootCert = System.getenv("SSL_ROOT_CERT")
-        assumeTrue(runSslTest && rootCert != null, "Skipping SSL tests locally or no root cert provided.")
+        assumeTrue(rootCert != null, "No root cert provided.")
 
         val properties = OctaviusProperties().apply {
             user = "postgres"
@@ -139,7 +129,7 @@ class SslIntegrationTest {
         }
 
         // Host must match the certificate's CN (localhost)
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
@@ -151,11 +141,10 @@ class SslIntegrationTest {
 
     @Test
     fun testSslClientAuth() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
         val rootCert = System.getenv("SSL_ROOT_CERT")
         val clientCert = System.getenv("SSL_CERT")
         val clientKey = System.getenv("SSL_KEY")
-        assumeTrue(runSslTest && rootCert != null && clientCert != null && clientKey != null, "Skipping SSL tests locally or no client certs provided.")
+        assumeTrue(rootCert != null && clientCert != null && clientKey != null, "No client certs provided.")
 
         val properties = OctaviusProperties().apply {
             user = "postgres"
@@ -167,7 +156,7 @@ class SslIntegrationTest {
             sslkey = clientKey
         }
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
@@ -179,9 +168,6 @@ class SslIntegrationTest {
 
     @Test
     fun testCancelQueryOverSsl() {
-        val runSslTest = System.getenv("TEST_SSL") == "true"
-        assumeTrue(runSslTest, "Skipping SSL tests locally. Set TEST_SSL=true.")
-
         val properties = OctaviusProperties().apply {
             user = "postgres"
             password = "1234"
@@ -189,7 +175,7 @@ class SslIntegrationTest {
             sslmode = SslMode.REQUIRE
         }
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", properties)
+        val session = getOctaviusSession(url, properties)
         val executor = Executors.newSingleThreadExecutor()
 
         try {

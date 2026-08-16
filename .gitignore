@@ -23,3 +23,6 @@ out/
 
 ### Benchmarks ###
 benchmarks/logs/
+
+### Throwaway TLS server from scripts/ssl-test-server.ps1 ###
+.ssl-test/

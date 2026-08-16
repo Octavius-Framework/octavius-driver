@@ -134,7 +134,7 @@ The guides cover what a signature cannot show — how the pieces behave together
 ## Architecture
 
 - **`driver`** — the core.
-  - **IO, SSL & Auth** — socket handling (`PgStream`), buffering, TLS negotiation, SCRAM-SHA-256.
+  - **IO, SSL & Auth** — socket handling (`PgStream`), buffering, TLS negotiation, SCRAM-SHA-256 with channel binding.
   - **Message** — parsing and building Wire Protocol v3.2 packets.
   - **Query & Execution** — the operational core: Extended Query Protocol with named-parameter support.
   - **Codec, Converter & Registry** — the two-layer type system, from raw binary through to your own classes.

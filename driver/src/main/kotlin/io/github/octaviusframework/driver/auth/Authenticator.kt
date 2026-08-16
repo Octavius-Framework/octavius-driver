@@ -5,11 +5,7 @@ import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
-import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
-import io.github.octaviusframework.driver.message.frontend.SASLResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
-import java.nio.charset.StandardCharsets
-import java.util.*
 
 
 
@@ -23,108 +19,39 @@ internal object Authenticator {
 
     /**
      * Authenticates the user with the PostgreSQL server using the provided credentials.
-     * Only SCRAM-SHA-256 authentication is supported.
+     * Only SCRAM-SHA-256 authentication is supported, with or without channel binding.
      *
      * @param stream The underlying PostgreSQL communication stream used for message exchange.
      * @param password The password for the user, can be null if not required.
+     * @param channelBinding How hard to insist that the exchange be bound to the TLS channel.
      * @throws InitializationException If authentication fails, protocol is violated, or unsupported mechanism is requested.
      */
-    fun authenticate(stream: PgStream, password: String?) {
+    fun authenticate(stream: PgStream, password: String?, channelBinding: ChannelBinding) {
+        var boundToChannel = false
+
         while (true) {
             val msg = stream.receiveMessage()
 
             when (msg) {
                 is AuthenticationMessage.Ok -> {
+                    // A server can wave a connection through without asking anything - `trust`, or a
+                    // client certificate already accepted during the handshake. That is a perfectly
+                    // good login, but it is not a bound one, and REQUIRE means REQUIRE.
+                    if (channelBinding == ChannelBinding.REQUIRE && !boundToChannel) {
+                        throw InitializationException(
+                            InitializationExceptionReason.UNSUPPORTED_MECHANISM,
+                            details = "channelBinding=require, but the server accepted this connection without " +
+                                "a channel-bound authentication exchange."
+                        )
+                    }
                     logger.trace { "Authentication successful!" }
                     // Loop will continue to consume ParameterStatus until ReadyForQuery
                 }
 
                 is AuthenticationMessage.SASL -> {
-                    val mechs = msg.mechanisms
-                    if (!mechs.contains("SCRAM-SHA-256")) {
-                        throw InitializationException(
-                            InitializationExceptionReason.UNSUPPORTED_MECHANISM, details = "Supported: $mechs"
-                        )
-                    }
-
-                    val clientNonce = ScramSha256Authenticator.generateClientNonce()
-                    val clientFirstMessageBare = "n=,r=$clientNonce"
-                    val clientFirstMessage = "n,,$clientFirstMessageBare"
-
-                    stream.sendMessage(SASLInitialResponse("SCRAM-SHA-256", clientFirstMessage))
-                    stream.flush()
-
-                    // Waiting for SASLContinue
-                    val continueMsg = stream.receiveMessage()
-                    if (continueMsg is ErrorResponseMessage) {
-                        throw ExceptionTranslator.translate(continueMsg)
-                    }
-                    if (continueMsg !is AuthenticationMessage.SASLContinue) {
-                        throw InitializationException(
-                            InitializationExceptionReason.PROTOCOL_VIOLATION,
-                            details = "Expected SASLContinue, got: $continueMsg"
-                        )
-                    }
-
-                    val serverFirstMessage = String(continueMsg.data, StandardCharsets.UTF_8)
-
-                    // Parsing serverFirstMessage (r=..., s=..., i=...)
-                    val parts = serverFirstMessage.split(",")
-                    val params = parts.associate { it.substring(0, 1) to it.substring(2) }
-
-                    val serverNonce = params["r"] ?: throw InitializationException(
-                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing r in serverFirstMessage"
+                    boundToChannel = ScramSha256Authenticator.authenticate(
+                        stream, password, msg.mechanisms, channelBinding
                     )
-                    val saltB64 = params["s"] ?: throw InitializationException(
-                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing s in serverFirstMessage"
-                    )
-                    val iterationsStr = params["i"] ?: throw InitializationException(
-                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing i in serverFirstMessage"
-                    )
-
-                    val salt = Base64.getDecoder().decode(saltB64)
-                    val iterations = iterationsStr.toInt()
-
-                    val clientFinalMessageWithoutProof = "c=biws,r=$serverNonce"
-
-                    val scramResult = ScramSha256Authenticator.computeSignatures(
-                        password ?: "",
-                        salt,
-                        iterations,
-                        clientFirstMessageBare,
-                        serverFirstMessage,
-                        clientFinalMessageWithoutProof
-                    )
-
-                    val clientFinalMessage = "$clientFinalMessageWithoutProof,p=${scramResult.clientProof}"
-                    stream.sendMessage(SASLResponse(clientFinalMessage))
-                    stream.flush()
-
-                    // Server should then send SASLFinal
-                    val finalMsg = stream.receiveMessage()
-                    if (finalMsg is ErrorResponseMessage) {
-                        throw ExceptionTranslator.translate(finalMsg)
-                    }
-                    if (finalMsg !is AuthenticationMessage.SASLFinal) {
-                        throw InitializationException(
-                            InitializationExceptionReason.PROTOCOL_VIOLATION,
-                            details = "Expected SASLFinal, got: $finalMsg"
-                        )
-                    }
-
-                    val serverFinalMessage = String(finalMsg.data, StandardCharsets.UTF_8)
-                    val serverFinalParts = serverFinalMessage.split(",")
-                    val serverParams = serverFinalParts.filter { it.length >= 3 }.associate { it.substring(0, 1) to it.substring(2) }
-                    val serverSignature = serverParams["v"] ?: throw InitializationException(
-                        InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER, details = "Missing v in serverFinalMessage"
-                    )
-
-                    if (serverSignature != scramResult.expectedServerSignature) {
-                        throw InitializationException(
-                            InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
-                            details = "Invalid server signature"
-                        )
-                    }
                 }
 
                 is AuthenticationMessage.CleartextPassword -> {

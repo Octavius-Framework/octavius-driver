@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.auth.ChannelBinding
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.properties.OctaviusProperties
@@ -116,6 +117,14 @@ class OctaviusDataSource : DataSource {
     var sslpassword: String?
         get() = octaviusProperties.sslpassword
         set(value) { octaviusProperties.sslpassword = value }
+
+    /**
+     * How hard to insist that authentication be bound to the TLS channel. Defaults to
+     * [ChannelBinding.PREFER].
+     */
+    var channelBinding: ChannelBinding?
+        get() = octaviusProperties.channelBinding
+        set(value) { octaviusProperties.channelBinding = value }
 
     /**
      * Seconds to wait on a socket read before failing. `0` waits forever.

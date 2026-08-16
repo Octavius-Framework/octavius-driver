@@ -1,6 +1,7 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.auth.Authenticator
+import io.github.octaviusframework.driver.auth.ChannelBinding
 import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
@@ -91,7 +92,7 @@ internal object OctaviusConnectionFactory {
         stream.sendMessage(StartupMessage(startupParams))
         stream.flush()
 
-        Authenticator.authenticate(stream, password)
+        Authenticator.authenticate(stream, password, properties.channelBinding ?: ChannelBinding.PREFER)
 
         stream.networkTimeout = properties.socketTimeout?.let { it * 1000 } ?: 0
         properties.maxCachedRowSize?.let { stream.maxCachedRowSize = it }

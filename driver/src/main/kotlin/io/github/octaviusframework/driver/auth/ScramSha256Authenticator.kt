@@ -1,5 +1,15 @@
 package io.github.octaviusframework.driver.auth
 
+import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionReason
+import io.github.octaviusframework.driver.io.PgStream
+import io.github.octaviusframework.driver.message.backend.AuthenticationMessage
+import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
+import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
+import io.github.octaviusframework.driver.message.frontend.SASLResponse
+import io.github.octaviusframework.driver.message.translator.ExceptionTranslator
+import io.github.oshai.kotlinlogging.KotlinLogging
+import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.*
@@ -9,12 +19,21 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Utility object for performing SCRAM-SHA-256 authentication cryptographic operations.
- * It provides functions for generating nonces and computing SCRAM signatures
- * according to RFC 7677.
+ * Runs the SCRAM-SHA-256 exchange of RFC 7677, with or without the channel binding of RFC 5802.
+ *
+ * The two mechanisms are one piece of code because they differ in exactly two places: the name
+ * sent to the server, and what goes into the `c=` attribute of the client-final-message.
  */
 internal object ScramSha256Authenticator {
     private const val HMAC_SHA256 = "HmacSHA256"
+
+    private const val MECHANISM = "SCRAM-SHA-256"
+    private const val MECHANISM_PLUS = "SCRAM-SHA-256-PLUS"
+
+    /** The only channel binding type PostgreSQL implements. */
+    private const val BINDING_TYPE = "tls-server-end-point"
+
+    private val logger = KotlinLogging.logger {}
 
     /**
      * Holds the results of a SCRAM signature computation.
@@ -23,6 +42,158 @@ internal object ScramSha256Authenticator {
      * @property expectedServerSignature The expected server signature for verification (base64 encoded).
      */
     data class ScramResult(val clientProof: String, val expectedServerSignature: String)
+
+    /**
+     * Authenticates over [stream] using whichever of the two mechanisms [mechanisms] and
+     * [channelBinding] between them allow.
+     *
+     * @return true when the exchange was bound to the TLS channel, which is what lets the caller
+     *   enforce [ChannelBinding.REQUIRE] over the whole login rather than over this step alone.
+     * @throws InitializationException if no usable mechanism is on offer, the server violates the
+     *   protocol, or its final signature does not verify.
+     */
+    fun authenticate(
+        stream: PgStream,
+        password: String?,
+        mechanisms: List<String>,
+        channelBinding: ChannelBinding
+    ): Boolean {
+        // Asking for the certificate is itself the test of whether binding is possible: it comes
+        // back non-null only on an encrypted connection, and only when the caller allows binding.
+        val certificate = if (channelBinding == ChannelBinding.DISABLE) null else stream.peerCertificate
+        val bindingData = if (certificate != null && mechanisms.contains(MECHANISM_PLUS)) {
+            TlsServerEndPoint.hash(certificate)
+        } else {
+            null
+        }
+
+        if (channelBinding == ChannelBinding.REQUIRE && bindingData == null) {
+            throw InitializationException(
+                InitializationExceptionReason.UNSUPPORTED_MECHANISM,
+                details = if (certificate == null) {
+                    "channelBinding=require, but there is no server certificate to bind to - the connection is " +
+                        "not encrypted, or the server presented no certificate. Set sslmode=require or stronger."
+                } else {
+                    "channelBinding=require, but the server does not offer $MECHANISM_PLUS. " +
+                        "It offered: ${mechanisms.joinToString()}."
+                }
+            )
+        }
+
+        if (bindingData == null && !mechanisms.contains(MECHANISM)) {
+            throw InitializationException(
+                InitializationExceptionReason.UNSUPPORTED_MECHANISM,
+                details = "The server offers no SASL mechanism this driver supports. It offered: ${mechanisms.joinToString()}."
+            )
+        }
+
+        val mechanism = if (bindingData != null) MECHANISM_PLUS else MECHANISM
+        val gs2Header = when {
+            bindingData != null -> "p=$BINDING_TYPE,,"
+            // "I can do channel binding and you did not offer it." PostgreSQL always offers it on
+            // an encrypted connection, so it reads this as the contradiction it is and answers
+            // with "SCRAM channel binding negotiation error" - which is exactly what should happen
+            // when the mechanism list was stripped down in transit to force the weaker exchange.
+            certificate != null -> "y,,"
+            else -> "n,,"
+        }
+
+        logger.trace { "Authenticating with $mechanism" }
+
+        val clientNonce = generateClientNonce()
+        val clientFirstMessageBare = "n=,r=$clientNonce"
+
+        stream.sendMessage(SASLInitialResponse(mechanism, gs2Header + clientFirstMessageBare))
+        stream.flush()
+
+        val serverFirstMessage = String(expect<AuthenticationMessage.SASLContinue>(stream).data, StandardCharsets.UTF_8)
+        val serverFirst = attributesOf(serverFirstMessage)
+
+        val serverNonce = serverFirst.attribute("r", "serverFirstMessage")
+        val salt = Base64.getDecoder().decode(serverFirst.attribute("s", "serverFirstMessage"))
+        val iterations = serverFirst.attribute("i", "serverFirstMessage").toIntOrNull()
+            ?: throw InitializationException(
+                InitializationExceptionReason.PROTOCOL_VIOLATION,
+                details = "Iteration count in serverFirstMessage is not a number: ${serverFirst["i"]}"
+            )
+
+        // The server nonce must extend the client's own. Without this check a replayed
+        // server-first-message would be accepted as a fresh one.
+        if (!serverNonce.startsWith(clientNonce)) {
+            throw InitializationException(
+                InitializationExceptionReason.PROTOCOL_VIOLATION,
+                details = "The nonce in serverFirstMessage does not begin with the nonce this client sent."
+            )
+        }
+
+        // c= carries the gs2-header the exchange opened with, and - when binding - the certificate
+        // hash behind it. The server recomputes both from its own side of the connection.
+        val cbindInput = gs2Header.toByteArray(StandardCharsets.UTF_8) + (bindingData ?: ByteArray(0))
+        val clientFinalMessageWithoutProof = "c=${Base64.getEncoder().encodeToString(cbindInput)},r=$serverNonce"
+
+        val scramResult = computeSignatures(
+            password ?: "",
+            salt,
+            iterations,
+            clientFirstMessageBare,
+            serverFirstMessage,
+            clientFinalMessageWithoutProof
+        )
+
+        stream.sendMessage(SASLResponse("$clientFinalMessageWithoutProof,p=${scramResult.clientProof}"))
+        stream.flush()
+
+        val serverFinalMessage = String(expect<AuthenticationMessage.SASLFinal>(stream).data, StandardCharsets.UTF_8)
+        val serverFinal = attributesOf(serverFinalMessage)
+
+        serverFinal["e"]?.let {
+            throw InitializationException(
+                InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
+                details = "The server ended the SCRAM exchange with: $it"
+            )
+        }
+
+        // Verifying this is what makes the exchange mutual: it proves the other end knows the
+        // stored key, so a server that merely collected the proof cannot pass for the real one.
+        if (serverFinal.attribute("v", "serverFinalMessage") != scramResult.expectedServerSignature) {
+            throw InitializationException(
+                InitializationExceptionReason.SERVER_REJECTED_CREDENTIALS,
+                details = "Invalid server signature"
+            )
+        }
+
+        return bindingData != null
+    }
+
+    /**
+     * Reads the next message, insisting it be a [T].
+     *
+     * An `ErrorResponse` is the server's ordinary way of saying no at any point in the exchange,
+     * so it is translated rather than reported as a protocol violation.
+     */
+    private inline fun <reified T : AuthenticationMessage> expect(stream: PgStream): T {
+        val message = stream.receiveMessage()
+        if (message is ErrorResponseMessage) throw ExceptionTranslator.translate(message)
+        return message as? T ?: throw InitializationException(
+            InitializationExceptionReason.PROTOCOL_VIOLATION,
+            details = "Expected ${T::class.simpleName}, got: $message"
+        )
+    }
+
+    /**
+     * Splits a SCRAM message into its single-letter attributes. Anything not in `x=value` shape is
+     * dropped here; whether the attributes that mattered came through is decided by [attribute].
+     */
+    private fun attributesOf(message: String): Map<String, String> =
+        message.split(",")
+            .filter { it.length >= 2 && it[1] == '=' }
+            .associate { it.substring(0, 1) to it.substring(2) }
+
+    private fun Map<String, String>.attribute(name: String, messageName: String): String =
+        this[name] ?: throw InitializationException(
+            InitializationExceptionReason.MISSING_PROTOCOL_PARAMETER,
+            details = "Missing $name in $messageName"
+        )
 
     /**
      * Generates a random base64-encoded string to be used as a client nonce.
@@ -35,8 +206,6 @@ internal object ScramSha256Authenticator {
         SecureRandom().nextBytes(bytes)
         return Base64.getEncoder().encodeToString(bytes).replace(Regex("[^a-zA-Z0-9]"), "")
     }
-
-
 
     /**
      * Computes the client proof and expected server signature for SCRAM authentication.

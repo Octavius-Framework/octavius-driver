@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.properties
 
+import io.github.octaviusframework.driver.auth.ChannelBinding
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -47,6 +48,12 @@ class OctaviusProperties {
     var sslkey: String? = null
     var sslpassword: String? = null
 
+    /**
+     * How hard to insist that authentication be bound to the TLS channel. Defaults to
+     * [ChannelBinding.PREFER]: bind when the connection is encrypted and the server offers it.
+     */
+    var channelBinding: ChannelBinding? = null
+
     val additionalProperties: MutableMap<String, String> = mutableMapOf()
 
     fun setProperty(key: String, value: String) {
@@ -70,6 +77,7 @@ class OctaviusProperties {
             "sslcert" -> sslcert = value
             "sslkey" -> sslkey = value
             "sslpassword" -> sslpassword = value
+            "channelbinding", "channel_binding" -> channelBinding = ChannelBinding.of(value)
             else -> additionalProperties[key] = value
         }
     }
@@ -94,6 +102,7 @@ class OctaviusProperties {
         other.sslcert?.let { sslcert = it }
         other.sslkey?.let { sslkey = it }
         other.sslpassword?.let { sslpassword = it }
+        other.channelBinding?.let { channelBinding = it }
         additionalProperties.putAll(other.additionalProperties)
     }
 
@@ -178,6 +187,7 @@ class OctaviusProperties {
         sslcert?.let { queryParams["sslcert"] = it }
         sslkey?.let { queryParams["sslkey"] = it }
         sslpassword?.let { queryParams["sslpassword"] = it }
+        channelBinding?.let { queryParams["channelBinding"] = it.value }
 
         queryParams.putAll(additionalProperties)
 

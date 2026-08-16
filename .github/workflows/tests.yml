@@ -92,7 +92,7 @@ jobs:
             -e POSTGRES_PASSWORD=1234 \
             -e POSTGRES_USER=postgres \
             -e POSTGRES_DB=octavius_test \
-            -p 5432:5432 \
+            -p 5433:5432 \
             -v ${{ github.workspace }}/.ssl:/etc/ssl/postgres \
             postgres:18 -c ssl=on -c ssl_cert_file=/etc/ssl/postgres/server.crt -c ssl_key_file=/etc/ssl/postgres/server.key -c ssl_ca_file=/etc/ssl/postgres/ca.crt
           
@@ -101,13 +101,13 @@ jobs:
       - name: Run SSL Tests
         env:
           TEST_SSL: "true"
-          DB_URL: jdbc:postgresql://localhost:5432/octavius_test
+          DB_URL: jdbc:postgresql://localhost:5433/octavius_test
           DB_USERNAME: postgres
           DB_PASSWORD: 1234
           SSL_ROOT_CERT: ${{ github.workspace }}/.ssl/ca.crt
           SSL_CERT: ${{ github.workspace }}/.ssl/client.crt
           SSL_KEY: ${{ github.workspace }}/.ssl/client.key
-        run: ./gradlew :driver:test --tests "*SslIntegrationTest*"
+        run: ./gradlew :driver:test --tests "*SslIntegrationTest*" --tests "*ChannelBindingIntegrationTest*"
 
   test-pg17:
     runs-on: ubuntu-latest

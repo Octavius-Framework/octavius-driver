@@ -312,7 +312,7 @@ The `INCORRECT_RESULT_SIZE` case is why single-row fetches request `maxRows = 2`
 | Reason (`InitializationExceptionReason`) | Description                                                                |
 |:-----------------------------------------|:---------------------------------------------------------------------------|
 | `SERVER_REJECTED_CREDENTIALS`            | Invalid username or password.                                              |
-| `UNSUPPORTED_MECHANISM`                  | Server requires an authentication mechanism the driver does not implement. |
+| `UNSUPPORTED_MECHANISM`                  | No mechanism the driver implements, or channel binding was unavailable.    |
 | `UNSUPPORTED_PASSWORD_ENCRYPTION`        | Server requested cleartext or MD5 rather than SCRAM-SHA-256.               |
 | `PROTOCOL_VIOLATION`                     | Unexpected message received during the authentication exchange.            |
 | `MISSING_PROTOCOL_PARAMETER`             | A required field was missing from the server's authentication challenge.   |

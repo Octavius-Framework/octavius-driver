@@ -46,6 +46,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [What Survives a Return to the Pool](initialization.md#what-survives-a-return-to-the-pool) — Session state a pooled connection carries forward
 - [What Happens When a Session Opens](initialization.md#what-happens-when-a-session-opens) — Handshake, authentication, catalog load
 - [Authentication Is SCRAM-SHA-256](initialization.md#authentication-is-scram-sha-256-and-nothing-else) — What the driver refuses, and why a server asks for it
+- [Channel Binding](initialization.md#channel-binding) — Tying the login to the certificate on the wire, and when to demand it
 - [Startup Parameters](initialization.md#startup-parameters) — Unrecognized keys sent to the server
 - [Notices from the Server](initialization.md#notices-from-the-server) — Logging them, and handling them yourself
 - [Configuration Reference](initialization.md#configuration-reference) — Every property: connection, network, SSL

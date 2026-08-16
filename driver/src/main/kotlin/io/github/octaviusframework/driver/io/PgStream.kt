@@ -24,7 +24,10 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.security.cert.X509Certificate
 import java.util.concurrent.locks.ReentrantLock
+import javax.net.ssl.SSLPeerUnverifiedException
+import javax.net.ssl.SSLSocket
 
 /**
  * Represents a connection stream to a PostgreSQL database.
@@ -145,6 +148,25 @@ internal class PgStream(
         inputStream.changeStream(socket.getInputStream())
         outputStream.changeStream(socket.getOutputStream())
     }
+
+    /**
+     * The certificate the server presented during the TLS handshake, or null on a plaintext
+     * connection and on the rare TLS connection where the peer never authenticated itself.
+     *
+     * Nothing here judges the certificate - that is the trust manager's job during
+     * [upgradeToSSL], and under `sslmode=require` it deliberately accepts anything. This
+     * reports only what was presented, which is precisely what channel binding hashes: the
+     * proof then covers the certificate actually on the wire, verified or not.
+     */
+    val peerCertificate: X509Certificate?
+        get() {
+            val sslSocket = socket as? SSLSocket ?: return null
+            return try {
+                sslSocket.session.peerCertificates.firstOrNull() as? X509Certificate
+            } catch (_: SSLPeerUnverifiedException) {
+                null
+            }
+        }
 
 
     val parameters = mutableMapOf<String, String>()

@@ -242,6 +242,7 @@ Step 4 has exactly two happy endings: the server asks for SCRAM-SHA-256, or the 
 
 | The server asks for          | Result                                                     |
 |:-----------------------------|:-----------------------------------------------------------|
+| SCRAM-SHA-256-PLUS           | Connected, bound to the TLS channel.                       |
 | SCRAM-SHA-256                | Connected.                                                 |
 | Nothing — `trust`, `cert`    | Connected.                                                 |
 | MD5, or a cleartext password | `InitializationException(UNSUPPORTED_PASSWORD_ENCRYPTION)` |
@@ -249,7 +250,24 @@ Step 4 has exactly two happy endings: the server asks for SCRAM-SHA-256, or the 
 
 What decides which of those the server asks for is how the role's password is stored, not the `pg_hba.conf` line alone — a role whose password was set while `password_encryption` was `md5` still carries an MD5 verifier, and that is what the server offers whatever the line says. `ALTER ROLE … PASSWORD …` re-hashes it under the current setting, which on PostgreSQL 18 is SCRAM by default. Cleartext is what the `ldap`, `pam` and `radius` methods ask for, which is the other road to that same exception.
 
-The driver never selects `SCRAM-SHA-256-PLUS`, so the exchange runs without channel binding: a policy that requires it cannot be satisfied here, and encryption and server identity are left to [TLS](#ssl).
+### Channel binding
+
+Under `sslmode=require` the connection is encrypted and *nothing checks who is on the other end of it* — the driver accepts whatever certificate the server presents. Channel binding is what closes that gap. The client proof is computed over a hash of the certificate actually on the wire, so an intermediary that terminated TLS with a certificate of its own hands the real server a proof that does not verify: it cannot relay an exchange it is not itself a party to.
+
+How hard the driver insists is the `channelBinding` property:
+
+| Value     | Behaviour                                                                |
+|:----------|:-------------------------------------------------------------------------|
+| `prefer`  | Bind when the connection is encrypted and the server offers it. Default. |
+| `require` | Refuse to log in at all unless the exchange was bound.                   |
+| `disable` | Never offer it; the exchange declares no support for binding.            |
+
+PostgreSQL offers `SCRAM-SHA-256-PLUS` on every encrypted connection, so under the default *every* TLS connection to PostgreSQL ends up bound — there is nothing to switch on. What `require` buys is the failure: without TLS, or against a server that does not offer binding, you get an `InitializationException(UNSUPPORTED_MECHANISM)` rather than a quietly unbound login. It also rejects a connection the server waved through without asking, since `trust` is not a bound exchange either.
+
+Binding hashes the certificate; it does not judge it. That still belongs to [`verify-full`](#ssl), and the two answer different questions worth answering together: binding proves the exchange reached the holder of *that* certificate, `verify-full` proves that certificate is the one you meant to reach.
+
+> [!NOTE]
+> When the connection is encrypted but the server offers no binding mechanism, the driver says as much in the handshake instead of silently taking the weaker exchange. PostgreSQL always offers binding over TLS, so it reads that as the contradiction it is and answers `SCRAM channel binding negotiation error`. Meeting that error means something between you and the server rewrote the mechanism list.
 
 ### The first connection pays for the type catalog
 
@@ -353,7 +371,7 @@ Three members on the session that are easy to miss, all of them about the connec
 | `portNumber` (or `port`)       | `5432`      | Port the server listens on.     |
 | `databaseName` (or `database`) | `postgres`  | Database to connect to.         |
 
-There is no property selecting an authentication method: [SCRAM-SHA-256 is the only one implemented](#authentication-is-scram-sha-256-and-nothing-else).
+There is no property selecting an authentication method: [SCRAM-SHA-256 is the only one implemented](#authentication-is-scram-sha-256-and-nothing-else). What you can choose is whether it must be [bound to the TLS channel](#channel-binding), with `channelBinding` in the SSL table below.
 
 ### Network and limits
 
@@ -370,14 +388,15 @@ There is no property selecting an authentication method: [SCRAM-SHA-256 is the o
 
 ### SSL
 
-| Property      | Default                                | Meaning                                                                                      |
-|:--------------|:---------------------------------------|:---------------------------------------------------------------------------------------------|
-| `sslmode`     | `PREFER`, or `REQUIRE` if `ssl = true` | Negotiation mode; see the table below.                                                       |
-| `ssl`         | unset                                  | Shorthand: `true` raises the default to `REQUIRE`. Ignored when `sslmode` is set explicitly. |
-| `sslrootcert` | none                                   | Path to the root CA certificate.                                                             |
-| `sslcert`     | none                                   | Path to the client certificate.                                                              |
-| `sslkey`      | none                                   | Path to the client private key.                                                              |
-| `sslpassword` | none                                   | Password protecting the client private key.                                                  |
+| Property         | Default                                | Meaning                                                                                      |
+|:-----------------|:---------------------------------------|:---------------------------------------------------------------------------------------------|
+| `sslmode`        | `PREFER`, or `REQUIRE` if `ssl = true` | Negotiation mode; see the table below.                                                       |
+| `ssl`            | unset                                  | Shorthand: `true` raises the default to `REQUIRE`. Ignored when `sslmode` is set explicitly. |
+| `sslrootcert`    | none                                   | Path to the root CA certificate.                                                             |
+| `sslcert`        | none                                   | Path to the client certificate.                                                              |
+| `sslkey`         | none                                   | Path to the client private key.                                                              |
+| `sslpassword`    | none                                   | Password protecting the client private key.                                                  |
+| `channelBinding` | `PREFER`                               | How hard to insist on [channel binding](#channel-binding) for authentication.                |
 
 | `SslMode`     | Behaviour                                                                                                                  |
 |:--------------|:---------------------------------------------------------------------------------------------------------------------------|
