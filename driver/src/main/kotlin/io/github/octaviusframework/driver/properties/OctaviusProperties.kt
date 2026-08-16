@@ -234,15 +234,34 @@ class OctaviusProperties {
             val prefix = "jdbc:octavius://"
             if (url.startsWith(prefix)) {
                 val withoutPrefix = url.substring(prefix.length)
-                val slashIndex = withoutPrefix.indexOf('/')
 
-                val hostPort = if (slashIndex != -1) withoutPrefix.substring(0, slashIndex) else withoutPrefix
-                val dbPart = if (slashIndex != -1) withoutPrefix.substring(slashIndex + 1) else "postgres"
+                // The query is split off before the authority, not after the database name: a URL that
+                // omits the `/database` part would otherwise swallow the '?' into the host, taking every
+                // parameter with it.
+                val authorityAndDb = withoutPrefix.substringBefore('?')
+                val query = if (withoutPrefix.contains('?')) withoutPrefix.substringAfter('?') else ""
 
-                val dbNameRaw = dbPart.substringBefore('?')
-                octaviusProperties.databaseName = URLDecoder.decode(dbNameRaw, "UTF-8")
+                val slashIndex = authorityAndDb.indexOf('/')
+                val hostPort = if (slashIndex != -1) authorityAndDb.substring(0, slashIndex) else authorityAndDb
+                val dbNameRaw = if (slashIndex != -1) authorityAndDb.substring(slashIndex + 1) else ""
 
-                val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
+                // The URL is applied over `info`, so it wins - but only where it actually states
+                // something. An absent host, port or database leaves whatever `info` supplied in place
+                // instead of overwriting it with a default; the defaults belong to the connection
+                // factory, which is the one place that knows them.
+                val colonIndex = hostPort.indexOf(':')
+                val host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
+                if (host.isNotEmpty()) {
+                    octaviusProperties.serverName = URLDecoder.decode(host, "UTF-8")
+                }
+                if (colonIndex != -1) {
+                    hostPort.substring(colonIndex + 1).toIntOrNull()?.let { octaviusProperties.portNumber = it }
+                }
+                if (dbNameRaw.isNotEmpty()) {
+                    octaviusProperties.databaseName = URLDecoder.decode(dbNameRaw, "UTF-8")
+                }
+
+                // Applied last, so a parameter spelling out `host` or `port` beats the authority.
                 if (query.isNotEmpty()) {
                     query.split("&").forEach {
                         // Only the first '=' separates: a value is free to contain more of them,
@@ -254,16 +273,6 @@ class OctaviusProperties {
                             octaviusProperties.setProperty(key, value)
                         }
                     }
-                }
-
-                val colonIndex = hostPort.indexOf(':')
-                if (octaviusProperties.serverName == null) {
-                    octaviusProperties.serverName =
-                        if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
-                }
-                if (octaviusProperties.portNumber == null) {
-                    octaviusProperties.portNumber =
-                        if (colonIndex != -1) hostPort.substring(colonIndex + 1).toIntOrNull() else 5432
                 }
             }
             return octaviusProperties

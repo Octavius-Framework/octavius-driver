@@ -3,6 +3,7 @@ package io.github.octaviusframework.driver.properties
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import java.util.Properties
 
 class OctaviusPropertiesTest {
 
@@ -45,6 +46,101 @@ class OctaviusPropertiesTest {
 
         assertEquals("sen=atus", parsed.sslpassword)
         assertEquals("-c search_path=curia", parsed.additionalProperties["options"])
+    }
+
+    @Test
+    fun `url should win over info where it states something`() {
+        val info = Properties()
+        info.setProperty("serverName", "from-info")
+        info.setProperty("portNumber", "1111")
+        info.setProperty("databaseName", "db-from-info")
+        info.setProperty("user", "user-from-info")
+
+        val props = OctaviusProperties.parse("jdbc:octavius://from-url:2222/db-from-url?user=user-from-url", info)
+
+        assertEquals("from-url", props.serverName)
+        assertEquals(2222, props.portNumber)
+        assertEquals("db-from-url", props.databaseName)
+        assertEquals("user-from-url", props.user)
+    }
+
+    @Test
+    fun `url should leave info alone where it states nothing`() {
+        val info = Properties()
+        info.setProperty("serverName", "from-info")
+        info.setProperty("portNumber", "1111")
+        info.setProperty("databaseName", "db-from-info")
+
+        val props = OctaviusProperties.parse("jdbc:octavius://?user=consul", info)
+
+        assertEquals("from-info", props.serverName)
+        assertEquals(1111, props.portNumber)
+        assertEquals("db-from-info", props.databaseName)
+        assertEquals("consul", props.user)
+    }
+
+    @Test
+    fun `a url without a database should not reset the one info supplied`() {
+        val info = Properties()
+        info.setProperty("databaseName", "db-from-info")
+
+        val props = OctaviusProperties.parse("jdbc:octavius://from-url:2222", info)
+
+        assertEquals("from-url", props.serverName)
+        assertEquals(2222, props.portNumber)
+        assertEquals("db-from-info", props.databaseName)
+    }
+
+    @Test
+    fun `a url without a port should not reset the one info supplied`() {
+        val info = Properties()
+        info.setProperty("portNumber", "1111")
+
+        val props = OctaviusProperties.parse("jdbc:octavius://from-url/db", info)
+
+        assertEquals("from-url", props.serverName)
+        assertEquals(1111, props.portNumber)
+        assertEquals("db", props.databaseName)
+    }
+
+    @Test
+    fun `should leave host port and database unset when the url states none of them`() {
+        val props = OctaviusProperties.parse("jdbc:octavius://")
+
+        assertNull(props.serverName)
+        assertNull(props.portNumber)
+        assertNull(props.databaseName)
+    }
+
+    @Test
+    fun `should read query parameters from a url that omits the database`() {
+        val props = OctaviusProperties.parse("jdbc:octavius://db.local:5433?user=consul&socketTimeout=30")
+
+        assertEquals("db.local", props.serverName)
+        assertEquals(5433, props.portNumber)
+        assertNull(props.databaseName)
+        assertEquals("consul", props.user)
+        assertEquals(30, props.socketTimeout)
+    }
+
+    @Test
+    fun `a query parameter should win over the authority it follows`() {
+        val props = OctaviusProperties.parse("jdbc:octavius://from-authority:2222/db?host=from-query&port=3333")
+
+        assertEquals("from-query", props.serverName)
+        assertEquals(3333, props.portNumber)
+    }
+
+    @Test
+    fun `a url that is not ours should leave info untouched`() {
+        val info = Properties()
+        info.setProperty("serverName", "from-info")
+        info.setProperty("databaseName", "db-from-info")
+
+        val props = OctaviusProperties.parse("jdbc:postgresql://elsewhere:9999/other", info)
+
+        assertEquals("from-info", props.serverName)
+        assertEquals("db-from-info", props.databaseName)
     }
 
     @Test
