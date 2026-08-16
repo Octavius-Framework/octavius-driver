@@ -16,13 +16,7 @@ internal object ReflectionCompositeParameterConverter : ParameterConverter<Any> 
     override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
         if (!sourceClass.isData) return false
         val registration = context.typeManager.converterRegistry.registeredComposites[sourceClass]
-        if (registration != null) return true
-
-        if (expectedOid.isKnownOid) {
-            return context.typeManager.typeDictionary.getPgType(expectedOid) is PgType.Composite
-        }
-
-        return false
+        return registration != null
     }
 
     override fun convert(source: Any, expectedOid: Int, context: SerializationContext): Any {
