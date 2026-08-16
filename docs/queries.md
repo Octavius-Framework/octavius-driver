@@ -74,7 +74,7 @@ Reach for a `fetch*` method whenever the statement produces rows — a `SELECT`,
 |:-------------------------|:--------------------|:-----------------------|:----------------------------|:------------------|
 | **Raw columns** (`Row`)  | `fetchRows()`       | `fetchRow(): Row?`     | `fetchRowStrict(): Row`     | `forEachRow()`    |
 | **Mapped to your class** | `fetchObjects<T>()` | `fetchObject<T>(): T?` | `fetchObjectStrict<T>(): T` | `forEachObject()` |
-| **First column only**    | `fetchFields<T>()`  | `fetchField<T>(): T?`  | `fetchFieldStrict<T>(): T`  | `forEachField()`  |
+| **First column only**    | `fetchFields<T>()`  | `fetchField<T>(): T`   | `fetchFieldStrict<T>(): T`  | `forEachField()`  |
 
 ```kotlin
 // Raw columns - pull what you need out of the Row
@@ -128,18 +128,32 @@ val asClass: Senator = row.get(0)     // same bytes, not decoded again
 
 ## Nullability and the Strict variants
 
-Two independent things can go missing here, and they are handled by different halves of the API. **How many rows came back** is what the `Strict` suffix governs; **whether the value itself is SQL `NULL`** is governed by how you type `T`. Confusing the two is the usual source of surprise, so here is the whole matrix for the field family:
+Two independent things can go missing here, and they are handled by different halves of the API. **How many rows came back** is what the `Strict` suffix governs; **whether a value was there at all** is governed by how you type `T`. Confusing the two is the usual source of surprise, so here is the whole matrix for the field family:
 
 | Situation                                  | `fetchField<T>()`                              | `fetchFieldStrict<T>()`                        |
 |:-------------------------------------------|:-----------------------------------------------|:-----------------------------------------------|
-| No rows                                    | `null`                                         | `StatementException(INCORRECT_RESULT_SIZE)`    |
+| No rows, `T` nullable                      | `null`                                         | `StatementException(INCORRECT_RESULT_SIZE)`    |
+| No rows, `T` not nullable                  | `MappingException(REQUIRED_ATTRIBUTE_MISSING)` | `StatementException(INCORRECT_RESULT_SIZE)`    |
 | More than one row                          | `StatementException(INCORRECT_RESULT_SIZE)`    | `StatementException(INCORRECT_RESULT_SIZE)`    |
 | One row, value is `NULL`, `T` nullable     | `null`                                         | `null`                                         |
 | One row, value is `NULL`, `T` not nullable | `MappingException(REQUIRED_ATTRIBUTE_MISSING)` | `MappingException(REQUIRED_ATTRIBUTE_MISSING)` |
 
-Two rows of that table are worth reading twice. **A missing row never throws in the plain variant** — even `fetchField<String>()` with a non-nullable `T` quietly returns `null` when nothing matched, because the value was never produced to convert. And **a `NULL` value with a non-nullable `T` throws in both variants**, `Strict` or not: that is a mapping failure, not a result-size one. If the column is nullable, say so — `fetchField<String?>()` — and the same goes for the list form, `fetchFields<String?>()`.
+The thing to read twice is that **`T`'s nullability covers both ways a value can be absent**, and treats them the same. A row that never matched and a row carrying SQL `NULL` are the same answer as far as your type is concerned — you asked for a `String`, there is no `String` — so both raise `REQUIRED_ATTRIBUTE_MISSING`. If the lookup is allowed to find nothing, say so: `fetchField<String?>()`, and the same goes for the list form, `fetchFields<String?>()`.
 
-`fetchRow` and `fetchObject` follow the first two rows of the table identically. All of them ask the server for at most two rows, so a single-result query that accidentally matches a million does not drag them across the wire before failing.
+That is what separates it from the `Strict` suffix, which counts rows and nothing else. `fetchFieldStrict<String?>()` still refuses an empty result — with `INCORRECT_RESULT_SIZE`, because zero rows is the wrong *number* of rows regardless of what a value would have been.
+
+**Only the field family works this way, and the signature is what tells you so.** `fetchObject<T : Any>` bounds `T` to a non-null type and `fetchRow` returns a plain `Row?`, so neither has a nullable `T` to read an intention from — they cannot distinguish "I expect a row" from "there may be none", and simply return `null` when nothing matched; `fetchRowStrict` and `fetchObjectStrict` are how you demand a row there. `fetchField<T>` is the one that leaves `T` unbounded, and that is deliberate: it is the parameter you use to say whether a value is required.
+
+Which is why it returns `T` rather than `T?`. Nullability lives in `T` and comes back exactly as you declared it, so a non-nullable one needs no unwrapping at the call site:
+
+```kotlin
+val cognomen: String  = session.createNativeQuery("SELECT cognomen FROM senators WHERE id = $1").fetchField(7)
+val patron: String?   = session.createNativeQuery("SELECT patron FROM senators WHERE id = $1").fetchField<String?>(7)
+```
+
+`Row.get<T>()`, `fetchFields<T>(): List<T>` and `fetchFieldStrict<T>(): T` read `T` the same way, so the whole family is consistent: you never receive a `null` you did not ask for, and never have to `!!` one away.
+
+All of them ask the server for at most two rows, so a single-result query that accidentally matches a million does not drag them across the wire before failing.
 
 ## Streaming large results
 

@@ -2,6 +2,7 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
@@ -286,7 +287,26 @@ class NamedParameterQuery internal constructor(
     /** Same as [fetchFields], with the values given as `Pair`s. */
     inline fun <reified T> fetchFields(vararg params: Pair<String, Any?>): List<T> = fetchFields(params.toMap())
 
-    inline fun <reified T> fetchField(params: Map<String, Any?>): T? {
+    /**
+     * Executes the query and returns the first column of its single row.
+     *
+     * **How you declare [T] states whether a value has to be there at all**, and it covers both ways one
+     * can be absent: no row matched, or a row matched carrying SQL `NULL`. Under a non-nullable [T] both
+     * raise `REQUIRED_ATTRIBUTE_MISSING`; under a nullable one both come back as `null`. Declare
+     * `fetchField<String?>()` for a lookup that is allowed to find nothing.
+     *
+     * How *many* rows came back is a separate question, governed by the `Strict` suffix: this variant
+     * tolerates none, [fetchFieldStrict] insists on exactly one, and both reject more than one.
+     *
+     * @param T The type the column is mapped to. Its nullability is the whole contract: [T] comes back
+     *   as declared, so a non-nullable one is guaranteed non-null and never needs unwrapping.
+     * @param params Values by parameter name, without the leading `@`.
+     * @return The value, which is `null` only where [T] is itself nullable.
+     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if [T] is not nullable and no row matched, or
+     *   the value was `NULL`.
+     */
+    inline fun <reified T> fetchField(params: Map<String, Any?>): T {
         val targetType = typeOf<T>()
         return withPreparedQuery(params) { transformedSql, listParams ->
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
@@ -299,12 +319,21 @@ class NamedParameterQuery internal constructor(
                 StatementExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
-            rows.firstOrNull()
+            // A missing row and a NULL value are the same absence as far as the caller's type is
+            // concerned: asking for a non-nullable T is asking for a value, and there is none.
+            if (rows.isEmpty() && !targetType.isMarkedNullable) throw MappingException(
+                MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING,
+                details = "No rows returned, and the requested type $targetType is not nullable. " +
+                        "Declare it nullable to receive null when nothing matched."
+            )
+            // Empty here means T is nullable, checked just above; a present row already holds a T.
+            @Suppress("UNCHECKED_CAST")
+            rows.firstOrNull() as T
         }
     }
 
     /** Same as [fetchField], with the values given as `Pair`s. */
-    inline fun <reified T> fetchField(vararg params: Pair<String, Any?>): T? = fetchField(params.toMap())
+    inline fun <reified T> fetchField(vararg params: Pair<String, Any?>): T = fetchField(params.toMap())
 
     /**
      * Executes the query and returns the first column of its single row, requiring exactly one row.
