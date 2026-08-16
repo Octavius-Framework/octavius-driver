@@ -134,10 +134,12 @@ class OctaviusProperties {
                 val query = if (dbPart.contains('?')) dbPart.substringAfter('?') else ""
                 if (query.isNotEmpty()) {
                     query.split("&").forEach {
-                        val parts = it.split("=")
-                        if (parts.size == 2) {
-                            val key = URLDecoder.decode(parts[0], "UTF-8")
-                            val value = URLDecoder.decode(parts[1], "UTF-8")
+                        // Only the first '=' separates: a value is free to contain more of them,
+                        // as a password or an `options=-c key=value` string routinely does.
+                        val separator = it.indexOf('=')
+                        if (separator > 0) {
+                            val key = URLDecoder.decode(it.substring(0, separator), "UTF-8")
+                            val value = URLDecoder.decode(it.substring(separator + 1), "UTF-8")
                             octaviusProperties.setProperty(key, value)
                         }
                     }

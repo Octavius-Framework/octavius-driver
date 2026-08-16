@@ -25,6 +25,10 @@
 - `PgNotice` carries `processId`, the backend process id its log line was already prefixed with, and its `toString` carries that prefix itself. A `NoticeHandler` declared as a Kotlin `object` is shared by every connection, so it received the notices of a whole pool through one method with nothing to tell them apart - the log knew which backend raised a notice and the handler did not. The id is not a field of `NoticeResponse`; the driver takes it from the `BackendKeyData` of the startup handshake, so a notice raised before that handshake finished reports `-1`. It is unrelated to `PgNotification.processId`, which names the foreign backend that executed the `NOTIFY`
 - A parameter that reaches the end of the converter chain unclaimed is now checked against the codec bound to its target OID, where one is known. A class that codec cannot encode raises `MappingException(NO_CONVERTER_FOUND)` naming both sides, with the attribute or element index in `path` - matching how the read direction reports the same mistake. Previously these surfaced one layer down as `CodecException(ENCODING)` with no path: an unregistered nested data class as a bare `ClassCastException`, and a width mismatch such as an `Int` bound for `int8` (including array elements, as in `listOf(1, 2, 3).withPgType(INT8_ARRAY)`) as an encoding failure. Values a converter does claim are unaffected
 
+#### Fixed
+
+- A query-string value containing `=` is no longer dropped from the JDBC URL - only the first `=` separates the key from the value, so a password or an `options=-c search_path=curia` string arrives intact instead of being silently ignored
+
 ## Version 0.9.5 (v0.9.5)
 
 #### Added
