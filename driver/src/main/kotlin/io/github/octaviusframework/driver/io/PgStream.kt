@@ -255,13 +255,7 @@ internal class PgStream(
                         return ParameterStatusMessage(name, value)
                     }
                     'N' -> {
-                        val fields = mutableMapOf<Char, String>()
-                        while (true) {
-                            val token = inputStream.readByte().toInt().toChar()
-                            if (token == '\u0000') break
-                            fields[token] = inputStream.readCString()
-                        }
-                        val notice = PgNotice(processId, fields)
+                        val notice = PgNotice.from(processId, parseErrorOrNotice())
 
                         when (notice.severity) {
                             "WARNING" -> noticeLogger.warn { "$notice" }
@@ -285,7 +279,7 @@ internal class PgStream(
                         _notifications.tryEmit(PgNotification(pid, channel, payload))
                     }
                     'R' -> return parseAuthentication(payloadLength)
-                    'E' -> return parseErrorResponse(payloadLength)
+                    'E' -> return parseErrorOrNotice()
                     'v' -> {
                         val newestMinorVersion = inputStream.readInt()
                         val numUnrecognizedOptions = inputStream.readInt()
@@ -464,12 +458,14 @@ internal class PgStream(
     }
 
     /**
-     * Parses an error response message from the backend.
+     * Parses the field set an ErrorResponse (Tag 'E') and a NoticeResponse (Tag 'N') share.
      *
-     * @param payloadLength The length of the message payload.
-     * @return The parsed ErrorResponseMessage.
+     * The fields terminate themselves with a zero byte, so the payload length says nothing this
+     * needs and is not taken.
+     *
+     * @return The parsed [ErrorOrNoticeMessage].
      */
-    private fun parseErrorResponse(payloadLength: Int): BackendMessage {
+    private fun parseErrorOrNotice(): ErrorOrNoticeMessage {
         val fields = mutableMapOf<Char, String>()
         while (true) {
             val token = inputStream.readByte().toInt().toChar()
@@ -477,7 +473,7 @@ internal class PgStream(
             val value = inputStream.readCString()
             fields[token] = value
         }
-        return ErrorResponseMessage(fields)
+        return ErrorOrNoticeMessage(fields)
     }
 
     /**

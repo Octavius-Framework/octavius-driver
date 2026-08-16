@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.message
 
-import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
+import io.github.octaviusframework.driver.message.backend.ErrorOrNoticeMessage
 
 /**
  * A publicly exposed data class containing all detailed fields provided by the PostgreSQL backend
@@ -8,11 +8,12 @@ import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
  *
  * Reachable as [OctaviusException.serverErrorMessage][io.github.octaviusframework.driver.exception.OctaviusException.serverErrorMessage]
  * on any exception the server raised, and the place to look when the driver's own categorization is
- * not specific enough - the constraint that was violated, the column that was at fault. Every field
- * apart from [message] is optional, and which ones the server fills in depends on the error.
+ * not specific enough
  *
  * @property severity `ERROR`, `FATAL` or `PANIC`, always in English: it is read from the non-localized
  *   field, which every server the driver will talk to sends. Safe to compare against as a string.
+ * @property localizedSeverity The same severity as the server translated it, which is what a non-English
+ *   `lc_messages` changes. Fit for showing to a person, not for comparing against.
  * @property code The five-character SQLSTATE.
  * @property message The primary human-readable message.
  * @property detail Secondary detail carrying more about the problem.
@@ -33,8 +34,9 @@ import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
  * @property routine The PostgreSQL C function that reported it.
  */
 data class ServerErrorMessage(
-    val severity: String?,
-    val code: String?,
+    val severity: String,
+    val localizedSeverity: String,
+    val code: String,
     val message: String,
     val detail: String?,
     val hint: String?,
@@ -52,9 +54,10 @@ data class ServerErrorMessage(
     val routine: String?
 ) {
     internal companion object {
-        fun from(errorMsg: ErrorResponseMessage): ServerErrorMessage {
+        fun from(errorMsg: ErrorOrNoticeMessage): ServerErrorMessage {
             return ServerErrorMessage(
                 severity = errorMsg.severity,
+                localizedSeverity = errorMsg.localizedSeverity,
                 code = errorMsg.code,
                 message = errorMsg.message,
                 detail = errorMsg.detail,

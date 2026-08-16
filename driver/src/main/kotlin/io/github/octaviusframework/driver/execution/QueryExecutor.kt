@@ -58,12 +58,12 @@ class QueryExecutor internal constructor(
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
-        var errorResponse: ErrorResponseMessage? = null
+        var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
         while (true) {
             val msg = stream.receiveMessage()
             when (msg) {
-                is ErrorResponseMessage -> errorResponse = msg
+                is ErrorOrNoticeMessage -> errorResponse = msg
                 is ReadyForQueryMessage -> {
                     transactionStatus = msg.transactionStatus
                     break
@@ -113,7 +113,7 @@ class QueryExecutor internal constructor(
         stream.flush()
         
         var rowsAffected = 0L
-        var errorResponse: ErrorResponseMessage? = null
+        var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
         
         while (true) {
@@ -135,7 +135,7 @@ class QueryExecutor internal constructor(
                         )
                     }
                 }
-                is ErrorResponseMessage -> {
+                is ErrorOrNoticeMessage -> {
                     if (errorResponse == null) errorResponse = msg
                 }
                 is ReadyForQueryMessage -> {
@@ -197,7 +197,7 @@ class QueryExecutor internal constructor(
         
         val rows = mutableListOf<R>()
         var rowMetadata: RowMetadata? = null
-        var errorResponse: ErrorResponseMessage? = null
+        var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
         
         while (true) {
@@ -238,7 +238,7 @@ class QueryExecutor internal constructor(
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
-                is ErrorResponseMessage -> {
+                is ErrorOrNoticeMessage -> {
                     if (errorResponse == null) errorResponse = msg
                 }
                 is ReadyForQueryMessage -> {
@@ -283,7 +283,7 @@ class QueryExecutor internal constructor(
         stream.sendMessage(DescribeMessage('P', portalName))
         
         var rowMetadata: RowMetadata? = null
-        var errorResponse: ErrorResponseMessage? = null
+        var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
 
         fetchLoop@ while (true) {
@@ -324,7 +324,7 @@ class QueryExecutor internal constructor(
                     is NoDataMessage, is CommandCompleteMessage -> {
                         break@fetchLoop
                     }
-                    is ErrorResponseMessage -> {
+                    is ErrorOrNoticeMessage -> {
                         errorResponse = msg
                         break@fetchLoop
                     }
@@ -341,7 +341,7 @@ class QueryExecutor internal constructor(
             if (msg is ReadyForQueryMessage) {
                 transactionStatus = msg.transactionStatus
                 break
-            } else if (msg is ErrorResponseMessage) {
+            } else if (msg is ErrorOrNoticeMessage) {
                 if (errorResponse == null) errorResponse = msg
             }
         }

@@ -56,9 +56,9 @@ The hierarchy is flat — fifteen concrete subclasses directly under `OctaviusEx
 
 When PostgreSQL rejects something, it sends an `ErrorResponse` message. What happens next is deliberately unhurried:
 
-1. **The executor records, it does not throw.** `QueryExecutor` stores the `ErrorResponseMessage` in a local and keeps looping.
+1. **The executor records, it does not throw.** `QueryExecutor` parks the error in a local and keeps looping.
 2. **The protocol is drained.** The loop continues until `ReadyForQuery` arrives, which also carries the current transaction status (`I` idle, `T` in transaction, `E` failed transaction) and updates the executor's `transactionStatus`. Skipping this would leave unread bytes in the socket and poison every later query on that connection.
-3. **`ExceptionTranslator` classifies.** The SQLSTATE is matched against the [routing table](#sqlstate-routing), producing a concrete subclass plus its reason enum, with `ServerErrorMessage.from(errorMsg)` attached.
+3. **`ExceptionTranslator` classifies.** The SQLSTATE is matched against the [routing table](#sqlstate-routing), producing a concrete subclass plus its reason enum, with the `ServerErrorMessage` attached.
 4. **The query layer attaches context.** `OctaviusQuery.withQueryContext` wraps every execution method; on the way out it catches the `OctaviusException` and fills in `queryContext` — *only if it is still null*, so the innermost frame that knows the real SQL wins and outer frames don't overwrite it.
 5. **It surfaces.** Which type you actually catch depends on the API you entered through — see [Crossing into JDBC and Spring](#crossing-into-jdbc-and-spring).
 

@@ -68,7 +68,7 @@ internal object Authenticator {
                     )
                 }
 
-                is ErrorResponseMessage -> {
+                is ErrorOrNoticeMessage -> {
                     throw ExceptionTranslator.translate(msg)
                 }
 

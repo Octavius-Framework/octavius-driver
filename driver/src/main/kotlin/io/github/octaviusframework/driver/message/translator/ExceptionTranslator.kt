@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.message.translator
 
 import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.message.ServerErrorMessage
-import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
+import io.github.octaviusframework.driver.message.backend.ErrorOrNoticeMessage
 
 /**
  * This component categorizes PostgreSQL error messages based on their `SQLSTATE`
@@ -12,9 +12,9 @@ import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
  */
 internal object ExceptionTranslator {
 
-    fun translate(errorMsg: ErrorResponseMessage): OctaviusException {
+    fun translate(errorMsg: ErrorOrNoticeMessage): OctaviusException {
         val serverErrorMessage = ServerErrorMessage.from(errorMsg)
-        val state = errorMsg.code ?: ""
+        val state = errorMsg.code
 
         return when {
             // Class 08 — Connection Exception

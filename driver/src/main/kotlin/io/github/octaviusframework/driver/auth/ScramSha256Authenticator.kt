@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.AuthenticationMessage
-import io.github.octaviusframework.driver.message.backend.ErrorResponseMessage
+import io.github.octaviusframework.driver.message.backend.ErrorOrNoticeMessage
 import io.github.octaviusframework.driver.message.frontend.SASLInitialResponse
 import io.github.octaviusframework.driver.message.frontend.SASLResponse
 import io.github.octaviusframework.driver.message.translator.ExceptionTranslator
@@ -173,7 +173,7 @@ internal object ScramSha256Authenticator {
      */
     private inline fun <reified T : AuthenticationMessage> expect(stream: PgStream): T {
         val message = stream.receiveMessage()
-        if (message is ErrorResponseMessage) throw ExceptionTranslator.translate(message)
+        if (message is ErrorOrNoticeMessage) throw ExceptionTranslator.translate(message)
         return message as? T ?: throw InitializationException(
             InitializationExceptionReason.PROTOCOL_VIOLATION,
             details = "Expected ${T::class.simpleName}, got: $message"

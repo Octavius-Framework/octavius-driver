@@ -1,9 +1,18 @@
 package io.github.octaviusframework.driver.message.backend
 
 /**
- * Error response from server (Tag 'E').
+ * The fields of an ErrorResponse (Tag 'E') or of a NoticeResponse (Tag 'N').
+ *
+ * The two messages carry the same field set and differ only in their tag and in what [severity]
+ * says, so one class reads both. An error is returned from the stream and becomes an exception
+ * through [ExceptionTranslator][io.github.octaviusframework.driver.message.translator.ExceptionTranslator];
+ * a notice never leaves the stream and becomes a
+ * [PgNotice][io.github.octaviusframework.driver.notice.PgNotice] there.
+ *
+ * [severity], [localizedSeverity], [code] and [message] are the fields the protocol requires of
+ * either message; which of the rest arrive depends on what raised it.
  */
-internal class ErrorResponseMessage(val fields: Map<Char, String>) : BackendMessage {
+internal class ErrorOrNoticeMessage(val fields: Map<Char, String>) : BackendMessage {
 
     companion object {
         private const val SEVERITY_LOCALIZED: Char = 'S'
@@ -25,9 +34,12 @@ internal class ErrorResponseMessage(val fields: Map<Char, String>) : BackendMess
         private const val LINE: Char = 'L'
         private const val ROUTINE: Char = 'R'
     }
-    val severity: String? get() = fields[SEVERITY_NON_LOCALIZED] ?: fields[SEVERITY_LOCALIZED]
 
-    val code: String? get() = fields[SQLSTATE]
+    val localizedSeverity: String get() = fields[SEVERITY_LOCALIZED]!!
+
+    val severity: String get() = fields[SEVERITY_NON_LOCALIZED]!!
+
+    val code: String get() = fields[SQLSTATE]!!
 
     val message: String get() = fields[MESSAGE]!!
     val detail: String? get() = fields[DETAIL]
@@ -46,6 +58,6 @@ internal class ErrorResponseMessage(val fields: Map<Char, String>) : BackendMess
     val routine: String? get() = fields[ROUTINE]
 
     override fun toString(): String {
-        return "ErrorResponse(severity=$severity, code=$code, message=$message, schema=$schema, table=$table, column=$column, constraint=$constraint)"
+        return "ErrorOrNotice(severity=$severity, code=$code, message=$message, schema=$schema, table=$table, column=$column, constraint=$constraint)"
     }
 }

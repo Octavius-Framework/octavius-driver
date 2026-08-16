@@ -48,11 +48,11 @@ class CopyManager internal constructor(private val stream: PgStream) {
             stream.sendMessage(SimpleQueryMessage(sql))
             stream.flush()
 
-            var errorResponse: ErrorResponseMessage? = null
+            var errorResponse: ErrorOrNoticeMessage? = null
             while (true) {
                 val msg = stream.receiveMessage()
                 when (msg) {
-                    is ErrorResponseMessage -> errorResponse = msg
+                    is ErrorOrNoticeMessage -> errorResponse = msg
                     is CopyInResponseMessage -> {
                         return CopyIn(stream).also { lastOperation = it }
                     }
@@ -91,11 +91,11 @@ class CopyManager internal constructor(private val stream: PgStream) {
             stream.sendMessage(SimpleQueryMessage(sql))
             stream.flush()
 
-            var errorResponse: ErrorResponseMessage? = null
+            var errorResponse: ErrorOrNoticeMessage? = null
             while (true) {
                 val msg = stream.receiveMessage()
                 when (msg) {
-                    is ErrorResponseMessage -> errorResponse = msg
+                    is ErrorOrNoticeMessage -> errorResponse = msg
                     is CopyOutResponseMessage -> {
                         return CopyOut(stream).also { lastOperation = it }
                     }
@@ -246,11 +246,11 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
             stream.flush()
             
             var rowsAffected = 0L
-            var errorResponse: ErrorResponseMessage? = null
+            var errorResponse: ErrorOrNoticeMessage? = null
             while (true) {
                 val msg = stream.receiveMessage()
                 when (msg) {
-                    is ErrorResponseMessage -> errorResponse = msg
+                    is ErrorOrNoticeMessage -> errorResponse = msg
                     is CommandCompleteMessage -> {
                         val parts = msg.tag.split(" ")
                         if (parts.size >= 2) {
@@ -305,7 +305,7 @@ class CopyOut internal constructor(private val stream: PgStream) : CopyOperation
         stream.copyInProgress = true
     }
 
-    private var errorResponse: ErrorResponseMessage? = null
+    private var errorResponse: ErrorOrNoticeMessage? = null
 
     /**
      * Reads a chunk of data from the server.
@@ -328,7 +328,7 @@ class CopyOut internal constructor(private val stream: PgStream) : CopyOperation
                     is BackendCopyDoneMessage -> {
                         // Expect CommandComplete and ReadyForQuery
                     }
-                    is ErrorResponseMessage -> {
+                    is ErrorOrNoticeMessage -> {
                         errorResponse = msg
                     }
                     is CommandCompleteMessage -> { /* Ignore */ }
