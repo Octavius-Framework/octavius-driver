@@ -24,7 +24,7 @@ Contents:
 Starting a copy puts the connection into a dedicated mode that lasts until the transfer ends, one direction only, and that single fact drives everything else in this document:
 
 > [!WARNING]
-> **The SQL is not parameterized.** `COPY` has nothing to bind, so the statement is sent verbatim. Never build one by interpolating user input — a table or column name coming from outside your code needs validating or quoting yourself. Pass a single statement, too: the driver would silently ignore anything you chained ahead of the copy with `;`.
+> **The SQL is not parameterized.** `COPY` has nothing to bind, so the statement is sent verbatim. Never build one by interpolating user input — a table or column name coming from outside your code needs [validating or quoting yourself](queries.md#quoting-a-name-that-comes-from-outside). Pass a single statement, too: the driver would silently ignore anything you chained ahead of the copy with `;`.
 
 > [!IMPORTANT]
 > **The connection is occupied for the whole operation.** Between the moment a copy starts and the moment it finishes, that session can do nothing else — no queries, no transaction control. Attempting it throws `InvalidOperationException(COPY_IN_PROGRESS)` instead of corrupting the connection. See [Practical rules and gotchas](#practical-rules-and-gotchas).

@@ -370,6 +370,18 @@ That's a deliberate choice — there's no single clean equivalent in the Kotlin 
 
 So when you extract an interval, you get a `PgInterval` that preserves the raw database representation — months, days, microseconds — as-is. `PgInterval` exposes explicit extensions like `toDurationApproximate()`, `toDurationExact()`, and `toDateTimePeriod()`, so you decide how (and whether) to collapse it.
 
+The same extensions run the other way, for the parameter you are about to send:
+
+| Going out                            | Produces                                                                            |
+|:-------------------------------------|:------------------------------------------------------------------------------------|
+| `DateTimePeriod.toPgInterval()`      | Years folded into months; days and time carried across as they stand.               |
+| `Duration.toPgIntervalExact()`       | Time only — `months` and `days` stay zero, however long the duration is.            |
+| `Duration.toPgIntervalApproximate()` | Split into months of 30 days and days of 24 hours, the way `justify_interval` does. |
+
+`toPgIntervalExact()` is the one to reach for by default. A `Duration` is a claim about elapsed time; splitting `60.days` into "2 months" is a claim about the calendar that it never made, and the approximate form exists for when you do want that shape and accept the assumption under it. Infinite values survive in both directions, mapping to and from PostgreSQL's `infinity` and `-infinity`.
+
+Going the other way, `toDurationExact()` is the one that can refuse: an interval carrying months or days has no fixed length in absolute time, so it throws `IllegalArgumentException` rather than pick a convention on your behalf. That is easier to run into than it sounds — `age(a, b)` comes back as `1 year 7 mons 15 days`, and even a plain `a - b` between two timestamps counts in days. Keep it for intervals you know are pure time, and reach for `toDurationApproximate()` or `toDateTimePeriod()` wherever calendar units can appear.
+
 If your application consistently wants, say, an approximate `Duration`, writing and registering a custom `ResultConverter` lets you intercept and convert `PgInterval` values everywhere, automatically.
 
 ### PgTyped

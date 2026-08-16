@@ -228,13 +228,28 @@ The sequence is worth knowing, because two of its steps are where connections fa
 1. **The socket is opened**, with `loginTimeout` as its connect timeout.
 2. **SSL is negotiated** — unless `sslmode=disable`, the driver asks the server for TLS before anything else is sent. See the defaults below: by default it *tries*.
 3. **The startup message goes out**, carrying `user`, `database`, `client_encoding=UTF8` and every [additional property](#startup-parameters) you set.
-4. **Authentication runs** with the password supplied.
+4. **Authentication runs** with the password supplied — [SCRAM-SHA-256, and nothing else](#authentication-is-scram-sha-256-and-nothing-else).
 5. **Timeouts are applied** — `socketTimeout` becomes the socket read timeout, `maxCachedRowSize` the row buffer cap.
 6. **The server version is checked.** Anything below PostgreSQL 18 gets the connection closed and an `InitializationException(UNSUPPORTED_SERVER_VERSION)`, naming the version received.
 7. **The type catalog is loaded**, once per database — see below.
 
 > [!IMPORTANT]
 > **PostgreSQL 18 or newer is required.** Octavius speaks Wire Protocol v3.2 exclusively. Against an older server the failure shows up in step 6 as an `InitializationException`, or earlier at the protocol level during the handshake.
+
+### Authentication is SCRAM-SHA-256 and nothing else
+
+Step 4 has exactly two happy endings: the server asks for SCRAM-SHA-256, or the server asks for nothing at all — `trust` in `pg_hba.conf`, or a client certificate already accepted during the TLS handshake. Everything else is refused by the driver before a password leaves the JVM:
+
+| The server asks for          | Result                                                     |
+|:-----------------------------|:-----------------------------------------------------------|
+| SCRAM-SHA-256                | Connected.                                                 |
+| Nothing — `trust`, `cert`    | Connected.                                                 |
+| MD5, or a cleartext password | `InitializationException(UNSUPPORTED_PASSWORD_ENCRYPTION)` |
+| GSSAPI, SSPI, anything else  | `InitializationException(UNSUPPORTED_MECHANISM)`           |
+
+What decides which of those the server asks for is how the role's password is stored, not the `pg_hba.conf` line alone — a role whose password was set while `password_encryption` was `md5` still carries an MD5 verifier, and that is what the server offers whatever the line says. `ALTER ROLE … PASSWORD …` re-hashes it under the current setting, which on PostgreSQL 18 is SCRAM by default. Cleartext is what the `ldap`, `pam` and `radius` methods ask for, which is the other road to that same exception.
+
+The driver never selects `SCRAM-SHA-256-PLUS`, so the exchange runs without channel binding: a policy that requires it cannot be satisfied here, and encryption and server identity are left to [TLS](#ssl).
 
 ### The first connection pays for the type catalog
 
@@ -337,6 +352,8 @@ Three members on the session that are easy to miss, all of them about the connec
 | `serverName` (or `host`)       | `localhost` | Address of the database server. |
 | `portNumber` (or `port`)       | `5432`      | Port the server listens on.     |
 | `databaseName` (or `database`) | `postgres`  | Database to connect to.         |
+
+There is no property selecting an authentication method: [SCRAM-SHA-256 is the only one implemented](#authentication-is-scram-sha-256-and-nothing-else).
 
 ### Network and limits
 

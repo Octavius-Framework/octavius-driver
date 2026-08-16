@@ -53,6 +53,19 @@ session.createNamedQuery("SELECT * FROM t WHERE data @> @filter AND tsv @@ to_ts
 > [!NOTE]
 > Parameters are sent in binary under a concrete type, which is what makes a bare `null` ambiguous and can make PostgreSQL pick the wrong overload of a function. [Functions and Procedures](functions-procedures.md#argument-types-decide-which-routine-runs) covers that in detail, and `withPgType` is the way out.
 
+### Quoting a name that comes from outside
+
+A placeholder is a value, so a table or column chosen at runtime has to be interpolated into the SQL text instead. Where the name cannot be mapped onto one you wrote yourself, `quoteAsPgIdentifier()` is the escape hatch:
+
+```kotlin
+import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
+
+val table = tenantTable.quoteAsPgIdentifier()   // legio X  ->  "legio X"
+session.createNativeQuery("SELECT count(*) FROM $table").fetchFieldStrict<Long>()
+```
+
+It wraps the name in double quotes and doubles every quote inside it; a NUL character, which PostgreSQL cannot hold in an identifier at all, throws `StatementException(SYNTAX_ERROR)`. The driver uses it on its own behalf for `LISTEN` channels, savepoint names and `setSearchPath()`, so those already take arbitrary strings safely. It always quotes, which makes the name case-sensitive — `CREATE TABLE MixedCase` stores `mixedcase`, and quoting the string `MixedCase` matches nothing.
+
 ## Choosing a fetch method
 
 Reach for a `fetch*` method whenever the statement produces rows — a `SELECT`, or an `INSERT` / `UPDATE` / `DELETE` with `RETURNING`. Three families, differing only in what they hand back:
@@ -187,6 +200,22 @@ Handing `execute()` a row-returning statement is an error, not a silent discard:
 > val newId: Long = session.createNativeQuery("INSERT INTO senators (cognomen) VALUES ($1) RETURNING id")
 >     .fetchFieldStrict("Cato")
 > ```
+
+### `execute()` takes a whole script
+
+Because it speaks the Simple Query Protocol, `execute()` accepts several statements separated by `;`, and sends them in a single round trip:
+
+```kotlin
+session.createNativeQuery("""
+    CREATE TABLE castra (id serial PRIMARY KEY, nomen text NOT NULL);
+    CREATE INDEX idx_castra_nomen ON castra (nomen);
+    INSERT INTO castra (nomen) VALUES ('Vindobona')
+""").execute()
+```
+
+PostgreSQL wraps a script like that in an implicit transaction, so it is all or nothing: a statement failing halfway takes the ones before it down with it and nothing is left half-applied. Called inside `transaction.required { }` it simply joins the transaction already open, where the usual rollback rules apply instead. The ban on rows covers every statement in the script rather than only the first — one stray `SELECT` anywhere in it and the whole call is an `InvalidOperationException(UNEXPECTED_RESULT)`.
+
+The `fetch*` family and `update()` cannot do the same. They send one statement to `Parse`, where PostgreSQL permits exactly one, so `SELECT 1; SELECT 2` comes back as `StatementException(SYNTAX_ERROR)`. Nor can a script bind anything: a `$1` inside one is `StatementException(UNDEFINED_OBJECT)`, there being no `Bind` step to give it a value. Whatever varies belongs in a statement of its own, run through `update()`.
 
 ## Cancelling a query in flight
 

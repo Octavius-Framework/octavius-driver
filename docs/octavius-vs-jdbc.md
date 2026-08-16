@@ -96,6 +96,7 @@ Coming from `pgjdbc`, this is where each habit lands:
 | Plain JDBC / `pgjdbc`                           | Octavius                                                                                                                      |
 |:------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------|
 | `prepareStatement(sql)` + `setString(1, …)`     | `createNativeQuery` with `$1`, or `createNamedQuery` with `@name`                                                             |
+| `prepareThreshold`, statement caching           | Nothing — [every execution is parsed afresh](#nothing-is-prepared-server-side)                                                |
 | `executeQuery()` + `while (rs.next())`          | `fetchRows()`, `fetchObjects<T>()`, `fetchField<T>()`                                                                         |
 | `setFetchSize(n)` + a cursor loop               | [`forEach*`](queries.md#streaming-large-results)                                                                              |
 | `setMaxRows(n)`                                 | `LIMIT`                                                                                                                       |
@@ -111,6 +112,18 @@ Coming from `pgjdbc`, this is where each habit lands:
 Note which way those last rows point. `pgjdbc` hands you a vendor interface by *unwrapping* the connection; Octavius hands you a session by *wrapping* it. `connection.getOctaviusSession()` on a pooled `Connection` — or `dataSource.getOctaviusSession()` on the pool itself — builds the session around the connection you already hold, which is why `close()` still returns that connection to the pool. Getting down to the protocol underneath is the session's own business, done once, internally.
 
 The one unwrap left on the public surface points at the `DataSource`, not the connection: `dataSource.unwrapToOctavius()` digs out the `OctaviusDataSource` behind a pool configured with it.
+
+## Nothing Is Prepared Server-Side
+
+One row in that map has no counterpart at all, and it is worth a paragraph of its own. `pgjdbc` promotes a statement to a *named* server-side prepared statement once it has been executed `prepareThreshold` times — five, by default — and keeps a per-connection cache of them. Octavius has no such machinery and no property to tune: every execution goes out as `Parse` into the **unnamed** statement, then `Bind` and `Execute`. Run the same query twenty times and `pg_prepared_statements` still has nothing in it.
+
+What you give up is plan reuse. Parsing and planning happen on every execution, which is real work for a trivial statement in a tight loop — and the answer there is to make fewer round trips with [`UNNEST`](bulk-writes.md) or [`COPY`](copy.md), not to cache a plan.
+
+What you are spared is the other half of that bargain:
+
+* **No generic plans.** PostgreSQL plans the unnamed statement at `Bind`, with the actual parameter values in hand, so every execution gets a plan fitted to its own arguments. The classic "it was fast for the first five calls and then it wasn't" — a server switching a prepared statement to a parameter-blind generic plan — cannot happen here.
+* **No stale cached plans.** `cached plan must not change result type`, the error that follows a migration on a long-lived pooled connection, has no cache to come from.
+* **Nothing to deallocate.** A connection returned to the pool carries no statements forward, and there is no leak to chase when a pool is large and the query set is larger.
 
 ## Summary
 

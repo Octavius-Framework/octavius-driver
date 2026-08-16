@@ -38,23 +38,27 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [What Is Explicitly Unsupported](octavius-vs-jdbc.md#what-is-explicitly-unsupported) — `PreparedStatement`, `ResultSet`, batching, LOBs, metadata
 - [What Answers Quietly Instead of Throwing](octavius-vs-jdbc.md#what-answers-quietly-instead-of-throwing) — Calls a pool makes that must not fail
 - [Migration Map](octavius-vs-jdbc.md#migration-map) — JDBC idiom on the left, Octavius on the right
+- [Nothing Is Prepared Server-Side](octavius-vs-jdbc.md#nothing-is-prepared-server-side) — No `prepareThreshold`, no generic plans, no stale ones either
 
 ### Initialization & Configuration
 - [Getting a Session](initialization.md#getting-a-session) — Typed properties, `DriverManager`, `OctaviusDataSource`
 - [Adding HikariCP](initialization.md#adding-hikaricp-connection-pooling) — Via URL, via `OctaviusDataSource`, via a configured instance
 - [What Survives a Return to the Pool](initialization.md#what-survives-a-return-to-the-pool) — Session state a pooled connection carries forward
 - [What Happens When a Session Opens](initialization.md#what-happens-when-a-session-opens) — Handshake, authentication, catalog load
+- [Authentication Is SCRAM-SHA-256](initialization.md#authentication-is-scram-sha-256-and-nothing-else) — What the driver refuses, and why a server asks for it
 - [Startup Parameters](initialization.md#startup-parameters) — Unrecognized keys sent to the server
 - [Notices from the Server](initialization.md#notices-from-the-server) — Logging them, and handling them yourself
 - [Configuration Reference](initialization.md#configuration-reference) — Every property: connection, network, SSL
 
 ### Executing Queries
 - [Two Ways to Pass Parameters](queries.md#two-ways-to-pass-parameters) — Positional `$1` and named `@name`
+- [Quoting a Name From Outside](queries.md#quoting-a-name-that-comes-from-outside) — `quoteAsPgIdentifier()` for an identifier you have to interpolate
 - [Choosing a Fetch Method](queries.md#choosing-a-fetch-method) — `fetchRows`, `fetchObjects<T>`, `fetchField<T>`
 - [Reading a `Row`](queries.md#reading-a-row) — `get<T>()` by name or index
 - [Nullability and the Strict Variants](queries.md#nullability-and-the-strict-variants) — When a missing row throws
 - [Streaming Large Results](queries.md#streaming-large-results) — `forEach*` for results too large to hold
 - [Do Not Re-Enter the Session While Reading](queries.md#do-not-re-enter-the-session-while-rows-are-being-read) — The one rule streaming imposes
+- [`execute()` Takes a Whole Script](queries.md#execute-takes-a-whole-script) — Several statements, one round trip, all or nothing
 - [Cancelling a Query in Flight](queries.md#cancelling-a-query-in-flight) — Out-of-band cancellation requests
 - [Per-Query Converters](queries.md#per-query-converters) — Overriding mapping for a single call
 
