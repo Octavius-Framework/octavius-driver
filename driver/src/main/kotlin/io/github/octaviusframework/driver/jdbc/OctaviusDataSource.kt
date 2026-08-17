@@ -181,6 +181,14 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.maxParameterWriterCapacity = value }
 
     /**
+     * Whether a traced statement carries the values bound to it, rather than only how many there
+     * were. Off unless set, and effective only at `trace`.
+     */
+    var logParameterValues: Boolean
+        get() = octaviusProperties.logParameterValues ?: false
+        set(value) { octaviusProperties.logParameterValues = value }
+
+    /**
      * Sets any property this class does not expose directly, by the same name a JDBC URL would
      * use. Anything the driver does not recognise is sent to the server as a startup parameter,
      * which is what makes this the programmatic route to `application_name`, `search_path` and

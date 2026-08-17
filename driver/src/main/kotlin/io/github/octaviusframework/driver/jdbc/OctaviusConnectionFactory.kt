@@ -122,7 +122,8 @@ internal object OctaviusConnectionFactory {
             stream,
             RegistryKey(serverName, portNumber, databaseName),
             properties.maxParameterWriterCapacity,
-            properties.initialParameterWriterCapacity
+            properties.initialParameterWriterCapacity,
+            properties.logParameterValues ?: false
         )
     }
 }

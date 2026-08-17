@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.util.formatDiagnosticValue
+
 /**
  * Context of a database operation execution.
  *
@@ -29,8 +31,14 @@ data class QueryContext(
         val line = "=".repeat(width)
         val thinLine = "-".repeat(width)
 
-        val paramsStr = if (parameters.isEmpty()) "none" else parameters.entries.joinToString("\n") { "${it.key} - ${it.value}" }
-        val dbParamsStr = dbParameters?.mapIndexed { index, value -> "${index + 1} - $value" }?.joinToString("\n") ?: "none"
+        // Rendered through the shared formatter rather than interpolated: a `bytea` parameter would
+        // otherwise print as an identity hash and a large `text` or `json` one would print in full,
+        // putting the whole value into whatever log this exception is written to.
+        val paramsStr = if (parameters.isEmpty()) "none"
+            else parameters.entries.joinToString("\n") { "${it.key} - ${formatDiagnosticValue(it.value)}" }
+        val dbParamsStr = dbParameters
+            ?.mapIndexed { index, value -> "${index + 1} - ${formatDiagnosticValue(value)}" }
+            ?.joinToString("\n") ?: "none"
 
         return buildString {
             appendLine(line)

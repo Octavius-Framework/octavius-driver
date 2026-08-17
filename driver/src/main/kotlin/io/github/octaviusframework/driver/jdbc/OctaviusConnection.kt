@@ -27,8 +27,9 @@ private val logger = KotlinLogging.logger {}
 internal class OctaviusConnection internal constructor(
     internal val stream: PgStream,
     internal val registryKey: RegistryKey,
-    maxParameterWriterCapacity: Int? = null,
-    initialParameterWriterCapacity: Int? = null
+    maxParameterWriterCapacity: Int?,
+    initialParameterWriterCapacity: Int?,
+    logParameterValues: Boolean
 ) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(registryKey)
 
@@ -36,7 +37,8 @@ internal class OctaviusConnection internal constructor(
         stream,
         typeRegistry,
         maxParameterWriterCapacity,
-        initialParameterWriterCapacity
+        initialParameterWriterCapacity,
+        logParameterValues
     )
     init {
         GlobalTypeRegistry.ensureLoaded(registryKey, queryExecutor)

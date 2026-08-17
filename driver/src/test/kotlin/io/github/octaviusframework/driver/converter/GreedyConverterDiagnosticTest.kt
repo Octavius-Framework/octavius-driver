@@ -64,7 +64,7 @@ class GreedyConverterDiagnosticTest {
             val e = assertFailsWith<MappingException> { row.get<JsonObject>(0) }
             assertEquals(MappingExceptionReason.CONVERSION_ERROR, e.reason)
 
-            val message = e.getDetailedMessage() ?: ""
+            val message = e.getDetailedMessage()
             assertTrue(message.contains("GreedyDossierConverter"), "Should name the converter: $message")
             assertTrue(message.contains("Dossier"), "Should name what came back: $message")
             assertTrue(message.contains("JsonObject"), "Should name what was expected: $message")

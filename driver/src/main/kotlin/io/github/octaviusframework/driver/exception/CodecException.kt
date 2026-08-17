@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.exception
 
+import io.github.octaviusframework.driver.util.formatDiagnosticValue
 import kotlin.reflect.KClass
 
 /**
@@ -33,21 +34,11 @@ class CodecException(
         val typeInfo = name
         val classInfo = kotlinClass?.qualifiedName ?: "unknown"
 
-        appendLine("message: Failed to $actionStr value [${formatValue(value)}] for PostgreSQL type '$typeInfo' and Kotlin class '$classInfo'")
+        appendLine("message: Failed to $actionStr value [${formatDiagnosticValue(value)}] for PostgreSQL type '$typeInfo' and Kotlin class '$classInfo'")
         appendLine("Name: $name")
         if (schema.isNotEmpty()) appendLine("Schema: $schema")
         if (oid != null) appendLine("OID: $oid")
         if (kotlinClass != null) appendLine("Kotlin Class: ${kotlinClass.qualifiedName}")
     }
 
-    companion object {
-        private fun formatValue(value: Any?): String {
-            if (value == null) return "null"
-            if (value is ByteArray) {
-                return "ByteArray(${value.size} bytes)"
-            }
-            val str = value.toString()
-            return if (str.length > 100) str.substring(0, 100) + "..." else str
-        }
-    }
 }

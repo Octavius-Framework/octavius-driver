@@ -72,6 +72,15 @@ class OctaviusProperties {
     /** Starting size, in bytes, of the per-connection parameter buffer. Defaults to `1024`. */
     var initialParameterWriterCapacity: Int? = null
 
+    /**
+     * Whether a traced statement carries the values bound to it, rather than only how many there
+     * were. Defaults to `false`.
+     *
+     * Takes effect only at `trace`, and never applies to passwords or authentication material,
+     * which no level ever writes. Values are truncated the way an exception's are.
+     */
+    var logParameterValues: Boolean? = null
+
     /** Shorthand raising the default SSL mode to [SslMode.REQUIRE]. Ignored when [sslmode] is set. */
     var ssl: Boolean? = null
 
@@ -143,6 +152,7 @@ class OctaviusProperties {
             "noticehandler" -> noticeHandler = value
             "maxparameterwritercapacity" -> maxParameterWriterCapacity = value.toIntOrNull()
             "initialparameterwritercapacity" -> initialParameterWriterCapacity = value.toIntOrNull()
+            "logparametervalues" -> logParameterValues = value.toBoolean()
             "ssl" -> ssl = value.toBoolean()
             "sslmode" -> sslmode = SslMode.of(value)
             "sslrootcert" -> sslrootcert = value
@@ -176,6 +186,7 @@ class OctaviusProperties {
         other.noticeHandler?.let { noticeHandler = it }
         other.maxParameterWriterCapacity?.let { maxParameterWriterCapacity = it }
         other.initialParameterWriterCapacity?.let { initialParameterWriterCapacity = it }
+        other.logParameterValues?.let { logParameterValues = it }
         other.ssl?.let { ssl = it }
         other.sslmode?.let { sslmode = it }
         other.sslrootcert?.let { sslrootcert = it }
@@ -303,6 +314,7 @@ class OctaviusProperties {
         noticeHandler?.let { queryParams["noticeHandler"] = it }
         maxParameterWriterCapacity?.let { queryParams["maxParameterWriterCapacity"] = it.toString() }
         initialParameterWriterCapacity?.let { queryParams["initialParameterWriterCapacity"] = it.toString() }
+        logParameterValues?.let { queryParams["logParameterValues"] = it.toString() }
         ssl?.let { queryParams["ssl"] = it.toString() }
         sslmode?.let { queryParams["sslmode"] = it.value }
         sslrootcert?.let { queryParams["sslrootcert"] = it }

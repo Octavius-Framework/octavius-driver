@@ -159,7 +159,7 @@ class CodecIntegrationTest {
         // JSON / JSONB
         val jsonVal = """{"key": "value", "list": [1, 2, 3]}"""
         val resJsonb = session.createNativeQuery("SELECT $1::jsonb as res").fetchField<String>(jsonVal.withPgType("jsonb"))
-        assertEquals(jsonVal.replace(" ", ""), resJsonb?.replace(" ", ""))
+        assertEquals(jsonVal.replace(" ", ""), resJsonb.replace(" ", ""))
 
         // Numeric (BigDecimal)
         val numericVal = BigDecimal("123456789.987654321")

@@ -10,6 +10,7 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.RowMetadata
 import io.github.octaviusframework.driver.io.PgByteWriter
+import io.github.octaviusframework.driver.util.formatDiagnosticValue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.Locale
 import kotlin.concurrent.withLock
@@ -27,8 +28,9 @@ private val logger = KotlinLogging.logger {}
 class QueryExecutor internal constructor(
     private val stream: PgStream,
     private val typeRegistry: TypeRegistry,
-    maxParameterWriterCapacity: Int? = null,
-    initialParameterWriterCapacity: Int? = null
+    maxParameterWriterCapacity: Int?,
+    initialParameterWriterCapacity: Int?,
+    private val logParameterValues: Boolean
 ) {
     private val parameterWriter = PgByteWriter(
         initialCapacity = initialParameterWriterCapacity ?: 1024,
@@ -48,13 +50,28 @@ class QueryExecutor internal constructor(
      * off pays a single flag check and nothing more - which matters here and nowhere else in the
      * driver, this being the one method every query goes through.
      */
-    private fun traceStart(sql: String, paramCount: Int): Long {
+    private fun traceStart(sql: String, params: Array<out Any?>): Long {
         if (!logger.isTraceEnabled()) return 0L
         logger.trace {
             if (sql.isEmpty()) "$pid > (empty query)"
-            else "$pid >" + (if (paramCount > 0) " ($paramCount params)" else "") + "\n$sql"
+            else "$pid >" + describeParameters(params) + "\n$sql"
         }
         return System.nanoTime()
+    }
+
+    /**
+     * The parameter part of a traced statement's header line.
+     *
+     * Without [logParameterValues] this is a count and nothing more, because the values are the
+     * contents of your tables and a log file is the wrong place for them by default. With it, they
+     * are numbered to match the `$n` placeholders in the statement printed underneath, and each is
+     * truncated exactly as it would be inside an exception - the same renderer does both.
+     */
+    private fun describeParameters(params: Array<out Any?>): String {
+        if (params.isEmpty()) return ""
+        if (!logParameterValues) return " (${params.size} params)"
+        return params.mapIndexed { index, value -> "\$${index + 1}=${formatDiagnosticValue(value)}" }
+            .joinToString(", ", prefix = " (", postfix = ")")
     }
 
     /**
@@ -106,7 +123,7 @@ class QueryExecutor internal constructor(
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
     fun execute(sql: String) = exchange {
-        val startedAt = traceStart(sql, 0)
+        val startedAt = traceStart(sql, emptyArray())
 
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
@@ -153,7 +170,7 @@ class QueryExecutor internal constructor(
         params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = exchange {
-        val startedAt = traceStart(sql, params.size)
+        val startedAt = traceStart(sql, params)
 
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
@@ -248,7 +265,7 @@ class QueryExecutor internal constructor(
         maxRows: Int = 0,
         transform: (Row) -> R
     ): List<R> = exchange {
-        val startedAt = traceStart(sql, params.size)
+        val startedAt = traceStart(sql, params)
 
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
@@ -342,7 +359,7 @@ class QueryExecutor internal constructor(
         transform: (Row) -> R,
         block: (R) -> Unit
     ) = exchange {
-        val startedAt = traceStart(sql, params.size)
+        val startedAt = traceStart(sql, params)
 
         val paramTypes = parameterSerializer.serializeAll(params, parameterWriter)
         val paramValues = parameterWriter.data
