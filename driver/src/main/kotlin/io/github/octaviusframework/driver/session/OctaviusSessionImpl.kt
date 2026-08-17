@@ -13,7 +13,10 @@ import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
 import io.github.octaviusframework.driver.transaction.OctaviusSavepoint
 import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.registry.TypeManager
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
+
+private val logger = KotlinLogging.logger {}
 
 
 /**
@@ -40,6 +43,9 @@ internal class OctaviusSessionImpl(
 
     override val transactionState: TransactionState
         get() = octaviusConnection.transactionState
+
+    /** Ties a log line to the backend behind this session; see the same property on [OctaviusConnection]. */
+    private val pid: String get() = "[PID: ${octaviusConnection.stream.processId}]"
 
     override fun setSavepoint(): OctaviusSavepoint {
         return unwrapSqlException { rawConnection.setSavepoint() as OctaviusSavepoint }
@@ -160,8 +166,17 @@ internal class OctaviusSessionImpl(
     override fun abort() {
         try {
             rawConnection.abort(OctaviusDispatchers.VirtualExecutor)
+        } catch (_: SQLExceptionWrapper) {
+            // Expected, and not a failure: aborting throws on purpose, that being the signal a
+            // pool needs in order to evict the connection instead of taking it back. The abort
+            // itself is already reported by the connection, so logging here would put a stack
+            // trace under every routine teardown - a cancelled listener loop aborts on its way
+            // out - and say nothing the line above it did not.
         } catch (e: Exception) {
-            // Internal exception
+            // Anything that is not the driver's own wrapper did not come from the abort protocol: a
+            // rejected executor, a pool proxy in a state of its own. Then the connection really
+            // was left as it stood, and nothing else records that.
+            logger.debug(e) { "$pid Aborting the session raised" }
         }
     }
 
@@ -177,12 +192,18 @@ internal class OctaviusSessionImpl(
                 // never finished, and any LISTEN registrations this session made.
                 try {
                     resetConnectionState()
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    // The connection cannot go back to the pool carrying this session's leftovers,
+                    // so it is evicted instead - which the pool reports as a connection lost for
+                    // no visible reason unless this line says why.
+                    logger.warn(e) { "$pid Could not reset connection state on close; aborting the connection instead" }
                     abort()
                     return
                 }
                 rawConnection.close()
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            logger.debug(e) { "$pid Closing the session raised" }
+        }
     }
 }

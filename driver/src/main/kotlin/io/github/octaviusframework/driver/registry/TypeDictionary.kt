@@ -56,6 +56,11 @@ class TypeDictionary private constructor(
     }
 
     /**
+     * How many types this dictionary holds.
+     */
+    val size: Int get() = types.size
+
+    /**
      * Executes the given action on each registered type.
      *
      * @param action the action to perform on each type, taking the OID and the [PgType].

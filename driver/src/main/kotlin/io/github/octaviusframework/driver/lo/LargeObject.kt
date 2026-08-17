@@ -3,8 +3,11 @@ package io.github.octaviusframework.driver.lo
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.InputStream
 import java.io.OutputStream
+
+private val logger = KotlinLogging.logger {}
 
 
 /**
@@ -157,7 +160,9 @@ class LargeObject internal constructor(
                 session.createNativeQuery("SELECT lo_close($1)")
                     .fetchFieldStrict<Int>(fd)
             } catch (e: Exception) {
-                // Ignore close errors if connection is broken
+                // Ignore close errors if connection is broken. The descriptor then stays open
+                // on the server until the transaction ends, which is only visible from here.
+                logger.debug(e) { "Failed to close large object descriptor $fd (oid $oid)" }
             }
         }
     }

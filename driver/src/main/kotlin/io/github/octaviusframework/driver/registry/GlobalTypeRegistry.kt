@@ -41,10 +41,13 @@ object GlobalTypeRegistry {
 
         // Only one thread at a time can enter this block for a given registry
         registry.lock.withLock {
-            if (!registry.isLoaded) {
-                logger.trace { "Thread ${Thread.currentThread().name} loading types from database for: $key..." }
-                TypeRegistryLoader.load(registry, executor)
-                registry.isLoaded = true
+            if (registry.isLoaded) return
+            logger.trace { "Thread ${Thread.currentThread().name} loading types from database for: $key..." }
+            val startedAt = System.nanoTime()
+            TypeRegistryLoader.load(registry, executor)
+            registry.isLoaded = true
+            logger.info {
+                "Loaded ${registry.dictionary.size} types for $key in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
             }
         }
     }
@@ -72,7 +75,11 @@ object GlobalTypeRegistry {
         val registry = getRegistry(key)
         registry.lock.withLock {
             logger.trace { "Explicit reload of type dictionary for: $key..." }
+            val startedAt = System.nanoTime()
             TypeRegistryLoader.load(registry, executor)
+            logger.info {
+                "Reloaded ${registry.dictionary.size} types for $key in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
+            }
         }
     }
 }

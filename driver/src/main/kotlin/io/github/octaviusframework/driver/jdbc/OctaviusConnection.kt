@@ -11,10 +11,13 @@ import io.github.octaviusframework.driver.registry.RegistryKey
 import io.github.octaviusframework.driver.session.TransactionState
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import io.github.octaviusframework.driver.transaction.OctaviusSavepointImpl
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.*
 import java.util.*
 import java.util.concurrent.Executor
 import kotlin.concurrent.withLock
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Represents a connection to a database within the Octavius Framework.
@@ -53,6 +56,14 @@ internal class OctaviusConnection internal constructor(
     private var lastSearchPathString: String? = null
     private var cachedSearchPath: List<String>? = null
 
+
+    /**
+     * Prefix every log line on this connection carries.
+     *
+     * The backend process id is what ties a driver log to `pg_stat_activity` and to the server's
+     * own log, which is the only way to follow one connection across all three.
+     */
+    private val pid: String get() = "[PID: ${stream.processId}]"
 
     internal fun checkClosed() {
         if (isClosedFlag) throw NetworkException(NetworkExceptionReason.CONNECTION_CLOSED, sqlState = "08003")
@@ -122,13 +133,16 @@ internal class OctaviusConnection internal constructor(
                 // converter. The connection is fine, so answering "invalid" would bury a caller
                 // bug under a wrong answer - and lose the reason enum that names it.
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logger.debug(e) { "$pid Validation probe failed; reporting the connection as invalid" }
                 false
             } finally {
                 if (tightens) {
                     try {
                         stream.networkTimeout = originalTimeout
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        logger.debug(e) { "$pid Failed to restore network timeout after validation" }
+                    }
                 }
             }
         }
@@ -149,12 +163,10 @@ internal class OctaviusConnection internal constructor(
         if (isClosedFlag) return
         isClosedFlag = true
 
+        logger.debug { "$pid Connection aborted" }
+
         executor.execute {
-            try {
-                stream.close()
-            } catch (e: Exception) {
-                // Ignore
-            }
+            stream.close()
         }
         // Signal for Hikari to evict Connection
         throw SQLExceptionWrapper(NetworkException(
@@ -187,8 +199,10 @@ internal class OctaviusConnection internal constructor(
         // is not stuck on.
         val cancelStream = try {
             PgStream(stream.host, stream.port, stream.cancelSignalTimeoutSecs)
-        } catch (_: Exception) {
-            return // Never opened, so there is nothing to clean up and nothing to report.
+        } catch (e: Exception) {
+            // Never opened, so there is nothing to clean up and nothing to report.
+            logger.debug(e) { "$pid Could not open a connection to carry the cancel request" }
+            return
         }
 
         try {
@@ -200,11 +214,13 @@ internal class OctaviusConnection internal constructor(
             }
             cancelStream.sendMessage(CancelRequestMessage(stream.processId, stream.secretKey))
             cancelStream.flush()
-            // The backend replies to a CancelRequest by closing the connection. Waiting for that is
-            // what makes this "delivered" rather than "written to a buffer we then closed".
             cancelStream.awaitServerClose()
-        } catch (_: Exception) {
-            // Ignore errors during cancellation
+            logger.debug { "$pid Cancel request sent" }
+        } catch (e: Exception) {
+            // Ignore errors during cancellation. Only the TLS negotiation, the send and the flush
+            // reach here - the wait reports its outcome rather than throwing - so arriving here
+            // means the request never made it onto the wire.
+            logger.debug(e) { "$pid Cancel request could not be sent" }
         } finally {
             cancelStream.dropSocket()
         }
@@ -300,6 +316,7 @@ internal class OctaviusConnection internal constructor(
             }
             queryExecutor.execute(query)
             this.readOnlyFlag = readOnly
+            logger.debug { "$pid Session characteristics set to $modeStr" }
         }
     }
 
@@ -324,8 +341,10 @@ internal class OctaviusConnection internal constructor(
             this.autoCommitFlag = autoCommit
             if (autoCommit) {
                 queryExecutor.execute("COMMIT")
+                logger.debug { "$pid Auto-commit enabled; open transaction committed" }
             } else {
                 queryExecutor.execute("BEGIN")
+                logger.debug { "$pid Auto-commit disabled; transaction started" }
             }
         }
     }
@@ -339,12 +358,14 @@ internal class OctaviusConnection internal constructor(
         checkClosed()
         if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("COMMIT; BEGIN")
+        logger.debug { "$pid Transaction committed; new transaction started" }
     }
 
     override fun rollback() = wrapSqlException { // required by Hikari
         checkClosed()
         if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION)
         queryExecutor.execute("ROLLBACK; BEGIN")
+        logger.debug { "$pid Transaction rolled back; new transaction started" }
     }
 
     override fun setTransactionIsolation(level: Int) = wrapSqlException { // required by Hikari
@@ -367,6 +388,7 @@ internal class OctaviusConnection internal constructor(
         }
         queryExecutor.execute(query)
         this.transactionIsolationLevel = level
+        logger.debug { "$pid Isolation level set to $levelStr" }
     }
 
     override fun getTransactionIsolation(): Int = wrapSqlException { // required by Hikari
@@ -382,6 +404,7 @@ internal class OctaviusConnection internal constructor(
         if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION, "Cannot set a savepoint when auto-commit is enabled")
         val sp = OctaviusSavepointImpl(savepointIdCounter++)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        logger.debug { "$pid Savepoint ${sp.pgName} set" }
         return@wrapSqlException sp
     }
 
@@ -391,6 +414,7 @@ internal class OctaviusConnection internal constructor(
         if (name == null) throw InvalidOperationException(InvalidOperationExceptionReason.INVALID_SAVEPOINT, "Savepoint name cannot be null")
         val sp = OctaviusSavepointImpl(name)
         queryExecutor.execute("SAVEPOINT ${sp.pgName}")
+        logger.debug { "$pid Savepoint ${sp.pgName} set" }
         return@wrapSqlException sp
     }
 
@@ -399,6 +423,7 @@ internal class OctaviusConnection internal constructor(
         if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION, "Cannot rollback to a savepoint when auto-commit is enabled")
         if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionReason.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("ROLLBACK TO SAVEPOINT ${savepoint.pgName}")
+        logger.debug { "$pid Rolled back to savepoint ${savepoint.pgName}" }
     }
 
     override fun releaseSavepoint(savepoint: Savepoint?) = wrapSqlException {
@@ -406,6 +431,7 @@ internal class OctaviusConnection internal constructor(
         if (autoCommitFlag) throw InvalidOperationException(InvalidOperationExceptionReason.AUTO_COMMIT_VIOLATION, "Cannot release a savepoint when auto-commit is enabled")
         if (savepoint !is OctaviusSavepointImpl) throw InvalidOperationException(InvalidOperationExceptionReason.INVALID_SAVEPOINT, "Unsupported savepoint")
         queryExecutor.execute("RELEASE SAVEPOINT ${savepoint.pgName}")
+        logger.debug { "$pid Savepoint ${savepoint.pgName} released" }
     }
 
     //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------

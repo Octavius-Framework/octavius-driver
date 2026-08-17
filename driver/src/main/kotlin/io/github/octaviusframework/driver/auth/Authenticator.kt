@@ -86,13 +86,20 @@ internal object Authenticator {
                 }
 
                 is ReadyForQueryMessage -> {
-                    logger.trace { "Logged in successfully! Server ready for queries." }
+                    // Reported as one line rather than one per parameter: the whole set arrives in
+                    // a burst, and it is the same set on every connection to the same server, so
+                    // eighteen lines of it ahead of every login say nothing the set does not.
+                    logger.trace {
+                        "Server ready for queries; session parameters: " +
+                            stream.parameters.entries.joinToString("; ") { "${it.key}=${it.value}" }
+                    }
+                    // From here on a ParameterStatus is a change rather than part of the burst,
+                    // and the stream reports each one on its own.
+                    stream.startupComplete = true
                     return // End of login phase
                 }
 
-                is ParameterStatusMessage -> {
-                    logger.trace { "Received session parameter: ${msg.name} = ${msg.value}" }
-                }
+                is ParameterStatusMessage -> { /* Already recorded in stream.parameters; logged as a set above */ }
 
                 else -> {
                     logger.trace { "Ignoring unexpected message: $msg" }

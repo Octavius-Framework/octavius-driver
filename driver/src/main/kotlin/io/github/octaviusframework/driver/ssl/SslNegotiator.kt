@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.exception.InitializationExceptionReaso
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.SSLRequestMessage
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.FileInputStream
 import java.net.Socket
 import java.nio.file.Files
@@ -17,6 +18,8 @@ import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 import javax.net.ssl.*
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Handles PostgreSQL SSL negotiation protocol and socket upgrade.
@@ -46,10 +49,14 @@ internal object SslNegotiator {
         when (val response = stream.inputStream.readByte().toInt().toChar()) {
             'S' -> stream.upgradeToSSL(host, port, config)
             'N' -> {
-                if (config.mode == SslMode.REQUIRE || config.mode == SslMode.VERIFY_CA || config.mode == SslMode.VERIFY_FULL) {
+                if (config.mode != SslMode.PREFER) {
                     stream.close()
                     throw InitializationException(InitializationExceptionReason.SSL_ERROR, "Server does not support SSL, but sslmode=${config.mode.value} was specified.")
                 }
+                // The connection line the factory writes already carries
+                // both the outcome and the mode that allowed it. This stays for the connections
+                // that never get such a line - a cancel request opens one of its own.
+                logger.trace { "Server declined SSL; continuing in plaintext under sslmode=prefer" }
             }
             else -> {
                 stream.close()
@@ -78,6 +85,12 @@ internal object SslNegotiator {
         sslSocket.enabledProtocols = arrayOf("TLSv1.2", "TLSv1.3").filter { it in sslSocket.supportedProtocols }.toTypedArray()
         
         sslSocket.startHandshake()
+        // Same reasoning as the plaintext case: that the connection is encrypted is on the
+        // connection line already, and only the protocol and cipher are new here.
+        logger.trace {
+            "TLS established with $host:$port under sslmode=${config.mode.value} " +
+                "(${sslSocket.session.protocol}, ${sslSocket.session.cipherSuite})"
+        }
         return sslSocket
     }
 

@@ -158,6 +158,10 @@ internal class PgStream(
      * reports only what was presented, which is precisely what channel binding hashes: the
      * proof then covers the certificate actually on the wire, verified or not.
      */
+    /** Whether the connection ended up encrypted, whatever `sslmode` asked for. */
+    val isSecure: Boolean
+        get() = socket is SSLSocket
+
     val peerCertificate: X509Certificate?
         get() {
             val sslSocket = socket as? SSLSocket ?: return null
@@ -170,6 +174,15 @@ internal class PgStream(
 
 
     val parameters = mutableMapOf<String, String>()
+
+    /**
+     * False until the startup handshake reaches its first `ReadyForQuery`.
+     *
+     * The parameters that arrive during login come in one burst and are reported as a single line
+     * by the authenticator. Only what changes *after* that is an event of its own, and this is what
+     * tells the two apart.
+     */
+    var startupComplete: Boolean = false
 
     var networkTimeout: Int
         get() = socket.soTimeout
@@ -251,7 +264,18 @@ internal class PgStream(
                     'S' -> {
                         val name = inputStream.readCString()
                         val value = inputStream.readCString()
-                        parameters[name] = value
+                        val previous = parameters.put(name, value)
+                        // A GUC_REPORT parameter moving mid-session is a real event, and often an
+                        // invisible one: a hand-written `SET search_path` changes which types and
+                        // tables everything after it resolves against, with nothing else to show
+                        // for it. Only actual changes - the server re-reports a parameter on
+                        // rollback whether or not the value moved.
+                        if (startupComplete && previous != value) {
+                            logger.trace {
+                                if (previous == null) "[PID: $processId] Session parameter set: $name = $value"
+                                else "[PID: $processId] Session parameter changed: $name = $value (was $previous)"
+                            }
+                        }
                         return ParameterStatusMessage(name, value)
                     }
                     'N' -> {
@@ -484,6 +508,9 @@ internal class PgStream(
      * that an immediate close would race with. The socket timeout the stream was opened with
      * bounds the wait, so a server that accepts the connection and then goes quiet cannot park
      * the caller here.
+     *
+     * Never throws and reports nothing: how the connection ends carries no usable signal, since a
+     * backend that acted on the request drops it rather than closing it cleanly.
      */
     fun awaitServerClose() {
         try {
@@ -507,7 +534,8 @@ internal class PgStream(
         if (!socket.isClosed) {
             try {
                 socket.close()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logger.trace(e) { "[PID: $processId] Failed to close cancel socket" }
             }
         }
     }
@@ -520,13 +548,16 @@ internal class PgStream(
             try {
                 sendMessage(TerminateMessage())
                 flush()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Ignoring errors during close
+                logger.trace(e) { "[PID: $processId] Failed to send Terminate before closing" }
             }
             try {
                 socket.close()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logger.trace(e) { "[PID: $processId] Failed to close socket" }
             }
+            logger.debug { "[PID: $processId] Connection to $host:$port closed" }
         }
     }
 }

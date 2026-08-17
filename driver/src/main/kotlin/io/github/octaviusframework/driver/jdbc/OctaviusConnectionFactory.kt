@@ -10,9 +10,12 @@ import io.github.octaviusframework.driver.notice.NoticeHandler
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.registry.RegistryKey
 import io.github.octaviusframework.driver.ssl.SslNegotiator
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Factory object responsible for establishing physical connections to a PostgreSQL database.
@@ -107,6 +110,12 @@ internal object OctaviusConnectionFactory {
                     "Octavius Driver requires PostgreSQL database version 18 or higher. Received version: $serverVersion"
                 )
             }
+        }
+
+        logger.debug {
+            "[PID: ${stream.processId}] Connected to $serverName:$portNumber/$databaseName as '$user' " +
+                "(PostgreSQL ${serverVersion ?: "unknown"}, " +
+                "${if (stream.isSecure) "TLS" else "plaintext"}, sslmode=${sslConfiguration.mode.value})"
         }
 
         return OctaviusConnection(

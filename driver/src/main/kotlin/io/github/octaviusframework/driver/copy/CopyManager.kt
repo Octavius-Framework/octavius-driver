@@ -9,9 +9,12 @@ import io.github.octaviusframework.driver.message.frontend.FrontendCopyDataMessa
 import io.github.octaviusframework.driver.message.frontend.FrontendCopyDoneMessage
 import io.github.octaviusframework.driver.message.frontend.FrontendCopyFailMessage
 import io.github.octaviusframework.driver.message.frontend.SimpleQueryMessage
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.InputStream
 import java.io.OutputStream
 import kotlin.concurrent.withLock
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Manages COPY IN and COPY OUT operations for a specific connection stream.
@@ -50,10 +53,10 @@ class CopyManager internal constructor(private val stream: PgStream) {
 
             var errorResponse: ErrorOrNoticeMessage? = null
             while (true) {
-                val msg = stream.receiveMessage()
-                when (msg) {
+                when (val msg = stream.receiveMessage()) {
                     is ErrorOrNoticeMessage -> errorResponse = msg
                     is CopyInResponseMessage -> {
+                        logger.debug { "[PID: ${stream.processId}] COPY IN started:\n$sql" }
                         return CopyIn(stream).also { lastOperation = it }
                     }
                     is ReadyForQueryMessage -> {
@@ -97,6 +100,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                 when (msg) {
                     is ErrorOrNoticeMessage -> errorResponse = msg
                     is CopyOutResponseMessage -> {
+                        logger.debug { "[PID: ${stream.processId}] COPY OUT started:\n$sql" }
                         return CopyOut(stream).also { lastOperation = it }
                     }
                     is ReadyForQueryMessage -> {
@@ -262,6 +266,7 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
                         if (errorResponse != null) {
                             throw ExceptionTranslator.translate(errorResponse)
                         }
+                        logger.debug { "[PID: ${stream.processId}] COPY IN finished: $rowsAffected rows" }
                         return rowsAffected
                     }
                     else -> { /* Ignore */ }
@@ -279,6 +284,7 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
             stream.sendMessage(FrontendCopyFailMessage("Copy operation cancelled by user."))
             stream.flush()
             isActive = false
+            logger.debug { "[PID: ${stream.processId}] COPY IN cancelled" }
             
             // Discard messages until ReadyForQuery
             while (true) {
@@ -307,6 +313,9 @@ class CopyOut internal constructor(private val stream: PgStream) : CopyOperation
 
     private var errorResponse: ErrorOrNoticeMessage? = null
 
+    /** Only ever read by the log line that closes the transfer; PostgreSQL reports no row count for COPY OUT. */
+    private var bytesRead: Long = 0L
+
     /**
      * Reads a chunk of data from the server.
      *
@@ -324,7 +333,10 @@ class CopyOut internal constructor(private val stream: PgStream) : CopyOperation
             while (true) {
                 val msg = stream.receiveMessage()
                 when (msg) {
-                    is BackendCopyDataMessage -> return msg.data
+                    is BackendCopyDataMessage -> {
+                        bytesRead += msg.data.size
+                        return msg.data
+                    }
                     is BackendCopyDoneMessage -> {
                         // Expect CommandComplete and ReadyForQuery
                     }
@@ -337,6 +349,7 @@ class CopyOut internal constructor(private val stream: PgStream) : CopyOperation
                         if (errorResponse != null) {
                             throw ExceptionTranslator.translate(errorResponse!!)
                         }
+                        logger.debug { "[PID: ${stream.processId}] COPY OUT finished: $bytesRead bytes" }
                         return null
                     }
                     else -> { /* Ignore */ }
@@ -352,6 +365,7 @@ class CopyOut internal constructor(private val stream: PgStream) : CopyOperation
         try {
             if (!isActive) return
             isActive = false
+            logger.debug { "[PID: ${stream.processId}] COPY OUT cancelled" }
             // Wait for ReadyForQuery
             while (true) {
                 val msg = stream.receiveMessage()

@@ -10,7 +10,11 @@ import io.github.octaviusframework.driver.registry.TypeRegistry
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.row.RowMetadata
 import io.github.octaviusframework.driver.io.PgByteWriter
+import io.github.oshai.kotlinlogging.KotlinLogging
+import java.util.Locale
 import kotlin.concurrent.withLock
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Handles the low-level execution of PostgreSQL queries over the wire protocol.
@@ -34,6 +38,53 @@ class QueryExecutor internal constructor(
     var transactionStatus: Char = 'I'
         private set
 
+    /** Ties a log line to the backend this executor talks to. */
+    private val pid: String get() = "[PID: ${stream.processId}]"
+
+    /**
+     * Notes a statement on its way out and returns the clock reading [traceDone] measures against.
+     *
+     * The clock is only read once the level is known to be on, so a statement running with tracing
+     * off pays a single flag check and nothing more - which matters here and nowhere else in the
+     * driver, this being the one method every query goes through.
+     */
+    private fun traceStart(sql: String, paramCount: Int): Long {
+        if (!logger.isTraceEnabled()) return 0L
+        logger.trace {
+            if (sql.isEmpty()) "$pid > (empty query)"
+            else "$pid >" + (if (paramCount > 0) " ($paramCount params)" else "") + "\n$sql"
+        }
+        return System.nanoTime()
+    }
+
+    /**
+     * Closes the pair opened by [traceStart], reporting what the statement produced.
+     *
+     * Only reached when the statement succeeded: a failure carries its own SQL and parameters in
+     * the exception, so logging it here would print the same diagnostic twice.
+     *
+     * [outcome] is a lambda and this function is inline for one reason: passing the description as
+     * a plain `String` builds it at every call site whether anything will read it.
+     */
+    private inline fun traceDone(startedAt: Long, crossinline outcome: () -> String) {
+        if (startedAt == 0L || !logger.isTraceEnabled()) return
+        val elapsedNanos = System.nanoTime() - startedAt
+        logger.trace { "$pid < ${outcome()} in ${formatMillis(elapsedNanos)}" }
+    }
+
+    /**
+     * Renders a duration as milliseconds with three decimals, always.
+     *
+     * A single unit across every statement is what makes the column sortable and two lines
+     * comparable at a glance; switching to seconds once a query gets slow would mean reading the
+     * suffix before you can tell which of two numbers is bigger. Three decimals keep the sub-
+     * millisecond statements - most of them, on a local server - from all collapsing onto `0`.
+     *
+     * [Locale.ROOT] is not optional: the default locale decides the decimal separator.
+     */
+    private fun formatMillis(elapsedNanos: Long): String =
+        String.format(Locale.ROOT, "%.3fms", elapsedNanos / 1_000_000.0)
+
     /**
      * Runs one exchange with the server: takes the connection, marks it busy, and releases it
      * whatever happens.
@@ -55,6 +106,8 @@ class QueryExecutor internal constructor(
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
     fun execute(sql: String) = exchange {
+        val startedAt = traceStart(sql, 0)
+
         stream.sendMessage(SimpleQueryMessage(sql))
         stream.flush()
 
@@ -86,6 +139,8 @@ class QueryExecutor internal constructor(
         } else if (executionError != null) {
             throw executionError
         }
+
+        traceDone(startedAt) { "done" }
     }
 
     /**
@@ -98,6 +153,8 @@ class QueryExecutor internal constructor(
         params: Array<out Any?> = emptyArray(),
         parameterSerializer: ParameterSerializer? = null
     ): Long = exchange {
+        val startedAt = traceStart(sql, params.size)
+
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
         val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
@@ -151,7 +208,17 @@ class QueryExecutor internal constructor(
         } else if (executionError != null) {
             throw executionError
         }
-        
+
+        // Copied to a val first, and the copy is the whole point. `logger.trace {}` is an ordinary
+        // interface method taking a Function0, so [traceDone]'s message really is an object however
+        // inline the rest of it is - and a lambda capturing a mutable var cannot copy its value,
+        // since the var keeps moving. Kotlin's answer is to relocate the var into a Ref.LongRef on
+        // the heap, allocated *where the var is declared* - which is above the level check, not
+        // below it. Guarding the lambda therefore guards nothing: 24 bytes per statement had
+        // already been spent by the time anything asked whether tracing was on. A val is captured
+        // by value instead, so the only allocation left is the lambda, which the guard does cover.
+        val affected = rowsAffected
+        traceDone(startedAt) { "$affected rows affected" }
         return rowsAffected
     }
 
@@ -181,6 +248,8 @@ class QueryExecutor internal constructor(
         maxRows: Int = 0,
         transform: (Row) -> R
     ): List<R> = exchange {
+        val startedAt = traceStart(sql, params.size)
+
         val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
         val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
         val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
@@ -255,6 +324,7 @@ class QueryExecutor internal constructor(
             throw executionError
         }
 
+        traceDone(startedAt) { "${rows.size} rows" }
         return rows
     }
 
@@ -272,6 +342,8 @@ class QueryExecutor internal constructor(
         transform: (Row) -> R,
         block: (R) -> Unit
     ) = exchange {
+        val startedAt = traceStart(sql, params.size)
+
         val paramTypes = parameterSerializer.serializeAll(params, parameterWriter)
         val paramValues = parameterWriter.data
         val paramValuesLength = parameterWriter.position
@@ -285,6 +357,9 @@ class QueryExecutor internal constructor(
         var rowMetadata: RowMetadata? = null
         var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
+        // Counted unconditionally rather than behind the trace flag: an increment costs nothing
+        // next to parsing the row it counts, and a branch per row would cost more.
+        var rowCount = 0L
 
         fetchLoop@ while (true) {
             stream.sendMessage(ExecuteMessage(portalName, fetchSize))
@@ -305,6 +380,7 @@ class QueryExecutor internal constructor(
                         } else {
                             try {
                                 block(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
+                                rowCount++
                             } catch (e: OctaviusException) {
                                 executionError = e
                                 break@fetchLoop
@@ -348,6 +424,10 @@ class QueryExecutor internal constructor(
 
         if (errorResponse != null) throw ExceptionTranslator.translate(errorResponse)
         if (executionError != null) throw executionError
+
+        // A val for the same reason as in update(): capturing the counter itself would box it.
+        val streamed = rowCount
+        traceDone(startedAt) { "$streamed rows streamed" }
     }
 }
 

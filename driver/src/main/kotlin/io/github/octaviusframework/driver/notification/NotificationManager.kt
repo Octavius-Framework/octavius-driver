@@ -4,9 +4,12 @@ import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
 import io.github.octaviusframework.driver.exception.NetworkException
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.concurrent.withLock
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Manages asynchronous notifications (`LISTEN` / `NOTIFY`) for a specific database session.
@@ -17,6 +20,9 @@ import kotlin.concurrent.withLock
 class NotificationManager internal constructor(private val session: OctaviusSessionImpl) {
 
     private val connection get() = session.octaviusConnection
+
+    /** Ties a log line to the backend this manager listens on. */
+    private val pid: String get() = "[PID: ${connection.stream.processId}]"
 
     /**
      * A [SharedFlow] of asynchronous notifications (LISTEN/NOTIFY) received from the database.
@@ -42,6 +48,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                 val originalTimeout = connection.stream.networkTimeout
                 try {
                     connection.stream.networkTimeout = pollTimeoutMs
+                    logger.debug { "$pid Polling listener loop started (timeout ${pollTimeoutMs}ms)" }
 
                     while (context.isActive && !connection.isClosedFlag) {
                         try {
@@ -59,8 +66,10 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                 } finally {
                     try {
                         if (!connection.isClosedFlag) connection.stream.networkTimeout = originalTimeout
-                    } catch (ignore: Exception) {
+                    } catch (e: Exception) {
+                        logger.trace(e) { "$pid Could not restore the network timeout; the connection is already gone" }
                     }
+                    logger.debug { "$pid Polling listener loop stopped" }
                 }
             }
         }
@@ -89,6 +98,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                 connection.stream.checkAvailable()
                 try {
                     connection.stream.networkTimeout = 0
+                    logger.debug { "$pid Interruptible listener loop started" }
 
                     while (context.isActive && !connection.isClosedFlag) {
                         try {
@@ -102,6 +112,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
                         }
                     }
                 } finally {
+                    logger.debug { "$pid Interruptible listener loop stopped; aborting the connection" }
                     cancelJob.cancel()
                     session.abort()
                 }
@@ -128,6 +139,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
         val sql = channels.joinToString("; ") { "LISTEN ${it.quoteAsPgIdentifier()}" }
         session.createNativeQuery(sql).execute()
         hasSubscribed = true
+        logger.debug { "$pid Listening on ${channels.joinToString(", ")}" }
     }
 
     /**
@@ -137,6 +149,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
         if (channels.isEmpty()) return
         val sql = channels.joinToString("; ") { "UNLISTEN ${it.quoteAsPgIdentifier()}" }
         session.createNativeQuery(sql).execute()
+        logger.debug { "$pid Stopped listening on ${channels.joinToString(", ")}" }
     }
 
     /**
@@ -145,6 +158,7 @@ class NotificationManager internal constructor(private val session: OctaviusSess
     fun unlistenAll() {
         session.createNativeQuery("UNLISTEN *").execute()
         hasSubscribed = false
+        logger.debug { "$pid Stopped listening on all channels" }
     }
 
     /**
