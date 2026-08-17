@@ -23,6 +23,7 @@ import java.io.EOFException
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.security.cert.X509Certificate
 import java.util.concurrent.locks.ReentrantLock
@@ -184,10 +185,28 @@ internal class PgStream(
      */
     var startupComplete: Boolean = false
 
+    /**
+     * The socket's read timeout, in milliseconds, with 0 meaning no limit.
+     *
+     * Both directions are socket operations and both fail on a dead socket, so they are wrapped
+     * the way [sendMessage] and [flush] are. Left raw, a `SocketException` would travel out of
+     * `Connection.setNetworkTimeout` and `getNetworkTimeout` - which JDBC declares as throwing
+     * `SQLException`, and which a pool therefore only guards against as one.
+     */
     var networkTimeout: Int
-        get() = socket.soTimeout
+        get() = try {
+            socket.soTimeout
+        } catch (e: SocketException) {
+            isBroken = true
+            throw NetworkException(NetworkExceptionReason.CONNECTION_ERROR, cause = e)
+        }
         set(value) {
-            socket.soTimeout = value
+            try {
+                socket.soTimeout = value
+            } catch (e: SocketException) {
+                isBroken = true
+                throw NetworkException(NetworkExceptionReason.CONNECTION_ERROR, cause = e)
+            }
         }
     private val _notifications = MutableSharedFlow<PgNotification>(
         extraBufferCapacity = notificationBufferCapacity,

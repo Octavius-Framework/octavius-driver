@@ -114,7 +114,12 @@ internal class OctaviusConnection internal constructor(
         // that serializes exchanges - otherwise this would shorten the deadline of a query already
         // in flight on another thread, and kill a healthy connection with a read timeout.
         return stream.lock.withLock {
-            val originalTimeout = stream.networkTimeout
+            val originalTimeout = try {
+                stream.networkTimeout
+            } catch (e: NetworkException) {
+                logger.debug(e) { "$pid Could not read the network timeout; reporting the connection as invalid" }
+                return@withLock false
+            }
             // In JDBC, the timeout for isValid is in seconds (0 means no limit). Widened to Long
             // first, so a large value saturates instead of overflowing into a negative timeout.
             val requested = (timeout.toLong() * 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
