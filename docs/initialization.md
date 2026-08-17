@@ -298,23 +298,7 @@ PostgreSQL sends notices alongside ordinary traffic — a `RAISE NOTICE` from a 
 
 JDBC's answer is `SQLWarning` objects accumulating on the connection until someone calls `clearWarnings()`, which is [a leak waiting to happen](octavius-vs-jdbc.md#what-answers-quietly-instead-of-throwing). Octavius pushes instead: every notice is logged as it arrives, and handed to a `NoticeHandler` if you configured one. Nothing accumulates and nothing needs draining.
 
-### They are always logged
-
-Regardless of any handler, notices go to a **dedicated logger** — `io.github.octaviusframework.driver.Notice` — at a level mirroring the server's severity:
-
-| Server severity         | Logged at |
-|:------------------------|:----------|
-| `WARNING`               | `warn`    |
-| `NOTICE`, `INFO`, `LOG` | `info`    |
-| `DEBUG`                 | `debug`   |
-
-The logger has its own name precisely so it can be turned up or down on its own, without touching the rest of the driver's logging:
-
-```xml
-<logger name="io.github.octaviusframework.driver.Notice" level="WARN"/>
-```
-
-Each line is prefixed with the backend process id, so notices from different connections stay distinguishable.
+**They are always logged**, handler or no handler, under a logger name of their own so they can be turned up or down without touching anything else the driver writes — see [Server notices](logging.md#server-notices) for the name, the severity mapping and how to configure it. The rest of this section is about handling them in code.
 
 ### Handling them yourself
 

@@ -21,6 +21,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 | [Composites & Reflection](composites-reflection.md) | Rows and composites onto data classes, what reflection reads, hand-written converters, `PgComposite`      |
 | [Bulk Writes](bulk-writes.md)                       | `UNNEST` inserts, updates and deletes, upserts, `RETURNING`, batch sizing, when to reach for COPY instead |
 | [Error Handling & Exceptions](exceptions.md)        | The SQLSTATE-keyed hierarchy, message format, query context, catching at the right altitude               |
+| [Logging](logging.md)                               | Logger names, what each level says, what never reaches the log, and what tracing costs                    |
 | [Spring Integration](spring-integration.md)         | `OctaviusTemplate`, autoconfiguration, `application.yml`, transaction manager, exception translation      |
 | [Concurrency and Virtual Threads](concurrency.md)   | What one connection serializes, pinning, `OctaviusDispatchers`, cancellation, where the real limit is     |
 | [Functions and Procedures](functions-procedures.md) | `SELECT` against `CALL`, OUT and INOUT parameters, overload resolution, no `CallableStatement`            |
@@ -49,7 +50,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [Authentication Is SCRAM-SHA-256](initialization.md#authentication-is-scram-sha-256-and-nothing-else) — What the driver refuses, and why a server asks for it
 - [Channel Binding](initialization.md#channel-binding) — Tying the login to the certificate on the wire, and when to demand it
 - [Startup Parameters](initialization.md#startup-parameters) — Unrecognized keys sent to the server
-- [Notices from the Server](initialization.md#notices-from-the-server) — Logging them, and handling them yourself
+- [Notices from the Server](initialization.md#notices-from-the-server) — `NoticeHandler`, `PgNotice`, and the thread it runs on
 - [Configuration Reference](initialization.md#configuration-reference) — Every property: connection, network, SSL
 
 ### Executing Queries
@@ -120,6 +121,17 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [Exception Reference](exceptions.md#exception-reference) — All fifteen types, one by one
 - [Catching at the Right Altitude](exceptions.md#catching-at-the-right-altitude) — Including retrying concurrency failures
 - [Crossing into JDBC and Spring](exceptions.md#crossing-into-jdbc-and-spring) — `SQLExceptionWrapper` and `OctaviusDataAccessException`
+
+### Logging
+- [You Supply the Backend](logging.md#you-supply-the-backend) — SLF4J with nothing behind it discards every line
+- [Logger Names](logging.md#logger-names) — Every name, and what each one carries
+- [What Each Level Says](logging.md#what-each-level-says) — Split by how often a line appears, not by how grave it sounds
+- [Server Notices](logging.md#server-notices) — Their own logger name, and a level taken from the server's severity
+- [The Driver Does Not Log What It Throws](logging.md#the-driver-does-not-log-what-it-throws) — And the failures it does log, because nothing else would
+- [What Never Reaches the Log](logging.md#what-never-reaches-the-log) — Passwords, SCRAM proofs, parameter values
+- [Following One Connection](logging.md#following-one-connection) — The backend process id, and joining to `pg_stat_activity`
+- [What Tracing Costs](logging.md#what-tracing-costs) — When it is on, and when it is off
+- [Configuration Recipes](logging.md#configuration-recipes) — Logback snippets for the usual questions
 
 ### Spring Integration
 - [Setup](spring-integration.md#setup) — Dependencies and what gets wired

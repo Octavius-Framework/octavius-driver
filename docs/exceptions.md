@@ -189,6 +189,8 @@ That last row is the parser and missing-parameter case: an `UNCLOSED_QUOTE` or `
 
 Exceptions raised outside a query — connection setup, `session.commit()`, savepoint misuse — have `queryContext == null`. Always treat it as nullable.
 
+The properties hold your values as you passed them, unchanged. What is bounded is the **rendering** — the block `toString()` prints, and the same one [the log uses](logging.md#parameter-values-are-a-property-not-a-level): a `ByteArray` is named rather than dumped, a long string is cut, and a collection or array is walked only as far as the budget allows, then counted (`[0, 1, 2, … +9990 more]`). That matters for a [bulk write](bulk-writes.md), where one parameter legitimately holds ten thousand elements and printing it whole would build megabytes on the way out of a failure. A class of your own still renders through its own `toString()`, which the driver cannot bound.
+
 ## SQLSTATE routing
 
 `ExceptionTranslator` is a single ordered `when` over the SQLSTATE string. Order matters: the first matching branch wins, which is how the specific codes (`40002`, `42501`, `55P03`, `57014`) escape their class-wide defaults.
