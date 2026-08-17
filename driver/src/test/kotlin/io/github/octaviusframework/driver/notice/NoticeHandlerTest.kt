@@ -45,8 +45,7 @@ class NoticeHandlerTest {
 
     /**
      * A `NoticeResponse` carries the same fields an `ErrorResponse` does, and `RAISE ... USING` is what
-     * fills in the ones naming an object. All of these were previously reachable only by indexing
-     * `rawFields` with the protocol's own single-character codes.
+     * fills in the ones naming an object.
      */
     @Test
     fun testNoticeExposesEveryFieldTheServerSends() = runBlocking {
