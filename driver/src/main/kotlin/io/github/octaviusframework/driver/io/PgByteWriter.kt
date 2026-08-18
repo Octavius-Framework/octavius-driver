@@ -1,5 +1,11 @@
 package io.github.octaviusframework.driver.io
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
+
+/** The largest array a JVM will hand out; the slack covers the header words a VM keeps for itself. */
+private const val MAX_ARRAY_SIZE = Int.MAX_VALUE - 8
+
 /**
  * Optimized buffer for building binary packets for the database.
  * Allows reserving space for size and filling it later without memory copying.
@@ -13,12 +19,21 @@ class PgByteWriter(
     var position = 0
         private set
 
+    /**
+     * Grows the buffer so that [needed] more bytes fit.
+     */
     private fun ensureCapacity(needed: Int) {
-        if (position + needed > data.size) {
-            var newCap = data.size * 2
-            while (position + needed > newCap) newCap *= 2
-            data = data.copyOf(newCap)
+        if (needed <= data.size - position) return
+
+        val required = position.toLong() + needed
+        if (required > MAX_ARRAY_SIZE) {
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                "Parameter buffer would have to hold $required bytes, past the largest array a JVM hands out ($MAX_ARRAY_SIZE)"
+            )
         }
+        val newCapacity = (data.size.toLong() * 2).coerceIn(required, MAX_ARRAY_SIZE.toLong())
+        data = data.copyOf(newCapacity.toInt())
     }
 
     fun writeByte(b: Byte) {
