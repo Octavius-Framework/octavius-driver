@@ -78,13 +78,6 @@ interface OctaviusSessionOperations {
     fun getSearchPath(): List<String>
 
     /**
-     * Sets the `search_path` for this session to the provided schemas.
-     *
-     * @param schemas The schemas to set in the search path.
-     */
-    fun setSearchPath(vararg schemas: String)
-
-    /**
      * Manually aborts the connection, forcing the underlying connection pool (like HikariCP)
      * to evict it instead of returning it to the pool.
      */

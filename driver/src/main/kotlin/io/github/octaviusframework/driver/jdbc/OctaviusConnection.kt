@@ -1,10 +1,9 @@
 package io.github.octaviusframework.driver.jdbc
 
 import io.github.octaviusframework.driver.exception.*
-import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
+import io.github.octaviusframework.driver.execution.QueryExecutor
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
-import io.github.octaviusframework.driver.execution.QueryExecutor
 import io.github.octaviusframework.driver.query.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
 import io.github.octaviusframework.driver.registry.RegistryKey
@@ -287,25 +286,6 @@ internal class OctaviusConnection internal constructor(
         }
         // Fallback in rare cases (e.g., mocked test server)
         return listOf("public")
-    }
-
-    /**
-     * Sets the current search path for this connection.
-     *
-     * The framework relies on PostgreSQL 18+ ParameterStatus to automatically track the search path,
-     * so executing SET search_path will implicitly update the driver's state. This method is a convenient helper.
-     *
-     * @param schemas An array of schema names to be set as the new search path.
-     *                If empty, the search path is reset to DEFAULT.
-     */
-    internal fun setSearchPath(vararg schemas: String) {
-        checkClosed()
-        if (schemas.isEmpty()) {
-            queryExecutor.execute("SET search_path TO DEFAULT")
-        } else {
-            val pathStr = schemas.joinToString(", ") { it.quoteAsPgIdentifier() }
-            queryExecutor.execute("SET search_path TO $pathStr")
-        }
     }
 
     //--------------------------------------------READ ONLY-------------------------------------------------------------

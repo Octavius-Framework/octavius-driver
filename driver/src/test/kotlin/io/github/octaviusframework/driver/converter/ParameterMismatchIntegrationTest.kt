@@ -43,7 +43,7 @@ class ParameterMismatchIntegrationTest {
             CREATE TYPE parammm.holder AS (big int8);
             """.trimIndent()
         ).execute()
-        session.setSearchPath("parammm", "public")
+        session.createNativeQuery("SET seach_path TO parammm, public")
         session.reloadTypes()
 
         session.typeManager.registerAutoComposite<Assessment>("assessment", schema = "parammm")

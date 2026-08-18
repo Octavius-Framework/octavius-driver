@@ -86,8 +86,6 @@ internal class OctaviusSessionImpl(
 
     override fun getSearchPath() = octaviusConnection.getSearchPath()
 
-    override fun setSearchPath(vararg schemas: String) = octaviusConnection.setSearchPath(*schemas)
-
     // ------------------------------------------Pool Connection--------------------------------------------------------
 
     private inline fun <T> unwrapSqlException(block: () -> T): T {
