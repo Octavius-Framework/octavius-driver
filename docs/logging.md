@@ -45,6 +45,7 @@ they can be turned up or down without touching anything else.
 | `io.github.octaviusframework.driver.jdbc.OctaviusConnectionFactory`   | One line per physical connection opened                                                               |
 | `io.github.octaviusframework.driver.jdbc.OctaviusConnection`          | Transactions, savepoints, isolation, cancellation, abort, validation probes                           |
 | `io.github.octaviusframework.driver.session.OctaviusSessionImpl`      | Session close and abort, including a connection state reset that failed                               |
+| `io.github.octaviusframework.driver.transaction.TransactionManager`   | Auto-commit left unrestored after a transaction scope committed                                       |
 | `io.github.octaviusframework.driver.execution.QueryExecutor`          | Every statement and its duration                                                                      |
 | `io.github.octaviusframework.driver.registry.GlobalTypeRegistry`      | The type catalog load, and every explicit reload of it                                                |
 | `io.github.octaviusframework.driver.copy.CopyManager`                 | COPY transfers, with row and byte counts                                                              |
@@ -65,7 +66,7 @@ itself.
 | Level   | Frequency                                      | What you get                                                               |
 |:--------|:-----------------------------------------------|:---------------------------------------------------------------------------|
 | `error` | Practically never                              | Only a `NoticeHandler` of yours that threw                                 |
-| `warn`  | Practically never                              | A session evicted because its connection state could not be reset          |
+| `warn`  | Practically never                              | A connection on its way out, with the reason recorded only here            |
 | `info`  | Once per database, plus every `reloadTypes()`  | The type catalog load, with its type count and duration                    |
 | `debug` | Once per connection, per transaction, per COPY | Lifecycle: connections, transactions, savepoints, `LISTEN`, TLS, transfers |
 | `trace` | Twice per statement                            | Every statement, its duration, and session parameters that move            |
@@ -230,6 +231,7 @@ failure reaches nobody at all. Those are logged, and only those:
 | What happened                                                      | Level   |
 |:-------------------------------------------------------------------|:--------|
 | A session could not reset its connection state on `close()`        | `warn`  |
+| Auto-commit could not be restored after a successful commit        | `warn`  |
 | A `NoticeHandler` you configured threw                             | `error` |
 | `isValid()` answered `false` — with the reason it did              | `debug` |
 | A cancel request could not be opened or sent                       | `debug` |
@@ -237,8 +239,11 @@ failure reaches nobody at all. Those are logged, and only those:
 | A network timeout could not be restored after a probe or poll loop | `debug` |
 | A socket refused to close, or `Terminate` could not be sent        | `trace` |
 
-The first two are at their levels because somebody has to see them. A pool evicting a connection reports only that the
-connection went away; `warn` is where the reason lives.
+The first three are at their levels because somebody has to see them. Both `warn` lines are a connection on its way
+out with the reason held nowhere else: a pool evicting one reports that it went away and nothing more, and a scope
+whose commit landed before the connection dropped tells the caller nothing at all - deliberately, since the work is
+in the database and raising there would read as a transaction that failed. The `error` is your own code, and nothing
+else in the process will mention it.
 
 ## What never reaches the log
 

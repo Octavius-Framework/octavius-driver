@@ -2,6 +2,9 @@ package io.github.octaviusframework.driver.transaction
 
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * A high-level API for managing transactions via scoped blocks.
@@ -27,26 +30,32 @@ class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
      * 
      * Inside the block, manual transaction operations such as `commit`, `rollback`, 
      * and `autoCommit` modifications are not accessible as the receiver is restricted
-     * to [OctaviusSessionOperations].
+     * to [OctaviusSessionOperations]. A `return` out of the block does not compile either - use
+     * `return@required`, since an early exit would otherwise commit whatever the block had already
+     * done, which is the same decision the restricted receiver is there to keep out of the block.
      * 
      * @param block The block of code to execute.
      * @return The result of the block.
      */
-    inline fun <T> required(block: OctaviusSessionOperations.() -> T): T {
-        return if (!session.autoCommit) {
-            session.block()
-        } else {
-            session.autoCommit = false
+    inline fun <T> required(crossinline block: OctaviusSessionOperations.() -> T): T {
+        if (!session.autoCommit) return session.block()
+
+        session.autoCommit = false
+        var failure: Throwable? = null
+        try {
+            val result = session.block()
+            session.commit()
+            return result
+        } catch (e: Throwable) {
+            failure = e
             try {
-                val result = session.block()
-                session.commit()
-                result
-            } catch (e: Throwable) {
                 session.rollback()
-                throw e
-            } finally {
-                session.autoCommit = true
+            } catch (rollbackFailure: Throwable) {
+                e.addSuppressed(rollbackFailure)
             }
+            throw e
+        } finally {
+            restoreAutoCommit(failure)
         }
     }
 
@@ -59,35 +68,56 @@ class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
      * a new one is started similar to [required].
      * 
      * Inside the block, manual transaction operations are not accessible as the receiver
-     * is restricted to [OctaviusSessionOperations].
+     * is restricted to [OctaviusSessionOperations]. A `return` out of the block does not compile
+     * either - use `return@nested`, since an early exit would otherwise slip past the release and
+     * the rollback alike and leave the savepoint standing.
      * 
      * @param block The block of code to execute.
      * @return The result of the block.
      */
-    inline fun <T> nested(block: OctaviusSessionOperations.() -> T): T {
-        return if (!session.autoCommit) {
+    inline fun <T> nested(crossinline block: OctaviusSessionOperations.() -> T): T {
+        if (!session.autoCommit) {
             val sp = session.setSavepoint()
             try {
                 val result = session.block()
                 session.releaseSavepoint(sp)
-                result
+                return result
             } catch (e: Throwable) {
-                session.rollback(sp)
+                try {
+                    session.rollback(sp)
+                } catch (rollbackFailure: Throwable) {
+                    e.addSuppressed(rollbackFailure)
+                }
                 throw e
             }
-        } else {
-            session.autoCommit = false
-            try {
-                val result = session.block()
-                session.commit()
-                result
-            } catch (e: Throwable) {
-                session.rollback()
-                throw e
-            } finally {
-                session.autoCommit = true
+        }
+
+        return required(block)
+    }
+
+    /**
+     * Puts auto-commit back once a scope is over, however it ended.
+     *
+     * A failure here is only rethrown when the scope was already failing, and then as a suppressed
+     * exception on [failure] rather than in its place. Out of a scope that **committed** it is logged
+     * and goes no further. What it commits there is the empty transaction the successful `commit()`
+     * left open behind it, which the server has no reason to refuse - so what fails is the socket,
+     * and a broken socket is already on the record: `checkClosed` raises `NetworkException` the next
+     * time anything touches this session, logged or not. Raising it here would only report a failed
+     * transaction for one whose work is in the database, and invite a retry that writes it twice.
+     */
+    @PublishedApi
+    internal fun restoreAutoCommit(failure: Throwable?) {
+        try {
+            session.autoCommit = true
+        } catch (restoreFailure: Throwable) {
+            if (failure != null) {
+                failure.addSuppressed(restoreFailure)
+            } else {
+                logger.warn(restoreFailure) {
+                    "Transaction committed, but auto-commit could not be restored - this session is no longer safe to reuse"
+                }
             }
         }
     }
-
 }
