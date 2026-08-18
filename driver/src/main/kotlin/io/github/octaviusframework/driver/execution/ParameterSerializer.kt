@@ -5,12 +5,23 @@ import io.github.octaviusframework.driver.codec.TypeCodec
 import io.github.octaviusframework.driver.codec.encodeSafely
 import io.github.octaviusframework.driver.container.PgContainer
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterMapper
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgTyped
 import io.github.octaviusframework.driver.registry.TypeManager
 import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 import io.github.octaviusframework.driver.type.isKnownOid
+
+/**
+ * The longest a single parameter may serialise to.
+ *
+ * `MaxAllocSize` is `2^30 - 1`, and every variable-length value carries a four-byte header inside
+ * that budget - two of whose bits are flags, which is why the same number bounds the length field
+ * itself.
+ */
+private const val MAX_PARAMETER_LENGTH = 1073741819
 
 class ParameterSerializer(
     private val typeManager: TypeManager,
@@ -26,6 +37,13 @@ class ParameterSerializer(
         for (i in 0 until size) {
             val marker = writer.reserveLengthInt()
             oids[i] = serializeValue(parameters[i], writer, marker)
+            val length = writer.position - marker - 4
+            if (length > MAX_PARAMETER_LENGTH) {
+                throw InvalidOperationException(
+                    InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                    "Parameter \$${i + 1} serialized to $length bytes; PostgreSQL refuses a value above $MAX_PARAMETER_LENGTH"
+                )
+            }
         }
 
         return oids

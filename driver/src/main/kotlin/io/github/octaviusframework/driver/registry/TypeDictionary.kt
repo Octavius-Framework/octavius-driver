@@ -3,6 +3,7 @@ package io.github.octaviusframework.driver.registry
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.UNRESOLVED_OID
 
 /**
  * A dictionary that holds PostgreSQL types definitions and allows querying them by OID or name.
@@ -128,7 +129,7 @@ class TypeDictionary private constructor(
         val schemasForName = typesByName[typeName]
             ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
 
-        var resolvedOid: Int? = null
+        var resolvedOid: Int = UNRESOLVED_OID
         // 1. If schema is explicitly requested
         if (requestedSchema.isNotEmpty()) {
             resolvedOid = schemasForName[requestedSchema]
@@ -142,9 +143,8 @@ class TypeDictionary private constructor(
                     break
                 }
             }
-
             // 3. If not in search_path, check for unambiguous match
-            if (resolvedOid == null) {
+            if (resolvedOid == UNRESOLVED_OID) {
                 if (schemasForName.size == 1) {
                     resolvedOid = schemasForName.values.first()
                 } else {

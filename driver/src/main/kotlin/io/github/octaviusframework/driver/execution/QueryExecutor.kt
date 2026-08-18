@@ -196,9 +196,20 @@ class QueryExecutor internal constructor(
                 is ParseCompleteMessage, is BindCompleteMessage, is NoDataMessage -> { /* Expected */ }
                 is CommandCompleteMessage -> {
                     // tag format is e.g., "INSERT 0 1", "UPDATE 5", "DELETE 2"
-                    val parts = msg.tag.split(" ")
-                    if (parts.size >= 2) {
-                        rowsAffected = parts.last().toLongOrNull() ?: 0L
+                    val tag = msg.tag
+                    val lastSpace = tag.lastIndexOf(' ')
+                    if (lastSpace != -1) {
+                        var parsed = 0L
+                        for (i in lastSpace + 1 until tag.length) {
+                            val c = tag[i]
+                            if (c in '0'..'9') {
+                                parsed = parsed * 10 + (c - '0')
+                            } else {
+                                parsed = 0L
+                                break
+                            }
+                        }
+                        rowsAffected = parsed
                     }
                 }
                 is DataRowMessage, is RowDescriptionMessage -> {

@@ -10,6 +10,7 @@
 #### Changed
 
 - **Breaking:** the block passed to `transaction.required` and `transaction.nested` is `crossinline`, so a bare `return` out of it no longer compiles - `return@required` / `return@nested` return from the block as before. A non-local return is not an exception, so it slipped past the `catch` entirely while the compiler still copied the `finally` onto its path: out of `required` it committed whatever the block had already done, reading at the call site like an abort, and out of `nested` it passed the release and the rollback alike and left the savepoint standing until the outer transaction ended. Deciding the fate of a transaction from inside the block is the one thing the restricted receiver exists to prevent, and this was the back door to it. The compiler names every call site that has to change
+- A parameter that serialises past what PostgreSQL will accept for one value is refused by the driver, naming the `$n` it was bound to and the size it reached, instead of travelling the whole way out to be refused as a malformed message. The ceiling is `MaxAllocSize` less the four-byte header every variable-length value carries - `1073741819` bytes, measured against PostgreSQL 18.4 and not reachable from `pg_settings`, so nothing to configure. One comparison per parameter, against a length `fillLengthInt` already had to compute. It bounds each parameter rather than the message they share, which is the limit a single oversized value or a bulk write passed as one array actually meets
 
 #### Fixed
 
