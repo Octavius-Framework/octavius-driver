@@ -130,14 +130,13 @@ internal class OctaviusSessionImpl(
 
     /**
      * Undoes the per-session state this session left on its connection, so the next borrower of
-     * a pooled connection finds it as it was: a `COPY` that was never finished, any `LISTEN`
-     * registrations, and a transaction opened by a hand-written `BEGIN`.
+     * a pooled connection finds it as it was: any `LISTEN` registrations, and a transaction
+     * opened by a hand-written `BEGIN`.
      *
      * Only reachable from [close]. Code that hands the connection back some other way - Spring's
      * `DataSourceUtils`, for instance - never closes the session and so never runs this.
      */
     private fun resetConnectionState() {
-        copy.cancelActiveOperation()
         notifications.releaseSubscriptions()
         rollbackTransactionTheDriverNeverOpened()
     }
@@ -184,10 +183,20 @@ internal class OctaviusSessionImpl(
                 // If the underlying connection is already flagged as closed/broken,
                 // we force an abort on the pool connection to evict it from the pool.
                 abort()
+            } else if (octaviusConnection.stream.copyInProgress) {
+                // A transfer the caller never finished. Ending it here is the wrong trade: a
+                // COPY OUT ends only once the rest of the export has been read and discarded,
+                // and this runs on whoever gave the session back - a `finally`, or a pool
+                // reclaiming its connection - so an export abandoned on its first chunk would
+                // hold that thread for as long as the server needs to produce every remaining
+                // row. Evicting is bounded and loses nothing the cancel would have kept: a COPY
+                // IN that never reached endCopy() commits nothing either way.
+                logger.warn { "$pid Session closed with a COPY still in progress; the connection is aborted rather than reset" }
+                abort()
             } else {
-                // Both of these outlive the session on a pooled connection, so they are undone
-                // here instead of being left for whoever borrows it next: a COPY the caller
-                // never finished, and any LISTEN registrations this session made.
+                // These outlive the session on a pooled connection, so they are undone here
+                // instead of being left for whoever borrows it next: any LISTEN registrations
+                // this session made, and a transaction opened by hand-written SQL.
                 try {
                     resetConnectionState()
                 } catch (e: Exception) {

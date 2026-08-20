@@ -27,13 +27,6 @@ class CopyManager internal constructor(private val stream: PgStream) {
     }
 
     /**
-     * The most recently started operation, kept only so a closing session can abort a transfer
-     * the caller left open. Never cleared: [CopyOperation.isActive] is the authority on whether
-     * it still refers to anything live.
-     */
-    private var lastOperation: CopyOperation? = null
-
-    /**
      * Initiates a COPY IN operation allowing manual chunk writing.
      *
      * The connection stays in copy mode until [CopyIn.endCopy] or [CopyIn.cancelCopy] is called, and no
@@ -57,7 +50,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                     is ErrorOrNoticeMessage -> errorResponse = msg
                     is CopyInResponseMessage -> {
                         logger.debug { "[PID: ${stream.processId}] COPY IN started:\n$sql" }
-                        return CopyIn(stream).also { lastOperation = it }
+                        return CopyIn(stream)
                     }
                     is ReadyForQueryMessage -> {
                         if (errorResponse != null) {
@@ -101,7 +94,7 @@ class CopyManager internal constructor(private val stream: PgStream) {
                     is ErrorOrNoticeMessage -> errorResponse = msg
                     is CopyOutResponseMessage -> {
                         logger.debug { "[PID: ${stream.processId}] COPY OUT started:\n$sql" }
-                        return CopyOut(stream).also { lastOperation = it }
+                        return CopyOut(stream)
                     }
                     is ReadyForQueryMessage -> {
                         if (errorResponse != null) {
@@ -186,32 +179,15 @@ class CopyManager internal constructor(private val stream: PgStream) {
             throw e
         }
     }
-
-    /**
-     * Aborts a transfer the caller never finished, if there is one.
-     *
-     * Called when a session closes: a connection left in copy mode would otherwise be handed
-     * to the next borrower of a pooled connection in the middle of a transfer.
-     */
-    internal fun cancelActiveOperation() {
-        lastOperation?.takeIf { it.isActive }?.cancelCopy()
-    }
 }
 
 class CopyIn internal constructor(private val stream: PgStream) : CopyOperation {
-    /**
-     * Kept in step with [PgStream.copyInProgress] through the setter below, so the rest of the
-     * driver can tell that the connection is in copy mode without holding this handle. The
-     * initializer bypasses the setter, hence the init block.
-     */
     override var isActive: Boolean = true
-        private set(value) {
-            field = value
-            stream.copyInProgress = value
-        }
+        private set
 
+    /** Registers the transfer on the connection, which is where the rest of the driver reads it. */
     init {
-        stream.copyInProgress = true
+        stream.activeCopy = this
     }
 
     /**
@@ -300,21 +276,18 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
 }
 
 class CopyOut internal constructor(private val stream: PgStream) : CopyOperation {
-    /** Kept in step with [PgStream.copyInProgress]; see the equivalent property on [CopyIn]. */
     override var isActive: Boolean = true
-        private set(value) {
-            field = value
-            stream.copyInProgress = value
-        }
-
-    init {
-        stream.copyInProgress = true
-    }
+        private set
 
     private var errorResponse: ErrorOrNoticeMessage? = null
 
     /** Only ever read by the log line that closes the transfer; PostgreSQL reports no row count for COPY OUT. */
     private var bytesRead: Long = 0L
+
+    /** Registers the transfer on the connection; see [CopyIn]. */
+    init {
+        stream.activeCopy = this
+    }
 
     /**
      * Reads a chunk of data from the server.

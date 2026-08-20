@@ -1,5 +1,6 @@
 package io.github.octaviusframework.driver.io
 
+import io.github.octaviusframework.driver.copy.CopyOperation
 import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.exception.InvalidOperationException
@@ -67,13 +68,25 @@ internal class PgStream(
     var maxCachedRowSize: Int = 65536
 
     /**
+     * The transfer that last held this connection in copy mode, live or spent.
+     *
+     * On the stream rather than on the `CopyManager` or `Session` that started it, because it outlives
+     * every one of them: a manager belongs to one session, and several sessions can be opened
+     * over one connection in turn, each with a manager of its own.
+     *
+     * Set by the operations under [lock] and never cleared - [CopyOperation.isActive] is the
+     * authority on whether it still refers to anything live.
+     */
+    var activeCopy: CopyOperation? = null
+
+    /**
      * True while a COPY operation holds the connection in copy mode.
      *
-     * Set and cleared by the copy operations themselves, always under [lock], so it is only
-     * ever observed by others while the lock is free - at which point it accurately says
-     * whether a transfer is still in flight.
+     * Read through [activeCopy], which the operations maintain under [lock], so others only ever
+     * observe it while the lock is free - at which point it says what is actually in flight.
      */
-    var copyInProgress: Boolean = false
+    val copyInProgress: Boolean
+        get() = activeCopy?.isActive == true
 
     /**
      * True while a statement is being executed on this connection, from the first message sent

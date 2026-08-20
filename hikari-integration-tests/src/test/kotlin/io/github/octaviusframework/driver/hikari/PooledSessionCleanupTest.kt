@@ -7,6 +7,7 @@ import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.TransactionState
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 /**
  * A pooled connection outlives the session borrowed through it, so whatever that session left
@@ -73,6 +74,37 @@ class PooledSessionCleanupTest {
             assertEquals(1, next.createNativeQuery("SELECT 1").fetchFieldStrict<Int>())
             assertEquals(0L, next.listeningChannels())
             next.close()
+        }
+    }
+
+    // ------------------------------------------------------------------ a COPY left in flight
+
+    /**
+     * The transfer is not ended on the caller's behalf: `CopyOut.cancelCopy()` would have to read
+     * the rest of the export first, on whatever thread handed the session back. The connection
+     * leaves the pool instead, and what the copy had written never lands.
+     */
+    @Test
+    fun `a session closed with a COPY still open loses its connection instead of returning it`() {
+        pool().use { pool ->
+            val first = pool.getOctaviusSession()
+            first.createNativeQuery("CREATE TABLE IF NOT EXISTS pool_cleanup_copy (id INT)").execute()
+            first.createNativeQuery("TRUNCATE pool_cleanup_copy").execute()
+            val pid = first.backendPid()
+
+            val copyIn = first.copy.copyIn("COPY pool_cleanup_copy FROM STDIN WITH (FORMAT CSV)")
+            copyIn.writeToCopy("1\n".toByteArray())
+            first.close() // neither endCopy() nor cancelCopy()
+
+            val second = pool.getOctaviusSession()
+            assertNotEquals(pid, second.backendPid(), "a connection in copy mode was handed to the next borrower")
+            assertEquals(
+                0L,
+                second.createNativeQuery("SELECT count(*) FROM pool_cleanup_copy").fetchFieldStrict<Long>(),
+                "a COPY IN that never reached endCopy() must land nothing"
+            )
+            second.createNativeQuery("DROP TABLE pool_cleanup_copy").execute()
+            second.close()
         }
     }
 

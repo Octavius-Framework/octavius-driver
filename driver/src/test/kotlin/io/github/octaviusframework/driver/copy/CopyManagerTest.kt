@@ -133,12 +133,14 @@ class CopyManagerTest {
     }
 
     @Test
-    fun testClosingSessionAbortsAnUnfinishedCopy() {
+    fun testClosingSessionWithAnUnfinishedCopyDropsTheConnection() {
         val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
         copyIn.writeToCopy("7,Test7\n".toByteArray(Charsets.UTF_8))
 
-        session.close() // No endCopy() - closing must abort the transfer, not commit it
-        assertFalse(copyIn.isActive)
+        // No endCopy(). The transfer is not ended on the caller's behalf - the connection
+        // carrying it goes instead, so nothing of the copy is committed either way.
+        session.close()
+        assertFalse(session.isValid(1), "a connection in copy mode must not survive the close")
 
         session = newSession()
         val count = session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>()

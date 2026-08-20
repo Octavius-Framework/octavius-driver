@@ -44,7 +44,7 @@ they can be turned up or down without touching anything else.
 | `io.github.octaviusframework.driver.Notice`                           | Server notices, at a level mirroring the server's own severity                                        |
 | `io.github.octaviusframework.driver.jdbc.OctaviusConnectionFactory`   | One line per physical connection opened                                                               |
 | `io.github.octaviusframework.driver.jdbc.OctaviusConnection`          | Transactions, savepoints, isolation, cancellation, abort, validation probes                           |
-| `io.github.octaviusframework.driver.session.OctaviusSessionImpl`      | Session close and abort, including a connection state reset that failed                               |
+| `io.github.octaviusframework.driver.session.OctaviusSessionImpl`      | Session close and abort, and a close that evicted its connection instead of returning it              |
 | `io.github.octaviusframework.driver.transaction.TransactionManager`   | Auto-commit left unrestored after a transaction scope committed                                       |
 | `io.github.octaviusframework.driver.execution.QueryExecutor`          | Every statement and its duration                                                                      |
 | `io.github.octaviusframework.driver.registry.GlobalTypeRegistry`      | The type catalog load, and every explicit reload of it                                                |
@@ -225,12 +225,13 @@ try {
 }
 ```
 
-The exceptions to the rule are the places where the driver **catches something and carries on**, because there the
-failure reaches nobody at all. Those are logged, and only those:
+The exceptions to the rule are the places where the driver **handles something itself and carries on** - a failure it
+caught, or a call it made for you - because there it reaches nobody at all. Those are logged, and only those:
 
 | What happened                                                      | Level   |
 |:-------------------------------------------------------------------|:--------|
 | A session could not reset its connection state on `close()`        | `warn`  |
+| A session was closed with a `COPY` still in flight                 | `warn`  |
 | Auto-commit could not be restored after a successful commit        | `warn`  |
 | A `NoticeHandler` you configured threw                             | `error` |
 | `isValid()` answered `false` — with the reason it did              | `debug` |
@@ -239,11 +240,12 @@ failure reaches nobody at all. Those are logged, and only those:
 | A network timeout could not be restored after a probe or poll loop | `debug` |
 | A socket refused to close, or `Terminate` could not be sent        | `trace` |
 
-The first three are at their levels because somebody has to see them. Both `warn` lines are a connection on its way
-out with the reason held nowhere else: a pool evicting one reports that it went away and nothing more, and a scope
-whose commit landed before the connection dropped tells the caller nothing at all - deliberately, since the work is
-in the database and raising there would read as a transaction that failed. The `error` is your own code, and nothing
-else in the process will mention it.
+The first four are at their levels because somebody has to see them. Every `warn` line is a connection on its way out
+with the reason held nowhere else: a pool evicting one reports that it went away and nothing more - whether the
+session could not reset it or was closed with a transfer still open - and a scope whose commit landed before the
+connection dropped tells the caller nothing at all - deliberately, since the work is in the database and raising there
+would read as a transaction that failed. The `error` is your own code, and nothing else in the process will mention
+it.
 
 ## What never reaches the log
 

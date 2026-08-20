@@ -207,7 +207,7 @@ A pooled connection outlives the session you borrowed it through, so whatever is
 | Connection state                                       | Undone when the session closes?                                              |
 |:-------------------------------------------------------|:-----------------------------------------------------------------------------|
 | `autoCommit`, `readOnly`, `transactionIsolationLevel`  | Yes — HikariCP tracks these through its own proxy and restores its defaults. |
-| A `COPY` the caller never finished                     | Yes — the session aborts it before handing the connection back.              |
+| A `COPY` the caller never finished                     | Yes — by evicting the connection instead of handing it back.                 |
 | `LISTEN` registrations made via `notifications.listen` | Yes — the session issues `UNLISTEN *` if it subscribed to anything.          |
 | A transaction left open by a hand-written `BEGIN`      | Yes — rolled back, since the driver cannot know what that work was for.      |
 | **Anything else you set by running the SQL yourself**  | **No.**                                                                      |
