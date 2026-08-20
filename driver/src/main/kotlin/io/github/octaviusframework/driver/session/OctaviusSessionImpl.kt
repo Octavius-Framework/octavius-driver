@@ -2,7 +2,10 @@ package io.github.octaviusframework.driver.session
 
 import io.github.octaviusframework.driver.concurrent.OctaviusDispatchers
 import io.github.octaviusframework.driver.copy.CopyManager
+import io.github.octaviusframework.driver.exception.NetworkException
+import io.github.octaviusframework.driver.exception.NetworkExceptionReason
 import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
+import io.github.octaviusframework.driver.exception.findOctaviusCause
 import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.unwrap
 import io.github.octaviusframework.driver.lo.LargeObjectManager
@@ -15,6 +18,7 @@ import io.github.octaviusframework.driver.transaction.TransactionManager
 import io.github.octaviusframework.driver.registry.TypeManager
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.sql.Connection
+import java.sql.SQLException
 
 private val logger = KotlinLogging.logger {}
 
@@ -31,39 +35,63 @@ internal class OctaviusSessionImpl(
 
     internal val octaviusConnection: OctaviusConnection = rawConnection.unwrap()
 
+    /**
+     * Whether this session has been given up, by [close] or by [abort].
+     *
+     * A pooled connection outlives the session borrowed through it: closing the session hands the
+     * connection back, and the next borrower may already be running queries on it. The proxy that
+     * came with it goes dead at that moment, but [octaviusConnection] does not - it is the live
+     * connection, now somebody else's - so nothing below this class would stop a stale session from
+     * reaching it. This is what does.
+     */
+    @Volatile
+    private var sessionClosed: Boolean = false
+
+    // Each of these is built once and handed out through a getter that first checks the session is
+    // still the connection's. Two of them reach past every other guard in this class - the copy
+    // manager holds the stream itself, and a listener loop reads messages off it directly - so the
+    // check belongs at the point they are handed out. The rest are gated for one rule rather than a
+    // rule with exceptions.
     override val typeManager: TypeManager = TypeManager(octaviusConnection.typeRegistry) { octaviusConnection.getSearchPath() }
+        get() { checkOpen(); return field }
 
     override val notifications: NotificationManager = NotificationManager(this)
+        get() { checkOpen(); return field }
 
     override val copy: CopyManager = CopyManager(octaviusConnection.stream)
+        get() { checkOpen(); return field }
 
     override val largeObjects: LargeObjectManager = LargeObjectManager(this)
+        get() { checkOpen(); return field }
 
     override val transaction: TransactionManager = TransactionManager(this)
+        get() { checkOpen(); return field }
 
     override val transactionState: TransactionState
-        get() = octaviusConnection.transactionState
+        get() {
+            checkOpen()
+            return octaviusConnection.transactionState
+        }
+
+    /**
+     * Refuses anything asked of a session that has already been given up.
+     *
+     * Reported as a closed connection rather than as misuse, because from the caller's side that is
+     * what it is: the session it holds no longer has one.
+     */
+    private fun checkOpen() {
+        if (sessionClosed) throw NetworkException(
+            NetworkExceptionReason.CONNECTION_CLOSED,
+            details = "This session has been closed; its connection has gone back to the pool or been discarded",
+            sqlState = "08003"
+        )
+    }
 
     /** Ties a log line to the backend behind this session; see the same property on [OctaviusConnection]. */
     private val pid: String get() = "[PID: ${octaviusConnection.stream.processId}]"
 
-    override fun setSavepoint(): OctaviusSavepoint {
-        return unwrapSqlException { rawConnection.setSavepoint() as OctaviusSavepoint }
-    }
-
-    override fun setSavepoint(name: String): OctaviusSavepoint {
-        return unwrapSqlException { rawConnection.setSavepoint(name) as OctaviusSavepoint }
-    }
-
-    override fun rollback(savepoint: OctaviusSavepoint) {
-        unwrapSqlException { rawConnection.rollback(savepoint as java.sql.Savepoint) }
-    }
-
-    override fun releaseSavepoint(savepoint: OctaviusSavepoint) {
-        unwrapSqlException { rawConnection.releaseSavepoint(savepoint as java.sql.Savepoint) }
-    }
-
     override fun reloadTypes() {
+        checkOpen()
         GlobalTypeRegistry.reload(
             octaviusConnection.registryKey,
             octaviusConnection.queryExecutor
@@ -71,28 +99,52 @@ internal class OctaviusSessionImpl(
     }
 
     override fun createNativeQuery(sql: String): NativeQuery {
+        checkOpen()
         octaviusConnection.checkClosed()
         return NativeQuery(sql, octaviusConnection.queryExecutor, typeManager)
     }
 
     override fun createNamedQuery(sql: String): NamedParameterQuery {
+        checkOpen()
         octaviusConnection.checkClosed()
         return NamedParameterQuery(sql, octaviusConnection.queryExecutor, typeManager)
     }
 
     override fun cancelQuery() {
+        checkOpen()
         octaviusConnection.cancelQuery()
     }
 
-    override fun getSearchPath() = octaviusConnection.getSearchPath()
+    override fun getSearchPath(): List<String> {
+        checkOpen()
+        return octaviusConnection.getSearchPath()
+    }
 
     // ------------------------------------------Pool Connection--------------------------------------------------------
 
+    /**
+     * Runs an operation that goes through the JDBC connection, in this API's own terms.
+     *
+     * Two kinds of `java.sql.SQLException` arrive here. The driver's own comes wrapped, and is
+     * unwrapped back into the exception it started as. The rest belong to whatever stands between
+     * this session and its connection: a pool's proxy answering for a connection it has taken back
+     * or evicted, and reporting it as a bare `SQLException` with neither SQLState nor cause. Since
+     * that is not a shape this API uses anywhere else, it is restated too - after a look through the
+     * chain, in case the pool was carrying a driver failure it had wrapped on the way.
+     */
     private inline fun <T> unwrapSqlException(block: () -> T): T {
+        checkOpen()
         try {
             return block()
         } catch (e: SQLExceptionWrapper) {
             throw e.wrappedException
+        } catch (e: SQLException) {
+            throw e.findOctaviusCause() ?: NetworkException(
+                NetworkExceptionReason.CONNECTION_ERROR,
+                details = e.message,
+                cause = e,
+                sqlState = e.sqlState ?: "08006"
+            )
         }
     }
 
@@ -120,11 +172,29 @@ internal class OctaviusSessionImpl(
             unwrapSqlException { rawConnection.setNetworkTimeout(OctaviusDispatchers.VirtualExecutor, value) }
         }
 
-    override fun isValid(timeout: Int): Boolean = rawConnection.isValid(timeout)
+    // Answers rather than raises on a session already given up, the way JDBC has `isValid` answer
+    // for a closed connection - a health check is the one question a dead session can still settle.
+    override fun isValid(timeout: Int): Boolean = !sessionClosed && rawConnection.isValid(timeout)
 
     override fun commit() = unwrapSqlException { rawConnection.commit() }
 
     override fun rollback() = unwrapSqlException { rawConnection.rollback() }
+
+    override fun setSavepoint(): OctaviusSavepoint {
+        return unwrapSqlException { rawConnection.setSavepoint() as OctaviusSavepoint }
+    }
+
+    override fun setSavepoint(name: String): OctaviusSavepoint {
+        return unwrapSqlException { rawConnection.setSavepoint(name) as OctaviusSavepoint }
+    }
+
+    override fun rollback(savepoint: OctaviusSavepoint) {
+        unwrapSqlException { rawConnection.rollback(savepoint as java.sql.Savepoint) }
+    }
+
+    override fun releaseSavepoint(savepoint: OctaviusSavepoint) {
+        unwrapSqlException { rawConnection.releaseSavepoint(savepoint as java.sql.Savepoint) }
+    }
 
     // -------------------------------------------Close/Abort-----------------------------------------------------------
 
@@ -161,6 +231,10 @@ internal class OctaviusSessionImpl(
     }
 
     override fun abort() {
+        // Set before the abort rather than after: from here on the connection is on its way out of
+        // the pool whatever happens below, so nothing more should be asked of this session even if
+        // the abort itself raises.
+        sessionClosed = true
         try {
             rawConnection.abort(OctaviusDispatchers.VirtualExecutor)
         } catch (_: SQLExceptionWrapper) {
@@ -178,6 +252,7 @@ internal class OctaviusSessionImpl(
     }
 
     override fun close() {
+        if (sessionClosed) return
         try {
             if (octaviusConnection.isClosed || octaviusConnection.stream.isBroken) {
                 // If the underlying connection is already flagged as closed/broken,
@@ -211,6 +286,10 @@ internal class OctaviusSessionImpl(
             }
         } catch (e: Exception) {
             logger.debug(e) { "$pid Closing the session raised" }
+        } finally {
+            // Last, not first: everything above still has to be able to speak to the connection,
+            // and the reset in particular runs statements on it.
+            sessionClosed = true
         }
     }
 }

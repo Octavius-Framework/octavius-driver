@@ -1,10 +1,38 @@
 package io.github.octaviusframework.driver.jdbc
 
+import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionReason
+import io.github.octaviusframework.driver.exception.findOctaviusCause
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionImpl
 import java.sql.Connection
+import java.sql.SQLException
 import javax.sql.DataSource
+
+/**
+ * Runs the acquisition of a session over [from], restating anything it raises as the driver's own.
+ *
+ * Getting a session is the one point where this API asks a foreign object for a connection, and
+ * whatever that object is answers in `java.sql.SQLException` - a pool reporting a borrow that timed
+ * out, a pool that has been closed, one declining to forward per-call credentials. None of those is
+ * a shape the session API uses anywhere else, so none of them is passed on as it stands.
+ *
+ * The driver's own failure is preferred over the restatement wrapped around it whenever the chain
+ * carries one: a pool that could not reach the server reports a timeout, while the exception
+ * underneath says the connection was refused, which is the half worth keeping.
+ */
+private inline fun <T> obtainingSession(from: Any, block: () -> T): T {
+    try {
+        return block()
+    } catch (e: SQLException) {
+        throw e.findOctaviusCause() ?: InitializationException(
+            InitializationExceptionReason.CONNECTION_ERROR,
+            "Could not obtain a session from ${from.javaClass.name}: ${e.message}",
+            e
+        )
+    }
+}
 
 // DriverManager
 /**
@@ -79,32 +107,43 @@ inline fun <reified T> DataSource.unwrap(): T {
  * Retrieves a new [OctaviusSession] from this [DataSource].
  *
  * @return An [OctaviusSession] instance.
+ * @throws InitializationException if the data source would not hand over a connection - which for a
+ * pooled one covers a borrow that timed out and a pool that has been closed. Where the pool was
+ * restating a failure of the driver's own, that one is raised instead.
  */
-fun DataSource.getOctaviusSession(): OctaviusSession {
-    val conn = this.getConnection()
-    return OctaviusSessionImpl(conn)
+fun DataSource.getOctaviusSession(): OctaviusSession = obtainingSession(this) {
+    OctaviusSessionImpl(this.getConnection())
 }
 
 /**
  * Retrieves a new [OctaviusSession] from this [DataSource] using the specified credentials.
  *
+ * Per-call credentials are not something every data source implements: HikariCP refuses them
+ * outright, its connections having been opened with the credentials the pool was configured with.
+ *
  * @param username The database user on whose behalf the connection is being made.
  * @param pass The user's password.
  * @return An [OctaviusSession] instance.
+ * @throws InitializationException if the data source would not hand over a connection on these
+ * terms. Where it was restating a failure of the driver's own, that one is raised instead.
  */
-fun DataSource.getOctaviusSession(username: String, pass: String): OctaviusSession {
-    val conn = this.getConnection(username, pass)
-    return OctaviusSessionImpl(conn)
+fun DataSource.getOctaviusSession(username: String, pass: String): OctaviusSession = obtainingSession(this) {
+    OctaviusSessionImpl(this.getConnection(username, pass))
 }
 
 // Connection
 /**
  * Retrieves a new [OctaviusSession] from this [Connection].
  *
+ * The connection has to reach an [OctaviusConnection] through `unwrap`, which a pool's proxy answers
+ * for as long as it still stands over one - so a connection already handed back is refused here
+ * rather than at the first query.
+ *
  * @return An [OctaviusSession] instance.
+ * @throws InitializationException if a session could not be opened over this connection.
  */
-fun Connection.getOctaviusSession(): OctaviusSession {
-    return OctaviusSessionImpl(this)
+fun Connection.getOctaviusSession(): OctaviusSession = obtainingSession(this) {
+    OctaviusSessionImpl(this)
 }
 
 /**

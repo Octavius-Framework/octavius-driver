@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.spring
 
-import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.SQLExceptionWrapper
+import io.github.octaviusframework.driver.exception.findOctaviusCause
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
@@ -46,19 +45,10 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
             return session.action()
         } catch (ex: SQLException) {
             throw translate("OctaviusTemplate execution", ex)
-        } catch (ex: OctaviusException) {
-            throw OctaviusDataAccessException(ex)
         } catch (ex: RuntimeException) {
-            var current: Throwable? = ex.cause
-            while (current != null) {
-                if (current is SQLExceptionWrapper) {
-                    throw OctaviusDataAccessException(current.wrappedException)
-                } else if (current is OctaviusException) {
-                    throw OctaviusDataAccessException(current)
-                }
-                current = current.cause
-            }
-            throw ex
+            // Covers the driver's own exceptions, which are runtime exceptions, and anything that
+            // wrapped one on its way here; anything else is left as it is.
+            throw ex.findOctaviusCause()?.let { OctaviusDataAccessException(it) } ?: ex
         } finally {
             DataSourceUtils.releaseConnection(con, dataSource)
         }

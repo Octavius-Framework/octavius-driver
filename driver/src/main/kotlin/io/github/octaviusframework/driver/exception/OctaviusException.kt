@@ -61,3 +61,40 @@ abstract class OctaviusException(
 }
 
 const val line = "--------------------------------------------------------------------------------"
+
+/**
+ * How far down a cause chain [findOctaviusCause] is willing to look. Bounded so a chain that
+ * loops back on itself ends rather than spinning; nothing legitimate nests this deep.
+ */
+private const val MAX_CAUSE_DEPTH = 16
+
+/**
+ * Finds the Octavius failure behind this throwable, if there is one.
+ *
+ * A driver failure that crosses a JDBC boundary rarely arrives as itself. A connection pool
+ * restates it as an `SQLException` of its own, a framework restates that one in turn, and what
+ * the caller finally catches names only the layer it came from - HikariCP reporting a borrow that
+ * timed out says nothing about the server refusing the connection underneath it. The chain still
+ * carries the original, either as a [SQLExceptionWrapper] put there by the driver's JDBC surface
+ * or as a bare [OctaviusException] recorded by a pool that was trying to open a connection, so
+ * anything restating a foreign failure looks for the real one here before inventing its own.
+ *
+ * The receiver itself is examined first, so a driver exception passed in directly is returned
+ * as it stands.
+ *
+ * @return The first Octavius exception found on the way down the cause chain, or `null` if the
+ * failure did not originate in this driver.
+ */
+fun Throwable.findOctaviusCause(): OctaviusException? {
+    var current: Throwable? = this
+    var depth = 0
+    while (current != null && depth < MAX_CAUSE_DEPTH) {
+        when (current) {
+            is SQLExceptionWrapper -> return current.wrappedException
+            is OctaviusException -> return current
+        }
+        current = current.cause
+        depth++
+    }
+    return null
+}

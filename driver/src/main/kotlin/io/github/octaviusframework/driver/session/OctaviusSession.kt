@@ -80,6 +80,9 @@ interface OctaviusSessionOperations {
     /**
      * Manually aborts the connection, forcing the underlying connection pool (like HikariCP)
      * to evict it instead of returning it to the pool.
+     *
+     * The session is finished afterwards, on the same terms as one that has been closed: anything
+     * asked of it from here raises [NetworkException][io.github.octaviusframework.driver.exception.NetworkException].
      */
     fun abort()
 
@@ -106,6 +109,9 @@ interface OctaviusSessionOperations {
     /**
      * Checks if this session is still valid and the underlying connection is alive.
      *
+     * A session that has been closed or aborted answers `false` rather than raising, the way JDBC
+     * has the same question answered for a closed connection.
+     *
      * @param timeout The maximum time in seconds to wait for a database response.
      * @return `true` if the session is valid, `false` otherwise.
      */
@@ -117,6 +123,18 @@ interface OctaviusSessionOperations {
  * full lifecycle control and transaction management.
  */
 interface OctaviusSession : OctaviusSessionOperations, AutoCloseable {
+
+    /**
+     * Ends the session, undoing the per-session state it left on its connection and giving that
+     * connection up - back to the pool it was borrowed from, or closed outright.
+     *
+     * The session is finished at that point and holds no claim on the connection, which a pool may
+     * already have handed to somebody else. Anything asked of it from here raises
+     * [NetworkException][io.github.octaviusframework.driver.exception.NetworkException] rather than
+     * reaching a connection that is no longer this session's; closing twice does nothing the second
+     * time.
+     */
+    override fun close()
 
     /**
      * Specifies whether the session operates in auto-commit mode.
