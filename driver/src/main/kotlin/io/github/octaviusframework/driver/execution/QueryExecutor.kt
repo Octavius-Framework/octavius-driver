@@ -37,9 +37,6 @@ class QueryExecutor internal constructor(
         maxCapacity = maxParameterWriterCapacity ?: 65536
     )
     
-    var transactionStatus: Char = 'I'
-        private set
-
     /** Ties a log line to the backend this executor talks to. */
     private val pid: String get() = "[PID: ${stream.processId}]"
 
@@ -134,10 +131,7 @@ class QueryExecutor internal constructor(
             val msg = stream.receiveMessage()
             when (msg) {
                 is ErrorOrNoticeMessage -> errorResponse = msg
-                is ReadyForQueryMessage -> {
-                    transactionStatus = msg.transactionStatus
-                    break
-                }
+                is ReadyForQueryMessage -> break
                 is RowDescriptionMessage, is DataRowMessage -> {
                     if (errorResponse == null && executionError == null) {
                         executionError = InvalidOperationException(
@@ -223,10 +217,7 @@ class QueryExecutor internal constructor(
                 is ErrorOrNoticeMessage -> {
                     if (errorResponse == null) errorResponse = msg
                 }
-                is ReadyForQueryMessage -> {
-                    transactionStatus = msg.transactionStatus
-                    break
-                }
+                is ReadyForQueryMessage -> break
                 else -> { /* Ignore */ }
             }
         }
@@ -338,10 +329,7 @@ class QueryExecutor internal constructor(
                 is ErrorOrNoticeMessage -> {
                     if (errorResponse == null) errorResponse = msg
                 }
-                is ReadyForQueryMessage -> {
-                    transactionStatus = msg.transactionStatus
-                    break
-                }
+                is ReadyForQueryMessage -> break
                 else -> { /* Ignore */ }
             }
         }
@@ -443,7 +431,6 @@ class QueryExecutor internal constructor(
         while (true) {
             val msg = stream.receiveMessage()
             if (msg is ReadyForQueryMessage) {
-                transactionStatus = msg.transactionStatus
                 break
             } else if (msg is ErrorOrNoticeMessage) {
                 if (errorResponse == null) errorResponse = msg

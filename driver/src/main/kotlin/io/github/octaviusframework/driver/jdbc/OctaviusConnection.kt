@@ -319,7 +319,7 @@ internal class OctaviusConnection internal constructor(
     private var transactionIsolationLevel: Int = Connection.TRANSACTION_READ_COMMITTED
 
     val transactionState: TransactionState
-        get() = TransactionState.fromChar(queryExecutor.transactionStatus)
+        get() = TransactionState.fromChar(stream.transactionStatus)
 
 
     override fun setAutoCommit(autoCommit: Boolean) = wrapSqlException { // required by Hikari

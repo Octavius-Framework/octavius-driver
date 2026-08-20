@@ -119,6 +119,14 @@ internal class PgStream(
     }
 
     /**
+     * The transaction status the server reported on its last `ReadyForQuery`: `I` outside a
+     * transaction block, `T` inside one, `E` inside one that has failed.
+     */
+    var transactionStatus: Char = 'I'
+        private set
+
+
+    /**
      * Shared buffers used to reduce memory allocations during 'DataRow' deserialization.
      * Since 'Row' eagerly parses all values into basic JVM types during initialization,
      * the underlying byte arrays can be immediately reused for the next row.
@@ -339,6 +347,7 @@ internal class PgStream(
                     }
                     'Z' -> {
                         val status = inputStream.readByte().toInt().toChar()
+                        transactionStatus = status
                         return ReadyForQueryMessage(status)
                     }
                     '1' -> return ParseCompleteMessage

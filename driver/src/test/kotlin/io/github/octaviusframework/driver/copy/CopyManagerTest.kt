@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.jdbc.OctaviusConnection
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.session.TransactionState
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -142,5 +143,40 @@ class CopyManagerTest {
         session = newSession()
         val count = session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>()
         assertEquals(0L, count)
+    }
+
+    @Test
+    fun testCancellingACopyInATransactionLeavesTheTransactionStateFailed() {
+        session.autoCommit = false
+        session.createNativeQuery("INSERT INTO copy_test VALUES (9, 'Test9')").update()
+        assertEquals(TransactionState.IN_TRANSACTION, session.transactionState)
+
+        val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
+        copyIn.writeToCopy("10,Test10\n".toByteArray(Charsets.UTF_8))
+        copyIn.cancelCopy()
+
+        // Cancelling is done with an error, and an error inside a transaction block fails it. The
+        // state has to say so: a COMMIT from here rolls the transaction back and reports success,
+        // so a session that still believed it was IN_TRANSACTION would be believing the wrong thing
+        // at exactly the moment it matters.
+        assertEquals(TransactionState.FAILED, session.transactionState)
+
+        session.rollback()
+        session.autoCommit = true
+        assertEquals(0L, session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>())
+    }
+
+    @Test
+    fun testFinishingACopyInATransactionLeavesTheTransactionStateIntact() {
+        session.autoCommit = false
+        val copyIn = session.copy.copyIn("COPY copy_test FROM STDIN WITH (FORMAT CSV)")
+        copyIn.writeToCopy("11,Test11\n".toByteArray(Charsets.UTF_8))
+        assertEquals(1, copyIn.endCopy())
+
+        assertEquals(TransactionState.IN_TRANSACTION, session.transactionState)
+
+        session.rollback()
+        session.autoCommit = true
+        assertEquals(0L, session.createNativeQuery("SELECT count(*) FROM copy_test").fetchFieldStrict<Long>())
     }
 }
