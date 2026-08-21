@@ -7,6 +7,7 @@ dependencies {
     api(projects.driver)
     api(spring.spring.boot.starter.jdbc)
     implementation(hikari.hikaricp)
+    implementation(libs.kotlin.logging)
 
     testImplementation(spring.spring.boot.starter.test)
     testImplementation(libs.kotlin.test)

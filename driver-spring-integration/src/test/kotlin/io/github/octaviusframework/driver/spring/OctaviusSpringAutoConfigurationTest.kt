@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
+import org.springframework.jdbc.support.JdbcTransactionManager
 import org.springframework.transaction.PlatformTransactionManager
 import javax.sql.DataSource
 import org.mockito.Mockito.mock
@@ -31,7 +32,10 @@ class OctaviusSpringAutoConfigurationTest {
             assertTrue(context.containsBean("transactionManager"))
             
             val tm = context.getBean<PlatformTransactionManager>()
-            assertEquals("org.springframework.jdbc.support.JdbcTransactionManager", tm::class.java.name)
+            // Still a JdbcTransactionManager, so everything keyed off that type keeps working; what
+            // the subclass adds is an answer for a transaction whose connection has already left.
+            assertInstanceOf(OctaviusJdbcTransactionManager::class.java, tm)
+            assertInstanceOf(JdbcTransactionManager::class.java, tm)
         }
     }
 

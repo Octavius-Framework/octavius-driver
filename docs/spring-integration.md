@@ -48,10 +48,10 @@ spring:
 
 `OctaviusSpringAutoConfiguration` runs after Boot's `DataSourceAutoConfiguration` and contributes two beans:
 
-| Bean                         | What it gives you                                                                                                         |
-|:-----------------------------|:--------------------------------------------------------------------------------------------------------------------------|
-| `OctaviusTemplate`           | Runs a block against an `OctaviusSession` on the current transaction's connection, translating exceptions on the way out. |
-| `PlatformTransactionManager` | A `JdbcTransactionManager` carrying `OctaviusExceptionTranslator`, with nested transactions enabled.                      |
+| Bean                         | What it gives you                                                                                                                              |
+|:-----------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------|
+| `OctaviusTemplate`           | Runs a block against an `OctaviusSession` on the current transaction's connection, translating exceptions on the way out.                      |
+| `PlatformTransactionManager` | An `OctaviusJdbcTransactionManager`: exception translation, nested transactions, and a truthful answer when a connection dies mid-transaction. |
 
 Exception translation follows from that second bean and from the template, and the rule is one sentence: **if the failure came from Octavius, `octaviusException` hands you back the driver's own exception** — its type, its reason enum, its SQLSTATE and its query context all intact. What it was wrapped in on the way does not matter and never reaches you; the JDBC surface adds a layer to satisfy `SQLException`, a pool adds another, and both are unwrapped however deep they sit. A connection HikariCP could not open arrives as an `InitializationException(CONNECTION_ERROR)`, not as a generic pool timeout. Genuinely foreign `SQLException`s go through Spring's `SQLStateSQLExceptionTranslator` and land in the standard `DataAccessException` hierarchy.
 
@@ -88,10 +88,7 @@ class OctaviusConfig {
 
     @Bean
     fun transactionManager(dataSource: DataSource): PlatformTransactionManager =
-        JdbcTransactionManager(dataSource).apply {
-            exceptionTranslator = OctaviusExceptionTranslator()
-            isNestedTransactionAllowed = true
-        }
+        OctaviusJdbcTransactionManager(dataSource)
 }
 ```
 
@@ -244,6 +241,21 @@ fun handle(ex: OctaviusDataAccessException): ResponseEntity<*> {
 ```
 
 The full hierarchy, the reason enums worth branching on, and a longer `@ControllerAdvice` example are in [Error Handling](exceptions.md#crossing-into-jdbc-and-spring).
+
+### When the connection dies mid-transaction
+
+A connection can leave in the middle of a transaction — the driver aborts one whose stream is broken or that was left mid-`COPY`, and `session.abort()` does it on request. The pool evicts it, and from then on its proxy answers everything with a bare `SQLException` that carries neither SQLState nor cause, so there is nothing left for an exception translator to recognize.
+
+The auto-configured `OctaviusJdbcTransactionManager` answers for that case, and treats the two paths differently:
+
+| Path         | What happens                                                                                            |
+|:-------------|:--------------------------------------------------------------------------------------------------------|
+| **Commit**   | Raises `OctaviusDataAccessException` wrapping `NetworkException(CONNECTION_ABORTED)`.                   |
+| **Rollback** | Stays quiet. The server discarded the transaction along with the connection, so there is nothing to do. |
+
+The asymmetry is the point. A commit that did not happen must be reported, or the caller is told its work is durable when it is not. A rollback, on the other hand, has already got what it asked for — and raising there would replace the exception that *caused* the rollback with one about the cleanup. Without this, an aborted connection turned every such failure into `TransactionSystemException: JDBC commit failed`, and Spring logged `Application exception overridden by rollback exception` over the diagnostic you actually needed.
+
+Declaring a `PlatformTransactionManager` of your own replaces this, as it replaces the rest of the auto-configuration.
 
 ## What else in Spring works
 

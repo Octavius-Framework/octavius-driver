@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.context.annotation.Bean
-import org.springframework.jdbc.support.JdbcTransactionManager
 import org.springframework.transaction.PlatformTransactionManager
 import javax.sql.DataSource
 
@@ -35,23 +34,21 @@ open class OctaviusSpringAutoConfiguration {
     }
 
     /**
-     * Creates and registers a [PlatformTransactionManager] bean backed by a [JdbcTransactionManager]
-     * if one is not already present in the application context.
+     * Creates and registers a [PlatformTransactionManager] bean backed by an
+     * [OctaviusJdbcTransactionManager] if one is not already present in the application context.
      *
-     * It is given an [OctaviusExceptionTranslator], so a failure raised while the manager itself is
+     * It carries an [OctaviusExceptionTranslator], so a failure raised while the manager itself is
      * committing or rolling back arrives in Spring's `DataAccessException` hierarchy rather than as a
-     * raw `SQLException`. Nested transactions are enabled, which is what makes
-     * `@Transactional(propagation = NESTED)` resolve to a savepoint instead of being rejected.
+     * raw `SQLException`, and it has nested transactions enabled, which is what makes
+     * `@Transactional(propagation = NESTED)` resolve to a savepoint instead of being rejected. What it
+     * adds over `JdbcTransactionManager` is an answer for a transaction whose connection has already
+     * left - see the class for which way each of commit and rollback goes, and why they differ.
      *
      * @param dataSource the underlying data source to use
      * @return a new instance of [PlatformTransactionManager]
      */
     @Bean
     @ConditionalOnMissingBean
-    open fun transactionManager(dataSource: DataSource): PlatformTransactionManager {
-        val tm = JdbcTransactionManager(dataSource)
-        tm.exceptionTranslator = OctaviusExceptionTranslator()
-        tm.isNestedTransactionAllowed = true
-        return tm
-    }
+    open fun transactionManager(dataSource: DataSource): PlatformTransactionManager =
+        OctaviusJdbcTransactionManager(dataSource)
 }
