@@ -139,11 +139,16 @@ fun DataSource.getOctaviusSession(username: String, pass: String): OctaviusSessi
  * for as long as it still stands over one - so a connection already handed back is refused here
  * rather than at the first query.
  *
+ * @param ownsConnection Whether closing the session should close this connection too. Leave it as it
+ * is when the session is what the connection was opened for. Pass `false` when something else owns
+ * the connection and will give it back itself - Spring's `DataSourceUtils`, a pool borrowed from by
+ * hand - and closing the session then undoes the state it left behind and stops there, rather than
+ * returning a connection its owner still believes it holds.
  * @return An [OctaviusSession] instance.
  * @throws InitializationException if a session could not be opened over this connection.
  */
-fun Connection.getOctaviusSession(): OctaviusSession = obtainingSession(this) {
-    OctaviusSessionImpl(this)
+fun Connection.getOctaviusSession(ownsConnection: Boolean = true): OctaviusSession = obtainingSession(this) {
+    OctaviusSessionImpl(this, ownsConnection)
 }
 
 /**

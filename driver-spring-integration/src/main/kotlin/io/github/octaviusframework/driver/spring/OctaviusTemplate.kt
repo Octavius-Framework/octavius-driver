@@ -10,6 +10,7 @@ import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.UncategorizedSQLException
 import org.springframework.jdbc.datasource.DataSourceUtils
 import org.springframework.jdbc.support.SQLExceptionTranslator
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.sql.SQLException
 import javax.sql.DataSource
 
@@ -21,6 +22,9 @@ import javax.sql.DataSource
  * @property exceptionTranslator the translator used to convert SQLExceptions into Spring's DataAccessException hierarchy
  */
 class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslator: SQLExceptionTranslator = OctaviusExceptionTranslator()) {
+
+    /** What a transaction-scoped session is bound under; equal across templates over one data source. */
+    private val sessionKey = OctaviusSessionKey(dataSource)
 
     /**
      * Executes the given action within an [OctaviusSession], translating any exceptions thrown.
@@ -40,8 +44,18 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
             throw translate("OctaviusTemplate connection acquisition", ex)
         }
 
+        var session: OctaviusSession? = null
+        var transactionScoped = false
         try {
-            val session = con.getOctaviusSession()
+            val bound = TransactionSynchronizationManager.getResource(sessionKey) as OctaviusSessionHolder?
+            if (bound != null) {
+                session = bound.session
+                transactionScoped = true
+            } else {
+                // Never owning: the connection came from DataSourceUtils and goes back the same way.
+                session = con.getOctaviusSession(ownsConnection = false)
+                transactionScoped = bindToTransaction(session)
+            }
             return session.action()
         } catch (ex: SQLException) {
             throw translate("OctaviusTemplate execution", ex)
@@ -50,8 +64,28 @@ class OctaviusTemplate(private val dataSource: DataSource, val exceptionTranslat
             // wrapped one on its way here; anything else is left as it is.
             throw ex.findOctaviusCause()?.let { OctaviusDataAccessException(it) } ?: ex
         } finally {
+            // Outside a transaction the session ends with the call that opened it, undoing the
+            // LISTEN registrations and any hand-written BEGIN before the connection goes back. A
+            // transaction-scoped one is ended by its synchronization instead, once, at the end -
+            // closing it here would reset a connection the transaction is still working on.
+            if (!transactionScoped) session?.close()
             DataSourceUtils.releaseConnection(con, dataSource)
         }
+    }
+
+    /**
+     * Binds [session] to the current transaction, so that every later [execute] within it works
+     * through the same session and the state it leaves is undone once, at completion.
+     *
+     * @return whether there was a transaction to bind to.
+     */
+    private fun bindToTransaction(session: OctaviusSession): Boolean {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return false
+
+        val holder = OctaviusSessionHolder(session)
+        TransactionSynchronizationManager.bindResource(sessionKey, holder)
+        TransactionSynchronizationManager.registerSynchronization(OctaviusSessionSynchronization(holder, sessionKey))
+        return true
     }
 
     /**

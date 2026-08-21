@@ -26,11 +26,15 @@ private val logger = KotlinLogging.logger {}
 /**
  * Internal implementation of the [OctaviusSession] interface.
  *
- * This class wraps a raw JDBC [Connection] (which could be pooled) and delegates 
+ * This class wraps a raw JDBC [Connection] (which could be pooled) and delegates
  * operations to the underlying [OctaviusConnection].
+ *
+ * @property ownsConnection Whether [close] should close the connection as well as reset it. False
+ * where the connection was handed to the session by something that gives it back itself.
  */
 internal class OctaviusSessionImpl(
-    private val rawConnection: Connection
+    private val rawConnection: Connection,
+    private val ownsConnection: Boolean = true
 ) : OctaviusSession {
 
     internal val octaviusConnection: OctaviusConnection = rawConnection.unwrap()
@@ -282,7 +286,10 @@ internal class OctaviusSessionImpl(
                     abort()
                     return
                 }
-                rawConnection.close()
+                // Only where the session is what the connection was opened for. Where somebody else
+                // owns it, giving it back here would return a connection its owner still counts as
+                // borrowed - and a pool would then hand the same connection to two callers.
+                if (ownsConnection) rawConnection.close()
             }
         } catch (e: Exception) {
             logger.debug(e) { "$pid Closing the session raised" }
