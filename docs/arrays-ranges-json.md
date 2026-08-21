@@ -154,6 +154,12 @@ raw.get<Int>(0)     // one element, type-checked
 `elements` is deliberately flat: the dimensions describe how to fold it, which is what the collection converter does for
 you. Reach for `PgArray` when you need the dimension metadata or PostgreSQL's non-1 lower bounds, and for nothing else.
 
+Everything in `elements` is what the **codec** for `elementOid` produced, with no converter having run over it: an
+`int4[]` holds `Int`s, but an array of a composite holds `PgComposite`s and an array of an enum holds its labels as
+`String`s. That is what the rule above rests on — a raw container is the converter layer's input, not its output.
+Inside a converter you have a `DeserializationContext` to push each element through the chain; outside one,
+`row.get<List<T>>("legions")` has already done exactly that.
+
 ### Arrays as a query tool
 
 Two uses of arrays have nothing to do with array *columns*, and are the ones you will reach for most:

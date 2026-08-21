@@ -423,6 +423,17 @@ assessed.withPgType("tribute_range")
 
 ## The raw forms: `PgComposite` and `PgRecord`
 
+Both are what the **codec** layer produces, one step below the converters: their fields hold exactly what the codec for
+each attribute's OID decoded, and nothing there has been through a converter. A nested composite is another
+`PgComposite`, an array is a `PgArray`, an enum is its label as a `String`. An attribute of a base type is already the
+Kotlin value you want — the `Int` and the `String` the [hand-written converter](#writing-the-converters-by-hand) reads
+straight off — and anything the converter layer would have mapped stays raw until something maps it: `context.convert`
+with the attribute's OID, which is the call `ReflectionCompositeConverter` makes for every attribute.
+
+That context is a converter's own argument. Outside one, read a raw form for what it says about **shape** —
+`attributeNames`, `getAttributeOid`, a `PgRecord`'s positional `fields` — and read the values through `row.get<T>(...)`,
+which has already run the whole chain, nested attributes included.
+
 ### `PgComposite`
 
 Every composite decodes to a `PgComposite` before any converter sees it, and you can ask for that directly:

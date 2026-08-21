@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.container
 
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
+
 /**
  * Represents a PostgreSQL multirange structure from the database.
  *
@@ -25,9 +28,15 @@ class PgMultirange internal constructor(
      *
      * @param index Zero-based index.
      * @return The range at that position.
-     * @throws IndexOutOfBoundsException if [index] is outside [ranges].
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside [ranges].
      */
-    operator fun get(index: Int): PgRange = ranges[index]
+    operator fun get(index: Int): PgRange {
+        if (index !in ranges.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Range index out of bounds: $index (multirange holds ${ranges.size} ranges)"
+        )
+        return ranges[index]
+    }
 
     /**
      * Returns the ranges as a list.

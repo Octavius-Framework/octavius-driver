@@ -26,10 +26,15 @@ class PgComposite internal constructor(
      * @param T The expected attribute type. Declare it nullable to accept a SQL `NULL`.
      * @param index Zero-based index in declaration order.
      * @return The attribute value.
-     * @throws MappingException `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is
-     *   not a [T].
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this composite's attributes,
+     *   `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is not a [T].
      */
     inline fun <reified T> get(index: Int): T {
+        if (index !in fields.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Attribute index out of bounds: $index in composite '${type.name}' (${fields.size} attributes)"
+        )
+
         val value = fields[index]
 
         if (value is T) {
@@ -71,9 +76,13 @@ class PgComposite internal constructor(
      *
      * @param index Zero-based index in declaration order.
      * @param newValue The value to store.
-     * @throws IndexOutOfBoundsException if [index] is outside this composite's attributes.
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this composite's attributes.
      */
     operator fun set(index: Int, newValue: Any?) {
+        if (index !in fields.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Attribute index out of bounds: $index in composite '${type.name}' (${fields.size} attributes)"
+        )
         fields[index] = newValue
     }
 
@@ -111,9 +120,15 @@ class PgComposite internal constructor(
      *
      * @param index Zero-based index in declaration order.
      * @return The attribute's type OID.
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this composite's attributes.
      */
     fun getAttributeOid(index: Int): Int {
-        return type.attributeOids[index]
+        val attributeOids = type.attributeOids
+        if (index !in attributeOids.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Attribute index out of bounds: $index in composite '${type.name}' (${attributeOids.size} attributes)"
+        )
+        return attributeOids[index]
     }
 
     /**

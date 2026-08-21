@@ -449,7 +449,7 @@ The object-identifying fields come straight from the server's error message, so 
 
 | Reason (`MappingExceptionReason`) | Description                                                                                                                                                       |
 |:----------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `COLUMN_NOT_FOUND`                | The requested column, index, or composite attribute does not exist.                                                                                               |
+| `COLUMN_NOT_FOUND`                | The requested column, composite attribute, record field or array element does not exist — by name, or at that position.                                           |
 | `REQUIRED_ATTRIBUTE_MISSING`      | The database returned `NULL` (or nothing) for a non-nullable Kotlin property.                                                                                     |
 | `NO_CONVERTER_FOUND`              | No converter registered for the source/target type pair.                                                                                                          |
 | `CONVERSION_ERROR`                | Cast or conversion failed, including a converter returning a type other than the one requested; also the wrapper for foreign exceptions escaping a mapping block. |

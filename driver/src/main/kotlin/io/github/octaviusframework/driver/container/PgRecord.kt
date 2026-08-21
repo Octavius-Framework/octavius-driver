@@ -26,10 +26,15 @@ class PgRecord internal constructor(
      * @param T The expected field type. Declare it nullable to accept a SQL `NULL`.
      * @param index Zero-based index in the order the record's columns were selected.
      * @return The field value.
-     * @throws MappingException `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is
-     *   not a [T].
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this record's fields,
+     *   `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is not a [T].
      */
     inline fun <reified T> get(index: Int): T {
+        if (index !in fields.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Field index out of bounds: $index (record holds ${fields.size} fields)"
+        )
+
         val value = fields[index]
 
         if (value is T) {
@@ -54,8 +59,13 @@ class PgRecord internal constructor(
      *
      * @param index Zero-based index in the order the record's columns were selected.
      * @return The field's type OID.
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this record's fields.
      */
     fun getAttributeOid(index: Int): Int {
+        if (index !in fieldOids.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Field index out of bounds: $index (record holds ${fieldOids.size} fields)"
+        )
         return fieldOids[index]
     }
 }

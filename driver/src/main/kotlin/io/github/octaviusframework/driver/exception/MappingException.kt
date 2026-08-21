@@ -6,7 +6,10 @@ package io.github.octaviusframework.driver.exception
 enum class MappingExceptionReason {
     /** No suitable converter was found for the target data types. */
     NO_CONVERTER_FOUND,
-    /** The specified column name or index does not exist in the row. */
+    /**
+     * The requested column, composite attribute, record field or array element does not exist - by that
+     * name, or at that position.
+     */
     COLUMN_NOT_FOUND,
     /** The data could not be converted or cast to the target type. */
     CONVERSION_ERROR,
@@ -43,7 +46,7 @@ class MappingException(
 private fun generateDeveloperMessage(reason: MappingExceptionReason): String =
     when (reason) {
         MappingExceptionReason.NO_CONVERTER_FOUND -> "No converter was found for the specified types."
-        MappingExceptionReason.COLUMN_NOT_FOUND -> "The requested column or index was not found in the row metadata."
+        MappingExceptionReason.COLUMN_NOT_FOUND -> "The requested column, attribute, field or element was not found under that name or position."
         MappingExceptionReason.CONVERSION_ERROR -> "An error occurred during type conversion or casting."
         MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING -> "A required non-nullable attribute is missing or null."
     }

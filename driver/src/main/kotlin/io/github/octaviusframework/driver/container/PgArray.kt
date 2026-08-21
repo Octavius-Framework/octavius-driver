@@ -42,10 +42,14 @@ class PgArray(
      * @param T The expected element type. Declare it nullable to accept a SQL `NULL` element.
      * @param index Zero-based index into [elements], regardless of the array's PostgreSQL lower bound.
      * @return The element.
-     * @throws MappingException `CONVERSION_ERROR` if the element is not a [T].
-     * @throws IndexOutOfBoundsException if [index] is outside [elements].
+     * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside [elements], `CONVERSION_ERROR`
+     *   if the element is not a [T].
      */
     inline fun <reified T> get(index: Int): T {
+        if (index !in elements.indices) throw MappingException(
+            MappingExceptionReason.COLUMN_NOT_FOUND,
+            details = "Element index out of bounds: $index (array holds ${elements.size} elements)"
+        )
         val value = elements[index]
         if (value is T) return value
         throw MappingException(
