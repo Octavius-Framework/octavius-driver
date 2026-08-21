@@ -27,7 +27,8 @@ object TypeRegistryLoader {
                 e.enumlabel,
                 r.rngsubtype,
                 a.attname, a.atttypid,
-                r.rngmultitypid
+                r.rngmultitypid,
+                t.typrelid, a.attnum
             FROM pg_catalog.pg_type t
             JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
             LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
@@ -44,12 +45,16 @@ object TypeRegistryLoader {
 
         val enumMap = mutableMapOf<Int, MutableList<String>>()
         val attrMap = mutableMapOf<Int, LinkedHashMap<String, Int>>()
+        // Kept alongside attrMap rather than folded into it: an attribute number is not the position of the
+        // attribute, a dropped column having taken its own number out of the sequence for good.
+        val attrNumberMap = mutableMapOf<Int, MutableList<Int>>()
         val rangeMap = mutableMapOf<Int, Int>()
         val multirangeMap = mutableMapOf<Int, Int>()
 
         class BaseTypeInfo(
             val name: String, val typelem: Int, val typarray: Int,
-            val typtype: Char, val typbasetype: Int, val schema: String
+            val typtype: Char, val typbasetype: Int, val schema: String,
+            val typrelid: Int
         )
 
         val parsedTypes = mutableMapOf<Int, BaseTypeInfo>()
@@ -66,8 +71,9 @@ object TypeRegistryLoader {
                 val typtype = typtypeString.first()
                 val typbasetype = row.getRaw(5) as Int
                 val schema = row.getRaw(6) as String
+                val typrelid = row.getRaw(12) as Int
 
-                parsedTypes[oid] = BaseTypeInfo(name, typelem, typarray, typtype, typbasetype, schema)
+                parsedTypes[oid] = BaseTypeInfo(name, typelem, typarray, typtype, typbasetype, schema, typrelid)
             }
 
             val enumLabel = row.getRaw(7) as String?
@@ -97,6 +103,7 @@ object TypeRegistryLoader {
                 val attrList = attrMap.getOrPut(oid) { LinkedHashMap() }
                 if (!attrList.containsKey(attName)) {
                     attrList[attName] = attTypid
+                    attrNumberMap.getOrPut(oid) { mutableListOf() }.add((row.getRaw(13) as Short).toInt())
                 }
             }
         }
@@ -125,7 +132,8 @@ object TypeRegistryLoader {
 
                     info.typtype == 'c' -> {
                         val attrs = attrMap[oid] ?: LinkedHashMap()
-                        PgType.Composite(oid, info.name, info.schema, attrs)
+                        val attrNumbers = attrNumberMap[oid] ?: emptyList()
+                        PgType.Composite(oid, info.name, info.schema, attrs, info.typrelid, attrNumbers)
                     }
 
                     info.typtype == 'p' -> {

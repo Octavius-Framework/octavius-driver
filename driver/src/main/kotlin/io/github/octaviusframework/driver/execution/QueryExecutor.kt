@@ -292,7 +292,13 @@ class QueryExecutor internal constructor(
             val msg = stream.receiveMessage()
             when (msg) {
                 is ParseCompleteMessage, is BindCompleteMessage, is PortalSuspendedMessage -> { /* Expected */ }
-                is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
+                is RowDescriptionMessage -> {
+                    try {
+                        rowMetadata = RowMetadata(msg.fields, typeRegistry.dictionary)
+                    } catch (e: OctaviusException) {
+                        if (executionError == null) executionError = e
+                    }
+                }
                 is NoDataMessage -> { /* Expected if query returns no rows */ }
                 is DataRowMessage -> {
                     if (rowMetadata == null) {
@@ -385,7 +391,14 @@ class QueryExecutor internal constructor(
             msgLoop@ while (true) {
                 when (val msg = stream.receiveMessage()) {
                     is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
-                    is RowDescriptionMessage -> rowMetadata = RowMetadata(msg.fields)
+                    is RowDescriptionMessage -> {
+                        try {
+                            rowMetadata = RowMetadata(msg.fields, typeRegistry.dictionary)
+                        } catch (e: OctaviusException) {
+                            executionError = e
+                            break@fetchLoop
+                        }
+                    }
                     is DataRowMessage -> {
                         if (rowMetadata == null) {
                             executionError = InvalidOperationException(

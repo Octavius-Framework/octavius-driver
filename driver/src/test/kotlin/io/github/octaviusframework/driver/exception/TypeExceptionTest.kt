@@ -27,7 +27,7 @@ class TypeExceptionTest {
     
     @Test
     fun `should throw TYPE_NOT_FOUND for unknown OID in TypeDictionary`() {
-        val dictionary = TypeDictionary.EMPTY
+        val dictionary = TypeDictionary.build(emptyMap())
         
         val exception = assertFailsWith<TypeException> {
             dictionary.getPgType(999999)
@@ -39,7 +39,7 @@ class TypeExceptionTest {
 
     @Test
     fun `should throw TYPE_NOT_FOUND for unknown type name in TypeDictionary`() {
-        val dictionary = TypeDictionary.EMPTY
+        val dictionary = TypeDictionary.build(emptyMap())
         
         val exception = assertFailsWith<TypeException> {
             dictionary.resolveOid("some_non_existent_type", "", false, emptyList())

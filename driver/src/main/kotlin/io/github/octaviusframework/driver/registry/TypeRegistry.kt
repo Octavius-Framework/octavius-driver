@@ -27,16 +27,20 @@ class TypeRegistry {
     val converterRegistry = ConverterRegistry()
 
     /**
-     * An immutable snapshot dictionary representing the current mapping of PostgreSQL OIDs and types.
-     */
-    @Volatile
-    var dictionary: TypeDictionary = TypeDictionary.EMPTY
-
-    /**
      * An immutable snapshot dictionary for database binary/text codecs.
      */
     @Volatile
     var codecs: CodecDictionary = CodecDictionary.createWithBuiltins()
+
+    /**
+     * An immutable snapshot dictionary representing the current mapping of PostgreSQL OIDs and types.
+     *
+     * Declared after [codecs] because it starts out derived from them: the query that reads the catalog is
+     * itself a result whose columns have to be described, and until it returns these are the only types there
+     * are to describe them with.
+     */
+    @Volatile
+    var dictionary: TypeDictionary = TypeDictionary.ofBuiltinCodecs(codecs)
 
     /**
      * Registers a custom codec. If OID and schema are missing (dynamic type in multi-schema),

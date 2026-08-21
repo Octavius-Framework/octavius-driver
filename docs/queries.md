@@ -114,7 +114,7 @@ The rest of the surface is metadata, useful when the shape of the result is not 
 | `getColumnIndex(name)` | The index for a name, or `MappingException(COLUMN_NOT_FOUND)`.                     |
 | `getRaw(index)`        | The decoded value *before* conversion — `Int`, `String`, `PgComposite`, `PgArray`. |
 | `getOid(index)`        | The PostgreSQL OID of that column's type.                                          |
-| `metadata`             | `RowMetadata` — the field descriptors behind all of the above.                     |
+| `metadata`             | `RowMetadata` — what the result says about its own columns.                        |
 
 Because decoding is eager and conversion is lazy, asking one row for two different shapes costs one decode and two conversions:
 
@@ -125,6 +125,53 @@ val asClass: Senator = row.get(0)     // same bytes, not decoded again
 
 > [!NOTE]
 > **A duplicated column name resolves to the first one.** `SELECT s.id, p.id FROM senators s JOIN provinces p …` produces two columns called `id`, and `row.get<Int>("id")` returns the first without complaining — the name-to-index map keeps the earliest entry. That is JDBC's behaviour too, where `ResultSet.findColumn` has always answered with the first match, so it is one habit that carries over unchanged. Alias the columns in the SQL (`p.id AS province_id`) when you need both, or read them by index.
+
+### What a column says about itself
+
+`row.metadata` is resolved once for a result, out of the `RowDescription` that opens it, and shared by every row
+that follows. `getColumn(index)` and `getColumn(name)` hand back a `ColumnMetadata`:
+
+| Member         | Gives                                                                               |
+|:---------------|:------------------------------------------------------------------------------------|
+| `name`         | The name the column came back under — the alias, where the query gave it one.       |
+| `type`         | The `PgType` it was read as, resolved against the catalog the query ran under.      |
+| `oid`          | That type's OID.                                                                    |
+| `typeModifier` | The server's raw `atttypmod`, `-1` where the type takes none.                       |
+| `origin`       | The relation and column it was read from, or `null` where it was not read from one. |
+
+`origin` is what lets a result say more about a column than the query called it:
+
+```kotlin
+val column = row.metadata.getColumn("name")   // SELECT s.cognomen AS name FROM senators s
+column.name                  // "name"      - what the query called it
+column.origin?.columnName    // "cognomen"  - what the table calls it
+column.origin?.relationName  // "senators"
+```
+
+The naming costs no extra query: every table, view and materialized view already has a row type under the
+relation's own name, and the driver loads them all with the rest of the catalog. Three states are worth telling
+apart:
+
+* **`origin == null`** - the column is not a reference to a stored column at all: an expression, a literal, the
+  output of a function.
+* **`origin` present, its names `null`** - the server tracked the value back to a relation the type catalog does
+  not describe. That means `pg_catalog` and `information_schema`, which the type load skips, and anything created
+  since the last load, which `reloadTypes()` fills in.
+* **`origin` present and named** - the ordinary case.
+
+`typeModifier` is left as the server sends it, because reading one takes knowledge of the particular type: a
+`numeric(10,2)` arrives as `((10 shl 16) or 2) + 4`, a `varchar(64)` as `68`, a `timestamp(3)` as `3`. It is the
+one thing here with no other source in a result, which is why it is carried raw rather than dropped.
+
+A column whose type the catalog does not describe fails when the result is described, rather than when a value is
+read from it. Such a column could not have been decoded either way - a type the load never saw has no codec
+either - and failing on the description makes it fail the same way every time.
+
+> [!NOTE]
+> **A domain column is described by the type underneath it.** PostgreSQL resolves a domain to its base type before
+> describing a column - for a plain reference, an explicit cast and a function's result alike - so `type` is never a
+> `PgType.Domain`. A column declared over a domain of `numeric` arrives as `numeric`, and only `origin` still says
+> which column it was. A domain does survive one level down, as an array's element type or a composite's attribute.
 
 ## Nullability and the Strict variants
 

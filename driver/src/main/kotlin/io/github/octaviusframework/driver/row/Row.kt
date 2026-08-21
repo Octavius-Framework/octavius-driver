@@ -31,7 +31,7 @@ class Row(
         if (colLength == -1) null
         else {
             val offset = columnOffsets[index]
-            val oid = metadata.getOid(index)
+            val oid = metadata.columns[index].oid
             val codec = typeRegistry.codecs.getCodecByOid<Any>(oid)
                 ?: throw TypeException(TypeExceptionReason.MISSING_CODEC, oid = oid, details = "Row")
             codec.decodeSafely(rawData, offset, colLength)
@@ -56,8 +56,7 @@ class Row(
     @Suppress("UNCHECKED_CAST")
     fun <T> get(index: Int, targetType: KType): T {
         val raw = getRaw(index)
-        val oid = getOid(index)
-        val type = typeRegistry.dictionary.getPgType(oid)
+        val type = metadata.getColumn(index).type
         return resultMapper.deserialize(raw, targetType, sourceType = type) as T
     }
 

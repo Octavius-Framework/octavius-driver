@@ -13,7 +13,6 @@ import io.github.octaviusframework.driver.message.frontend.TerminateMessage
 import io.github.octaviusframework.driver.notice.NoticeHandler
 import io.github.octaviusframework.driver.notice.PgNotice
 import io.github.octaviusframework.driver.notification.PgNotification
-import io.github.octaviusframework.driver.row.FieldDescription
 import io.github.octaviusframework.driver.ssl.SslConfiguration
 import io.github.octaviusframework.driver.ssl.SslNegotiator
 import io.github.oshai.kotlinlogging.KotlinLogging

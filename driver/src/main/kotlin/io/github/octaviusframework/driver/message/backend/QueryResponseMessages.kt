@@ -1,7 +1,5 @@
 package io.github.octaviusframework.driver.message.backend
 
-import io.github.octaviusframework.driver.row.FieldDescription
-
 /**
  * Response indicating that a Parse command has completed successfully.
  */

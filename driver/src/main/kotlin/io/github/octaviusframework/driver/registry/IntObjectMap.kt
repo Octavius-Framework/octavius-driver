@@ -11,14 +11,16 @@ package io.github.octaviusframework.driver.registry
  *
  * @param V the type of values maintained by this map
  */
-class IntObjectMap<V> {
+internal class IntObjectMap<V> {
     private var keys: IntArray
     private var _values: Array<Any?>
     private var _size = 0
     private var threshold: Int
 
     constructor(capacity: Int = 128) {
-        keys = IntArray(Integer.highestOneBit(capacity - 1) shl 1)
+        // Rounds up to a power of two, which collapses to zero for a capacity of one or less - a table with
+        // no slots at all, where the mask becomes -1 and the first lookup indexes out of bounds.
+        keys = IntArray((Integer.highestOneBit(capacity - 1) shl 1).coerceAtLeast(2))
         _values = arrayOfNulls(keys.size)
         threshold = (keys.size * 0.75).toInt()
     }

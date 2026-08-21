@@ -17,16 +17,27 @@ class TypeDictionary private constructor(
     private val typesByName: Map<String, Map<String, Int>>,
     private val arrayTypesByElementOid: IntObjectMap<PgType.Array>,
     private val rangeTypesByElementOid: IntObjectMap<PgType.Range>,
-    private val multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange>
+    private val multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange>,
+    private val compositeTypesByRelationOid: IntObjectMap<PgType.Composite>
 ) {
     companion object {
-        val EMPTY = TypeDictionary(
-            IntObjectMap(),
-            emptyMap(),
-            IntObjectMap(),
-            IntObjectMap(),
-            IntObjectMap()
-        )
+        /**
+         * Builds the dictionary the driver starts out with: one entry per codec it ships with an OID of its own.
+         *
+         * There is one query that has to run before any catalog has been read - the read itself - and its columns
+         * are `oid`, `name`, `char` and `int2`, types the driver already names in the codecs it hardcodes them
+         * for. Every entry here is replaced by the real catalog entry as soon as [build] runs.
+         *
+         * @param codecs the codec dictionary to take the names and OIDs from.
+         */
+        fun ofBuiltinCodecs(codecs: CodecDictionary): TypeDictionary {
+            val types = HashMap<Int, PgType>()
+            for (codec in codecs.registeredCodecs) {
+                val oid = codec.oid ?: continue
+                types[oid] = PgType.Base(oid, codec.pgTypeName, codec.pgSchema)
+            }
+            return build(types)
+        }
 
         fun build(newTypes: Map<Int, PgType>): TypeDictionary {
             val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
@@ -34,6 +45,7 @@ class TypeDictionary private constructor(
             val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
             val newRangeTypesByElementOid = IntObjectMap<PgType.Range>()
             val newMultirangeTypesByRangeOid = IntObjectMap<PgType.Multirange>()
+            val newCompositeTypesByRelationOid = IntObjectMap<PgType.Composite>()
 
             for ((oid, type) in newTypes) {
                 intMap[oid] = type
@@ -42,6 +54,7 @@ class TypeDictionary private constructor(
                     is PgType.Array -> newArrayTypesByElementOid[type.elementOid] = type
                     is PgType.Range -> newRangeTypesByElementOid[type.subtypeOid] = type
                     is PgType.Multirange -> newMultirangeTypesByRangeOid[type.rangeOid] = type
+                    is PgType.Composite -> if (type.relationOid != 0) newCompositeTypesByRelationOid[type.relationOid] = type
                     else -> {}
                 }
             }
@@ -51,7 +64,8 @@ class TypeDictionary private constructor(
                 newTypesByName,
                 newArrayTypesByElementOid,
                 newRangeTypesByElementOid,
-                newMultirangeTypesByRangeOid
+                newMultirangeTypesByRangeOid,
+                newCompositeTypesByRelationOid
             )
         }
     }
@@ -109,6 +123,18 @@ class TypeDictionary private constructor(
      */
     fun getMultirangeType(rangeOid: Int): PgType.Multirange = multirangeTypesByRangeOid[rangeOid]
         ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, oid = rangeOid, details = "Multirange type for range OID $rangeOid not found")
+
+    /**
+     * Returns the row type of the relation with the given [relationOid], or `null` when this dictionary holds
+     * none for it.
+     *
+     * Unlike the rest of the lookups here, a miss is an ordinary answer rather than a failure: the type load
+     * skips composites in `pg_catalog` and `information_schema`, and a relation created since the load has no
+     * row type here yet. Callers are naming something for a reader, not resolving a type they have to have.
+     *
+     * @param relationOid the OID of the relation (`pg_class.oid`).
+     */
+    fun findCompositeByRelation(relationOid: Int): PgType.Composite? = compositeTypesByRelationOid[relationOid]
 
     /**
      * Resolves the OID of a type given its name and an optional schema.

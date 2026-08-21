@@ -52,13 +52,23 @@ sealed class PgType(
     /**
      * Represents a PostgreSQL composite type (row type).
      *
+     * Every relation has one of these - a table, a view, a materialized view - carrying that relation's columns
+     * under the relation's own name, and [relationOid] is what ties the two together.
+     *
      * @property attributes A map of attribute names to their respective OIDs, preserving declaration order.
+     * @property relationOid The OID of the relation this type describes (`pg_class.oid`), which for a type declared
+     *   with `CREATE TYPE ... AS (...)` is the entry PostgreSQL creates to hold its attributes.
+     * @property attributeNumbers The attribute number of each attribute, in the same order as [attributes]. Not the
+     *   index plus one: a dropped column keeps its number for good, leaving a hole that everything declared after it
+     *   sits behind.
      */
     data class Composite(
         override val oid: Int,
         override val name: String,
         override val schema: String,
-        val attributes: LinkedHashMap<String, Int>
+        val attributes: LinkedHashMap<String, Int>,
+        val relationOid: Int = 0,
+        val attributeNumbers: List<Int> = emptyList()
     ) : PgType(oid, name, schema) {
         /**
          * A list of the OIDs of the attributes in the composite type, in declaration order.
@@ -77,6 +87,18 @@ sealed class PgType(
             val map = HashMap<String, Int>()
             attributes.keys.forEachIndexed { index, name -> map[name] = index }
             map
+        }
+
+        /**
+         * Returns the name of the attribute carrying [attributeNumber], or `null` when this type has no attribute
+         * under that number - a dropped column's, a system column's, or any number at all for a type loaded
+         * without them.
+         *
+         * @param attributeNumber the attribute number to look up, as PostgreSQL numbers it.
+         */
+        fun attributeNameByNumber(attributeNumber: Int): String? {
+            val index = attributeNumbers.indexOf(attributeNumber)
+            return if (index == -1) null else attributeNames[index]
         }
     }
 
