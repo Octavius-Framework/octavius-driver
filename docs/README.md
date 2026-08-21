@@ -120,7 +120,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [SQLSTATE Routing](exceptions.md#sqlstate-routing) — Which code becomes which class
 - [Exception Reference](exceptions.md#exception-reference) — All fifteen types, one by one
 - [Catching at the Right Altitude](exceptions.md#catching-at-the-right-altitude) — Including retrying concurrency failures
-- [Crossing into JDBC and Spring](exceptions.md#crossing-into-jdbc-and-spring) — `SQLExceptionWrapper` and `OctaviusDataAccessException`
+- [Crossing into JDBC and Spring](exceptions.md#crossing-into-jdbc-and-spring) — `SQLExceptionWrapper`, `OctaviusDataAccessException`, and unwrapping a pool's own exception
 
 ### Logging
 - [You Supply the Backend](logging.md#you-supply-the-backend) — SLF4J with nothing behind it discards every line

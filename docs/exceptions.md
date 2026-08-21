@@ -548,6 +548,7 @@ The exception you catch depends on which door you came in through.
 | `OctaviusSession` — `createNativeQuery`, `createNamedQuery`, `commit`, `rollback` … | `OctaviusException` subclasses, unchanged               |
 | A raw `java.sql.Connection` (`dataSource.connection`)                               | `SQLExceptionWrapper` (a `java.sql.SQLException`)       |
 | Spring's `OctaviusTemplate`                                                         | `OctaviusDataAccessException` (a `DataAccessException`) |
+| `HikariDataSource(config)` — building the pool itself                               | `HikariPool.PoolInitializationException`, Hikari's own  |
 
 ### `SQLExceptionWrapper`
 
@@ -606,6 +607,28 @@ class GlobalExceptionHandler {
 ```
 
 See [Spring Integration](spring-integration.md) for the surrounding configuration.
+
+### Digging it out yourself
+
+The translator above only runs where Spring is holding the exception. The one place nothing does it for you is **building the pool** — `HikariDataSource(config)` opens a connection to check the configuration works, and a driver failure there comes back as Hikari's `PoolInitializationException`, thrown from a Hikari constructor you called directly. That is correct layering rather than a gap: you called their API, you get their exception, and no amount of driver code changes that.
+
+What the driver does provide is the same tool its own translator uses. `findOctaviusCause()` is an extension on `Throwable`, not on `SQLException`, so it works on anything:
+
+```kotlin
+import io.github.octaviusframework.driver.exception.findOctaviusCause
+
+val pool = try {
+    HikariDataSource(config)
+} catch (e: HikariPool.PoolInitializationException) {
+    // Hikari records the driver's exception as the cause, so the real reason is one call away:
+    // bad credentials, a server below the version floor, TLS the server would not agree to.
+    throw e.findOctaviusCause() ?: e
+}
+```
+
+It walks the receiver first and then the cause chain, returning the driver's own exception — unwrapping a `SQLExceptionWrapper` where it finds one — or `null` when the failure did not start in the driver. The walk is depth-bounded, so a self-referential chain ends rather than spinning.
+
+Outside pool construction you rarely need it: [`getOctaviusSession`](initialization.md#getting-a-session) already restates whatever a pool refuses a connection with, and the Spring translator already searches the chain.
 
 ## Practical rules and gotchas
 
