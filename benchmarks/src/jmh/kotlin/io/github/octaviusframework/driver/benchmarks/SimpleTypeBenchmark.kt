@@ -13,7 +13,7 @@ import java.util.Properties
 @State(Scope.Benchmark)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @BenchmarkMode(Mode.Throughput)
-@Fork(1)
+@Fork(3)
 @Threads(1)
 // No `time` here on purpose: throughput iterations keep JMH's 10 s default.
 @Warmup(iterations = 3)

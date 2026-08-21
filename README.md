@@ -98,9 +98,9 @@ session.close() // Safely returns the connection to the pool
 
 Measured against `pgjdbc` on the same machine, same JVM, same work ([full numbers and caveats](docs/performance.md)):
 
-- **Object mapping ties** — 0.220 ± 0.004 against 0.216 ± 0.029 ops/ms, a dead heat on the path most applications live on.
-- **`UNNEST` bulk inserts are 3.5× faster than classic JDBC batching**, and tie with pgjdbc's `reWriteBatchedInserts` optimization — while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
-- **Array decoding costs ~26%** for going through the general conversion machinery — the same machinery that makes a `List<Senator>` of composites work.
+- **Object mapping ties** — 0.227 ± 0.008 against 0.223 ± 0.009 ops/ms, a dead heat on the path most applications live on.
+- **`UNNEST` bulk inserts are 3.4× faster than classic JDBC batching**, and tie with pgjdbc's `reWriteBatchedInserts` optimization — while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
+- **Array decoding costs ~28%** for going through the general conversion machinery — the same machinery that makes a `List<Senator>` of composites work.
 - **Reflective mapping allocates more than a hand-written converter does** — ~2.5× on the two-field row benchmarked, in both directions. Worth replacing on your hottest path, and nowhere else.
 
 ## Documentation

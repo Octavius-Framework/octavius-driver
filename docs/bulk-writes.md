@@ -5,7 +5,7 @@ unloaded at Portus, and the whole harvest of a province crossed the sea in one p
 the same one: ten thousand rows sent a statement at a time pay for ten thousand crossings, and the same rows sent as
 arrays in a single statement pay for one.*
 
-Past a handful of rows, the shape of the statement matters far more than the driver underneath it. Inserting 10 000 senators one `INSERT` at a time costs ~327 ms; the same rows go in through a single statement carrying arrays in **~8 ms** — [43× faster](performance.md#writing), and the same ratio holds for `pgjdbc`.
+Past a handful of rows, the shape of the statement matters far more than the driver underneath it. Inserting 10 000 senators one `INSERT` at a time costs ~282 ms; the same rows go in through a single statement carrying arrays in **~7.6 ms** — [37× faster](performance.md#writing), and the same ratio holds for `pgjdbc`.
 
 Octavius has no `addBatch()` / `executeBatch()`: JDBC batching is [one of the things it dropped](octavius-vs-jdbc.md#3-jdbc-batching). What replaces it is PostgreSQL's own answer — pass each column as an array, let the server zip them back into rows — which is not a workaround for a missing feature but the faster path in both drivers, and the only one of the two that works for `UPDATE` and `DELETE` as well.
 
@@ -27,12 +27,12 @@ Row-at-a-time insertion pays for a full Parse/Bind/Execute cycle and a round tri
 
 | Strategy for 10 000 rows                | Octavius     | pgjdbc       |
 |:----------------------------------------|:-------------|:-------------|
-| Single inserts                          | 327.0 ± 28.8 | 266.3 ± 8.5  |
-| JDBC batching                           | n/a          | 26.63 ± 0.83 |
-| JDBC batching + `reWriteBatchedInserts` | n/a          | 8.00 ± 0.67  |
-| **`UNNEST`**                            | 7.57 ± 1.70  | 6.05 ± 0.54  |
+| Single inserts                          | 281.6 ± 4.1  | 221.2 ± 2.6  |
+| JDBC batching                           | n/a          | 25.55 ± 0.32 |
+| JDBC batching + `reWriteBatchedInserts` | n/a          | 7.35 ± 0.48  |
+| **`UNNEST`**                            | 7.56 ± 0.41  | 5.96 ± 0.50  |
 
-Milliseconds per operation, lower is better. `UNNEST` in Octavius matches pgjdbc's fastest batching mode and beats plain batching by 3.5×.
+Milliseconds per operation, lower is better. `UNNEST` in Octavius matches pgjdbc's fastest batching mode and beats plain batching by 3.4×.
 
 The reason is that `UNNEST` collapses the whole load into **one** statement: one Parse, one Bind, one Execute, one round trip, one plan. Ten thousand rows leave as *two* parameters — an `int[]` and a `text[]` — rather than twenty thousand.
 
@@ -191,11 +191,11 @@ The composite type has to exist in the database either way — it is often the t
 
 | Form                                             | Time        | Allocated |
 |:-------------------------------------------------|:------------|:----------|
-| Parallel scalar arrays                           | 7.88 ± 0.84 | 0.93 MB   |
-| `composite[]`, hand-written `ParameterConverter` | 7.28 ± 0.66 | 2.05 MB   |
-| `composite[]`, `registerAutoComposite`           | 9.89 ± 1.28 | 4.93 MB   |
+| Parallel scalar arrays                           | 7.10 ± 0.44 | 0.93 MB   |
+| `composite[]`, hand-written `ParameterConverter` | 7.01 ± 0.39 | 2.05 MB   |
+| `composite[]`, `registerAutoComposite`           | 8.65 ± 0.33 | 4.93 MB   |
 
-**On time, the composite form is free** — 7.28 against 7.88 with the intervals overlapping — as long as the converter is one you wrote. Going through `registerAutoComposite` instead costs about a third, and that difference is outside the noise.
+**On time, the composite form is free** — 7.01 against 7.10 with the intervals overlapping — as long as the converter is one you wrote. Going through `registerAutoComposite` instead costs about a quarter, and that difference is outside the noise.
 
 **On memory it is never free.** For these rows, composites allocate 2.2× the scalar form even at their cheapest, and the reflective path 5.3×. Those multipliers are not constants — a wider class or heavier field types shift them in both columns — but the ordering holds, and it lands on top of the arrays you already built. See [Choosing a batch size](#choosing-a-batch-size).
 
