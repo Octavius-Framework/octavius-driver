@@ -185,9 +185,12 @@ class ColumnMetadataIntegrationTest {
     @Test
     fun `a column of an undescribed type fails on the description and leaves the connection usable`() {
         session().use { s ->
-            // pg_class's own row type is a composite in pg_catalog, which the type load skips.
+            // An information_schema view's own row type is a composite the type load skips, and every column of
+            // this one is a domain over a type the server can send in binary. A pg_class row cannot be relied on
+            // for that: relacl's element type has no binary send function, so a row carrying an ACL fails on the
+            // server while it is being produced, and that error arrives in place of the driver's own.
             assertFailsWith<TypeException> {
-                s.createNativeQuery("SELECT c FROM pg_class c LIMIT 1").fetchRows()
+                s.createNativeQuery("SELECT t FROM information_schema.tables t LIMIT 1").fetchRows()
             }
 
             assertEquals(42, s.createNativeQuery("SELECT 42").fetchFieldStrict<Int>())
@@ -198,10 +201,24 @@ class ColumnMetadataIntegrationTest {
     fun `the same holds while streaming`() {
         session().use { s ->
             assertFailsWith<TypeException> {
-                s.createNativeQuery("SELECT c FROM pg_class c").forEachRow(fetchSize = 2) { }
+                s.createNativeQuery("SELECT t FROM information_schema.tables t").forEachRow(fetchSize = 2) { }
             }
 
             assertEquals(42, s.createNativeQuery("SELECT 42").fetchFieldStrict<Int>())
+        }
+    }
+
+    @Test
+    fun `it is the description that fails, not a value on its way through a codec`() {
+        session().use { s ->
+            // The column's type is the undescribed composite and its value is null in the one row that comes
+            // back, so nothing is ever handed to a codec: only a check made when the result is described can
+            // fail here. The same shape over a type the catalog does describe returns its null row.
+            assertFailsWith<TypeException> {
+                s.createNativeQuery("SELECT (SELECT t FROM information_schema.tables t WHERE false) AS absent").fetchRows()
+            }
+
+            assertNull(s.createNativeQuery("SELECT (SELECT 1 WHERE false) AS absent").fetchRowStrict().getRaw(0))
         }
     }
 }
