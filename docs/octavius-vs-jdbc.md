@@ -131,7 +131,6 @@ What you give up is plan reuse. Parsing and planning happen on every execution, 
 
 What you are spared is the other half of that bargain:
 
-* **No generic plans.** PostgreSQL plans the unnamed statement at `Bind`, with the actual parameter values in hand, so every execution gets a plan fitted to its own arguments. The classic "it was fast for the first five calls and then it wasn't" — a server switching a prepared statement to a parameter-blind generic plan — cannot happen here.
 * **No stale cached plans.** `cached plan must not change result type`, the error that follows a migration on a long-lived pooled connection, has no cache to come from.
 * **Nothing to deallocate.** A connection returned to the pool carries no statements forward, and there is no leak to chase when a pool is large and the query set is larger.
 

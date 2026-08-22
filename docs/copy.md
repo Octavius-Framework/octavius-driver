@@ -135,6 +135,10 @@ The driver is a byte pipe. It neither builds nor parses COPY payloads — everyt
 
 Because the type system is not involved on this path, there is no conversion of Kotlin objects here — the bytes you write are the bytes the server parses. Mapping domain objects onto rows is your code's job (or a job for [ordinary parameterized queries](queries.md), when the volume doesn't justify COPY).
 
+That absence is a decision rather than a gap, and what decides it is the form the data is already in rather than how much of it there is. Rows that exist as objects go in through [`UNNEST`](bulk-writes.md) — a chunk at a time when there are a great many, which keeps memory wherever you put the chunk size, and keeps `RETURNING` and `ON CONFLICT` besides. Rows that arrive as bytes, from a file or a socket or another database's export, need no objects at all and go through here as they stand. An API encoding objects into `PGCOPY` frames would have to sit between the two: it needs a collection in memory to encode from, and it only earns its keep at a volume you would not be holding in memory.
+
+If you do write the binary layout by hand, the part that catches people is that each field has to be encoded as the *destination column's* type. Nothing negotiates it: `CopyInResponse` reports how many columns there are and in which format, never their OIDs, so a four-byte integer written into a `bigint` column is discovered by the server rejecting the data rather than by anything on the way there.
+
 Also worth remembering: `STDIN`/`STDOUT` is the client-side form and needs no special privileges beyond the table permissions. `COPY … FROM '/path/on/server'` is a *server-side* copy requiring superuser or `pg_read_server_files`, and it never enters copy mode — handing that statement to `copyIn` raises an `InvalidOperationException` (see below).
 
 ## Operation lifecycle
