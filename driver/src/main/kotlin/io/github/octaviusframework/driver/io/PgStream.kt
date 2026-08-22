@@ -462,7 +462,7 @@ internal class PgStream(
                     }
                     'c' -> return BackendCopyDoneMessage
                     else -> {
-                        val unparsed = inputStream.readBytes(payloadLength)
+                        inputStream.skip(payloadLength)
                         logger.trace { "IGNORING: Unsupported synchronous message type: $tag" }
                     }
                 }

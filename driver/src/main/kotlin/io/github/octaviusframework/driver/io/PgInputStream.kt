@@ -99,6 +99,28 @@ internal class PgInputStream(private var inputStream: InputStream) {
     }
 
     /**
+     * Advances past exactly [length] bytes without materializing them.
+     *
+     * The bytes still have to leave the stream - a payload left in it is read as the next message's
+     * tag by everything that comes after - but a payload nothing will look at needs no array to be
+     * read into, which is the only part [readBytes] would add.
+     */
+    fun skip(length: Int) {
+        var remaining = length
+        while (remaining > 0) {
+            val available = limit - position
+            if (available > 0) {
+                val toSkip = minOf(available, remaining)
+                position += toSkip
+                remaining -= toSkip
+            }
+            if (remaining > 0) {
+                fillBuffer()
+            }
+        }
+    }
+
+    /**
      * Returns exactly the specified number of bytes.
      */
     fun readBytes(length: Int): ByteArray {

@@ -118,7 +118,7 @@ internal object OctaviusConnectionFactory {
 
             val serverVersion = stream.parameters["server_version"]
             if (serverVersion != null) {
-                val majorVersion = serverVersion.split(".").firstOrNull()?.toIntOrNull() ?: 0
+                val majorVersion = serverVersion.takeWhile { it.isDigit() }.toIntOrNull() ?: 0
                 if (majorVersion < 18) {
                     // Closed rather than left to the catch below: by here there is a session to say
                     // goodbye to, which is the one case in this block where a Terminate means anything.
