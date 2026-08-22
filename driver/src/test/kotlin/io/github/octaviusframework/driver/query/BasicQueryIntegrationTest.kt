@@ -1,5 +1,7 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
@@ -89,6 +91,29 @@ class BasicQueryIntegrationTest {
         }
         assertEquals(10, countNamedField)
         assertEquals(165, sumNamedField)
+        session.close()
+    }
+
+    @Test
+    fun testForEachRejectsANegativeFetchSizeButNotZero() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+
+        val e = assertFailsWith<InvalidOperationException> {
+            session.createNativeQuery("SELECT i FROM generate_series(1, 10) as i").forEachRow(fetchSize = -1) { }
+        }
+        assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, e.reason)
+
+        // Zero is not a rejected batch size but Execute's own "no limit": one batch carrying the
+        // whole result, which still arrives row by row.
+        var seen = 0
+        session.createNativeQuery("SELECT i FROM generate_series(1, 10) as i").forEachRow(fetchSize = 0) { seen++ }
+        assertEquals(10, seen)
+
+        // The refused call never reached the connection, so the session is still usable afterwards.
+        assertEquals(10, session.createNativeQuery("SELECT i FROM generate_series(1, 10) as i").fetchRows().size)
         session.close()
     }
 }

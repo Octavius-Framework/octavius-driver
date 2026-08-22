@@ -213,7 +213,24 @@ session.createNativeQuery("SELECT * FROM citizens WHERE province_id = $1")
     }
 ```
 
-Memory stays flat: only `fetchSize` rows are held at a time, regardless of how many the query returns. Three things about that loop are worth knowing before you rely on it.
+Memory stays flat, and what keeps it flat is that no row is kept: each one reaches your block and is done with, however
+many the query returns. `fetchSize` governs the other side of the exchange — how many rows the server sends before it
+pauses and waits to be asked for the next batch.
+
+**`fetchSize = 0` asks for the whole result in a single `Execute`.** There are no batches to pause between, so it costs
+one round trip rather than one per batch. That is the setting for a loop whose point is to *fold* a result — deduplicate
+it, merge adjacent rows, run a total — rather than to survive its size: `fetchRows()` would build the entire `List`
+first, which is the one thing the fold was avoiding, and batching buys nothing when every row is going to be read
+anyway. It suits a small result as much as a large one; on a small one the per-batch round trips are the only thing
+batching adds.
+
+Reach for it knowing that a fold which deduplicates or groups is one PostgreSQL does better than your block will.
+`DISTINCT` and `GROUP BY` hand back a result already reduced, and the rows you would have thrown away never cross the
+wire. Keep `fetchSize = 0` for the fold that SQL cannot express.
+
+A negative `fetchSize` is refused outright, naming the value.
+
+Three things about that loop are worth knowing before you rely on it.
 
 **The whole iteration is one statement, for as long as it takes.** The driver keeps the result open across batches without closing the exchange, so the server treats it as a single running statement from the first batch to the last. Whatever your block does — writing files, calling services — happens inside that statement's lifetime.
 

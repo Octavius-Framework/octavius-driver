@@ -383,6 +383,9 @@ class QueryExecutor internal constructor(
      * Uses Extended Query Protocol.
      * Intended for DQL (SELECT).
      * Iterates over rows in batches of fetchSize and applies the given transform and block.
+     * A [fetchSize] of `0` is `Execute`'s own "no limit": one batch carrying the whole result.
+     *
+     * @throws InvalidOperationException `INVALID_ARGUMENT` if [fetchSize] is negative.
      */
     fun <R> queryForEach(
         sql: String,
@@ -392,91 +395,102 @@ class QueryExecutor internal constructor(
         fetchSize: Int,
         transform: (Row) -> R,
         block: (R) -> Unit
-    ) = exchange {
-        val startedAt = traceStart(sql, params)
+    ) {
+        // Checked before the lock rather than inside the exchange: taking it means waiting for
+        // whatever this connection is already running, and an argument that was never going to be
+        // accepted should not spend a long query finding that out.
+        if (fetchSize < 0) throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "fetchSize cannot be negative, was $fetchSize. State how many rows a batch should pull, " +
+                "or 0 for the whole result in a single Execute."
+        )
 
-        sendParseBindDescribe(sql, params, parameterSerializer)
+        exchange {
+            val startedAt = traceStart(sql, params)
 
-        var rowMetadata: RowMetadata? = null
-        var errorResponse: ErrorOrNoticeMessage? = null
-        var executionError: OctaviusException? = null
-        // Counted unconditionally rather than behind the trace flag: an increment costs nothing
-        // next to parsing the row it counts, and a branch per row would cost more.
-        var rowCount = 0L
+            sendParseBindDescribe(sql, params, parameterSerializer)
 
-        fetchLoop@ while (true) {
-            stream.sendMessage(ExecuteMessage(UNNAMED, fetchSize))
-            stream.sendMessage(FlushMessage())
-            stream.flush()
+            var rowMetadata: RowMetadata? = null
+            var errorResponse: ErrorOrNoticeMessage? = null
+            var executionError: OctaviusException? = null
+            // Counted unconditionally rather than behind the trace flag: an increment costs nothing
+            // next to parsing the row it counts, and a branch per row would cost more.
+            var rowCount = 0L
 
-            msgLoop@ while (true) {
-                when (val msg = stream.receiveMessage()) {
-                    is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
-                    is RowDescriptionMessage -> {
-                        try {
-                            rowMetadata = RowMetadata(msg.fields, typeRegistry.dictionary)
-                        } catch (e: OctaviusException) {
-                            executionError = e
-                            break@fetchLoop
-                        }
-                    }
-                    is DataRowMessage -> {
-                        if (rowMetadata == null) {
-                            executionError = InvalidOperationException(
-                                InvalidOperationExceptionReason.UNEXPECTED_RESULT,
-                                "Received DataRow before RowDescription"
-                            )
-                            break@fetchLoop
-                        } else {
+            fetchLoop@ while (true) {
+                stream.sendMessage(ExecuteMessage(UNNAMED, fetchSize))
+                stream.sendMessage(FlushMessage())
+                stream.flush()
+
+                msgLoop@ while (true) {
+                    when (val msg = stream.receiveMessage()) {
+                        is ParseCompleteMessage, is BindCompleteMessage -> { /* Expected */ }
+                        is RowDescriptionMessage -> {
                             try {
-                                block(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
-                                rowCount++
+                                rowMetadata = RowMetadata(msg.fields, typeRegistry.dictionary)
                             } catch (e: OctaviusException) {
                                 executionError = e
                                 break@fetchLoop
-                            } catch (e: Exception) {
-                                executionError = MappingException(
-                                    MappingExceptionReason.CONVERSION_ERROR,
-                                    "Exception in block: ${e.message}",
-                                    e
-                                )
-                                break@fetchLoop
                             }
                         }
+                        is DataRowMessage -> {
+                            if (rowMetadata == null) {
+                                executionError = InvalidOperationException(
+                                    InvalidOperationExceptionReason.UNEXPECTED_RESULT,
+                                    "Received DataRow before RowDescription"
+                                )
+                                break@fetchLoop
+                            } else {
+                                try {
+                                    block(transform(Row(msg.rawData, msg.columnOffsets, msg.columnLengths, rowMetadata, typeRegistry, mapper)))
+                                    rowCount++
+                                } catch (e: OctaviusException) {
+                                    executionError = e
+                                    break@fetchLoop
+                                } catch (e: Exception) {
+                                    executionError = MappingException(
+                                        MappingExceptionReason.CONVERSION_ERROR,
+                                        "Exception in block: ${e.message}",
+                                        e
+                                    )
+                                    break@fetchLoop
+                                }
+                            }
+                        }
+                        is PortalSuspendedMessage -> {
+                            break@msgLoop
+                        }
+                        is NoDataMessage, is CommandCompleteMessage -> {
+                            break@fetchLoop
+                        }
+                        is ErrorOrNoticeMessage -> {
+                            errorResponse = msg
+                            break@fetchLoop
+                        }
+                        else -> { /* Ignore */ }
                     }
-                    is PortalSuspendedMessage -> {
-                        break@msgLoop
-                    }
-                    is NoDataMessage, is CommandCompleteMessage -> {
-                        break@fetchLoop
-                    }
-                    is ErrorOrNoticeMessage -> {
-                        errorResponse = msg
-                        break@fetchLoop
-                    }
-                    else -> { /* Ignore */ }
                 }
             }
-        }
 
-        stream.sendMessage(SyncMessage())
-        stream.flush()
+            stream.sendMessage(SyncMessage())
+            stream.flush()
         
-        while (true) {
-            val msg = stream.receiveMessage()
-            if (msg is ReadyForQueryMessage) {
-                break
-            } else if (msg is ErrorOrNoticeMessage) {
-                if (errorResponse == null) errorResponse = msg
+            while (true) {
+                val msg = stream.receiveMessage()
+                if (msg is ReadyForQueryMessage) {
+                    break
+                } else if (msg is ErrorOrNoticeMessage) {
+                    if (errorResponse == null) errorResponse = msg
+                }
             }
+
+            if (errorResponse != null) throw ExceptionTranslator.translate(errorResponse)
+            if (executionError != null) throw executionError
+
+            // A val for the same reason as in update(): capturing the counter itself would box it.
+            val streamed = rowCount
+            traceDone(startedAt) { "$streamed rows streamed" }
         }
-
-        if (errorResponse != null) throw ExceptionTranslator.translate(errorResponse)
-        if (executionError != null) throw executionError
-
-        // A val for the same reason as in update(): capturing the counter itself would box it.
-        val streamed = rowCount
-        traceDone(startedAt) { "$streamed rows streamed" }
     }
 }
 

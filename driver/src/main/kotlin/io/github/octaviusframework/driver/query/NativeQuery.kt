@@ -106,12 +106,14 @@ class NativeQuery internal constructor(
     /**
      * Streams the result, handing each row to [block] as it arrives.
      *
-     * Rows are pulled in batches of [fetchSize] and only that many are held at a time, so memory stays
-     * flat however large the result is. The whole iteration is one running statement: `statement_timeout`
-     * covers time spent inside [block], and [block] must not issue another query on this same session.
+     * Rows reach [block] one at a time and none are kept, so memory stays flat however large the result
+     * is; [fetchSize] governs the other side of it - how many rows the server sends before pausing for
+     * the next batch, or the whole result at once under `0`. The whole iteration is one running
+     * statement: `statement_timeout` covers time spent inside [block], and [block] must not issue
+     * another query on this same session.
      *
      * @param params Values for `$1`, `$2`, … in declaration order.
-     * @param fetchSize Rows per batch. Required — there is no default.
+     * @param fetchSize Rows per batch, or `0` for the whole result in one. Required — there is no default.
      * @param block Invoked once per row, on the calling thread.
      * @throws MappingException `CONVERSION_ERROR` wrapping anything [block] throws that is not an
      *   [OctaviusException], since the result has to be drained before it can be rethrown.
@@ -205,7 +207,7 @@ class NativeQuery internal constructor(
      *
      * @param T The type each row is mapped to.
      * @param params Values for `$1`, `$2`, … in declaration order.
-     * @param fetchSize Rows per batch. Required — there is no default.
+     * @param fetchSize Rows per batch, or `0` for the whole result in one. Required — there is no default.
      * @param block Invoked once per mapped row, on the calling thread.
      * @throws MappingException if a row cannot be mapped onto [T], or wrapping anything [block] throws
      *   that is not an [OctaviusException].
@@ -324,7 +326,7 @@ class NativeQuery internal constructor(
      *
      * @param T The type the column is mapped to.
      * @param params Values for `$1`, `$2`, … in declaration order.
-     * @param fetchSize Rows per batch. Required — there is no default.
+     * @param fetchSize Rows per batch, or `0` for the whole result in one. Required — there is no default.
      * @param block Invoked once per value, on the calling thread.
      * @throws MappingException if a value cannot be mapped to [T], or wrapping anything [block] throws
      *   that is not an [OctaviusException].
