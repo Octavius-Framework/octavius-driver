@@ -31,8 +31,9 @@ class OctaviusDataSource : DataSource {
      * The JDBC URL used to connect to the database.
      * Setting this property will parse the URL and merge the properties.
      *
-     * Reading it back renders the current configuration **without the password** - see
-     * [OctaviusProperties.toUrl]. The password remains available through [password].
+     * Reading it back renders the current configuration **without either secret** - neither the
+     * password nor `sslpassword`, see [OctaviusProperties.toUrl]. Both remain available through
+     * [password] and [sslpassword] themselves.
      */
     var url: String
         get() = octaviusProperties.toUrl()
@@ -115,16 +116,17 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.sslcert = value }
 
     /**
-     * The path to the client private key file for SSL authentication. Must be an unencrypted PKCS#8
-     * RSA key in PEM form.
+     * The path to the client private key file for SSL authentication. PKCS#8 in PEM form, encrypted
+     * or not - [sslpassword] opens an encrypted one - and RSA or EC alike, the algorithm being read
+     * off [sslcert] rather than assumed.
      */
     var sslkey: String?
         get() = octaviusProperties.sslkey
         set(value) { octaviusProperties.sslkey = value }
 
     /**
-     * Applied to the in-memory keystore built from [sslcert] and [sslkey]; it does not decrypt the key
-     * file — see [SslConfiguration.keyPassword][io.github.octaviusframework.driver.ssl.SslConfiguration.keyPassword].
+     * Decrypts [sslkey] where that key is encrypted - a PEM file opening on `BEGIN ENCRYPTED PRIVATE
+     * KEY`. An unencrypted key ignores it; an encrypted one without it is refused, naming this property.
      */
     var sslpassword: String?
         get() = octaviusProperties.sslpassword

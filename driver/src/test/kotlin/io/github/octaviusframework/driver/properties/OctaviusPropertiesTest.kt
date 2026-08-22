@@ -41,13 +41,34 @@ class OctaviusPropertiesTest {
         original.serverName = "localhost"
         original.portNumber = 5432
         original.databaseName = "res_publica"
-        original.sslpassword = "sen=atus"
+        original.user = "con=sul"
         original.additionalProperties["options"] = "-c search_path=curia"
 
         val parsed = OctaviusProperties.parse(original.toUrl())
 
-        assertEquals("sen=atus", parsed.sslpassword)
+        assertEquals("con=sul", parsed.user)
         assertEquals("-c search_path=curia", parsed.additionalProperties["options"])
+    }
+
+    @Test
+    fun `toUrl should render neither the password nor the sslpassword`() {
+        val original = OctaviusProperties()
+        original.serverName = "localhost"
+        original.password = "senatus"
+        original.sslkey = "/etc/octavius/client.key"
+        original.sslpassword = "populusque"
+
+        val url = original.toUrl()
+
+        // Both open something, and a URL is written where neither belongs. The key path is not a
+        // secret and stays, which is what makes the omission of the one beside it visible at all.
+        assertFalse(url.contains("senatus"), url)
+        assertFalse(url.contains("populusque"), url)
+        assertTrue(url.contains("sslkey=%2Fetc%2Foctavius%2Fclient.key"), url)
+
+        val parsed = OctaviusProperties.parse(url)
+        assertNull(parsed.password)
+        assertNull(parsed.sslpassword)
     }
 
     @Test

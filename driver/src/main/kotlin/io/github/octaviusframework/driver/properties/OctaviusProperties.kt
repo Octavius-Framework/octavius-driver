@@ -110,8 +110,9 @@ class OctaviusProperties {
     var sslcert: String? = null
 
     /**
-     * Path to the client private key that goes with [sslcert]. Must be an unencrypted PKCS#8 key in
-     * PEM form; its algorithm is read off [sslcert], so RSA and EC alike work without saying which.
+     * Path to the client private key that goes with [sslcert]. PKCS#8 in PEM form, encrypted or not -
+     * an encrypted one is opened with [sslpassword]; its algorithm is read off [sslcert], so RSA and
+     * EC alike work without saying which.
      */
     var sslkey: String? = null
 
@@ -321,9 +322,10 @@ class OctaviusProperties {
     /**
      * Renders these properties as a JDBC URL.
      *
-     * The password is deliberately left out: the result is a string that tends to end up in
-     * logs and diagnostics, and nothing in the driver reconstructs a connection from it.
-     * Use [copy] when you need a complete, lossless duplicate of the configuration.
+     * Neither secret is rendered: not [password], and not [sslpassword], which unlocks the client
+     * private key. The result is a string that tends to end up in logs and diagnostics, and nothing
+     * in the driver reconstructs a connection from it - so a URL is not a lossless copy and cannot
+     * be used as one. Use [copy] when you need a complete duplicate of the configuration.
      */
     fun toUrl(): String {
         val h = serverName ?: "localhost"
@@ -352,7 +354,6 @@ class OctaviusProperties {
         sslrootcert?.let { queryParams["sslrootcert"] = it }
         sslcert?.let { queryParams["sslcert"] = it }
         sslkey?.let { queryParams["sslkey"] = it }
-        sslpassword?.let { queryParams["sslpassword"] = it }
         channelBinding?.let { queryParams["channelBinding"] = it.value }
 
         queryParams.putAll(additionalProperties)
