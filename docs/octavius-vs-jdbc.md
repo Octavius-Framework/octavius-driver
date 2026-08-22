@@ -127,12 +127,18 @@ The one unwrap left on the public surface points at the `DataSource`, not the co
 
 One row in that map has no counterpart at all, and it is worth a paragraph of its own. `pgjdbc` promotes a statement to a *named* server-side prepared statement once it has been executed `prepareThreshold` times — five, by default — and keeps a per-connection cache of them. Octavius has no such machinery and no property to tune: every execution goes out as `Parse` into the **unnamed** statement, then `Bind` and `Execute`. Run the same query twenty times and `pg_prepared_statements` still has nothing in it.
 
-What you give up is plan reuse. Parsing and planning happen on every execution, which is real work for a trivial statement in a tight loop — and the answer there is to make fewer round trips with [`UNNEST`](bulk-writes.md) or [`COPY`](copy.md), not to cache a plan.
+What you give up is plan reuse. Parsing and planning happen on every execution, which is real work for a trivial statement in a tight loop — and where that loop is the problem, fewer round trips through [`UNNEST`](bulk-writes.md) or [`COPY`](copy.md) buy more than a cached plan would.
 
-What you are spared is the other half of that bargain:
+How much work is [measured rather than argued](performance.md#what-not-preparing-costs): **16.3 µs a statement**, taken with pgjdbc against itself, its own server-side prepare switched on and then off, on a primary-key lookup chosen so the figure would come out as large as it can. Octavius lands on pgjdbc's unprepared figure, so that gap is the feature and nothing else about the driver.
 
+What a cache brings with it is the other half of the trade:
+
+* **The plan stops following the parameter.** PostgreSQL plans the unnamed statement at `Bind`, with the values in hand, so every execution is planned for its own arguments. A statement prepared on the server gets that for its first five executions; from the sixth, PostgreSQL compares the generic plan's *estimated* cost against the average of those five and keeps whichever looks cheaper, for every value after that. On a column where 99% of rows shared one value, [that estimate came out 254× low](performance.md#what-not-preparing-costs) and the switch happened. What it costs from there depends on the table and on which value you are unlucky with; nothing measures the plan it settled on and reconsiders.
+* **A named statement can go missing.** It belongs to one backend, and anything that clears that backend's session state takes it along: PgBouncer in transaction-pooling mode, a `DISCARD ALL`, a failover. The client is then the one that has to recognise `26000`, prepare it again and re-run the statement — which means being right about when re-running is safe.
 * **No stale cached plans.** `cached plan must not change result type`, the error that follows a migration on a long-lived pooled connection, has no cache to come from.
 * **Nothing to deallocate.** A connection returned to the pool carries no statements forward, and there is no leak to chase when a pool is large and the query set is larger.
+
+None of which makes the absence something to prefer. It is one side of a trade: 16 µs a statement, against a plan fitted to its arguments and a good deal of machinery kept out of the driver. Where plan reuse is worth more than that on your workload, pgjdbc's model is the one that has it.
 
 ## Summary
 

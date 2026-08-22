@@ -40,7 +40,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [What Is Explicitly Unsupported](octavius-vs-jdbc.md#what-is-explicitly-unsupported) — `PreparedStatement`, `ResultSet`, batching, LOBs, metadata
 - [What Answers Quietly Instead of Throwing](octavius-vs-jdbc.md#what-answers-quietly-instead-of-throwing) — Calls a pool makes that must not fail
 - [Migration Map](octavius-vs-jdbc.md#migration-map) — JDBC idiom on the left, Octavius on the right
-- [Nothing Is Prepared Server-Side](octavius-vs-jdbc.md#nothing-is-prepared-server-side) — No `prepareThreshold`, no generic plans, no stale ones either
+- [Nothing Is Prepared Server-Side](octavius-vs-jdbc.md#nothing-is-prepared-server-side) — What re-parsing every statement costs, and what it saves you from
 
 ### Initialization & Configuration
 - [Getting a Session](initialization.md#getting-a-session) — Typed properties, `DriverManager`, `OctaviusDataSource`

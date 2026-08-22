@@ -14,7 +14,8 @@ exactly that reason, and saying so is more useful than reporting a 2% win.
 > [!NOTE]
 > **Environment.** One developer laptop, JDK 25, JMH 1.37, PostgreSQL 18.4 over a local connection, 3 warmup and 5
 > measurement iterations in each of three forks — 15 samples behind every figure — declared on the benchmark classes
-> themselves. Both drivers do identical work in the same JVM, and every figure on this page comes from one run of the whole suite.
+> themselves. Both drivers do identical work in the same JVM, and the figures in any one table below come from a single
+> run, which is what makes the columns within that table comparable.
 > Absolute throughput will not reproduce on your hardware — the ratios between the two columns are what travels.
 >
 > Every benchmark also fixes one row shape, named in the table below, and both drivers carry that identical shape. That
@@ -30,6 +31,7 @@ exactly that reason, and saying so is more useful than reporting a 2% win.
 | `ArrayTypeBenchmark`       | Throughput   | Read 10 000 rows, each with an `int4[]` and a `text[]`.                                                        |
 | `InsertBenchmark`          | Average time | Insert 10 000 rows inside one transaction, by several strategies.                                              |
 | `CompositeInsertBenchmark` | Average time | Insert 10 000 `(int, text)` rows as an array of composites, reflectively and through a hand-written converter. |
+| `PointLookupBenchmark`     | Average time | One row by primary key, three ways: Octavius, and pgjdbc with server-side prepare on and off.                  |
 
 Run them yourself with `./gradlew :benchmarks:jmh`, or narrow to one class with `-Pjmh="InsertBenchmark"`.
 
@@ -48,6 +50,24 @@ The first row is the one most applications live on, and it is a genuine dead hea
 The other two rows are real — the intervals do not come close to touching. Both are worth understanding rather than just noting, because they are not the same kind of gap.
 
 Arrays are slower by construction. Octavius decodes every element through the same conversion machinery that maps composites, ranges and nested arrays, which is precisely what makes a `List<Tribute>` of composites work at all. A driver that treats `int4[]` as a special case can be quicker at `int4[]`; the price of that is having no answer for the general one. This is a trade rather than a defect, and closing it would mean adding a specialized fast path for primitive element types alongside the general one — not fixing something broken.
+
+## What not preparing costs
+
+Octavius never promotes a statement to a named server-side one: every execution is a `Parse` into the unnamed statement, which is [a trade rather than an omission](octavius-vs-jdbc.md#nothing-is-prepared-server-side). `PointLookupBenchmark` puts a number on it, on the workload where that number is largest.
+
+Microseconds per single-row primary-key lookup — lower is better.
+
+| Path                                                     | Time       |
+|:---------------------------------------------------------|:-----------|
+| pgjdbc, server-prepared (`prepareThreshold=5`)           | 25.4 ± 0.9 |
+| pgjdbc, re-parsed every execution (`prepareThreshold=0`) | 41.7 ± 0.7 |
+| **Octavius**                                             | 40.5 ± 1.5 |
+
+The two pgjdbc rows are the controlled half of it: one driver, one table, one method, and a single connection property between them. The distance between those two — **16.3 µs, a factor of 1.64** — is what a server-side prepared statement is worth with everything else held still. Octavius lands on the unprepared row with its interval overlapping, which is the other half of the answer: nothing else in the driver eats that difference or adds to it, so the whole gap is the feature.
+
+**It is a ceiling rather than a typical case.** A primary-key lookup against a warm 10 000-row table is close to the cheapest statement PostgreSQL can be asked to run, so parsing and planning take the largest share of it they are ever going to take. What the feature saves is a fixed cost per statement, not a proportion of one: against a query doing 2 ms of real work it is under 1%, and against a database one network hop away — half a millisecond gone before the server has read anything — about 3%. What moves it back up is planning that is expensive in itself, many joins or a heavily partitioned table, where the planner's work grows and the executor's need not.
+
+Reproduce with `./gradlew :benchmarks:jmh -Pjmh="PointLookupBenchmark"`. The three figures above come from one run of that class, which is what makes them comparable to each other.
 
 ## Writing
 
@@ -142,6 +162,9 @@ Single-row inserts allocate 1.8× more — 4.69 MB against 2.58 MB — a wider g
 ## Summary
 
 * **Object mapping ties with `pgjdbc`** — the path most applications spend their time on.
+* **Not preparing statements costs ~16 µs a statement** — measured with pgjdbc against itself, server-side prepare
+  switched on and off, on a primary-key lookup chosen so that the figure would be the largest share of a query it can
+  be. Under 1% of a statement that does 2 ms of work.
 * **`UNNEST` bulk writes are 3.4× faster than classic JDBC batching** and tie with pgjdbc's rewrite optimization, while
   remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
 * **Array decoding costs ~28% for being general** — every element goes through the machinery that also maps composites
