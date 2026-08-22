@@ -52,14 +52,22 @@ jobs:
 
   test-ssl:
     runs-on: ubuntu-latest
+    # Which protocols and cipher suites are on by default belongs to the JDK, not to the driver, and
+    # it is the one thing here that moves between releases - so this job runs on the version the
+    # driver declares as its floor and on the current one. Everything else in the suite behaves the
+    # same on both and is not worth running twice.
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ '21', '25' ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Set up JDK 21
+      - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
+          java-version: ${{ matrix.java }}
           distribution: 'temurin'
 
       - name: Setup Gradle
