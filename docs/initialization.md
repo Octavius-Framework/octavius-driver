@@ -237,7 +237,7 @@ The sequence is worth knowing, because two of its steps are where connections fa
 1. **The socket is opened**, with `loginTimeout` as its connect timeout.
 2. **SSL is negotiated** — unless `sslmode=disable`, the driver asks the server for TLS before anything else is sent. See the defaults below: by default it *tries*.
 3. **The startup message goes out**, carrying `user`, `database`, `client_encoding=UTF8` and every [additional property](#startup-parameters) you set.
-4. **Authentication runs** with the password supplied — [SCRAM-SHA-256, and nothing else](#authentication-is-scram-sha-256-and-nothing-else).
+4. **Authentication runs** with the password supplied — [SCRAM-SHA-256, or a password inside TLS](#authentication-is-scram-sha-256-or-a-password-inside-tls).
 5. **Timeouts are applied** — `socketTimeout` becomes the socket read timeout, `maxCachedRowSize` the row buffer cap.
 6. **The server version is checked.** Anything below PostgreSQL 18 gets the connection closed and an `InitializationException(UNSUPPORTED_SERVER_VERSION)`, naming the version received.
 7. **The type catalog is loaded**, once per database — see below.
@@ -245,19 +245,23 @@ The sequence is worth knowing, because two of its steps are where connections fa
 > [!IMPORTANT]
 > **PostgreSQL 18 or newer is required.** Octavius speaks Wire Protocol v3.2 exclusively. Against an older server the failure shows up in step 6 as an `InitializationException`, or earlier at the protocol level during the handshake.
 
-### Authentication is SCRAM-SHA-256 and nothing else
+### Authentication is SCRAM-SHA-256, or a password inside TLS
 
-Step 4 has exactly two happy endings: the server asks for SCRAM-SHA-256, or the server asks for nothing at all — `trust` in `pg_hba.conf`, or a client certificate already accepted during the TLS handshake. Everything else is refused by the driver before a password leaves the JVM:
+Step 4 has three happy endings: the server asks for SCRAM-SHA-256, the server asks for a cleartext password on a connection that is already encrypted, or the server asks for nothing at all — `trust` in `pg_hba.conf`, or a client certificate already accepted during the TLS handshake.
 
-| The server asks for          | Result                                                     |
-|:-----------------------------|:-----------------------------------------------------------|
-| SCRAM-SHA-256-PLUS           | Connected, bound to the TLS channel.                       |
-| SCRAM-SHA-256                | Connected.                                                 |
-| Nothing — `trust`, `cert`    | Connected.                                                 |
-| MD5, or a cleartext password | `InitializationException(UNSUPPORTED_PASSWORD_ENCRYPTION)` |
-| GSSAPI, SSPI, anything else  | `InitializationException(UNSUPPORTED_MECHANISM)`           |
+| The server asks for                | Result                                                     |
+|:-----------------------------------|:-----------------------------------------------------------|
+| SCRAM-SHA-256-PLUS                 | Connected, bound to the TLS channel.                       |
+| SCRAM-SHA-256                      | Connected.                                                 |
+| Nothing — `trust`, `cert`          | Connected.                                                 |
+| A cleartext password, over TLS     | Connected; the password goes out as it is, inside TLS.     |
+| A cleartext password, in plaintext | `InitializationException(UNSUPPORTED_PASSWORD_ENCRYPTION)` |
+| MD5                                | `InitializationException(UNSUPPORTED_PASSWORD_ENCRYPTION)` |
+| GSSAPI, SSPI, anything else        | `InitializationException(UNSUPPORTED_MECHANISM)`           |
 
-What decides which of those the server asks for is how the role's password is stored, not the `pg_hba.conf` line alone — a role whose password was set while `password_encryption` was `md5` still carries an MD5 verifier, and that is what the server offers whatever the line says. `ALTER ROLE … PASSWORD …` re-hashes it under the current setting, which on PostgreSQL 18 is SCRAM by default. Cleartext is what the `ldap`, `pam` and `radius` methods ask for, which is the other road to that same exception.
+**The cleartext row is the one worth reading twice.** The server asks for a password in the clear when `pg_hba.conf` names `password`, `ldap`, `pam` or `radius` — the last three because the server has to hold the password itself to check it against something that is not PostgreSQL. Nothing on the client side makes that safer: the password travels as it was typed, and the only thing between it and the wire is the encryption underneath. So the driver insists on that encryption rather than trusting the deployment to have arranged it — raise `sslmode` to `require` or above and the exchange proceeds; leave it where the connection ends up in plaintext and the password is never sent. `channelBinding=require` refuses the exchange outright, before the password leaves the JVM, because no cleartext login can be bound to the channel.
+
+What decides which of those the server asks for is how the role's password is stored, not the `pg_hba.conf` line alone — a role whose password was set while `password_encryption` was `md5` still carries an MD5 verifier, and that is what the server offers whatever the line says. `ALTER ROLE … PASSWORD …` re-hashes it under the current setting, which on PostgreSQL 18 is SCRAM by default.
 
 ### Channel binding
 
@@ -376,7 +380,7 @@ Three members on the session that are easy to miss, all of them about the connec
 | `databaseName` (or `database`)            | `postgres`        | Database to connect to.                                                  |
 | `applicationName` (or `application_name`) | `Octavius Driver` | Name this connection reports to the server, shown in `pg_stat_activity`. |
 
-There is no property selecting an authentication method: [SCRAM-SHA-256 is the only one implemented](#authentication-is-scram-sha-256-and-nothing-else). What you can choose is whether it must be [bound to the TLS channel](#channel-binding), with `channelBinding` in the SSL table below.
+There is no property selecting an authentication method: the server names it and [the driver either answers or refuses](#authentication-is-scram-sha-256-or-a-password-inside-tls). What you can choose is whether it must be [bound to the TLS channel](#channel-binding), with `channelBinding` in the SSL table below.
 
 ### Network and limits
 

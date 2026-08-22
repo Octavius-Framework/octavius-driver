@@ -5,6 +5,7 @@ import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.backend.*
+import io.github.octaviusframework.driver.message.frontend.PasswordMessage
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 
@@ -19,7 +20,12 @@ internal object Authenticator {
 
     /**
      * Authenticates the user with the PostgreSQL server using the provided credentials.
-     * Only SCRAM-SHA-256 authentication is supported, with or without channel binding.
+     *
+     * SCRAM-SHA-256 is the mechanism this driver is built around, with or without channel binding.
+     * A cleartext password is answered too, but only over an encrypted connection - see
+     * [sendCleartextPassword] for what that is worth and why the condition is there. MD5 is refused
+     * outright: PostgreSQL has deprecated it, and a driver that starts at 18 has no era to support
+     * it for.
      *
      * @param stream The underlying PostgreSQL communication stream used for message exchange.
      * @param password The password for the user, can be null if not required.
@@ -55,10 +61,7 @@ internal object Authenticator {
                 }
 
                 is AuthenticationMessage.CleartextPassword -> {
-                    throw InitializationException(
-                        InitializationExceptionReason.UNSUPPORTED_PASSWORD_ENCRYPTION,
-                        details = "Server requested CleartextPassword, only SCRAM is supported"
-                    )
+                    sendCleartextPassword(stream, password, channelBinding)
                 }
 
                 is AuthenticationMessage.MD5Password -> {
@@ -106,5 +109,49 @@ internal object Authenticator {
                 }
             }
         }
+    }
+
+    /**
+     * Answers an `AuthenticationCleartextPassword` request, but only where answering it is safe.
+     *
+     * The server asks for a password in the clear when `pg_hba.conf` names `password`, `ldap`, `pam`
+     * or `radius` - the three latter because the server has to hold the password itself to check it
+     * against something that is not PostgreSQL. There is no protocol on the client side to make that
+     * safer: the password goes out as it is, and the only thing standing between it and the wire is
+     * the encryption underneath. So the driver requires that encryption rather than trusting the
+     * deployment to have arranged it, which is the one part of this exchange it can actually decide.
+     *
+     * A `channelBinding=require` connection is refused here rather than after the password has been
+     * sent. No cleartext exchange can be bound to the channel, so this login is already lost by the
+     * time the server would accept it; sending the credential first would give it away for nothing.
+     */
+    private fun sendCleartextPassword(stream: PgStream, password: String?, channelBinding: ChannelBinding) {
+        if (!stream.isSecure) {
+            throw InitializationException(
+                InitializationExceptionReason.UNSUPPORTED_PASSWORD_ENCRYPTION,
+                details = "The server asked for a cleartext password, which this connection is not " +
+                    "encrypted enough to send. Raise sslmode to require or above, so the password is " +
+                    "not readable on the wire."
+            )
+        }
+
+        if (channelBinding == ChannelBinding.REQUIRE) {
+            throw InitializationException(
+                InitializationExceptionReason.UNSUPPORTED_MECHANISM,
+                details = "The server asked for a cleartext password, which cannot be bound to the TLS " +
+                    "channel, but channelBinding=require was specified. The password was not sent."
+            )
+        }
+
+        if (password == null) {
+            throw InitializationException(
+                InitializationExceptionReason.UNSUPPORTED_PASSWORD_ENCRYPTION,
+                details = "The server asked for a cleartext password, but no password was configured."
+            )
+        }
+
+        logger.trace { "Server requested a cleartext password; sending it over the encrypted connection" }
+        stream.sendMessage(PasswordMessage(password))
+        stream.flush()
     }
 }

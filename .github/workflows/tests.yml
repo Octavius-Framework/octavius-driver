@@ -108,6 +108,13 @@ jobs:
           
           until docker exec postgres-ssl pg_isready -h localhost; do sleep 1; done
 
+          # A role the server must ask for a cleartext password, the way an ldap/pam/radius setup
+          # does. Both a TLS and a plaintext rule, so the tests can check the driver answers over
+          # one and refuses over the other. pg_hba is first-match, so these go on top.
+          docker exec postgres-ssl psql -U postgres -c "CREATE ROLE cleartext_user LOGIN PASSWORD 'senatus'"
+          HBA=$(docker exec postgres-ssl psql -U postgres -tAc "SHOW hba_file")
+          docker exec postgres-ssl bash -c "{ echo 'hostssl all cleartext_user all password'; echo 'host all cleartext_user all password'; cat $HBA; } > /tmp/hba && cp /tmp/hba $HBA"
+          docker exec postgres-ssl psql -U postgres -c "SELECT pg_reload_conf()"
 
       - name: Run SSL Tests
         env:

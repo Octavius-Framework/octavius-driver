@@ -35,3 +35,22 @@ internal class SASLResponse(private val clientFinalMessage: String) : FrontendMe
         out.writeBytes(dataBytes)
     }
 }
+
+/**
+ * The password itself, in the clear, in answer to an `AuthenticationCleartextPassword` request.
+ *
+ * It shares the `p` tag with the SASL responses above because the tag says only "authentication
+ * material"; which of them the server is reading is decided by the request it sent. Nothing here
+ * protects the password - that is the connection's job, and the driver only sends this over one
+ * that is encrypted.
+ */
+internal class PasswordMessage(private val password: String) : FrontendMessage {
+    override fun encode(out: PgOutputStream) {
+        val passwordBytes = password.toByteArray(StandardCharsets.UTF_8)
+        val length = 4 + passwordBytes.size + 1
+
+        out.writeByte('p'.code.toByte())
+        out.writeInt(length)
+        out.writeCString(password)
+    }
+}

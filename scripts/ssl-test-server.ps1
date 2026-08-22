@@ -195,6 +195,21 @@ ssl_key_file = 'server.key'
 ssl_ca_file = 'ca.crt'
 "@
 
+    # One role authenticating the way an ldap, pam or radius setup makes the server ask - with the
+    # password in the clear. Rules go above the defaults because pg_hba is first-match, and both a
+    # TLS and a plaintext line are here so the tests can check that the driver sends the password
+    # over one and refuses over the other.
+    $hba = Join-Path $dataDir 'pg_hba.conf'
+    $existing = Get-Content $hba -Raw
+    Set-Content -Path $hba -Value @"
+# --- added by scripts/ssl-test-server.ps1 ---
+hostssl all cleartext_user 127.0.0.1/32 password
+hostssl all cleartext_user ::1/128 password
+host    all cleartext_user 127.0.0.1/32 password
+host    all cleartext_user ::1/128 password
+
+$existing
+"@
 }
 
 function Start-Instance {
@@ -231,6 +246,13 @@ function Start-Instance {
         Write-Host "Created database octavius_test."
     }
 
+    $roleExists = & (Join-Path $Bin 'psql.exe') -h localhost -p $Port -U postgres -d postgres -tAc `
+        "SELECT 1 FROM pg_roles WHERE rolname = 'cleartext_user'"
+    if (-not $roleExists) {
+        & (Join-Path $Bin 'psql.exe') -h localhost -p $Port -U postgres -d postgres -c `
+            "CREATE ROLE cleartext_user LOGIN PASSWORD 'senatus'" | Out-Null
+        Write-Host "Created role cleartext_user (cleartext password authentication)."
+    }
 }
 
 function Write-TestInstructions {
