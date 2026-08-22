@@ -64,6 +64,19 @@ This is the omission with the longest shadow: Hibernate, Spring Data JDBC and JP
 ### 6. The vendor extension points
 `createArrayOf()`, `createStruct()`, `createSQLXML()`, `getTypeMap()` / `setTypeMap()` — the seams JDBC left for a driver to bolt its own types onto. Octavius doesn't need them: pass a Kotlin `List` or a data class and [the registry](type-system.md) encodes it, having read the OIDs out of *your* catalog at connect time. `xml` decodes as a `String`, so there is no `SQLXML` to construct either.
 
+### 7. Schema and catalog
+
+`setSchema()` / `getSchema()` and `setCatalog()` / `getCatalog()` throw. Neither is connection state in PostgreSQL: a
+catalog is the database itself, which nothing on an open connection can change, and what JDBC calls the connection's
+schema is the head of `search_path` — a server-reported setting rather than a property of the connection.
+`session.getSearchPath()` reads that one; `SELECT current_database()` answers the other.
+
+**A pool configured with a default schema or catalog fails when it opens the connection** — HikariCP's `schema` and
+`catalog` properties, `spring.datasource.hikari.schema` among them. Supply `search_path` as
+a [startup parameter](initialization.md#startup-parameters) instead, where it becomes part of every connection's
+identity rather than something set afterwards
+and [left behind for the next borrower](initialization.md#what-survives-a-return-to-the-pool).
+
 ## What Answers Quietly Instead of Throwing
 
 The JDBC spec handles database notices by silently accumulating `SQLWarning` objects in a linked list on the `Connection` or `Statement`. Forget to call `clearWarnings()` after every execution and that list becomes a slow, application-killing leak over millions of queries.
@@ -72,20 +85,15 @@ Octavius drops the pull-based trap entirely and pushes instead: notices reach a 
 
 `getWarnings()` **returns `null`** and `clearWarnings()` does nothing, rather than throwing — connection pools call both routinely on every borrow, so failing there would break pooling for no gain. The same reasoning covers a short list of other methods, each answering with a plausible constant:
 
-| Call                                            | What comes back               | Where the real answer lives                                              |
-|:------------------------------------------------|:------------------------------|:-------------------------------------------------------------------------|
-| `getWarnings()` / `clearWarnings()`             | `null` / nothing happens      | A `NoticeHandler`                                                        |
-| `setSchema()` / `getSchema()`                   | Ignored / always `"public"`   | `session.getSearchPath()` and `session.setSearchPath()`                  |
-| `setCatalog()` / `getCatalog()`                 | Ignored / always `"octavius"` | `SELECT current_database()`                                              |
-| `getClientInfo()`                               | An empty `Properties`         | — (the name-taking overload and both setters throw)                      |
-| `Statement.getUpdateCount()`                    | `-1`                          | The return value of `executeUpdate()`                                    |
-| `Statement.getResultSet()` / `getMoreResults()` | `null` / `false`              | — (`execute()` never produces rows)                                      |
-| `Driver.getPropertyInfo()`                      | An empty array                | [The configuration reference](initialization.md#configuration-reference) |
+| Call                                            | What comes back          | Where the real answer lives                                              |
+|:------------------------------------------------|:-------------------------|:-------------------------------------------------------------------------|
+| `getWarnings()` / `clearWarnings()`             | `null` / nothing happens | A `NoticeHandler`                                                        |
+| `getClientInfo()`                               | An empty `Properties`    | — (the name-taking overload and both setters throw)                      |
+| `Statement.getUpdateCount()`                    | `-1`                     | The return value of `executeUpdate()`                                    |
+| `Statement.getResultSet()` / `getMoreResults()` | `null` / `false`         | — (`execute()` never produces rows)                                      |
+| `Driver.getPropertyInfo()`                      | An empty array           | [The configuration reference](initialization.md#configuration-reference) |
 
-Two of these are worth spelling out for anyone migrating:
-
-* **Your existing `getWarnings()` calls will not fail** — they will report nothing, forever. Move that logic to a `NoticeHandler`.
-* **A pool configured with a default schema** — HikariCP's `schema` property, `spring.datasource.hikari.schema` — will not fail either, and will not switch schema. Set `search_path` as a [startup parameter](initialization.md#startup-parameters) instead, where it becomes part of every connection's identity.
+One of these is worth spelling out for anyone migrating: **your existing `getWarnings()` calls will not fail** — they will report nothing, forever. Move that logic to a `NoticeHandler`.
 
 Running the other way, one method throws where the spec says it shouldn't: `abort(executor)` closes the connection and then throws a `SQLExceptionWrapper`, deliberately, so the pool marks the connection dead and evicts it rather than handing it to the next borrower. `session.abort()` does the same work without the throw.
 
@@ -108,6 +116,8 @@ Coming from `pgjdbc`, this is where each habit lands:
 | `conn.unwrap(PGConnection).getCopyAPI()`        | `session.copy` — [COPY](copy.md)                                                                                              |
 | `createArrayOf(…)` / `createStruct(…)`          | Pass the Kotlin `List` or data class; [the registry](type-system.md) encodes it                                               |
 | `conn.getMetaData()`                            | Query `pg_catalog` through the session                                                                                        |
+| `conn.setSchema(…)` / `conn.getSchema()`        | `search_path` as a [startup parameter](initialization.md#startup-parameters); `session.getSearchPath()` reads it back         |
+| `conn.setCatalog(…)` / `conn.getCatalog()`      | `SELECT current_database()` — the database a connection is on cannot change                                                   |
 
 Note which way those last rows point. `pgjdbc` hands you a vendor interface by *unwrapping* the connection; Octavius hands you a session by *wrapping* it. `connection.getOctaviusSession()` on a pooled `Connection` — or `dataSource.getOctaviusSession()` on the pool itself — builds the session around the connection you already hold, which is why `close()` still returns that connection to the pool. Getting down to the protocol underneath is the session's own business, done once, internally.
 

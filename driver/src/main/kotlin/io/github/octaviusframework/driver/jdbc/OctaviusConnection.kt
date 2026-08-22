@@ -421,23 +421,6 @@ internal class OctaviusConnection internal constructor(
         logger.debug { "$pid Savepoint ${savepoint.pgName} released" }
     }
 
-    //------------------------------------------SCHEMA AND CATALOG------------------------------------------------------
-    override fun setSchema(schema: String?) = wrapSqlException {
-        checkClosed()
-    }
-
-    override fun getSchema(): String = wrapSqlException {
-        checkClosed(); return@wrapSqlException "public"
-    } // required by Hikari
-
-    override fun setCatalog(catalog: String?) = wrapSqlException {
-        checkClosed()
-    } // required by Hikari
-
-    override fun getCatalog(): String = wrapSqlException {
-        checkClosed(); return@wrapSqlException "octavius"
-    }  // required by Hikari
-
     //--------------------------STATEMENT (SUPPORTED ONLY UPDATE AND EXECUTE)-------------------------------------------
     // Support for basic Statement is needed for connection pools (e.g., HikariCP connectionInitSql)
     override fun createStatement(): Statement = wrapSqlException {
@@ -458,6 +441,18 @@ internal class OctaviusConnection internal constructor(
     //-------------------------------------NOT IMPLEMENTED--------------------------------------------------------------
     private fun unsupported(): Nothing =
         throw InvalidOperationException(InvalidOperationExceptionReason.FEATURE_NOT_SUPPORTED)
+
+    // Neither is connection state in PostgreSQL. A catalog is the database itself, which nothing on
+    // an open connection can change, and a schema is not a setting but the head of `search_path` -
+    // reported by the server and read back through getSearchPath(). The setters used to accept
+    // whatever they were given and do nothing with it, so a pool configured with a schema set none
+    // and every query after it ran somewhere else, while the getters answered with constants that
+    // were true of nothing. A pool asks only where it was configured to and never calls the getters
+    // itself, so what raises here is exactly the setting that was being ignored.
+    override fun setSchema(schema: String?) = unsupported()
+    override fun getSchema(): String = unsupported()
+    override fun setCatalog(catalog: String?) = unsupported()
+    override fun getCatalog(): String = unsupported()
 
     // Replaced by typeManager
     override fun createArrayOf(typeName: String?, elements: Array<out Any>?): java.sql.Array = unsupported()
