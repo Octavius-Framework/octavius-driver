@@ -218,6 +218,10 @@ class OctaviusProperties {
          * database and query string all optional. A URL that does not start with that prefix is not an
          * error: nothing is parsed out of it and only [info] takes effect.
          *
+         * An IPv6 address goes in brackets, `jdbc:octavius://[::1]:5432/res_publica`, and is stored
+         * without them: the brackets separate the address from the port and belong to the URL, not to
+         * the host that is later matched against a certificate.
+         *
          * **Later wins, and silence is not a value.** [info] is applied first and the URL over it, so
          * the URL overrides it - but only where the URL actually states something. A URL that omits the
          * host, the port or the database leaves whatever [info] supplied for it in place rather than
@@ -260,12 +264,23 @@ class OctaviusProperties {
                 // something. An absent host, port or database leaves whatever `info` supplied in place
                 // instead of overwriting it with a default; the defaults belong to the connection
                 // factory, which is the one place that knows them.
-                val colonIndex = hostPort.indexOf(':')
-                val host = if (colonIndex != -1) hostPort.substring(0, colonIndex) else hostPort
+                //
+                // An IPv6 literal is written in brackets - `[::1]:5432` - and is full of colons, so the
+                // one that separates the port is the last, and only when it comes after the closing
+                // bracket. On a plain `host:port` that is the same colon it always was.
+                val colonIndex = hostPort.lastIndexOf(':')
+                val portFollows = colonIndex != -1 && hostPort.lastIndexOf(']') < colonIndex
+                val host = if (portFollows) hostPort.substring(0, colonIndex) else hostPort
                 if (host.isNotEmpty()) {
-                    octaviusProperties.serverName = URLDecoder.decode(host, "UTF-8")
+                    // The brackets belong to the URL, not to the address: what is kept here is what
+                    // the server is asked for by name elsewhere - the host a certificate is matched
+                    // against under verify-full, and the one a log line prints.
+                    val bare = if (host.length > 1 && host.startsWith('[') && host.endsWith(']')) {
+                        host.substring(1, host.length - 1)
+                    } else host
+                    octaviusProperties.serverName = URLDecoder.decode(bare, "UTF-8")
                 }
-                if (colonIndex != -1) {
+                if (portFollows) {
                     hostPort.substring(colonIndex + 1).toIntOrNull()?.let { octaviusProperties.portNumber = it }
                 }
                 if (dbNameRaw.isNotEmpty()) {
@@ -302,7 +317,11 @@ class OctaviusProperties {
         val p = portNumber ?: 5432
         val db = databaseName ?: "postgres"
 
-        val urlBuilder = StringBuilder("jdbc:octavius://$h:$p/$db")
+        // An address holding colons is an IPv6 one, and goes back into the URL bracketed - the form
+        // [parse] reads it out of, and the only one where the colon before the port is unambiguous.
+        val authority = if (h.contains(':')) "[$h]" else h
+
+        val urlBuilder = StringBuilder("jdbc:octavius://$authority:$p/$db")
 
         val queryParams = mutableMapOf<String, String>()
         user?.let { queryParams["user"] = it }

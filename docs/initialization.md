@@ -58,6 +58,8 @@ val connection = DriverManager.getConnection(url)
 val session = connection.getOctaviusSession()
 ```
 
+An IPv6 address goes in brackets, the way libpq writes it — `jdbc:octavius://[::1]:5432/res_publica`. They are what tells the address's own colons from the one before the port, so they are required even with no port following: an unbracketed `::1` in a URL reads as the host `:` on port 1. They belong to the URL rather than to the address, though, so `serverName` comes back as a bare `::1` — and that is the form to set directly on `OctaviusProperties` or `OctaviusDataSource`, where there is no port to separate it from.
+
 ### 3. `OctaviusDataSource`
 
 `OctaviusDataSource` bypasses `DriverManager` and takes typed values directly:

@@ -39,6 +39,31 @@ class SslIntegrationTest {
     }
 
     @Test
+    fun testNegotiatedProtocolIsTls13() {
+        val properties = OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+            ssl = true
+            sslmode = SslMode.REQUIRE
+        }
+
+        val session = getOctaviusSession(url, properties)
+
+        try {
+            // The driver enables TLS 1.2 and 1.3 and lets the server pick, so against a server that
+            // offers both - PostgreSQL 18 does, out of the box - the answer has to be 1.3. Asserting
+            // "one of the two" would pass with the driver pinned to 1.2, which is exactly the failure
+            // this exists to catch: an SSLContext asked for by version caps the handshake at that
+            // version whatever enabledProtocols says afterwards, and nothing else reports it.
+            val version = session.createNativeQuery("SELECT version FROM pg_stat_ssl WHERE pid = pg_backend_pid()")
+                .fetchFieldStrict<String>()
+            assertEquals("TLSv1.3", version, "Server and driver both offer TLS 1.3; the handshake should land on it")
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
     fun testSslModePrefer() {
         val properties = OctaviusProperties().apply {
             user = "postgres"

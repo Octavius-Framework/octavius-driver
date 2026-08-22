@@ -1,3 +1,10 @@
+## Version 0.9.8 (v0.9.8)
+
+#### Fixed
+
+- Encrypted connections now actually reach TLS 1.3, where every one of them used to settle on 1.2 no matter what the server offered. The handshake was run on an `SSLContext` asked for by version, and that version is a ceiling the connection never rises above - but not one anything reports: the context still lists TLS 1.3 among its *supported* protocols and still accepts it as an *enabled* one, so the driver's own restriction to 1.2 and 1.3 looked satisfied while nothing above 1.2 was ever negotiated. The restriction is unchanged and is now the only thing stating a floor. The SSL suite asserts the negotiated version out of `pg_stat_ssl` rather than only that the connection is encrypted, a `SELECT ssl` being true throughout and the reason this went unseen
+- An IPv6 address in a JDBC URL is read as one, where `jdbc:octavius://[::1]:5432/res_publica` used to be split on the first colon and connect to a host named `[`. The port is now taken from the last colon and only when it follows the closing bracket, which is how libpq and pgjdbc both read it, and the brackets are stripped before the address is stored: `serverName` holds the `::1` that a certificate is matched against and a log line prints, not the URL's punctuation. `toUrl()` puts them back. The brackets are required even with no port following, an unbracketed `::1` reading as the host `:` on port 1; setting `serverName` directly never needed them and still does not
+
 ## Version 0.9.7 (v0.9.7)
 
 #### Added

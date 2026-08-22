@@ -66,8 +66,8 @@ internal object SslNegotiator {
     }
 
     fun upgrade(socket: Socket, host: String, port: Int, config: SslConfiguration): SSLSocket {
-        val sslContext = SSLContext.getInstance("TLSv1.2")
-        
+        val sslContext = SSLContext.getInstance("TLS")
+
         val trustManagers = createTrustManagers(config)
         val keyManagers = createKeyManagers(config)
         

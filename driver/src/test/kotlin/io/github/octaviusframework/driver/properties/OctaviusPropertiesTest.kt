@@ -49,6 +49,42 @@ class OctaviusPropertiesTest {
     }
 
     @Test
+    fun `should parse a bracketed IPv6 host with a port`() {
+        val props = OctaviusProperties.parse("jdbc:octavius://[2001:db8::1]:5433/res_publica?user=consul")
+
+        // The brackets are the URL's, not the address's: what is stored is what gets connected to
+        // and matched against a certificate.
+        assertEquals("2001:db8::1", props.serverName)
+        assertEquals(5433, props.portNumber)
+        assertEquals("res_publica", props.databaseName)
+        assertEquals("consul", props.user)
+    }
+
+    @Test
+    fun `should parse a bracketed IPv6 host without a port`() {
+        val props = OctaviusProperties.parse("jdbc:octavius://[::1]/res_publica")
+
+        // Every colon here belongs to the address, so no port is stated and the default applies later.
+        assertEquals("::1", props.serverName)
+        assertNull(props.portNumber)
+        assertEquals("res_publica", props.databaseName)
+    }
+
+    @Test
+    fun `should round trip an IPv6 host through toUrl`() {
+        val original = OctaviusProperties()
+        original.serverName = "::1"
+        original.portNumber = 5433
+        original.databaseName = "res_publica"
+
+        val parsed = OctaviusProperties.parse(original.toUrl())
+
+        assertEquals("::1", parsed.serverName)
+        assertEquals(5433, parsed.portNumber)
+        assertEquals("res_publica", parsed.databaseName)
+    }
+
+    @Test
     fun `url should win over info where it states something`() {
         val info = Properties()
         info.setProperty("serverName", "from-info")

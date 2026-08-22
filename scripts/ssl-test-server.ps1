@@ -68,9 +68,10 @@ function Find-PostgresBin {
 }
 
 function Find-OpenSsl {
-    $onPath = Get-Command openssl -ErrorAction SilentlyContinue
-    if ($onPath) { return $onPath.Source }
-
+    # Git's own copy is preferred over whatever else is on PATH: a Strawberry Perl install puts a
+    # broken openssl.exe ahead of it for anyone who has one (its OPENSSLDIR is baked in from the
+    # `subst`-ed drive it was built on, so `req` fails trying to open openssl.cnf) - and Git is
+    # already a given in a repository that needs it for everything else.
     $candidates = @(
         'C:\Program Files\Git\usr\bin\openssl.exe',
         'C:\Program Files\Git\mingw64\bin\openssl.exe',
@@ -79,6 +80,9 @@ function Find-OpenSsl {
     foreach ($candidate in $candidates) {
         if (Test-Path $candidate) { return $candidate }
     }
+
+    $onPath = Get-Command openssl -ErrorAction SilentlyContinue
+    if ($onPath) { return $onPath.Source }
 
     throw "openssl not found. It ships with Git for Windows; put it on PATH or install OpenSSL."
 }
