@@ -34,9 +34,10 @@ val properties = OctaviusProperties().apply {
     password = "senatus_populusque"
     loginTimeout = 10
     sslmode = SslMode.REQUIRE
+    applicationName = "LegioXIII-App"
 
     // Anything the driver does not know becomes a server startup parameter
-    additionalProperties["application_name"] = "LegioXIII-App"
+    additionalProperties["search_path"] = "castra, public"
 }
 
 val session = getOctaviusSession(properties)
@@ -91,9 +92,10 @@ val dataSource = OctaviusDataSource().apply {
     socketTimeout = 30
     maxCachedRowSize = 8192
     noticeHandler = "com.example.MyNoticeHandler"
+    applicationName = "LegioXIII-App"
 
     // Anything without an accessor of its own, startup parameters included
-    setProperty("application_name", "LegioXIII-App")
+    setProperty("search_path", "castra, public")
 }
 ```
 
@@ -153,6 +155,8 @@ val config = HikariConfig().apply {
     addDataSourceProperty("socketTimeout", "30")
     addDataSourceProperty("maxCachedRowSize", "8192")
 
+    addDataSourceProperty("applicationName", "curia-api")  // the name pg_stat_activity will show
+
     maximumPoolSize = 10
 }
 val pool = HikariDataSource(config)
@@ -165,12 +169,12 @@ val session = pool.getOctaviusSession()
 Two things do **not** go through it:
 
 * **`sslmode`**, because its accessor is typed as the `SslMode` enum. HikariCP converts a string value only for primitives, `Boolean` and `String`; anything else it passes through untouched, and a `String` arriving at a setter expecting `SslMode` fails the pool with *"argument type mismatch"*. Passing the enum itself — `addDataSourceProperty("sslmode", SslMode.REQUIRE)` — works, but a properties file or Spring's `data-source-properties` has only strings to offer.
-* **Startup parameters**, which are not driver settings at all and so have no accessor by design.
+* **Startup parameters**, which are not driver settings at all and so have no accessor by design. `application_name` is the exception: it has [a property of its own](#startup-parameters), typed as a `String`, so it goes through like any other.
 
 Both fit on the `url` property, which is itself a bean property and takes a whole URL:
 
 ```kotlin
-addDataSourceProperty("url", "jdbc:octavius://localhost:5432/res_publica?sslmode=require&application_name=curia-api")
+addDataSourceProperty("url", "jdbc:octavius://localhost:5432/res_publica?sslmode=require&search_path=castra")
 ```
 
 Everything else — the timeouts, the buffer sizes, `ssl`, `noticeHandler`, the certificate paths — is a plain `Int`, `Boolean` or `String` accessor and takes a string value as it stands.
@@ -190,7 +194,7 @@ val octavius = OctaviusDataSource().apply {
 
     sslmode = SslMode.REQUIRE   // an enum, not a string that has to survive a conversion
     socketTimeout = 30
-    setProperty("application_name", "curia-api")
+    applicationName = "curia-api"
 }
 
 val pool = HikariDataSource(HikariConfig().apply {
@@ -287,13 +291,22 @@ Any property the driver does not recognize is passed through to PostgreSQL in th
 ```kotlin
 val properties = OctaviusProperties().apply {
     // ... address and credentials ...
-    additionalProperties["application_name"] = "LegioXIII-App"  // shows up in pg_stat_activity
     additionalProperties["search_path"] = "castra, public"
     additionalProperties["statement_timeout"] = "5000"
 }
 ```
 
-The same works through a URL — `?application_name=LegioXIII-App` — since unknown query parameters land in the same place.
+The same works through a URL — `?search_path=castra` — since unknown query parameters land in the same place.
+
+**`application_name` is the one with a property of its own.** Nearly every application sets it, and a plain `String` property is what lets a pool or a properties file reach it without going through a URL. Either spelling fills the same field — `applicationName` or PostgreSQL's own `application_name` — and the property wins over an `application_name` put into `additionalProperties` by hand.
+
+```kotlin
+val properties = OctaviusProperties().apply {
+    applicationName = "LegioXIII-App"  // shows up in pg_stat_activity
+}
+```
+
+Say nothing and the connection reports **`Octavius Driver`**, so a `pg_stat_activity` full of driver connections says at least which driver opened them. Naming your own application is still worth the one line: the default tells a DBA what the connection is, not who it is for. An `application_name` you had already put into `additionalProperties` is left as it is — the driver's name only fills a gap.
 
 **Character encoding is the one exception you cannot override**: the driver always declares UTF-8 to the server, and there is no plan to support anything else, so it is not exposed as a setting.
 
@@ -354,13 +367,14 @@ Three members on the session that are easy to miss, all of them about the connec
 
 ### Connection and authentication
 
-| Property                       | Default     | Meaning                         |
-|:-------------------------------|:------------|:--------------------------------|
-| `user`                         | `postgres`  | Database username.              |
-| `password`                     | none        | Password for that user.         |
-| `serverName` (or `host`)       | `localhost` | Address of the database server. |
-| `portNumber` (or `port`)       | `5432`      | Port the server listens on.     |
-| `databaseName` (or `database`) | `postgres`  | Database to connect to.         |
+| Property                                  | Default           | Meaning                                                                  |
+|:------------------------------------------|:------------------|:-------------------------------------------------------------------------|
+| `user`                                    | `postgres`        | Database username.                                                       |
+| `password`                                | none              | Password for that user.                                                  |
+| `serverName` (or `host`)                  | `localhost`       | Address of the database server.                                          |
+| `portNumber` (or `port`)                  | `5432`            | Port the server listens on.                                              |
+| `databaseName` (or `database`)            | `postgres`        | Database to connect to.                                                  |
+| `applicationName` (or `application_name`) | `Octavius Driver` | Name this connection reports to the server, shown in `pg_stat_activity`. |
 
 There is no property selecting an authentication method: [SCRAM-SHA-256 is the only one implemented](#authentication-is-scram-sha-256-and-nothing-else). What you can choose is whether it must be [bound to the TLS channel](#channel-binding), with `channelBinding` in the SSL table below.
 

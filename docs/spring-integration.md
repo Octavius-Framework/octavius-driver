@@ -108,7 +108,7 @@ spring:
       pool-name: curia-pool
 ```
 
-A key the driver does not recognize is not an error — it is kept aside and sent to PostgreSQL in the startup message, which is how `application_name` above reaches `pg_stat_activity`.
+`application_name` is a property of the driver's own — spelled either way, `applicationName` or `application_name` — and reaches `pg_stat_activity` as such. A key the driver does *not* recognize is not an error either: it is kept aside and sent to PostgreSQL in the startup message, which is how a `search_path` or a `statement_timeout` on that URL would reach the session. See [Startup parameters](initialization.md#startup-parameters).
 
 `spring.datasource.hikari.*` configures the pool exactly as it would for any other driver, with one setting to leave alone:
 

@@ -3,10 +3,12 @@ package io.github.octaviusframework.driver.hikari
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.driver.jdbc.OctaviusDataSource
+import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.ssl.SslMode
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 class HikariInitializationTest {
@@ -51,12 +53,24 @@ class HikariInitializationTest {
         config.addDataSourceProperty("notificationBufferCapacity", "512")
         config.addDataSourceProperty("initialParameterWriterCapacity", "2048")
         config.addDataSourceProperty("maxParameterWriterCapacity", "131072")
+        config.addDataSourceProperty("applicationName", "curia-api")
 
         val ds = HikariDataSource(config)
         assertDoesNotThrow {
             ds.connection.use { conn ->
                 assertNotNull(conn)
             }
+        }
+
+        // The startup parameter with an accessor of its own: reachable from a properties file, where
+        // every other one still needs the url.
+        ds.connection.use { conn ->
+            val reported = conn.getOctaviusSession(ownsConnection = false).use { session ->
+                session.createNativeQuery("SELECT current_setting('application_name')")
+                    .fetchRowStrict()
+                    .get<String>(0)
+            }
+            assertEquals("curia-api", reported)
         }
         ds.close()
     }

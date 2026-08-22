@@ -88,9 +88,29 @@ class OctaviusDataSourceInitializationTest {
     @Test
     fun `should reach startup parameters through setProperty`() {
         val ds = OctaviusDataSource()
-        ds.setProperty("application_name", "LegioXIII-App")
+        ds.setProperty("search_path", "castra, public")
         // Unrecognised keys are startup parameters, so they ride along in the url too
-        assertTrue(ds.url.contains("application_name=LegioXIII-App"), ds.url)
+        assertTrue(ds.url.contains("search_path=castra%2C+public"), ds.url)
+    }
+
+    @Test
+    fun `should expose the application name as a bean property`() {
+        val ds = OctaviusDataSource()
+        assertNull(ds.applicationName)
+
+        // A String accessor, so HikariCP's addDataSourceProperty can set it from a properties file
+        ds.applicationName = "curia-api"
+
+        assertEquals("curia-api", ds.applicationName)
+        assertTrue(ds.url.contains("application_name=curia-api"), ds.url)
+    }
+
+    @Test
+    fun `setProperty should reach the application name property`() {
+        val ds = OctaviusDataSource()
+        ds.setProperty("application_name", "LegioXIII-App")
+
+        assertEquals("LegioXIII-App", ds.applicationName)
     }
 
     @Test

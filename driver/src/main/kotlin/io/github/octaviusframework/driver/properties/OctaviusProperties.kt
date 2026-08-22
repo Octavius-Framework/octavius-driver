@@ -32,6 +32,16 @@ class OctaviusProperties {
     var databaseName: String? = null
 
     /**
+     * The name this connection reports to the server, where it shows up in `pg_stat_activity` and in
+     * any log line written with `%a`. Left unset, the driver names itself - `Octavius Driver` - so
+     * a connection is never one of a row of blanks.
+     *
+     * It is a startup parameter like the ones in [additionalProperties], and it wins over an
+     * `application_name` put there by hand. That one still beats the driver's own name.
+     */
+    var applicationName: String? = null
+
+    /**
      * Seconds to wait for the socket connect and login. Falls back to `DriverManager.getLoginTimeout()`,
      * or 10 seconds when that is `0`.
      */
@@ -119,7 +129,8 @@ class OctaviusProperties {
 
     /**
      * Everything the driver does not recognise, sent to the server as startup parameters. This is what
-     * carries `application_name`, `search_path` and the rest of PostgreSQL's own settings.
+     * carries `search_path`, `statement_timeout` and the rest of PostgreSQL's own settings; the one
+     * with a property of its own is [applicationName].
      */
     val additionalProperties: MutableMap<String, String> = mutableMapOf()
 
@@ -144,6 +155,7 @@ class OctaviusProperties {
             "servername", "host" -> serverName = value
             "portnumber", "port" -> portNumber = value.toIntOrNull()
             "databasename", "database" -> databaseName = value
+            "applicationname", "application_name" -> applicationName = value
             "logintimeout" -> loginTimeout = value.toIntOrNull()
             "sockettimeout" -> socketTimeout = value.toIntOrNull()
             "cancelsignaltimeout" -> cancelSignalTimeout = value.toIntOrNull()
@@ -178,6 +190,7 @@ class OctaviusProperties {
         other.serverName?.let { serverName = it }
         other.portNumber?.let { portNumber = it }
         other.databaseName?.let { databaseName = it }
+        other.applicationName?.let { applicationName = it }
         other.loginTimeout?.let { loginTimeout = it }
         other.socketTimeout?.let { socketTimeout = it }
         other.cancelSignalTimeout?.let { cancelSignalTimeout = it }
@@ -343,6 +356,11 @@ class OctaviusProperties {
         channelBinding?.let { queryParams["channelBinding"] = it.value }
 
         queryParams.putAll(additionalProperties)
+
+        // Rendered under PostgreSQL's own spelling, and after the map, for the same reason the startup
+        // message sets it last: the typed property is the one that reaches the server, so an
+        // `application_name` left in additionalProperties must not be what the URL shows.
+        applicationName?.let { queryParams["application_name"] = it }
 
         if (queryParams.isNotEmpty()) {
             urlBuilder.append("?")

@@ -1,7 +1,9 @@
 package io.github.octaviusframework.driver.properties
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.Properties
 
@@ -177,6 +179,57 @@ class OctaviusPropertiesTest {
 
         assertEquals("from-info", props.serverName)
         assertEquals("db-from-info", props.databaseName)
+    }
+
+    @Test
+    fun `should read an application name under either spelling`() {
+        val underscored = OctaviusProperties.parse("jdbc:octavius://localhost:5432/res_publica?application_name=LegioXIII")
+        val camelCased = OctaviusProperties.parse("jdbc:octavius://localhost:5432/res_publica?applicationName=LegioXIII")
+
+        assertEquals("LegioXIII", underscored.applicationName)
+        assertEquals("LegioXIII", camelCased.applicationName)
+
+        // Recognised now, so neither spelling is left among the pass-through parameters
+        assertEquals(emptyMap<String, String>(), underscored.additionalProperties)
+        assertEquals(emptyMap<String, String>(), camelCased.additionalProperties)
+    }
+
+    @Test
+    fun `should render the application name under PostgreSQL's own spelling`() {
+        val original = OctaviusProperties()
+        original.serverName = "localhost"
+        original.applicationName = "Legio XIII"
+
+        val url = original.toUrl()
+
+        assertTrue(url.contains("application_name=Legio+XIII"), url)
+        assertEquals("Legio XIII", OctaviusProperties.parse(url).applicationName)
+    }
+
+    @Test
+    fun `the application name property should win over one left in additionalProperties`() {
+        val props = OctaviusProperties()
+        props.additionalProperties["application_name"] = "by-hand"
+        props.applicationName = "typed"
+
+        // Both would render under the same key, and the one the startup message sends is the one shown
+        val url = props.toUrl()
+
+        assertFalse(url.contains("by-hand"), url)
+        assertEquals("typed", OctaviusProperties.parse(url).applicationName)
+    }
+
+    @Test
+    fun `merge should carry the application name without erasing it`() {
+        val base = OctaviusProperties()
+        base.applicationName = "base"
+
+        base.merge(OctaviusProperties())
+        assertEquals("base", base.applicationName)
+
+        base.merge(OctaviusProperties().apply { applicationName = "overlay" })
+        assertEquals("overlay", base.applicationName)
+        assertEquals("overlay", base.copy().applicationName)
     }
 
     @Test

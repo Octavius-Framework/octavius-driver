@@ -1,5 +1,9 @@
 ## Version 0.9.8 (v0.9.8)
 
+#### Added
+
+- `applicationName` connection property, so the name a connection reports in `pg_stat_activity` is set like every other setting instead of being pushed into the `additionalProperties` map by hand. Either spelling fills it - `applicationName` or PostgreSQL's own `application_name` - and it is a plain `String` accessor on `OctaviusDataSource`, which is what puts it within reach of HikariCP's `addDataSourceProperty` and Spring's `data-source-properties`: a startup parameter previously had nowhere to go there but the URL. Set both ways, the property wins over an `application_name` left in `additionalProperties`. Left unset, a connection now reports `Octavius Driver` where it used to report nothing at all - pgjdbc has long done the same under `PostgreSQL JDBC Driver`. An `application_name` already in `additionalProperties` still stands: the default only fills a gap. See [Startup parameters](docs/initialization.md#startup-parameters)
+
 #### Fixed
 
 - Encrypted connections now actually reach TLS 1.3, where every one of them used to settle on 1.2 no matter what the server offered. The handshake was run on an `SSLContext` asked for by version, and that version is a ceiling the connection never rises above - but not one anything reports: the context still lists TLS 1.3 among its *supported* protocols and still accepts it as an *enabled* one, so the driver's own restriction to 1.2 and 1.3 looked satisfied while nothing above 1.2 was ever negotiated. The restriction is unchanged and is now the only thing stating a floor. The SSL suite asserts the negotiated version out of `pg_stat_ssl` rather than only that the connection is encrypted, a `SELECT ssl` being true throughout and the reason this went unseen

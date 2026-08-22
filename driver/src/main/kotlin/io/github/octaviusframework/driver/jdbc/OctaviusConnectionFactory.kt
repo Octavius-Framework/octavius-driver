@@ -17,6 +17,9 @@ import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
+/** What a connection calls itself when nothing else was asked for. */
+private const val DEFAULT_APPLICATION_NAME = "Octavius Driver"
+
 /**
  * Factory object responsible for establishing physical connections to a PostgreSQL database.
  *
@@ -91,6 +94,11 @@ internal object OctaviusConnectionFactory {
         startupParams["client_encoding"] = "UTF8"
         startupParams["user"] = user
         startupParams["database"] = databaseName
+        // Set after the copy, so the typed property beats an `application_name` put into
+        // additionalProperties by hand. Neither given, the driver names itself rather than leave
+        // the column blank - and putIfAbsent, so a name set either way is not the one replaced.
+        properties.applicationName?.let { startupParams["application_name"] = it }
+        startupParams.putIfAbsent("application_name", DEFAULT_APPLICATION_NAME)
 
         stream.sendMessage(StartupMessage(startupParams))
         stream.flush()

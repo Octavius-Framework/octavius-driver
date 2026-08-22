@@ -63,6 +63,14 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.databaseName = value }
 
     /**
+     * The name this connection reports to the server, visible in `pg_stat_activity`. Unset, the
+     * driver's own name - `Octavius Driver` - is sent instead.
+     */
+    var applicationName: String?
+        get() = octaviusProperties.applicationName
+        set(value) { octaviusProperties.applicationName = value }
+
+    /**
      * The username for authenticating with the database.
      */
     var user: String?
@@ -191,8 +199,8 @@ class OctaviusDataSource : DataSource {
     /**
      * Sets any property this class does not expose directly, by the same name a JDBC URL would
      * use. Anything the driver does not recognise is sent to the server as a startup parameter,
-     * which is what makes this the programmatic route to `application_name`, `search_path` and
-     * friends.
+     * which is what makes this the programmatic route to `search_path`, `statement_timeout` and
+     * friends - `application_name` has [applicationName] and needs no detour.
      */
     fun setProperty(name: String, value: String) {
         octaviusProperties.setProperty(name, value)
