@@ -27,6 +27,25 @@ class NativeQuery internal constructor(
     typeManager: TypeManager
 ) : OctaviusQuery<NativeQuery>(sql, queryExecutor, typeManager) {
 
+    /**
+     * Names this query's parameters for a [QueryContext] and runs [block] under it.
+     *
+     * Positional parameters have no names to report, so they are keyed by the `$n` they were bound
+     * to. The statement is its own transformed form and the values their own bound form - there is
+     * no translation step here for the two to differ across, which is the whole difference from
+     * [NamedParameterQuery][io.github.octaviusframework.driver.query.NamedParameterQuery], where
+     * they do and the context carries both.
+     */
+    @PublishedApi
+    internal inline fun <R> withPositionalContext(params: Array<out Any?>, block: () -> R): R =
+        withQueryContext(
+            sql,
+            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
+            { sql },
+            { params.toList() },
+            block
+        )
+
     //--------------------------------------------Row-based Methods-----------------------------------------------------
 
     /**
@@ -36,11 +55,7 @@ class NativeQuery internal constructor(
      * @return All matching rows; empty when nothing matched.
      */
     fun fetchRows(vararg params: Any?): List<Row> {
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             queryExecutor.query(sql, params, parameterSerializer, resultMapper)
         }
     }
@@ -56,11 +71,7 @@ class NativeQuery internal constructor(
      * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
      */
     fun fetchRow(vararg params: Any?): Row? {
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2)
             if (rows.size > 1) throw StatementException(
                 StatementExceptionReason.INCORRECT_RESULT_SIZE,
@@ -78,11 +89,7 @@ class NativeQuery internal constructor(
      * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
      */
     fun fetchRowStrict(vararg params: Any?): Row {
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2)
             if (rows.isEmpty()) throw StatementException(
                 StatementExceptionReason.INCORRECT_RESULT_SIZE,
@@ -110,11 +117,7 @@ class NativeQuery internal constructor(
      *   [OctaviusException], since the result has to be drained before it can be rethrown.
      */
     fun forEachRow(vararg params: Any?, fetchSize: Int, block: (Row) -> Unit) {
-        withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        withPositionalContext(params) {
             queryExecutor.queryForEach(sql, params, parameterSerializer, resultMapper, fetchSize, { it }, block)
         }
     }
@@ -135,11 +138,7 @@ class NativeQuery internal constructor(
     inline fun <reified T : Any> fetchObjects(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             queryExecutor.query(sql, params, parameterSerializer, resultMapper) {
                 resultMapper.deserialize(it, targetType, recordType)
             }
@@ -158,11 +157,7 @@ class NativeQuery internal constructor(
     inline fun <reified T : Any> fetchObject(vararg params: Any?): T? {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
@@ -186,11 +181,7 @@ class NativeQuery internal constructor(
     inline fun <reified T : Any> fetchObjectStrict(vararg params: Any?): T {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
@@ -222,11 +213,7 @@ class NativeQuery internal constructor(
     inline fun <reified T : Any> forEachObject(vararg params: Any?, fetchSize: Int, crossinline block: (T) -> Unit) {
         val targetType = typeOf<T>()
         val recordType = PgType.Record
-        withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        withPositionalContext(params) {
             queryExecutor.queryForEach(sql, params, parameterSerializer, resultMapper, fetchSize, {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }, { block(it) })
@@ -247,11 +234,7 @@ class NativeQuery internal constructor(
      */
     inline fun <reified T> fetchFields(vararg params: Any?): List<T> {
         val targetType = typeOf<T>()
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             queryExecutor.query(sql, params, parameterSerializer, resultMapper) { it.get(0, targetType) }
         }
     }
@@ -277,11 +260,7 @@ class NativeQuery internal constructor(
      */
     inline fun <reified T> fetchField(vararg params: Any?): T {
         val targetType = typeOf<T>()
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 it.get<T>(
                     0,
@@ -319,11 +298,7 @@ class NativeQuery internal constructor(
      */
     inline fun <reified T> fetchFieldStrict(vararg params: Any?): T {
         val targetType = typeOf<T>()
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 it.get<T>(
                     0,
@@ -356,11 +331,7 @@ class NativeQuery internal constructor(
      */
     inline fun <reified T> forEachField(vararg params: Any?, fetchSize: Int, crossinline block: (T) -> Unit) {
         val targetType = typeOf<T>()
-        withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        withPositionalContext(params) {
             queryExecutor.queryForEach(sql, params, parameterSerializer, resultMapper, fetchSize, {
                 it.get<T>(0, targetType)
             }, { block(it) })
@@ -379,11 +350,7 @@ class NativeQuery internal constructor(
      * @throws InvalidOperationException `UNEXPECTED_RESULT` if the statement returned rows.
      */
     fun update(vararg params: Any?): Long {
-        return withQueryContext(
-            sql,
-            { params.mapIndexed { i, p -> (i + 1).toString() to p }.toMap() },
-            { sql },
-            { params.toList() }) {
+        return withPositionalContext(params) {
             queryExecutor.update(sql, params, parameterSerializer)
         }
     }

@@ -36,7 +36,26 @@ class QueryExecutor internal constructor(
         initialCapacity = initialParameterWriterCapacity ?: 1024,
         maxCapacity = maxParameterWriterCapacity ?: 65536
     )
-    
+
+    private companion object {
+        /**
+         * The name every statement and every portal here goes out under.
+         *
+         * Nothing is prepared server-side and nothing outlives its exchange, so there is only ever
+         * one of each in flight on a connection and it needs no name to be told apart.
+         */
+        const val UNNAMED = ""
+
+        /**
+         * `[1]` - binary, for every parameter and every result column alike.
+         *
+         * A one-element list is how the protocol says "this format, for all of them", and it is
+         * held rather than built because `listOf(1)` at the call site is two allocations on every
+         * statement the driver executes.
+         */
+        val BINARY_FORMAT = listOf(1)
+    }
+
     /** Ties a log line to the backend this executor talks to. */
     private val pid: String get() = "[PID: ${stream.processId}]"
 
@@ -116,6 +135,32 @@ class QueryExecutor internal constructor(
     }
 
     /**
+     * Sends the opening of an Extended Query exchange: `Parse`, `Bind` and a `Describe` of the portal.
+     *
+     * Stops there because what follows is the one thing the three callers disagree on - a single
+     * `Execute` and a `Sync` for a result read whole, an `Execute` per batch for one streamed.
+     * Serializing the parameters is part of this: it fills [parameterWriter], which the `Bind` built
+     * here is the only reader of.
+     */
+    private fun sendParseBindDescribe(
+        sql: String,
+        params: Array<out Any?>,
+        parameterSerializer: ParameterSerializer?
+    ) {
+        val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
+        val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
+        val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
+
+        stream.sendMessage(ParseMessage(UNNAMED, sql, paramTypes))
+        stream.sendMessage(
+            BindMessage(
+                UNNAMED, UNNAMED, params.size, paramValues, BINARY_FORMAT, BINARY_FORMAT, paramValuesLength
+            )
+        )
+        stream.sendMessage(DescribeMessage('P', UNNAMED))
+    }
+
+    /**
      * Uses Simple Query Protocol (Q). 
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
      */
@@ -166,20 +211,12 @@ class QueryExecutor internal constructor(
     ): Long = exchange {
         val startedAt = traceStart(sql, params)
 
-        val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
-        val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
-        val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
-        val statementName = ""
-        val portalName = ""
-        
-        stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1), paramValuesLength))
-        stream.sendMessage(DescribeMessage('P', portalName))
-        stream.sendMessage(ExecuteMessage(portalName, 0))
+        sendParseBindDescribe(sql, params, parameterSerializer)
+        stream.sendMessage(ExecuteMessage(UNNAMED, 0))
         stream.sendMessage(SyncMessage())
-        
+
         stream.flush()
-        
+
         var rowsAffected = 0L
         var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
@@ -269,20 +306,12 @@ class QueryExecutor internal constructor(
     ): List<R> = exchange {
         val startedAt = traceStart(sql, params)
 
-        val paramTypes = parameterSerializer?.serializeAll(params, parameterWriter) ?: IntArray(0)
-        val paramValues = if (parameterSerializer != null) parameterWriter.data else ByteArray(0)
-        val paramValuesLength = if (parameterSerializer != null) parameterWriter.position else 0
-        val statementName = ""
-        val portalName = ""
-        
-        stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1), paramValuesLength))
-        stream.sendMessage(DescribeMessage('P', portalName))
-        stream.sendMessage(ExecuteMessage(portalName, maxRows))
+        sendParseBindDescribe(sql, params, parameterSerializer)
+        stream.sendMessage(ExecuteMessage(UNNAMED, maxRows))
         stream.sendMessage(SyncMessage())
-        
+
         stream.flush()
-        
+
         val rows = mutableListOf<R>()
         var rowMetadata: RowMetadata? = null
         var errorResponse: ErrorOrNoticeMessage? = null
@@ -366,16 +395,8 @@ class QueryExecutor internal constructor(
     ) = exchange {
         val startedAt = traceStart(sql, params)
 
-        val paramTypes = parameterSerializer.serializeAll(params, parameterWriter)
-        val paramValues = parameterWriter.data
-        val paramValuesLength = parameterWriter.position
-        val statementName = ""
-        val portalName = ""
-        
-        stream.sendMessage(ParseMessage(statementName, sql, paramTypes))
-        stream.sendMessage(BindMessage(portalName, statementName, params.size, paramValues, listOf(1), listOf(1), paramValuesLength))
-        stream.sendMessage(DescribeMessage('P', portalName))
-        
+        sendParseBindDescribe(sql, params, parameterSerializer)
+
         var rowMetadata: RowMetadata? = null
         var errorResponse: ErrorOrNoticeMessage? = null
         var executionError: OctaviusException? = null
@@ -384,7 +405,7 @@ class QueryExecutor internal constructor(
         var rowCount = 0L
 
         fetchLoop@ while (true) {
-            stream.sendMessage(ExecuteMessage(portalName, fetchSize))
+            stream.sendMessage(ExecuteMessage(UNNAMED, fetchSize))
             stream.sendMessage(FlushMessage())
             stream.flush()
 
