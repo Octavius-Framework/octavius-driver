@@ -251,9 +251,10 @@ class QueryExecutor internal constructor(
                         )
                     }
                 }
-                is ErrorOrNoticeMessage -> {
-                    if (errorResponse == null) errorResponse = msg
-                }
+                // Not guarded against a second error, because there cannot be a second one: an error
+                // anywhere in an extended-query exchange makes the server discard every message that
+                // follows it up to the Sync sent above, and answer that with ReadyForQuery.
+                is ErrorOrNoticeMessage -> errorResponse = msg
                 is ReadyForQueryMessage -> break
                 else -> { /* Ignore */ }
             }
@@ -361,9 +362,8 @@ class QueryExecutor internal constructor(
                     }
                 }
                 is CommandCompleteMessage -> { /* Ignored in DQL queries */ }
-                is ErrorOrNoticeMessage -> {
-                    if (errorResponse == null) errorResponse = msg
-                }
+                // Unguarded for the same reason as in update(): one Sync, so at most one error.
+                is ErrorOrNoticeMessage -> errorResponse = msg
                 is ReadyForQueryMessage -> break
                 else -> { /* Ignore */ }
             }
@@ -480,7 +480,11 @@ class QueryExecutor internal constructor(
                 if (msg is ReadyForQueryMessage) {
                     break
                 } else if (msg is ErrorOrNoticeMessage) {
-                    if (errorResponse == null) errorResponse = msg
+                    // Unguarded for the reason update() gives, and nothing is overwritten here
+                    // either: a fetch loop that ended on a server error left only ReadyForQuery
+                    // behind it, so an error reaching this loop is one that arrived after the loop
+                    // had already broken for a reason of its own - a block that threw.
+                    errorResponse = msg
                 }
             }
 
