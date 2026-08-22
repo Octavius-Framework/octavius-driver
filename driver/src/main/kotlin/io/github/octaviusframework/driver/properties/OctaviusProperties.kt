@@ -110,14 +110,14 @@ class OctaviusProperties {
     var sslcert: String? = null
 
     /**
-     * Path to the client private key that goes with [sslcert]. Must be an unencrypted PKCS#8 RSA key
-     * in PEM form.
+     * Path to the client private key that goes with [sslcert]. Must be an unencrypted PKCS#8 key in
+     * PEM form; its algorithm is read off [sslcert], so RSA and EC alike work without saying which.
      */
     var sslkey: String? = null
 
     /**
-     * Applied to the in-memory keystore built from [sslcert] and [sslkey]. It does not decrypt the key
-     * file — see [SslConfiguration.keyPassword][io.github.octaviusframework.driver.ssl.SslConfiguration.keyPassword].
+     * Decrypts [sslkey] where that key is encrypted - a PEM file opening on `BEGIN ENCRYPTED PRIVATE
+     * KEY`. An unencrypted key ignores it; an encrypted one without it is refused, naming this property.
      */
     var sslpassword: String? = null
 

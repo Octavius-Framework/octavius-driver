@@ -15,13 +15,12 @@ package io.github.octaviusframework.driver.ssl
  * @property certPath Path to the client certificate, for certificate authentication. Takes effect only
  *   together with [keyPath]: with either one missing the driver presents no client certificate at all,
  *   without complaint.
- * @property keyPath Path to the client private key that goes with [certPath]. It must be an
- *   **unencrypted** PKCS#8 RSA key in PEM form; an encrypted one fails to load whatever [keyPassword]
- *   says.
- * @property keyPassword Applied to the in-memory keystore the driver assembles from [certPath] and
- *   [keyPath]. It does **not** decrypt the key file - the key is parsed before this is read - so it has
- *   no effect a caller can observe, and an encrypted key raises
- *   `InitializationException(SSL_ERROR)` rather than being unlocked by it.
+ * @property keyPath Path to the client private key that goes with [certPath]. PKCS#8 in PEM form,
+ *   encrypted or not; the algorithm is read off [certPath] rather than assumed, so RSA and EC alike
+ *   load without being named.
+ * @property keyPassword Decrypts [keyPath] where that key is encrypted - a file opening on
+ *   `BEGIN ENCRYPTED PRIVATE KEY`. An encrypted key without it raises
+ *   `InitializationException(SSL_ERROR)` naming the property; an unencrypted key ignores it.
  */
 data class SslConfiguration(
     val mode: SslMode,

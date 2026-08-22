@@ -400,8 +400,8 @@ There is no property selecting an authentication method: [SCRAM-SHA-256 is the o
 | `ssl`            | unset                                  | Shorthand: `true` raises the default to `REQUIRE`. Ignored when `sslmode` is set explicitly. |
 | `sslrootcert`    | JVM default trust store                | Path to the root CA certificate. Optional — see the mode table below.                        |
 | `sslcert`        | none                                   | Path to the client certificate. Needs `sslkey` too, or neither is used.                      |
-| `sslkey`         | none                                   | Path to the client private key. Unencrypted PKCS#8 RSA, in PEM form.                         |
-| `sslpassword`    | none                                   | Applied to the driver's in-memory keystore; does **not** decrypt `sslkey`.                   |
+| `sslkey`         | none                                   | Path to the client private key. PKCS#8 in PEM form, encrypted or not; RSA or EC.             |
+| `sslpassword`    | none                                   | Decrypts `sslkey` when that key is encrypted; ignored when it is not.                        |
 | `channelBinding` | `PREFER`                               | How hard to insist on [channel binding](#channel-binding) for authentication.                |
 
 | `SslMode`     | Behaviour                                                                                                                  |

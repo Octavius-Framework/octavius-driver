@@ -132,6 +132,26 @@ function New-Certificates {
 
     Remove-Item (Join-Path $certDir 'client.key.tmp') -Force -ErrorAction SilentlyContinue
 
+    # A second client certificate on an elliptic-curve key. The driver reads the algorithm off the
+    # certificate rather than assuming RSA, and this is the pair that proves it - nothing else here
+    # is anything but RSA.
+    & $openssl ecparam -name prime256v1 -genkey -noout -out (Join-Path $certDir 'client-ec.key.tmp') 2>$null
+    & $openssl req -new -key (Join-Path $certDir 'client-ec.key.tmp') `
+        -out (Join-Path $certDir 'client-ec.csr') -subj '/CN=postgres' 2>$null
+    & $openssl x509 -req -days 3650 -in (Join-Path $certDir 'client-ec.csr') `
+        -CA (Join-Path $certDir 'ca.crt') -CAkey (Join-Path $certDir 'ca.key') -CAcreateserial `
+        -out (Join-Path $certDir 'client-ec.crt') 2>$null
+    & $openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt `
+        -in (Join-Path $certDir 'client-ec.key.tmp') -out (Join-Path $certDir 'client-ec.key') 2>$null
+
+    Remove-Item (Join-Path $certDir 'client-ec.key.tmp') -Force -ErrorAction SilentlyContinue
+
+    # The RSA client key again, this time encrypted, for the sslpassword test. Same certificate as
+    # client.crt - only the key file differs, which is the point: the driver has to unlock it.
+    & $openssl pkcs8 -topk8 -inform PEM -outform PEM `
+        -in (Join-Path $certDir 'client.key') -out (Join-Path $certDir 'client-enc.key') `
+        -passout pass:senatus 2>$null
+
     if (-not (Test-Path (Join-Path $certDir 'server.crt'))) {
         throw "Certificate generation failed - no server.crt was produced."
     }
@@ -174,6 +194,7 @@ ssl_cert_file = 'server.crt'
 ssl_key_file = 'server.key'
 ssl_ca_file = 'ca.crt'
 "@
+
 }
 
 function Start-Instance {
@@ -209,6 +230,7 @@ function Start-Instance {
         & (Join-Path $Bin 'createdb.exe') -h localhost -p $Port -U postgres octavius_test
         Write-Host "Created database octavius_test."
     }
+
 }
 
 function Write-TestInstructions {
@@ -219,6 +241,10 @@ function Write-TestInstructions {
     Write-Host "  `$env:SSL_ROOT_CERT = `"$(Join-Path $certDir 'ca.crt')`""
     Write-Host "  `$env:SSL_CERT = `"$(Join-Path $certDir 'client.crt')`""
     Write-Host "  `$env:SSL_KEY = `"$(Join-Path $certDir 'client.key')`""
+    Write-Host "  `$env:SSL_CERT_EC = `"$(Join-Path $certDir 'client-ec.crt')`""
+    Write-Host "  `$env:SSL_KEY_EC = `"$(Join-Path $certDir 'client-ec.key')`""
+    Write-Host "  `$env:SSL_KEY_ENCRYPTED = `"$(Join-Path $certDir 'client-enc.key')`""
+    Write-Host "  `$env:SSL_KEY_PASSWORD = `"senatus`""
     Write-Host "  .\gradlew.bat :driver:test --tests `"*SslIntegrationTest*`" --tests `"*ChannelBindingIntegrationTest*`""
     Write-Host ""
     Write-Host "And when you are done, so it is not left running:"

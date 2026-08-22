@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.ssl
 
 import io.github.octaviusframework.driver.exception.ExecutionAbortedException
 import io.github.octaviusframework.driver.exception.ExecutionAbortedExceptionReason
+import io.github.octaviusframework.driver.exception.InitializationException
+import io.github.octaviusframework.driver.exception.InitializationExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.ssl.SslMode
@@ -189,6 +191,100 @@ class SslIntegrationTest {
         } finally {
             session.close()
         }
+    }
+
+    @Test
+    fun testSslClientAuthWithEcKey() {
+        val rootCert = System.getenv("SSL_ROOT_CERT")
+        val clientCert = System.getenv("SSL_CERT_EC")
+        val clientKey = System.getenv("SSL_KEY_EC")
+        assumeTrue(rootCert != null && clientCert != null && clientKey != null, "No EC client certs provided.")
+
+        val properties = OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+            ssl = true
+            sslmode = SslMode.VERIFY_CA
+            sslrootcert = rootCert
+            sslcert = clientCert
+            sslkey = clientKey
+        }
+
+        // Same exchange as testSslClientAuth, on a key that is not RSA. The driver takes the key's
+        // algorithm from the certificate presented alongside it, so this passes for any algorithm
+        // the JVM has a KeyFactory for; asking for "RSA" outright failed here with
+        // InvalidKeySpecException before the certificate was consulted.
+        val session = getOctaviusSession(url, properties)
+
+        try {
+            val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
+            assertTrue(isSsl, "Connection should be SSL encrypted with an EC client certificate")
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
+    fun testSslClientAuthWithEncryptedKey() {
+        val rootCert = System.getenv("SSL_ROOT_CERT")
+        val clientCert = System.getenv("SSL_CERT")
+        val clientKey = System.getenv("SSL_KEY_ENCRYPTED")
+        val keyPassword = System.getenv("SSL_KEY_PASSWORD")
+        assumeTrue(
+            rootCert != null && clientCert != null && clientKey != null && keyPassword != null,
+            "No encrypted client key provided."
+        )
+
+        val properties = OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+            ssl = true
+            sslmode = SslMode.VERIFY_CA
+            sslrootcert = rootCert
+            sslcert = clientCert
+            sslkey = clientKey
+            sslpassword = keyPassword
+        }
+
+        // The same certificate as testSslClientAuth, presented with the same key locked behind a
+        // password - so anything this proves is about the decryption and nothing else.
+        val session = getOctaviusSession(url, properties)
+
+        try {
+            val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()").fetchFieldStrict<Boolean>()
+            assertTrue(isSsl, "Connection should be SSL encrypted with an encrypted client key")
+        } finally {
+            session.close()
+        }
+    }
+
+    @Test
+    fun testEncryptedKeyWithoutPasswordIsRefused() {
+        val rootCert = System.getenv("SSL_ROOT_CERT")
+        val clientCert = System.getenv("SSL_CERT")
+        val clientKey = System.getenv("SSL_KEY_ENCRYPTED")
+        assumeTrue(rootCert != null && clientCert != null && clientKey != null, "No encrypted client key provided.")
+
+        val properties = OctaviusProperties().apply {
+            user = "postgres"
+            password = "1234"
+            ssl = true
+            sslmode = SslMode.VERIFY_CA
+            sslrootcert = rootCert
+            sslcert = clientCert
+            sslkey = clientKey
+            // sslpassword deliberately left unset
+        }
+
+        val exception = assertFailsWith<InitializationException> { getOctaviusSession(url, properties) }
+
+        assertEquals(InitializationExceptionReason.SSL_ERROR, exception.reason)
+        // The message has to name the missing property, because nothing else about the failure
+        // points at it: the key file is present, readable and perfectly valid.
+        assertTrue(
+            exception.details!!.contains("sslpassword"),
+            "The failure should name the property that is missing, was: ${exception.details}"
+        )
     }
 
     @Test

@@ -16,6 +16,9 @@ import java.security.SecureRandom
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
+import javax.crypto.EncryptedPrivateKeyInfo
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 import java.util.*
 import javax.net.ssl.*
 
@@ -133,25 +136,76 @@ internal object SslNegotiator {
             
             val decoded = Base64.getDecoder().decode(base64Content)
             
-            val keySpec = PKCS8EncodedKeySpec(decoded)
-            val kf = KeyFactory.getInstance("RSA")
+            // The certificate names the algorithm its key was made for, and a private key that did
+            // not match it would be useless here anyway - so it is read off the certificate rather
+            // than assumed or guessed at. PKCS#8 carries the algorithm's OID, but nothing in the
+            // JDK will hand it over: `PKCS8EncodedKeySpec` stores the bytes without parsing them.
+            // This is how pgjdbc resolves it too, and it is what lets an EC key work without the
+            // driver keeping a list of the algorithms it has heard of.
+            val keyAlgorithm = certs.first().publicKey.algorithm
+            val keySpec = if (lines.any { it.startsWith(ENCRYPTED_KEY_HEADER) }) {
+                decryptKey(decoded, config)
+            } else {
+                PKCS8EncodedKeySpec(decoded)
+            }
+            val kf = KeyFactory.getInstance(keyAlgorithm)
             val privateKey = kf.generatePrivate(keySpec)
-            
+
             val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
             keyStore.load(null, null)
-            
-            val password = config.keyPassword?.toCharArray() ?: CharArray(0)
-            keyStore.setKeyEntry("client", privateKey, password, certs.toTypedArray())
-            
+
+            // The keystore is built here, read once by the factory below and dropped; nothing
+            // persists it and nothing else can reach it, so there is nothing for a password to
+            // protect. An empty one is what it has always been given when `sslpassword` was unset,
+            // and now that the property has a real job - the key file - it is what it is given
+            // always.
+            val keyStorePassword = CharArray(0)
+            keyStore.setKeyEntry("client", privateKey, keyStorePassword, certs.toTypedArray())
+
             val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-            kmf.init(keyStore, password)
+            kmf.init(keyStore, keyStorePassword)
             return kmf.keyManagers
+        } catch (e: InitializationException) {
+            // Already says exactly what is wrong - a missing password for an encrypted key. Restating
+            // it below would bury that under the generic advice.
+            throw e
         } catch (e: Exception) {
+            // Naming both files and leaving the cause attached, because everything that can go
+            // wrong here goes wrong the same way from the outside - the key is encrypted, or is
+            // PKCS#1 rather than PKCS#8, or belongs to a different certificate - and only the
+            // cause tells them apart.
             throw InitializationException(
                 InitializationExceptionReason.SSL_ERROR,
-                "Failed to load client certificate or private key. Ensure the key is in PKCS8 format without password, or use a supported format.",
+                "Failed to load the client certificate '${config.certPath}' or its private key " +
+                    "'${config.keyPath}'. The key must be a PKCS#8 key in PEM form, and must " +
+                    "be the one that goes with the certificate.",
                 e
             )
         }
+    }
+
+    /** What a PEM file whose key is encrypted opens on, and an unencrypted one never does. */
+    private const val ENCRYPTED_KEY_HEADER = "-----BEGIN ENCRYPTED PRIVATE KEY"
+
+    /**
+     * Unlocks an encrypted PKCS#8 key with [SslConfiguration.keyPassword].
+     *
+     * Which cipher it was locked with is not asked for and not configurable: the file states it, and
+     * [EncryptedPrivateKeyInfo] resolves the statement - including a PBES2 parameter block, which it
+     * reports already reduced to the concrete algorithm the JVM knows by name. What OpenSSL writes
+     * today and what it wrote a decade ago both come back as something `SecretKeyFactory` accepts.
+     */
+    private fun decryptKey(encoded: ByteArray, config: SslConfiguration): PKCS8EncodedKeySpec {
+        val password = config.keyPassword
+            ?: throw InitializationException(
+                InitializationExceptionReason.SSL_ERROR,
+                "The client private key '${config.keyPath}' is encrypted, but no sslpassword was given to " +
+                    "decrypt it."
+            )
+
+        val encryptedKey = EncryptedPrivateKeyInfo(encoded)
+        val secretKeyFactory = SecretKeyFactory.getInstance(encryptedKey.algName)
+        val pbeKey = secretKeyFactory.generateSecret(PBEKeySpec(password.toCharArray()))
+        return encryptedKey.getKeySpec(pbeKey)
     }
 }

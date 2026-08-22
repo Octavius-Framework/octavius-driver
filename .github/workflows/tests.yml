@@ -83,8 +83,18 @@ jobs:
           
           # 4. Convert client key to PKCS8 format for Java
           openssl pkcs8 -topk8 -inform PEM -outform PEM -in client.key.tmp -out client.key -nocrypt
+
+          # 5. A second client certificate on an EC key, so the algorithm the driver reads off the
+          #    certificate is something other than RSA at least once.
+          openssl ecparam -name prime256v1 -genkey -noout -out client-ec.key.tmp
+          openssl req -new -key client-ec.key.tmp -out client-ec.csr -subj "/CN=postgres"
+          openssl x509 -req -in client-ec.csr -days 365 -CA ca.crt -CAkey ca.key -CAcreateserial -out client-ec.crt
+          openssl pkcs8 -topk8 -inform PEM -outform PEM -in client-ec.key.tmp -out client-ec.key -nocrypt
+
+          # 6. The RSA client key again, encrypted, for the sslpassword test - same certificate.
+          openssl pkcs8 -topk8 -inform PEM -outform PEM -in client.key -out client-enc.key -passout pass:senatus
           
-          chmod 600 server.key ca.key client.key
+          chmod 600 server.key ca.key client.key client-ec.key client-enc.key
           sudo chown 999:999 server.key server.crt ca.crt
           cd ..
           
@@ -98,6 +108,7 @@ jobs:
           
           until docker exec postgres-ssl pg_isready -h localhost; do sleep 1; done
 
+
       - name: Run SSL Tests
         env:
           TEST_SSL: "true"
@@ -107,6 +118,10 @@ jobs:
           SSL_ROOT_CERT: ${{ github.workspace }}/.ssl/ca.crt
           SSL_CERT: ${{ github.workspace }}/.ssl/client.crt
           SSL_KEY: ${{ github.workspace }}/.ssl/client.key
+          SSL_CERT_EC: ${{ github.workspace }}/.ssl/client-ec.crt
+          SSL_KEY_EC: ${{ github.workspace }}/.ssl/client-ec.key
+          SSL_KEY_ENCRYPTED: ${{ github.workspace }}/.ssl/client-enc.key
+          SSL_KEY_PASSWORD: senatus
         run: ./gradlew :driver:test --tests "*SslIntegrationTest*" --tests "*ChannelBindingIntegrationTest*"
 
   test-pg17:
