@@ -203,6 +203,9 @@ class OctaviusDataSource : DataSource {
      * use. Anything the driver does not recognise is sent to the server as a startup parameter,
      * which is what makes this the programmatic route to `search_path`, `statement_timeout` and
      * friends - `application_name` has [applicationName] and needs no detour.
+     *
+     * A name the driver *does* recognise is parsed as its type here and now, and refused if it will
+     * not parse - see [OctaviusProperties.setProperty].
      */
     fun setProperty(name: String, value: String) {
         octaviusProperties.setProperty(name, value)

@@ -1,11 +1,15 @@
 package io.github.octaviusframework.driver.properties
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
+import io.github.octaviusframework.driver.ssl.SslMode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.Properties
+import kotlin.test.assertFailsWith
 
 class OctaviusPropertiesTest {
 
@@ -251,6 +255,40 @@ class OctaviusPropertiesTest {
         base.merge(OctaviusProperties().apply { applicationName = "overlay" })
         assertEquals("overlay", base.applicationName)
         assertEquals("overlay", base.copy().applicationName)
+    }
+
+    @Test
+    fun `should refuse a stated value it does not recognise`() {
+        // Each of these used to resolve to the property's default, which for the two ssl ones means
+        // asking for a guarantee and silently connecting without it.
+        val refused = listOf(
+            "sslmode=verify-fll",
+            "channelBinding=requir",
+            "ssl=yes",
+            "port=abc",
+            "socketTimeout=30s",
+            "logParameterValues=tak"
+        )
+
+        for (parameter in refused) {
+            val e = assertFailsWith<InvalidOperationException>(parameter) {
+                OctaviusProperties.parse("jdbc:octavius://localhost:5432/res_publica?$parameter")
+            }
+            assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, e.reason)
+            // The offending value is quoted back - `message` being the machine identifier here, the
+            // one a human reads is the detail line
+            assertTrue(e.details!!.contains(parameter.substringAfter('=')), e.details)
+        }
+    }
+
+    @Test
+    fun `should still take a name it does not recognise as a startup parameter`() {
+        // The strictness is about values, not names: an unknown name is not a typo the driver can
+        // rule on, since a startup parameter is exactly a name the driver has never heard of.
+        val props = OctaviusProperties.parse("jdbc:octavius://localhost:5432/res_publica?statement_timeout=5s&sslmode=verify-full")
+
+        assertEquals("5s", props.additionalProperties["statement_timeout"])
+        assertEquals(SslMode.VERIFY_FULL, props.sslmode)
     }
 
     @Test

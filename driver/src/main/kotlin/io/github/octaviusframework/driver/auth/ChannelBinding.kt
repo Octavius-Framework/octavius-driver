@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.auth
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
+
 /**
  * How hard the driver insists on binding the SCRAM exchange to the TLS channel underneath it.
  *
@@ -20,9 +23,23 @@ enum class ChannelBinding(val value: String) {
     REQUIRE("require");
 
     companion object {
+        /**
+         * Parses a setting from its URL spelling, accepting the enum name as well.
+         *
+         * A stated setting that matches nothing is refused.
+         *
+         * @param value `disable`, `prefer` or `require`, case-insensitive. `null` means the setting
+         *   was not stated at all.
+         * @return The matching setting, or [PREFER] when [value] is `null`.
+         * @throws InvalidOperationException `INVALID_ARGUMENT` if [value] is stated but unrecognized.
+         */
         fun of(value: String?): ChannelBinding {
+            if (value == null) return PREFER
             return entries.find { it.value.equals(value, ignoreCase = true) || it.name.equals(value, ignoreCase = true) }
-                ?: PREFER
+                ?: throw InvalidOperationException(
+                    InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                    details = "Unknown channelBinding '$value'. Expected one of: ${entries.joinToString(", ") { it.value }}."
+                )
         }
     }
 }

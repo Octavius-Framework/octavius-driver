@@ -1,5 +1,8 @@
 package io.github.octaviusframework.driver.ssl
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
+
 /**
  * How much protection the connection demands of its transport, in PostgreSQL's own vocabulary.
  *
@@ -30,13 +33,20 @@ enum class SslMode(val value: String) {
         /**
          * Parses a mode from its URL spelling, accepting the enum name as well.
          *
+         * A stated mode that matches nothing is refused rather than resolved to a default.
+         *
          * @param value `disable`, `prefer`, `require`, `verify-ca`, `verify-full`, or the equivalent
-         *   enum name; case-insensitive.
-         * @return The matching mode, or [PREFER] for anything unrecognized, including `null`.
+         *   enum name; case-insensitive. `null` means the mode was not stated at all.
+         * @return The matching mode, or [PREFER] when [value] is `null`.
+         * @throws InvalidOperationException `INVALID_ARGUMENT` if [value] is stated but unrecognized.
          */
         fun of(value: String?): SslMode {
+            if (value == null) return PREFER
             return entries.find { it.value.equals(value, ignoreCase = true) || it.name.replace("_", "-").equals(value, ignoreCase = true) }
-                ?: PREFER
+                ?: throw InvalidOperationException(
+                    InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                    details = "Unknown sslmode '$value'. Expected one of: ${entries.joinToString(", ") { it.value }}."
+                )
         }
     }
 }

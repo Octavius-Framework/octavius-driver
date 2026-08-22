@@ -1,6 +1,8 @@
 package io.github.octaviusframework.driver.properties
 
 import io.github.octaviusframework.driver.auth.ChannelBinding
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.ssl.SslMode
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -143,30 +145,34 @@ class OctaviusProperties {
      * [additionalProperties] and reaches the server as a startup parameter, so a typo in a known name
      * is not rejected here; it becomes a startup parameter and the server complains instead.
      *
-     * A value that will not parse as the property's type leaves that property `null` rather than
-     * throwing, so its default applies.
+     * A value that will not parse as the property's type is refused, naming the property and the
+     * value. Nothing is guessed and nothing quietly falls back to a default: a misspelled `sslmode`
+     * would otherwise verify nothing, and a `socketTimeout` written `30s` would wait forever - both
+     * silently, and both a long way from the line that caused them.
      *
      * @param key The property name.
      * @param value The value, as a string.
+     * @throws InvalidOperationException `INVALID_ARGUMENT` if [value] does not parse as the type of a
+     *   recognized [key].
      */
     fun setProperty(key: String, value: String) {
         when (key.lowercase()) {
             "user" -> user = value
             "password" -> password = value
             "servername", "host" -> serverName = value
-            "portnumber", "port" -> portNumber = value.toIntOrNull()
+            "portnumber", "port" -> portNumber = intValue(key, value)
             "databasename", "database" -> databaseName = value
             "applicationname", "application_name" -> applicationName = value
-            "logintimeout" -> loginTimeout = value.toIntOrNull()
-            "sockettimeout" -> socketTimeout = value.toIntOrNull()
-            "cancelsignaltimeout" -> cancelSignalTimeout = value.toIntOrNull()
-            "maxcachedrowsize" -> maxCachedRowSize = value.toIntOrNull()
-            "notificationbuffercapacity" -> notificationBufferCapacity = value.toIntOrNull()
+            "logintimeout" -> loginTimeout = intValue(key, value)
+            "sockettimeout" -> socketTimeout = intValue(key, value)
+            "cancelsignaltimeout" -> cancelSignalTimeout = intValue(key, value)
+            "maxcachedrowsize" -> maxCachedRowSize = intValue(key, value)
+            "notificationbuffercapacity" -> notificationBufferCapacity = intValue(key, value)
             "noticehandler" -> noticeHandler = value
-            "maxparameterwritercapacity" -> maxParameterWriterCapacity = value.toIntOrNull()
-            "initialparameterwritercapacity" -> initialParameterWriterCapacity = value.toIntOrNull()
-            "logparametervalues" -> logParameterValues = value.toBoolean()
-            "ssl" -> ssl = value.toBoolean()
+            "maxparameterwritercapacity" -> maxParameterWriterCapacity = intValue(key, value)
+            "initialparameterwritercapacity" -> initialParameterWriterCapacity = intValue(key, value)
+            "logparametervalues" -> logParameterValues = booleanValue(key, value)
+            "ssl" -> ssl = booleanValue(key, value)
             "sslmode" -> sslmode = SslMode.of(value)
             "sslrootcert" -> sslrootcert = value
             "sslcert" -> sslcert = value
@@ -176,6 +182,30 @@ class OctaviusProperties {
             else -> additionalProperties[key] = value
         }
     }
+
+    /**
+     * Reads [value] as the whole number [key] is declared to hold, or refuses it.
+     *
+     * [key] is quoted as it was given rather than as the property is spelled here, so a message
+     * about `port` does not answer with `portNumber`.
+     */
+    private fun intValue(key: String, value: String): Int = value.toIntOrNull()
+        ?: throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "Property '$key' takes a whole number, but was '$value'."
+        )
+
+    /**
+     * Reads [value] as the `true` or `false` [key] is declared to hold, or refuses it.
+     *
+     * Strictly: `yes`, `1` and `on` are refused rather than read as `true`, and - what actually
+     * bites - rather than read as `false` the way a lenient parse would have them.
+     */
+    private fun booleanValue(key: String, value: String): Boolean = value.toBooleanStrictOrNull()
+        ?: throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            details = "Property '$key' takes true or false, but was '$value'."
+        )
 
     /**
      * Copies every set property of [other] over this one.
@@ -249,9 +279,14 @@ class OctaviusProperties {
          * value containing more of them - a password, an `options=-c search_path=curia` string - arrives
          * intact.
          *
+         * Values are parsed here rather than at connect time, so a URL carrying one that will not
+         * parse is refused by this call - see [setProperty], which every parameter goes through.
+         *
          * @param url The JDBC URL.
          * @param info Additional properties, applied beneath the URL.
          * @return The parsed properties.
+         * @throws InvalidOperationException `INVALID_ARGUMENT` if a recognized property is given a
+         *   value that does not parse as its type.
          */
         fun parse(url: String, info: Properties? = null): OctaviusProperties {
             val octaviusProperties = OctaviusProperties()

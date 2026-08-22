@@ -369,6 +369,8 @@ Three members on the session that are easy to miss, all of them about the connec
 
 ## Configuration reference
 
+Every value below is parsed where it is set — in a URL, through `setProperty`, or out of a pool's property map — and one that does not parse as its type is refused there, naming the property and what it was given. Nothing falls back to a default: a misspelled `sslmode` would otherwise be a connection that verifies nothing, and a `socketTimeout` written `30s` a read that waits forever, both of them silently. A property *name* the driver does not know is a different matter and is not refused — it cannot be, since [a startup parameter](#startup-parameters) is precisely a name the driver has never heard of.
+
 ### Connection and authentication
 
 | Property                                  | Default           | Meaning                                                                  |
