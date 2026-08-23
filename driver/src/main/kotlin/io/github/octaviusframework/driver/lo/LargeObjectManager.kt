@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.lo
 
-import io.github.octaviusframework.driver.session.OctaviusSessionImpl
+import io.github.octaviusframework.driver.session.OctaviusSession
 
 
 /**
@@ -23,7 +23,7 @@ object LargeObjectMode {
  * In the JVM, they are represented as signed Int, meaning values above 2.14B will appear as negative numbers if printed.
  * This is expected and perfectly safe for database operations.
  */
-class LargeObjectManager internal constructor(private val session: OctaviusSessionImpl) {
+class LargeObjectManager internal constructor(private val session: OctaviusSession) {
 
     /**
      * Creates a new empty Large Object and returns its OID.

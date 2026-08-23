@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.lo
 
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
-import io.github.octaviusframework.driver.session.OctaviusSessionImpl
+import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.InputStream
 import java.io.OutputStream
@@ -27,7 +27,7 @@ object SeekWhence {
  * Implements [AutoCloseable] for convenient usage within `.use { }` blocks.
  */
 class LargeObject internal constructor(
-    private val session: OctaviusSessionImpl,
+    private val session: OctaviusSession,
     /** The Object ID (OID) of this Large Object. */
     val oid: Int,
     /** The File Descriptor (FD) assigned by PostgreSQL for this open object. */
@@ -36,8 +36,13 @@ class LargeObject internal constructor(
 
     private var closed = false
 
+    /**
+     * Guards only what this object owns - the descriptor its own [close] gave up. A session given up
+     * is caught by the session before any statement is built, and a descriptor that outlived its
+     * transaction is PostgreSQL's to report.
+     */
     private fun checkClosed() {
-        if (closed || session.octaviusConnection.isClosed) throw InvalidOperationException(
+        if (closed) throw InvalidOperationException(
             InvalidOperationExceptionReason.OBJECT_CLOSED,
             "Large Object is already closed"
         )
