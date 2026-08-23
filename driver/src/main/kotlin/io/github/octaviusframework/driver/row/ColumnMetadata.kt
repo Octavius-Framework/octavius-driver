@@ -23,7 +23,7 @@ import io.github.octaviusframework.driver.type.PgType
  * @property origin Where the column was read from, when it is a plain reference to a column of a relation, and
  *   `null` when it is not: an expression, a literal, the output of a function.
  */
-class ColumnMetadata(
+class ColumnMetadata internal constructor(
     val name: String,
     val type: PgType,
     val typeModifier: Int,
@@ -53,7 +53,7 @@ class ColumnMetadata(
  *   [ColumnMetadata.name]. `null` when the relation is not described, or when its row type carries no attribute
  *   under this number.
  */
-class ColumnOrigin(
+class ColumnOrigin internal constructor(
     val relationOid: Int,
     val attributeNumber: Int,
     val relationName: String?,

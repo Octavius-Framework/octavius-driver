@@ -53,7 +53,7 @@ internal class RowDescriptionMessage(val fields: List<FieldDescription>) : Backe
  * (e.g. eagerly deserialized) and not stored for later use, as their contents will be overwritten 
  * by subsequent rows unless the row data size exceeded the configured `maxCachedRowSize`.
  */
-class DataRowMessage(
+internal class DataRowMessage(
     val rawData: ByteArray,
     val columnOffsets: IntArray,
     val columnLengths: IntArray

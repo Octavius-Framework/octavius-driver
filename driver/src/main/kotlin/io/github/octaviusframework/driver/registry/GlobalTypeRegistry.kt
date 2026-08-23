@@ -53,21 +53,6 @@ object GlobalTypeRegistry {
     }
 
     /**
-     * Removes the registry for a given database URL to prevent memory leaks if
-     * a connection (pool) pointing to dynamic URLs is closed.
-     *
-     * In most standard backend applications, connection URLs are static and registries
-     * should not be removed. However, if your application dynamically connects to and
-     * disconnects from thousands of different databases at runtime, you should call this
-     * method upon closing the data source to allow the JVM Garbage Collector to free the registry.
-     *
-     * @param url The JDBC connection URL of the database environment.
-     */
-    fun removeRegistry(url: String) {
-        registries.remove(RegistryKey.from(OctaviusProperties.parse(url)))
-    }
-
-    /**
      * Explicitly reloads the type dictionary from the database.
      * This is internally invoked by driver connection mechanisms when a schema refresh is requested.
      */
@@ -81,5 +66,20 @@ object GlobalTypeRegistry {
                 "Reloaded ${registry.dictionary.size} types for $key in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
             }
         }
+    }
+
+    /**
+     * Removes the registry for a given database URL to prevent memory leaks if
+     * a connection (pool) pointing to dynamic URLs is closed.
+     *
+     * In most standard backend applications, connection URLs are static and registries
+     * should not be removed. However, if your application dynamically connects to and
+     * disconnects from thousands of different databases at runtime, you should call this
+     * method upon closing the data source to allow the JVM Garbage Collector to free the registry.
+     *
+     * @param url The JDBC connection URL of the database environment.
+     */
+    fun removeRegistry(url: String) {
+        registries.remove(RegistryKey.from(OctaviusProperties.parse(url)))
     }
 }

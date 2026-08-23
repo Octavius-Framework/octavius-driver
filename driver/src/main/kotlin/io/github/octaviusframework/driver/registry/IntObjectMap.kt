@@ -33,7 +33,7 @@ internal class IntObjectMap<V> {
     }
 
     fun put(key: Int, value: V) {
-        if (key == 0) throw IllegalArgumentException("Key 0 is reserved")
+        require(key != 0) { "Key 0 is reserved" }
         if (_size >= threshold) rehash()
 
         val mask = keys.size - 1

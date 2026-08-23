@@ -19,7 +19,7 @@ import kotlin.reflect.KClass
  *
  * @property registry The underlying [TypeRegistry] used for storing type information.
  */
-class TypeManager(
+class TypeManager internal constructor(
     private val registry: TypeRegistry,
     private val searchPathProvider: () -> List<String> = { emptyList() }
 ) {
@@ -160,6 +160,4 @@ class TypeManager(
         registerParameterConverter(EnumParameterConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
         registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
     }
-
 }
-

@@ -20,6 +20,13 @@ abstract class OctaviusException(
     
     /**
      * The context of the query that resulted in this exception, if applicable.
+     *
+     * Filled in by the query layer as the exception unwinds, and only where it is still `null`, so the innermost
+     * frame - the one that knows the real SQL - is the one that wins.
+     *
+     * Settable, and deliberately so: a caller about to log the exception can put a redacted [QueryContext] in its
+     * place. What the driver bounds is the rendering, not the content, and `logParameterValues` governs the driver's
+     * own log lines and says nothing about an exception logged by the caller.
      */
     var queryContext: QueryContext? = null
 
@@ -60,7 +67,7 @@ abstract class OctaviusException(
     }
 }
 
-const val line = "--------------------------------------------------------------------------------"
+private const val line = "--------------------------------------------------------------------------------"
 
 /**
  * How far down a cause chain [findOctaviusCause] is willing to look. Bounded so a chain that

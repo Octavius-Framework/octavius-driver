@@ -27,7 +27,7 @@ import kotlin.reflect.KType
  * @property pgConvention The naming convention the labels are declared with in PostgreSQL.
  * @property kotlinConvention The naming convention the constants are declared with in Kotlin.
  */
-class EnumParameterConverter<T : Enum<T>>(
+internal class EnumParameterConverter<T : Enum<T>>(
     private val enumClass: KClass<T>,
     private val qualifiedName: QualifiedName,
     private val pgConvention: CaseConvention,
@@ -61,7 +61,7 @@ class EnumParameterConverter<T : Enum<T>>(
  * @property pgConvention The naming convention the labels are declared with in PostgreSQL.
  * @property kotlinConvention The naming convention the constants are declared with in Kotlin.
  */
-class EnumResultConverter<T : Enum<T>>(
+internal class EnumResultConverter<T : Enum<T>>(
     private val enumClass: KClass<T>,
     private val qualifiedName: QualifiedName,
     private val pgConvention: CaseConvention,

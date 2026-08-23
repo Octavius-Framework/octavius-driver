@@ -23,7 +23,7 @@ private val logger = KotlinLogging.logger {}
  * It implements the standard JDBC [Connection] interface but overrides
  * certain behaviors to fit the framework's architecture.
  */
-internal class OctaviusConnection internal constructor(
+internal class OctaviusConnection(
     internal val stream: PgStream,
     internal val registryKey: RegistryKey,
     maxParameterWriterCapacity: Int?,
@@ -32,7 +32,7 @@ internal class OctaviusConnection internal constructor(
 ) : Connection {
     val typeRegistry = GlobalTypeRegistry.getRegistry(registryKey)
 
-    internal val queryExecutor = QueryExecutor(
+    val queryExecutor = QueryExecutor(
         stream,
         typeRegistry,
         maxParameterWriterCapacity,
@@ -44,7 +44,7 @@ internal class OctaviusConnection internal constructor(
     }
 
     @Volatile
-    internal var isClosedFlag: Boolean = false
+    var isClosedFlag: Boolean = false
 
     private inline fun <T> wrapSqlException(block: () -> T): T {
         try {
@@ -66,7 +66,7 @@ internal class OctaviusConnection internal constructor(
      */
     private val pid: String get() = "[PID: ${stream.processId}]"
 
-    internal fun checkClosed() {
+    fun checkClosed() {
         if (isClosedFlag) throw NetworkException(NetworkExceptionReason.CONNECTION_CLOSED, sqlState = "08003")
         if (stream.isBroken) {
             isClosedFlag = true
@@ -196,7 +196,7 @@ internal class OctaviusConnection internal constructor(
         return@wrapSqlException stream.networkTimeout
     }
 
-    internal fun cancelQuery() {
+    fun cancelQuery() {
         checkClosed()
 
         // The cancel request cannot travel on this connection - the protocol requires a fresh one -
@@ -272,7 +272,7 @@ internal class OctaviusConnection internal constructor(
      *
      * @return A list of schema names representing the current search path.
      */
-    internal fun getSearchPath(): List<String> {
+    fun getSearchPath(): List<String> {
         checkClosed()
         val paramSearchPath = stream.parameters["search_path"]
         if (paramSearchPath != null) {

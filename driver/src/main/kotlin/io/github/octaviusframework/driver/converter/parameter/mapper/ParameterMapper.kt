@@ -14,7 +14,7 @@ import kotlin.reflect.KClass
  * @param registry The converters to consult, chained to the session's.
  * @param typeManager The session's type manager.
  */
-class ParameterMapper(
+internal class ParameterMapper(
     private val registry: ParameterConverterRegistry,
     private val typeManager: TypeManager
 ) {

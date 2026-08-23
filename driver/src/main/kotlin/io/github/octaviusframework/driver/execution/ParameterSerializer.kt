@@ -23,13 +23,13 @@ import io.github.octaviusframework.driver.type.isKnownOid
  */
 private const val MAX_PARAMETER_LENGTH = 1073741819
 
-class ParameterSerializer(
+class ParameterSerializer internal constructor(
     private val typeManager: TypeManager,
     private val parameterMapper: ParameterMapper
 ) {
     private val codecDictionary = typeManager.codecDictionary
 
-    fun serializeAll(parameters: Array<out Any?>, writer: PgByteWriter): IntArray {
+    internal fun serializeAll(parameters: Array<out Any?>, writer: PgByteWriter): IntArray {
         writer.clear()
         val size = parameters.size
         val oids = IntArray(size)

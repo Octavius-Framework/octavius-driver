@@ -4,11 +4,11 @@ import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import java.util.concurrent.ConcurrentHashMap
 
-data class ParsedSql(val originalSql: String, val transformedSql: String, val paramNames: List<String>)
+internal data class ParsedSql(val originalSql: String, val transformedSql: String, val paramNames: List<String>)
 
 internal data class ParsedParameter(val name: String, val startIndex: Int, val endIndex: Int)
 
-object SqlParameterParser {
+internal object SqlParameterParser {
     private val cache = ConcurrentHashMap<String, ParsedSql>()
     private const val MAX_CACHE_SIZE = 10_000
 

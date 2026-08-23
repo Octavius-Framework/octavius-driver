@@ -185,11 +185,33 @@ How it is populated depends on the query type and on *when* things broke:
 | `createNamedQuery`, failing at execution       | as written | your named map                | the `$n` rewrite   | the values     |
 | `createNamedQuery`, failing *before* rewriting | as written | your named map                | `null`             | `null`         |
 
-That last row is the parser and missing-parameter case: an `UNCLOSED_QUOTE` or `MISSING_NAMED_PARAMETER` is detected before the SQL is transformed, so there is no database-level form to show.
+That last row is the parser and missing-parameter case: an `UNCLOSED_QUOTE` or `MISSING_NAMED_PARAMETER` is detected
+before the SQL is transformed, so there is no database-level form to show.
 
-Exceptions raised outside a query — connection setup, `session.commit()`, savepoint misuse — have `queryContext == null`. Always treat it as nullable.
+Exceptions raised outside a query — connection setup, `session.commit()`, savepoint misuse — have
+`queryContext == null`. Always treat it as nullable.
 
-The properties hold your values as you passed them, unchanged. What is bounded is the **rendering** — the block `toString()` prints, and the same one [the log uses](logging.md#parameter-values-are-a-property-not-a-level): a `ByteArray` is named rather than dumped, a long string is cut, and a collection or array is walked only as far as the budget allows, then counted (`[0, 1, 2, … +9990 more]`). That matters for a [bulk write](bulk-writes.md), where one parameter legitimately holds ten thousand elements and printing it whole would build megabytes on the way out of a failure. A class of your own still renders through its own `toString()`, which the driver cannot bound.
+The properties hold your values as you passed them, unchanged. What is bounded is the **rendering** — the block
+`toString()` prints, and the same one [the log uses](logging.md#parameter-values-are-a-property-not-a-level): a
+`ByteArray` is named rather than dumped, a long string is cut, and a collection or array is walked only as far as the
+budget allows, then counted (`[0, 1, 2, … +9990 more]`). That matters for a [bulk write](bulk-writes.md), where one
+parameter legitimately holds ten thousand elements and printing it whole would build megabytes on the way out of a
+failure. A class of your own still renders through its own `toString()`, which the driver cannot bound.
+
+Bounded is not the same as redacted, and `queryContext` is a `var` for exactly that gap. `logParameterValues=false`
+governs [the driver's own log lines](logging.md#parameter-values-are-a-property-not-a-level) and nothing else — an
+exception is addressed to the caller, not to a file, so it carries the values whatever the property says. Where the
+entry you write yourself must not hold them, replace the context before the logger renders it. `QueryContext` is a data
+class, so that is one call:
+
+```kotlin
+catch(e: OctaviusException) {
+    e.queryContext = e.queryContext?.copy(parameters = emptyMap(), dbParameters = null)
+    logger.error(e) { "Census update failed" }
+}
+```
+
+The statement survives, which is usually what makes the entry worth keeping; only the values go.
 
 ## SQLSTATE routing
 
@@ -636,7 +658,7 @@ Outside pool construction you rarely need it: [`getOctaviusSession`](initializat
 
 * **One failed statement poisons the whole transaction.** After any error inside an explicit transaction, PostgreSQL marks the session aborted (`ReadyForQuery` reports `E`) and rejects every further statement with `25P02` → `StatementException(INVALID_TRANSACTION_STATE)` until you roll back. If a failure is *expected* — a speculative insert, say — isolate it in `session.transaction.nested { }` so only its savepoint is discarded. See [Transactions](transactions.md).
 
-* **`queryContext` is nullable, and set once.** The first frame to unwind with a null context fills it in. Errors raised outside a query — handshake, `commit()`, savepoint misuse — never get one.
+* **`queryContext` is nullable, and the driver sets it once.** The first frame to unwind with a null context fills it in. Errors raised outside a query — handshake, `commit()`, savepoint misuse — never get one. You may overwrite it yourself, which is how a [redacted copy](#query-context) keeps parameter values out of a log entry.
 
 * **`position` indexes the database-level SQL.** For named queries that means the `$n` form, not your `@name` form. The two strings sit side by side in the query context precisely so you can line them up.
 

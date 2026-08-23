@@ -164,7 +164,7 @@ fun <T : Any> T.toDataMap(
  * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if [value] is null and [targetType] is not nullable,
  *   `CONVERSION_ERROR` if the value's type doesn't match the target type.
  */
-fun validateValue(value: Any?, targetType: KType): Any? {
+private fun validateValue(value: Any?, targetType: KType): Any? {
     if (value == null) {
         if (targetType.isMarkedNullable) {
             return null

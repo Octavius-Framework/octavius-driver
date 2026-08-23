@@ -19,7 +19,7 @@ private val logger = KotlinLogging.logger {}
  * `rollback()`, `autoCommit` manipulation, or manual savepoints), use the methods 
  * provided directly on the parent [OctaviusSession].
  */
-class TransactionManager(@PublishedApi internal val session: OctaviusSession) {
+class TransactionManager internal constructor(@PublishedApi internal val session: OctaviusSession) {
 
     /**
      * Executes the given [block] within a transaction scope.

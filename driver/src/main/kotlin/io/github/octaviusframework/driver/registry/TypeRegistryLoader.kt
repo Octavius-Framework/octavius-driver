@@ -3,13 +3,12 @@ package io.github.octaviusframework.driver.registry
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.execution.QueryExecutor
 import io.github.octaviusframework.driver.type.PgType
-import io.github.octaviusframework.driver.registry.TypeManager
 
 /**
  * Utility object responsible for loading PostgreSQL type definitions from the database 
  * and populating a [TypeRegistry].
  */
-object TypeRegistryLoader {
+internal object TypeRegistryLoader {
 
     /**
      * Executes a query against the `pg_catalog` to fetch all relevant type information

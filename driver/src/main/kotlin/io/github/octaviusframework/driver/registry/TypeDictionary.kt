@@ -20,6 +20,7 @@ class TypeDictionary private constructor(
     private val multirangeTypesByRangeOid: IntObjectMap<PgType.Multirange>,
     private val compositeTypesByRelationOid: IntObjectMap<PgType.Composite>
 ) {
+    //--------------------------------------------Construction----------------------------------------------------------
     companion object {
         /**
          * Builds the dictionary the driver starts out with: one entry per codec it ships with an OID of its own.
@@ -30,7 +31,7 @@ class TypeDictionary private constructor(
          *
          * @param codecs the codec dictionary to take the names and OIDs from.
          */
-        fun ofBuiltinCodecs(codecs: CodecDictionary): TypeDictionary {
+        internal fun ofBuiltinCodecs(codecs: CodecDictionary): TypeDictionary {
             val types = HashMap<Int, PgType>()
             for (codec in codecs.registeredCodecs) {
                 val oid = codec.oid ?: continue
@@ -39,7 +40,7 @@ class TypeDictionary private constructor(
             return build(types)
         }
 
-        fun build(newTypes: Map<Int, PgType>): TypeDictionary {
+        internal fun build(newTypes: Map<Int, PgType>): TypeDictionary {
             val intMap = IntObjectMap<PgType>((newTypes.size / 0.75).toInt() + 1)
             val newTypesByName = mutableMapOf<String, MutableMap<String, Int>>()
             val newArrayTypesByElementOid = IntObjectMap<PgType.Array>()
@@ -69,6 +70,59 @@ class TypeDictionary private constructor(
             )
         }
     }
+
+    /**
+     * Resolves the OID of a type given its name and an optional schema.
+     *
+     * @param typeName the name of the type.
+     * @param requestedSchema the schema where the type belongs (can be empty).
+     * @param isArray whether to resolve the OID for the array type of the given type.
+     * @param searchPath the list of schemas to search if the schema is not explicitly provided.
+     * @return the resolved OID.
+     * @throws TypeException if the type cannot be found or is ambiguous.
+     */
+    internal fun resolveOid(
+        typeName: String,
+        requestedSchema: String,
+        isArray: Boolean = false,
+        searchPath: List<String>
+    ): Int {
+        val schemasForName = typesByName[typeName]
+            ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
+
+        var resolvedOid: Int = UNRESOLVED_OID
+        // 1. If schema is explicitly requested
+        if (requestedSchema.isNotEmpty()) {
+            resolvedOid = schemasForName[requestedSchema]
+                ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
+        } else {
+            // 2. If schema is empty, look in search_path (first match wins)
+            for (i in searchPath.indices) {
+                val oid = schemasForName[searchPath[i]]
+                if (oid != null) {
+                    resolvedOid = oid
+                    break
+                }
+            }
+            // 3. If not in search_path, check for unambiguous match
+            if (resolvedOid == UNRESOLVED_OID) {
+                if (schemasForName.size == 1) {
+                    resolvedOid = schemasForName.values.first()
+                } else {
+                    throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
+                }
+            }
+        }
+
+        return if (isArray) {
+            arrayTypesByElementOid[resolvedOid]?.oid
+                ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
+        } else {
+            resolvedOid
+        }
+    }
+
+    //----------------------------------------------------API-----------------------------------------------------------
 
     /**
      * How many types this dictionary holds.
@@ -136,54 +190,4 @@ class TypeDictionary private constructor(
      */
     fun findCompositeByRelation(relationOid: Int): PgType.Composite? = compositeTypesByRelationOid[relationOid]
 
-    /**
-     * Resolves the OID of a type given its name and an optional schema.
-     *
-     * @param typeName the name of the type.
-     * @param requestedSchema the schema where the type belongs (can be empty).
-     * @param isArray whether to resolve the OID for the array type of the given type.
-     * @param searchPath the list of schemas to search if the schema is not explicitly provided.
-     * @return the resolved OID.
-     * @throws TypeException if the type cannot be found or is ambiguous.
-     */
-    fun resolveOid(
-        typeName: String,
-        requestedSchema: String,
-        isArray: Boolean = false,
-        searchPath: List<String>
-    ): Int {
-        val schemasForName = typesByName[typeName]
-            ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found")
-
-        var resolvedOid: Int = UNRESOLVED_OID
-        // 1. If schema is explicitly requested
-        if (requestedSchema.isNotEmpty()) {
-            resolvedOid = schemasForName[requestedSchema]
-                ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Type '$typeName' not found in schema '$requestedSchema'")
-        } else {
-            // 2. If schema is empty, look in search_path (first match wins)
-            for (i in searchPath.indices) {
-                val oid = schemasForName[searchPath[i]]
-                if (oid != null) {
-                    resolvedOid = oid
-                    break
-                }
-            }
-            // 3. If not in search_path, check for unambiguous match
-            if (resolvedOid == UNRESOLVED_OID) {
-                if (schemasForName.size == 1) {
-                    resolvedOid = schemasForName.values.first()
-                } else {
-                    throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Ambiguous type '$typeName'. Schema must be specified.")
-                }
-            }
-        }
-
-        return if (isArray) {
-            arrayTypesByElementOid[resolvedOid]?.oid
-                ?: throw TypeException(TypeExceptionReason.TYPE_NOT_FOUND, typeName = typeName, details = "Array type for '$typeName' not found")
-        } else {
-            resolvedOid
-        }
-    }
 }

@@ -24,7 +24,7 @@ data class ArrayDimension(
  * @property elements Flat list of elements contained in the array. Multi-dimensional arrays are stored
  *   flattened in row-major order, so [dimensions] is what gives the flat list its shape.
  */
-class PgArray(
+class PgArray internal constructor(
     val arrayOid: Int,
     val elementOid: Int,
     val dimensions: List<ArrayDimension>,

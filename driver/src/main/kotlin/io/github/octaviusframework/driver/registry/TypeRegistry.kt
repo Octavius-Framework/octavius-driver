@@ -12,14 +12,14 @@ import kotlin.concurrent.withLock
  * their corresponding type definitions ([PgType]), as well as providing resolution
  * mechanisms for parameter encoders, result decoders, and data serialization.
  */
-class TypeRegistry {
+internal class TypeRegistry {
     /**
      * A lock used to ensure thread-safe updates to the registry's internal state.
      */
     val lock = ReentrantLock()
 
     @Volatile
-    internal var isLoaded: Boolean = false
+    var isLoaded: Boolean = false
 
     /**
      * The registry handling custom mappings and converters between Kotlin objects and PostgreSQL types.

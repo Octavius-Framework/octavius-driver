@@ -120,26 +120,3 @@ object CaseConverter {
         }
     }
 }
-
-// --- Extension Functions ---
-
-/**
- * Converts a string from camelCase to lower_snake_case.
- */
-fun String.toSnakeCase(): String {
-    return CaseConverter.convert(this, CaseConvention.CAMEL_CASE, CaseConvention.SNAKE_CASE_LOWER)
-}
-
-/**
- * Converts a string from lower_snake_case to camelCase.
- */
-fun String.toCamelCase(): String {
-    return CaseConverter.convert(this, CaseConvention.SNAKE_CASE_LOWER, CaseConvention.CAMEL_CASE)
-}
-
-/**
- * Converts a string from lower_snake_case to PascalCase.
- */
-fun String.toPascalCase(): String {
-    return CaseConverter.convert(this, CaseConvention.SNAKE_CASE_LOWER, CaseConvention.PASCAL_CASE)
-}

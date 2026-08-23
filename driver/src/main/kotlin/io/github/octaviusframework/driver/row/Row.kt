@@ -17,13 +17,13 @@ import kotlin.reflect.typeOf
  * these values, either in their raw form or mapped to a specific Kotlin type
  * using the configured [ResultMapper].
  */
-class Row(
+class Row internal constructor(
     rawData: ByteArray,
     columnOffsets: IntArray,
     columnLengths: IntArray,
     val metadata: RowMetadata,
-    val typeRegistry: TypeRegistry,
-    val resultMapper: ResultMapper
+    private val typeRegistry: TypeRegistry,
+    private val resultMapper: ResultMapper
 ) {
 
     private val values: List<Any?> = List(metadata.size) { index ->

@@ -21,9 +21,10 @@ class CodecDictionary private constructor(
     private val codecToOid: Map<TypeCodec<*>, Int>,
     val registeredCodecs: List<TypeCodec<*>>
 ) {
+    //-------------------------------------------Construction-----------------------------------------------------------
     companion object {
 
-        fun createWithBuiltins(): CodecDictionary {
+        internal fun createWithBuiltins(): CodecDictionary {
             val oidMap = IntObjectMap<TypeCodec<*>>()
             val classMap = mutableMapOf<KClass<*>, TypeCodec<*>>()
             val codecToOidMap = mutableMapOf<TypeCodec<*>, Int>()
@@ -99,45 +100,13 @@ class CodecDictionary private constructor(
     }
 
     /**
-     * Retrieves a [TypeCodec] suitable for the given PostgreSQL OID.
-     *
-     * @param oid the Object Identifier of the PostgreSQL type.
-     * @return the corresponding [TypeCodec] or null if no codec is registered for this OID.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getCodecByOid(oid: Int): TypeCodec<T>? {
-        return codecsByOid[oid] as TypeCodec<T>?
-    }
-
-    /**
-     * Retrieves a default [TypeCodec] for the given Kotlin class.
-     *
-     * @param kClass the Kotlin class to find a codec for.
-     * @return the corresponding [TypeCodec] or null if no default codec is registered for this class.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getCodecByClass(kClass: KClass<T>): TypeCodec<T>? {
-        return codecsByClass[kClass] as TypeCodec<T>?
-    }
-
-    /**
-     * Retrieves the mapped OID for a specific [TypeCodec].
-     *
-     * @param codec the codec to look up.
-     * @return the OID associated with the codec or null if it cannot be determined.
-     */
-    fun getOidForCodec(codec: TypeCodec<*>): Int? {
-        return codecToOid[codec]
-    }
-
-    /**
      * Creates a new [CodecDictionary] by registering an additional [TypeCodec].
-     * 
+     *
      * @param codec the new codec to register.
      * @param dictionary the [TypeDictionary] used to resolve the type OID if not explicitly provided by the codec.
      * @return a new instance of [CodecDictionary] containing the newly registered codec.
      */
-    fun withRegisteredCodec(codec: TypeCodec<*>, dictionary: TypeDictionary): CodecDictionary {
+    internal fun withRegisteredCodec(codec: TypeCodec<*>, dictionary: TypeDictionary): CodecDictionary {
         val newOidMap = IntObjectMap(this.codecsByOid)
         val newClassMap = this.codecsByClass.toMutableMap()
         val newCodecToOid = this.codecToOid.toMutableMap()
@@ -172,12 +141,12 @@ class CodecDictionary private constructor(
 
     /**
      * Rebuilds the dictionary with new dynamically resolved types from the database.
-     * 
+     *
      * @param newTypes a map of newly discovered PostgreSQL types by OID.
      * @param registry the [TypeRegistry] used for creating dynamic container codecs.
      * @return a new updated instance of [CodecDictionary].
      */
-    fun buildUpdated(newTypes: Map<Int, PgType>, registry: TypeRegistry): CodecDictionary {
+    internal fun buildUpdated(newTypes: Map<Int, PgType>, registry: TypeRegistry): CodecDictionary {
         val newOidMap = IntObjectMap<TypeCodec<*>>()
         val newCodecToOid = mutableMapOf<TypeCodec<*>, Int>()
 
@@ -206,24 +175,16 @@ class CodecDictionary private constructor(
             if (!newOidMap.containsKey(oid)) {
                 val codec = when (type) {
                     is PgType.Enum -> DynamicEnumCodec(oid, type.name, type.schema)
-                    is PgType.Domain -> DynamicDomainCodec<Any>(oid, type.name, type.schema, type.baseTypeOid, registry)
+                    is PgType.Domain -> DynamicDomainCodec(oid, type.name, type.schema, type.baseTypeOid, registry)
                     is PgType.Array -> DynamicContainerCodec(oid, type.name, type.schema, PgArray::class, registry)
                     is PgType.Composite -> DynamicContainerCodec(
-                        oid,
-                        type.name,
-                        type.schema,
-                        PgComposite::class,
-                        registry
+                        oid, type.name, type.schema, PgComposite::class, registry
                     )
 
                     is PgType.Record -> DynamicContainerCodec(oid, type.name, type.schema, PgRecord::class, registry)
                     is PgType.Range -> DynamicContainerCodec(oid, type.name, type.schema, PgRange::class, registry)
                     is PgType.Multirange -> DynamicContainerCodec(
-                        oid,
-                        type.name,
-                        type.schema,
-                        PgMultirange::class,
-                        registry
+                        oid, type.name, type.schema, PgMultirange::class, registry
                     )
 
                     else -> null
@@ -236,5 +197,39 @@ class CodecDictionary private constructor(
         }
 
         return CodecDictionary(newOidMap, this.codecsByClass, newCodecToOid, this.registeredCodecs)
+    }
+
+    //----------------------------------------------API-----------------------------------------------------------------
+
+    /**
+     * Retrieves a [TypeCodec] suitable for the given PostgreSQL OID.
+     *
+     * @param oid the Object Identifier of the PostgreSQL type.
+     * @return the corresponding [TypeCodec] or null if no codec is registered for this OID.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> getCodecByOid(oid: Int): TypeCodec<T>? {
+        return codecsByOid[oid] as TypeCodec<T>?
+    }
+
+    /**
+     * Retrieves a default [TypeCodec] for the given Kotlin class.
+     *
+     * @param kClass the Kotlin class to find a codec for.
+     * @return the corresponding [TypeCodec] or null if no default codec is registered for this class.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> getCodecByClass(kClass: KClass<T>): TypeCodec<T>? {
+        return codecsByClass[kClass] as TypeCodec<T>?
+    }
+
+    /**
+     * Retrieves the mapped OID for a specific [TypeCodec].
+     *
+     * @param codec the codec to look up.
+     * @return the OID associated with the codec or null if it cannot be determined.
+     */
+    fun getOidForCodec(codec: TypeCodec<*>): Int? {
+        return codecToOid[codec]
     }
 }

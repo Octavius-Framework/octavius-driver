@@ -35,7 +35,10 @@ import kotlin.reflect.KClass
  * and [ParameterConverterRegistry] for handling outbound query parameters. 
  * Furthermore, it keeps track of registered composite type mappings.
  */
-class ConverterRegistry {
+class ConverterRegistry internal constructor() {
+
+    //------------------------------------------Registries--------------------------------------------------------------
+
     /**
      * The registry responsible for result conversion (PostgreSQL -> Kotlin).
      */
@@ -82,19 +85,22 @@ class ConverterRegistry {
         parameterConverterRegistry.addConverter(converter)
     }
 
-    val lock = ReentrantLock()
+    //--------------------------------------------Composites------------------------------------------------------------
+    private val lock = ReentrantLock()
 
     /**
      * A thread-safe map holding registration details for custom Kotlin composite data classes.
      */
     @Volatile
     var registeredComposites: Map<KClass<*>, QualifiedName> = emptyMap()
+        private set
 
     /**
      * A thread-safe map mapping database composite names to their corresponding Kotlin classes.
      */
     @Volatile
     var compositeClassByName: Map<QualifiedName, KClass<*>> = emptyMap()
+        private set
 
     /**
      * Registers a Kotlin data class to be automatically mapped to and from a PostgreSQL composite type.
@@ -104,7 +110,7 @@ class ConverterRegistry {
      * @param schema the schema of the composite type (defaults to an empty string for the search path).
      * @throws InvalidOperationException if [kClass] is not a data class.
      */
-    fun registerAutoCompositeType(
+    internal fun registerAutoCompositeType(
         kClass: KClass<*>,
         name: String,
         schema: String = ""

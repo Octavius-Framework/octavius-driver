@@ -9,6 +9,8 @@ import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
+import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.registry.RegistryKey
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -23,14 +25,14 @@ class SerializationTest {
         props.user = "postgres"
         props.password = "1234"
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+        val url = "jdbc:octavius://localhost:5432/octavius_test"
+        val session = getOctaviusSession(url, props)
 
         session.createNativeQuery("DROP TYPE IF EXISTS ser_test_composite CASCADE").execute()
         session.createNativeQuery("CREATE TYPE ser_test_composite AS (id int, name text)").execute()
         session.reloadTypes()
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchRowStrict()
-        val typeRegistry = dummyRow.typeRegistry
+        val typeRegistry = GlobalTypeRegistry.getRegistry(RegistryKey.from(OctaviusProperties.parse(url)))
 
         // 1. Zbudowanie kompozytu fabryką od zera
         val composite = session.typeManager.containers.createComposite("ser_test_composite")
@@ -105,9 +107,10 @@ class SerializationTest {
         props.user = "postgres"
         props.password = "1234"
 
-        val session = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props)
+        val url = "jdbc:octavius://localhost:5432/octavius_test"
+        val session = getOctaviusSession(url, props)
 
-        val dummyRow = session.createNativeQuery("SELECT 1").fetchRowStrict()
+        val typeRegistry = GlobalTypeRegistry.getRegistry(RegistryKey.from(OctaviusProperties.parse(url)))
 
         // Tablica 2x3 (2 wiersze, 3 kolumny)
         val multiArray = PgArray(
@@ -121,7 +124,7 @@ class SerializationTest {
         )
 
         val writer = PgByteWriter()
-        ContainerCodec.serializeContainer(multiArray, writer, dummyRow.typeRegistry)
+        ContainerCodec.serializeContainer(multiArray, writer, typeRegistry)
         val serializedArray = writer.toByteArray()
 
         val rows = session.createNativeQuery(
@@ -130,7 +133,7 @@ class SerializationTest {
 
         val expectedArray = rows.first().get<PgArray>(0)
         val writerArr = PgByteWriter()
-        ContainerCodec.serializeContainer(expectedArray, writerArr, dummyRow.typeRegistry)
+        ContainerCodec.serializeContainer(expectedArray, writerArr, typeRegistry)
 
         assertContentEquals(
             writerArr.toByteArray(),

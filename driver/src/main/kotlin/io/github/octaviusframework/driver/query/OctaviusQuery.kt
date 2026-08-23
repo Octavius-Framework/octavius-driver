@@ -28,7 +28,7 @@ import io.github.octaviusframework.driver.registry.TypeManager
 abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
     @PublishedApi internal val sql: String,
     @PublishedApi internal val queryExecutor: QueryExecutor,
-    val typeManager: TypeManager
+    internal val typeManager: TypeManager
 ) {
     /**
      * Result converters local to this query, chained to the session's. Converters here are tried first.
@@ -40,7 +40,7 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
      */
     val parameterConverterRegistry = ParameterConverterRegistry(parent = typeManager.converterRegistry.parameterConverterRegistry)
     @PublishedApi internal val resultMapper = ResultMapper(resultConverterRegistry, typeManager)
-    protected val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
+    internal val parameterMapper = ParameterMapper(parameterConverterRegistry, typeManager)
     @PublishedApi internal val parameterSerializer = ParameterSerializer(typeManager, parameterMapper)
 
     /**

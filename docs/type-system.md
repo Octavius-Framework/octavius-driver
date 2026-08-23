@@ -561,6 +561,27 @@ class CircleCodec : TypeCodec<Circle> {
 session.typeManager.registerCodec(CircleCodec())
 ```
 
+Both halves of the body have primitives to work against, and PostgreSQL's binary format is big-endian throughout.
+Writing goes through the `PgByteWriter` handed to `toBinary`: `writeByte`, `writeShort`, `writeInt`, `writeLong`,
+`writeFloat`, `writeDouble`, `writeBytes`, plus the `reserveLengthInt` / `fillLengthInt` pair for a block whose length
+is only known once it has been written. Reading is the mirror of it, as extensions on `ByteArray`:
+
+```kotlin
+import io.github.octaviusframework.driver.io.getIntBE
+import io.github.octaviusframework.driver.io.getDoubleBE   // also getShortBE, getLongBE, getFloatBE
+
+private fun decodeCircle(data: ByteArray, offset: Int, len: Int) = Circle(
+   x = data.getDoubleBE(offset),
+   y = data.getDoubleBE(offset + 8),
+   r = data.getDoubleBE(offset + 16)
+)
+```
+
+Read at `offset` rather than from the start: the array `fromBinary` receives holds the whole current row and not just
+your column, so `offset` and `len` are what delimit your value in it. It is also the connection's own buffer, reused row
+after row for anything up to `maxCachedRowSize` — a row above that gets an array of its own, and nothing tells you which
+you were handed — so decode what you need and never keep the array.
+
 A codec is bound to OIDs in one of three ways, depending on what it declares:
 
 | Declared                     | Binding behavior                                                                                                                                                                 |

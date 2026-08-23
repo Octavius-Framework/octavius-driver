@@ -162,6 +162,13 @@ class NotificationManager internal constructor(private val session: OctaviusSess
     }
 
     /**
+     * Sends a notification to the specified channel, optionally with a payload string.
+     */
+    fun notify(channel: String, payload: String? = null) {
+        session.createNativeQuery("SELECT pg_notify($1, $2)").fetchField<Unit>(channel, payload)
+    }
+
+    /**
      * Drops whatever this session subscribed to, if anything.
      *
      * Called when a session closes over a connection that will outlive it: leaving the
@@ -172,12 +179,5 @@ class NotificationManager internal constructor(private val session: OctaviusSess
     internal fun releaseSubscriptions() {
         if (!hasSubscribed) return
         unlistenAll()
-    }
-
-    /**
-     * Sends a notification to the specified channel, optionally with a payload string.
-     */
-    fun notify(channel: String, payload: String? = null) {
-        session.createNativeQuery("SELECT pg_notify($1, $2)").fetchField<Unit>(channel, payload)
     }
 }

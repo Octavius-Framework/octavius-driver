@@ -15,7 +15,7 @@ import io.github.octaviusframework.driver.exception.TypeExceptionReason
  *
  * @property typeManager the manager used for resolving types and obtaining the registry.
  */
-class ContainerFactory(
+class ContainerFactory internal constructor(
     private val typeManager: TypeManager
 ) {
 
