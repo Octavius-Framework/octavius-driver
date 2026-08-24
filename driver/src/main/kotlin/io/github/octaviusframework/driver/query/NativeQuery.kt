@@ -356,20 +356,4 @@ class NativeQuery internal constructor(
             queryExecutor.update(sql, params, parameterSerializer)
         }
     }
-
-    /**
-     * Executes a statement with no result and no row count — DDL, `SET`, administrative commands.
-     *
-     * This is the one method here that speaks the Simple Query Protocol, which has two consequences:
-     * it **cannot bind parameters**, so a `$1` in the SQL is an undefined object rather than a
-     * placeholder; and it accepts a whole script of statements separated by `;` in a single round trip,
-     * which PostgreSQL wraps in an implicit transaction.
-     *
-     * @throws InvalidOperationException `UNEXPECTED_RESULT` if any statement in the SQL returned rows.
-     */
-    fun execute() {
-        withQueryContext(sql, { emptyMap() }) {
-            queryExecutor.execute(sql)
-        }
-    }
 }

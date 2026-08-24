@@ -86,5 +86,21 @@ abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
             throw e
         }
     }
+
+    /**
+     * Executes a statement with no result and no row count — DDL, `SET`, administrative commands.
+     *
+     * This method speaks the Simple Query Protocol and takes **no parameters at all**: the SQL is sent
+     * exactly as written, so any placeholders (like `$1` or `@name`) in it reach the server as literal text 
+     * rather than being substituted. It accepts a whole script of statements separated by `;` in a single 
+     * round trip, which PostgreSQL wraps in an implicit transaction.
+     *
+     * @throws io.github.octaviusframework.driver.exception.InvalidOperationException `UNEXPECTED_RESULT` if any statement in the SQL returned rows.
+     */
+    fun execute() {
+        withQueryContext(sql, { emptyMap() }) {
+            queryExecutor.execute(sql)
+        }
+    }
 }
 
