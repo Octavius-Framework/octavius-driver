@@ -72,7 +72,7 @@ class ConverterRegistry internal constructor() {
      *
      * @param converter the converter to register.
      */
-    fun registerResultConverter(converter: ResultConverter<*, *>) {
+    internal fun registerResultConverter(converter: ResultConverter<*, *>) {
         resultConverterRegistry.addConverter(converter)
     }
 
@@ -81,7 +81,7 @@ class ConverterRegistry internal constructor() {
      *
      * @param converter the converter to register.
      */
-    fun registerParameterConverter(converter: ParameterConverter<*>) {
+    internal fun registerParameterConverter(converter: ParameterConverter<*>) {
         parameterConverterRegistry.addConverter(converter)
     }
 
