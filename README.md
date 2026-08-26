@@ -1,4 +1,4 @@
-# Octavius Driver
+# Octavius for PostgreSQL
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
 [![Build and Test](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml)
@@ -6,150 +6,84 @@
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
-A native, high-performance, lightweight PostgreSQL driver for Kotlin.
+Everything Octavius has to say about talking to PostgreSQL from Kotlin: a driver that speaks the wire protocol
+directly, and a data access layer built on it.
 
-**Octavius is not a traditional JDBC driver.** It implements `java.sql.Connection` purely as a way in — enough to slot into modern connection pools like **HikariCP**. Past that point it sheds the legacy baggage: no stateful `ResultSet`, no `CallableStatement`, no manual resource bookkeeping. It speaks PostgreSQL's Wire Protocol v3.2 directly, with no other driver wrapped or delegated to underneath.
+The two are separate artifacts on purpose. The driver is complete on its own — a connection pool and the
+driver are a working stack, and plenty of applications need nothing else. The client is for the layer above:
+somewhere to put a query that does not want a session threaded through its signature.
 
-```kotlin
-val senators: List<Senator> = session
-    .createNamedQuery("SELECT id, cognomen FROM senators WHERE province_id = @province")
-    .fetchObjects("province" to 7)
-```
+## What is here
 
-## Key Features
+| Artifact                        | What it is                                                                                                                                                    |
+|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`driver`**                    | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md) |
+| **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                      |
+| **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)   |
+| **`annotations`**               | Multiplatform, and nothing but annotation declarations — what Octavius reads off your own classes, in a form `commonMain` can carry.                          |
+| **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                     |
 
-- **Native protocol implementation** — Wire Protocol v3.2 spoken directly, nothing wrapped underneath.
-- **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them. [How it behaves under concurrency](docs/concurrency.md).
-- **Parameters bound, not interpolated** — queries and DML go through the Extended Query Protocol's Parse/Bind/Execute cycle, in binary. Statements with nothing to bind (DDL, `SET`, `LISTEN`, `COPY`) use the simple protocol, which is what it is for.
-- **A type system that reads your database** — the catalog is loaded from *your* schema at connect time, so a type you created is never an unknown OID: enums, composites, domains, ranges and table row types all come back as usable values without being taught to the driver. Binding one to a class of your own is a single `registerEnum<T>()` or `registerAutoComposite<T>()` at startup, and nested structures like `List<YourDataClass>` follow from there.
-- **PostgreSQL's own types, not just the portable ones** — `json`/`jsonb` as Kotlinx Serialization elements, `uuid`, `interval`, `inet`/`cidr`/`macaddr`, `bit`/`varbit`, the geometric family, and dates and times as `kotlinx.datetime` values. [The full table](docs/type-system.md#basic-codecs) fits on one page.
-- **Results in the shape you asked for** — `fetchRows`, `fetchObjects<T>`, `fetchField<T>`, each with single-row and strict variants, plus `forEach*` for streaming results too large to hold.
-- **Exceptions you can act on** — a flat hierarchy keyed by SQLSTATE, each carrying the server's own error fields plus the SQL and parameters your application sent.
-- **Asynchronous notifications** — `LISTEN` / `NOTIFY` as a Kotlin Coroutines `SharedFlow`.
-- **Bulk paths that are actually fast** — native `COPY` support, and [`UNNEST` inserts](docs/bulk-writes.md) that beat classic JDBC batching by ~3×.
-- **Large Objects as a first-class API** — `lo` support without unwrapping to a vendor interface.
-- **TLS with the property names you already know** — the full `sslmode` ladder from `prefer` to `verify-full`, client certificates and root CA included, with the handshake restricted to TLS 1.2 and 1.3.
-- **Connection pool ready** — designed around HikariCP, with the Kotlin session API layered on top.
+Not published: `hikari-integration-tests` (integration tests against a real pool), `benchmarks` (JMH against
+`pgjdbc`), and `examples/spring-app` (a runnable sample, its own build pulling the driver in through
+`includeBuild`).
+
+## Which one do I want
+
+**The driver alone** where something else already decides how connections and transactions are handled — a
+Spring application, or code that is happy to open a session and use it. You write
+`dataSource.getOctaviusSession()` and everything below that line is the driver's.
+
+**The client as well** where that decision is yours to make. It answers one question the driver deliberately
+leaves open — which session does this operation run on — so that a repository function can open a scope
+without knowing whether it is already inside a transaction, and be right either way. The query builders and
+`dynamic_dto` come with it.
+
+Adding the client later costs nothing: it wraps no query and renames no method, so driver code keeps working
+unchanged next to it.
 
 ## Requirements
 
 - **Java 21+**
-- **Kotlin 2.4+** — Octavius is a Kotlin library, not a JVM one. Every ergonomic entry point is `inline` with a `reified` parameter — `fetchObjects<T>`, `fetchField<T>`, `row.get<T>()`, `registerEnum<T>()` — and a reified function can only be inlined into Kotlin, never called. The non-reified layer underneath it is reachable from Java, but it means hand-building a `KType` for every column you read: possible, not usable. Columns also come back as `kotlin.time.Instant` and `kotlin.uuid.Uuid`.
-- **PostgreSQL 18+** — Octavius speaks **Wire Protocol v3.2** exclusively, introduced in PostgreSQL 18. Older servers expect v3.0 and the connection fails during the handshake.
-- **Spring Boot 4.x** — for `driver-spring-integration` only. It builds against `spring-boot-starter-jdbc` 4.x and registers its autoconfiguration for that generation. The core driver has no Spring dependency at all.
+- **Kotlin 2.4+** — Octavius is a Kotlin library, not a JVM one. Every ergonomic entry point is `inline` with a
+  `reified` parameter, and a reified function can only be inlined into Kotlin, never called. The non-reified
+  layer underneath is reachable from Java, but it means hand-building a `KType` for every column you read:
+  possible, not usable.
+- **PostgreSQL 18+** — the driver speaks **Wire Protocol v3.2** exclusively, introduced in PostgreSQL 18. Older
+  servers expect v3.0 and the connection fails during the handshake.
+- **Spring Boot 4.x** — for `driver-spring-integration` only. The core driver has no Spring dependency at all.
 
-## Project Status
+## Project status
 
-Octavius is pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that generates certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to prove the handshake refuses it rather than half-working.
+Pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that
+generates certificates and exercises the TLS modes end to end, and a third that points the driver at
+PostgreSQL 17 to prove the handshake refuses it rather than half-working.
 
-What the badge means in practice: the API is not frozen. Signatures can still change before 1.0, and the [release notes](https://github.com/Octavius-Framework/octavius-driver/releases) say what moved. It has not seen long production use — the numbers below come from benchmarks, not from a year of traffic.
+The API is not frozen. The driver is the settled part of it and the client is early; every module carries the
+same version and is released together, so the number says when something shipped rather than how mature it is.
+Neither has seen long production use.
 
-## Quick Start
-
-```kotlin
-dependencies {
-    implementation("io.github.octavius-framework:driver:0.9.7")
-    implementation("com.zaxxer:HikariCP:7.1.0")
-
-    // Or, for Spring Boot - brings the driver in transitively
-    // implementation("io.github.octavius-framework:driver-spring-integration:0.9.7")
-}
-```
-
-```kotlin
-import io.github.octaviusframework.driver.jdbc.getOctaviusSession
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
-
-val config = HikariConfig().apply {
-    jdbcUrl = "jdbc:octavius://localhost:5432/res_publica"
-    username = "consul"
-    password = "senatus_populusque"
-}
-val dataSource = HikariDataSource(config)
-
-// 1. Pull a session through HikariCP via the custom jdbc:octavius protocol
-val session = dataSource.getOctaviusSession()
-
-// 2. Named parameters, and exactly one row expected (or an exception)
-val row = session.createNamedQuery("SELECT id, cognomen FROM senators WHERE id = @id")
-    .fetchRowStrict("id" to 1)
-
-val id: Int = row.get("id")
-val cognomen: String = row.get("cognomen")
-
-// 3. Or skip the row entirely and map straight onto your own class
-data class Senator(val id: Int, val cognomen: String)
-
-val active: List<Senator> = session
-    .createNativeQuery("SELECT id, cognomen FROM senators WHERE active = $1")
-    .fetchObjects(true)
-
-// 4. Group work into a transaction - committed on success, rolled back on any throw
-session.transaction.required {
-    createNativeQuery("INSERT INTO senators (cognomen) VALUES ($1)").update("Cato")
-    createNativeQuery("INSERT INTO senate_logs (event) VALUES ($1)").update("New senator inducted")
-}
-
-session.close() // Safely returns the connection to the pool
-```
-
-## Performance
-
-Measured against `pgjdbc` on the same machine, same JVM, same work ([full numbers and caveats](docs/performance.md)):
-
-- **Object mapping ties** — 0.227 ± 0.008 against 0.223 ± 0.009 ops/ms, a dead heat on the path most applications live on.
-- **`UNNEST` bulk inserts are 3.4× faster than classic JDBC batching**, and tie with pgjdbc's `reWriteBatchedInserts` optimization — while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
-- **Array decoding costs ~28%** for going through the general conversion machinery — the same machinery that makes a `List<Senator>` of composites work.
-- **Reflective mapping allocates more than a hand-written converter does** — ~2.5× on the two-field row benchmarked, in both directions. Worth replacing on your hottest path, and nowhere else.
+Every change is recorded in the [CHANGELOG](CHANGELOG.md), grouped by module under each version — one file,
+because one version covers all of them and a release where only half the repository moved reads oddly split
+across two.
 
 ## Documentation
 
-**[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every declaration across `driver`, `driver-spring-integration` and `hikari-integration-tests`, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the values of an enum.
+**[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every
+declaration, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the
+values of an enum.
 
-The guides cover what a signature cannot show — how the pieces behave together. [The documentation index](docs/README.md) lists every one of them section by section; below is the shortlist.
+The guides cover what a signature cannot show — how the pieces behave together. They are the driver's;
+[the documentation index](docs/README.md) lists every one section by section, and
+[Quickstart](docs/quickstart.md) is where to start from an empty project.
 
-**Start here**
-- [Quickstart](docs/quickstart.md) — from an empty project to a first query.
-- [**Octavius vs Legacy JDBC**](docs/octavius-vs-jdbc.md) — what was dropped, and why.
-- [Session Initialization and Configuration](docs/initialization.md) — every connection option, pooling, and what survives a return to the pool.
+## Relation to octavius-database
 
-**Everyday work**
-- [Executing Queries](docs/queries.md) — parameters, the `fetch*` family, streaming.
-- [Transaction Management](docs/transactions.md) — block API, manual control, savepoints, isolation.
-- [Type System & Mapping](docs/type-system.md) — how columns become Kotlin types, and how to extend that.
-- [Arrays, Ranges and JSON](docs/arrays-ranges-json.md) — reading and writing the three that have corners worth knowing.
-- [Composites & Reflection](docs/composites-reflection.md) — data classes in and out, and what to write when reflection is not the mapping you want.
-- [Bulk Writes](docs/bulk-writes.md) — thousands of rows in one statement, and what replaced `addBatch()`.
-- [Error Handling & Exceptions](docs/exceptions.md) — the hierarchy, and catching at the right altitude.
-- [Spring Integration](docs/spring-integration.md) — `OctaviusTemplate` and autoconfiguration.
-
-**Specialized**
-- [Concurrency and Virtual Threads](docs/concurrency.md) — what one connection serializes, and where the real limit is.
-- [Functions and Procedures](docs/functions-procedures.md) — no `CallableStatement` required.
-- [COPY Protocol](docs/copy.md) — bulk import and export.
-- [Listen & Notify](docs/listen-notify.md) — asynchronous events as a flow.
-- [Large Objects](docs/large-objects.md) — beyond what `bytea` can hold.
-- [Performance](docs/performance.md) — JMH benchmarks against `pgjdbc`.
-
-## Architecture
-
-- **`driver`** — the core.
-  - **IO, SSL & Auth** — socket handling (`PgStream`), buffering, TLS negotiation, SCRAM-SHA-256 with channel binding.
-  - **Message** — parsing and building Wire Protocol v3.2 packets.
-  - **Query & Execution** — the operational core: Extended Query Protocol with named-parameter support.
-  - **Codec, Converter & Registry** — the two-layer type system, from raw binary through to your own classes.
-  - **Type & Container** — the PostgreSQL value model the layer above hands back: `Row`, `PgArray`, `PgComposite`, `PgRange`, `PgMultirange`.
-  - **Session & Transaction** — `OctaviusSession`, transaction blocks and savepoints.
-  - **COPY & LO** — bulk import and export, and Large Objects.
-  - **Notification & Notice** — `LISTEN`/`NOTIFY` as a flow, and server notices routed to a `NoticeHandler`.
-  - **Exception** — the SQLSTATE-keyed hierarchy, built from the server's own error fields.
-  - **JDBC** — the compatibility layer that lets pools like HikariCP manage the connection.
-- **`driver-spring-integration`** — `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.
-- **`hikari-integration-tests`** — integration tests against a real HikariCP pool.
-- **`benchmarks`** — JMH benchmarks against `pgjdbc`.
-- **`examples/spring-app`** — a runnable Spring Boot sample. Not a subproject: it is its own build, pulling the driver in through `includeBuild`.
+[octavius-database](https://github.com/Octavius-Framework/octavius-database) is the previous generation and is
+superseded by what is here. Much of it existed to work around pgjdbc — text-protocol composites, enums the
+library had to be taught, a stateful `ResultSet`, no named parameters — and the driver answers all of that
+natively. What was left over is the client, which is deliberately a much smaller thing than a port would have
+been.
 
 ## License
 
-Octavius Driver is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+Licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).

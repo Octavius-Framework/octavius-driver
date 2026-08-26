@@ -2,7 +2,7 @@
 
 *An itinerarium never described the empire — it listed the roads: which ones existed, where each began, and what a
 traveler would meet along the way. Nobody carried one to admire it; they carried it to find out which turn to take.
-These pages are the itinerarium of `octavius-driver`. The API reference has every declaration in the library; what
+These pages are the itinerarium of the **driver**. The API reference has every declaration in the library; what
 follows is the map of how they behave together.*
 
 Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL driver speaking Wire Protocol v3.2.
