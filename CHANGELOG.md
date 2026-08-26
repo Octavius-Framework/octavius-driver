@@ -214,10 +214,13 @@
   needs no doubling.
 - There is no `client-spring-integration` and none is planned. Running under a framework that owns its own
   transactions means implementing `SessionProvider` against it and passing that to
-  `OctaviusClient.fromSessionProvider` — for Spring that is a wrapper over the driver's existing
-  `OctaviusTemplate`, on the order of twenty lines, and it is the whole of what such a module would contain.
-  The target here is the standalone case, so it is left to whoever needs it rather than shipped, versioned and
-  documented for nobody.
+  `OctaviusClient.fromSessionProvider` — for Spring, under thirty lines over the driver's existing
+  `OctaviusTemplate` and a `PlatformTransactionManager`, and that is the whole of what such a module would
+  contain. `execute` is a single line of delegation, the template already taking the same receiver-lambda the
+  interface asks for. What is **not** delegation is the timeouts: Spring has one, it means the transaction
+  rather than the statement, and it enforces it itself, so both `SET LOCAL`s are the wrapper's to issue and
+  account for about a third of it. The target here is the standalone case, so it is left to whoever needs it
+  rather than shipped, versioned and documented for nobody.
 
 ## Version 0.9.7 (v0.9.7)
 

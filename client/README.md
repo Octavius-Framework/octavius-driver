@@ -54,8 +54,10 @@ and gets out of the way. Nothing is delegated, so nothing can fall out of step w
 
 There is no Spring integration module and none is planned. Running under a framework that owns its own
 transactions means implementing `SessionProvider` against it and passing that to
-`OctaviusClient.fromSessionProvider` — for Spring, a wrapper over the driver's existing `OctaviusTemplate`, on
-the order of twenty lines.
+`OctaviusClient.fromSessionProvider` — for Spring, under thirty lines over the driver's existing
+`OctaviusTemplate` and a `PlatformTransactionManager`. `execute` delegates in one line; the timeouts do not,
+Spring having a single one that means the transaction rather than the statement, so both `SET LOCAL`s are
+yours to issue.
 
 ## What is thrown and what is returned
 
