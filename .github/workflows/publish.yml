@@ -20,6 +20,29 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Check the tag against the version being built
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          case "$TAG" in
+            v*) EXPECTED="${TAG#v}" ;;
+            *)
+              echo "::error::Tag '$TAG' is not a version tag. Use vX.Y.Z."
+              exit 1
+              ;;
+          esac
+
+          BUILT=$(./gradlew -q :driver:properties --no-configuration-cache | awk '/^version:/ { print $2 }')
+
+          if [ "$BUILT" != "$EXPECTED" ]; then
+            echo "::error::The tag says $EXPECTED but the build says $BUILT. Bump the version in build.gradle.kts, or retag."
+            exit 1
+          fi
+          echo "Tag and build agree on $BUILT."
+
       - name: Publish to Maven Central
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}

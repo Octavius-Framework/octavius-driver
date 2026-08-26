@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.complex
 
-import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.identifier.CaseConvention
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import kotlinx.datetime.LocalDateTime
 import org.junit.jupiter.api.AfterAll

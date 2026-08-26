@@ -1,6 +1,6 @@
 package io.github.octaviusframework.driver.converter
 
-import io.github.octaviusframework.driver.annotation.PgName
+import io.github.octaviusframework.annotation.PgName
 import io.github.octaviusframework.driver.container.PgComposite
 import io.github.octaviusframework.driver.converter.parameter.composite.ReflectionCompositeParameterConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter

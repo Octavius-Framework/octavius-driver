@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.util.reflection
 
-import io.github.octaviusframework.driver.annotation.PgName
-import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.annotation.PgName
+import io.github.octaviusframework.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.*
@@ -51,7 +51,7 @@ object ReflectionCache {
      *
      * The cache is global and never evicted, which is what makes registering a composite type up front
      * enough to keep reflection off the query path entirely. Mapped key names are resolved here, once:
-     * a property's [PgName][io.github.octaviusframework.driver.annotation.PgName] if it carries one,
+     * a property's [PgName][io.github.octaviusframework.annotation.PgName] if it carries one,
      * otherwise its name converted from `camelCase` to `snake_case`.
      *
      * @param T The data class to inspect.

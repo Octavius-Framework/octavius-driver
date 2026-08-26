@@ -76,7 +76,7 @@ fun <T : Any> instantiateDataObject(
  * Converts a map to a data class instance.
  *
  * Keys are matched to properties by converting each property name from `camelCase` to `snake_case`;
- * [PgName][io.github.octaviusframework.driver.annotation.PgName] overrides that per property. A key the
+ * [PgName][io.github.octaviusframework.annotation.PgName] overrides that per property. A key the
  * class has no property for is ignored. A key that is absent and one whose value is `null` are treated
  * differently — see [instantiateDataObject].
  *
@@ -93,7 +93,7 @@ inline fun <reified T : Any> Map<String, Any?>.toDataObject(): T {
  * Converts a map to a data class instance.
  *
  * Keys are matched to properties by converting each property name from `camelCase` to `snake_case`;
- * [PgName][io.github.octaviusframework.driver.annotation.PgName] overrides that per property. A key the
+ * [PgName][io.github.octaviusframework.annotation.PgName] overrides that per property. A key the
  * class has no property for is ignored. A key that is absent and one whose value is `null` are treated
  * differently — see [instantiateDataObject].
  *

@@ -1,11 +1,13 @@
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.dokka.gradle.DokkaExtension
 import org.jetbrains.dokka.gradle.engine.parameters.VisibilityModifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.plugin.serialization) apply false
     alias(libs.plugins.dokka)
     alias(libs.plugins.vanniktech.publish) apply false
@@ -21,7 +23,10 @@ allprojects {
 }
 
 dependencies {
+    dokka(projects.annotations)
     dokka(projects.driver)
+    dokka(projects.client)
+    dokka(projects.clientScanner)
     dokka(projects.hikariIntegrationTests)
     dokka(projects.driverSpringIntegration)
 }
@@ -44,6 +49,14 @@ subprojects {
         }
     }
 
+    // The annotations module is the one multiplatform project here, so its JVM target is set through the
+    // multiplatform extension rather than the JVM one below.
+    plugins.withId("org.jetbrains.kotlin.multiplatform") {
+        extensions.configure<KotlinMultiplatformExtension> {
+            jvmToolchain(21)
+        }
+    }
+
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension> {
             compilerOptions {
@@ -61,7 +74,7 @@ subprojects {
         }
     }
 
-    val publishedProjects = listOf("driver", "driver-spring-integration")
+    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client", "client-scanner")
 
     if (publishedProjects.contains(project.name)) {
         apply(plugin = "com.vanniktech.maven.publish")
@@ -70,9 +83,23 @@ subprojects {
             coordinates(group.toString(), project.name, version.toString())
 
             pom {
-                name.set("Octavius Driver - ${project.name}")
-                description.set("Kotlin-first PostgreSQL driver built on Virtual Threads and the raw wire protocol.")
-                // description
+                val isAnnotations = project.name == "annotations"
+                val isClient = project.name == "client" || project.name.startsWith("client-")
+                name.set(
+                    when {
+                        isAnnotations -> "Octavius - ${project.name}"
+                        isClient -> "Octavius Client - ${project.name}"
+                        else -> "Octavius Driver - ${project.name}"
+                    }
+                )
+                description.set(
+                    when {
+                        isAnnotations ->
+                            "Annotations Octavius reads off your own classes, multiplatform so that shared code can carry them."
+                        isClient -> "SQL-first data access for Kotlin and PostgreSQL, built on the Octavius driver."
+                        else -> "Kotlin-first PostgreSQL driver built on Virtual Threads and the raw wire protocol."
+                    }
+                )
                 url.set("https://github.com/octavius-framework/octavius-driver")
                 licenses {
                     license {

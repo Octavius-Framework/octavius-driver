@@ -5,8 +5,10 @@ import io.github.octaviusframework.driver.converter.EnumParameterConverter
 import io.github.octaviusframework.driver.converter.EnumResultConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.registry.TypeRegistry
 import kotlin.reflect.KClass
@@ -80,7 +82,7 @@ class TypeManager internal constructor(
      * Registers a composite type mapped reflectively onto the data class [T].
      *
      * Property names are matched to attribute names by converting `camelCase` to `snake_case`;
-     * [PgName][io.github.octaviusframework.driver.annotation.PgName] overrides that per property.
+     * [PgName][io.github.octaviusframework.annotation.PgName] overrides that per property.
      *
      * @param T The Kotlin data class representing the composite type.
      * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name
@@ -138,14 +140,20 @@ class TypeManager internal constructor(
     /**
      * Registers an enum type, creating both parameter and result converters.
      *
+     * Takes a plain [KClass] rather than one bound to `Enum<T>`, because the callers that reach this overload
+     * rather than the reified one are holding a class they found - a classpath scan, a configuration file - and
+     * cannot name its type. The bound bought them nothing but a cast at every call site; being an enum is
+     * checked here instead, once, and reported as the bad argument it is.
+     *
      * @param enumClass The Kotlin enum class.
      * @param typeName Optional custom type name in the database.
      * @param schema Optional schema where the enum is defined.
      * @param pgConvention The naming convention used for enum values in PostgreSQL.
      * @param kotlinConvention The naming convention used for enum values in Kotlin.
+     * @throws InvalidOperationException `INVALID_ARGUMENT` if [enumClass] is not an enum class.
      */
-    fun <T : Enum<T>> registerEnum(
-        enumClass: KClass<T>,
+    fun registerEnum(
+        enumClass: KClass<*>,
         typeName: String = "",
         schema: String = "",
         pgConvention: CaseConvention = CaseConvention.SNAKE_CASE_UPPER,
@@ -155,9 +163,29 @@ class TypeManager internal constructor(
             enumClass.simpleName!!, CaseConvention.PASCAL_CASE, CaseConvention.SNAKE_CASE_LOWER
         )
 
+        if (!enumClass.java.isEnum) {
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                details = "${enumClass.qualifiedName} was registered as a PostgreSQL enum but is not an enum class."
+            )
+        }
+
         val actualSchema = schema.takeIf { it.isNotEmpty() } ?: ""
         val qualifiedName = QualifiedName(actualSchema, actualTypeName)
-        registerParameterConverter(EnumParameterConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
-        registerResultConverter(EnumResultConverter(enumClass, qualifiedName, pgConvention, kotlinConvention))
+
+        // The converters do want the concrete enum type - they read `enumConstants` and answer with
+        // `supportedClass`, which is what keeps them from claiming every value - so the cast happens, once,
+        // here rather than in every caller holding a class it cannot name.
+        @Suppress("UNCHECKED_CAST")
+        val typed = enumClass as KClass<UnnamedEnum>
+        registerParameterConverter(EnumParameterConverter(typed, qualifiedName, pgConvention, kotlinConvention))
+        registerResultConverter(EnumResultConverter(typed, qualifiedName, pgConvention, kotlinConvention))
     }
 }
+
+/**
+ * Stands in for the enum type a [KClass] found at runtime cannot name, so that one cast inside
+ * [TypeManager.registerEnum] spares every caller one of their own. Never instantiated; erased before anything
+ * could observe it.
+ */
+private enum class UnnamedEnum
