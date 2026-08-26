@@ -25,6 +25,7 @@ allprojects {
 dependencies {
     dokka(projects.annotations)
     dokka(projects.driver)
+    dokka(projects.client)
     dokka(projects.hikariIntegrationTests)
     dokka(projects.driverSpringIntegration)
 }
@@ -72,7 +73,7 @@ subprojects {
         }
     }
 
-    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration")
+    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client")
 
     if (publishedProjects.contains(project.name)) {
         apply(plugin = "com.vanniktech.maven.publish")
@@ -82,13 +83,21 @@ subprojects {
 
             pom {
                 val isAnnotations = project.name == "annotations"
+                val isClient = project.name == "client" || project.name.startsWith("client-")
                 name.set(
-                    if (isAnnotations) "Octavius - ${project.name}" else "Octavius Driver - ${project.name}"
+                    when {
+                        isAnnotations -> "Octavius - ${project.name}"
+                        isClient -> "Octavius Client - ${project.name}"
+                        else -> "Octavius Driver - ${project.name}"
+                    }
                 )
                 description.set(
-                    if (isAnnotations)
-                        "Annotations Octavius reads off your own classes, multiplatform so that shared code can carry them."
-                    else "Kotlin-first PostgreSQL driver built on Virtual Threads and the raw wire protocol."
+                    when {
+                        isAnnotations ->
+                            "Annotations Octavius reads off your own classes, multiplatform so that shared code can carry them."
+                        isClient -> "SQL-first data access for Kotlin and PostgreSQL, built on the Octavius driver."
+                        else -> "Kotlin-first PostgreSQL driver built on Virtual Threads and the raw wire protocol."
+                    }
                 )
                 url.set("https://github.com/octavius-framework/octavius-driver")
                 licenses {

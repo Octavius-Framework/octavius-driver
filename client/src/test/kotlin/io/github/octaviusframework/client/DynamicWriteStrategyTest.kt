@@ -1,0 +1,225 @@
+package io.github.octaviusframework.client
+
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
+import io.github.octaviusframework.client.dynamic.DynamicWriteStrategy
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import kotlinx.serialization.Serializable
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+
+/**
+ * Covers [DynamicWriteStrategy]: when an unwrapped instance of a registered class is written as a
+ * `dynamic_dto`, and what wrapping overrides.
+ *
+ * Every test builds its own client, because the thing under test is installed into the driver's type registry
+ * and that registry is global to the database. Two clients on one database do not hold a mode each - the last
+ * one to register wins for both - so each test also drops the registry on the way in and the way out. Without
+ * that, a converter left behind by an earlier test would claim a value this one expects the composite path to
+ * take, and the mode would look like it worked when it had not been consulted.
+ */
+class DynamicWriteStrategyTest {
+
+    /** Registered as a dynamic type and as nothing else: the unambiguous case. */
+    @Serializable
+    data class Triumph(val general: String, val enemy: String)
+
+    /** Registered both ways, which is the only case the three modes disagree about. */
+    @Serializable
+    data class Honour(val title: String, val year: Int)
+
+    companion object {
+        private const val URL = "jdbc:octavius://localhost:5432/octavius_test"
+
+        private fun dataSource(): HikariDataSource = HikariDataSource(HikariConfig().apply {
+            jdbcUrl = URL
+            username = "postgres"
+            password = "1234"
+            maximumPoolSize = 2
+        })
+
+        @BeforeAll
+        @JvmStatic
+        fun createSchema() {
+            GlobalTypeRegistry.removeRegistry(URL)
+            dataSource().use { ds ->
+                OctaviusClient.fromDataSource(ds).use { db ->
+                    db.dynamicTypes.install()
+                    db.rawQuery(
+                        """
+                        DO ${'$'}do${'$'} BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+                                           WHERE t.typname = 'honour' AND n.nspname = 'public') THEN
+                                CREATE TYPE public.honour AS (title text, year int);
+                            END IF;
+                        END ${'$'}do${'$'}
+                        """.trimIndent()
+                    ).execute()
+                    db.rawQuery(
+                        """
+                        CREATE TABLE IF NOT EXISTS dyn_strategy (
+                            id           SERIAL PRIMARY KEY,
+                            as_dynamic   public.dynamic_dto,
+                            as_composite public.honour
+                        )
+                        """.trimIndent()
+                    ).execute()
+                }
+            }
+            GlobalTypeRegistry.removeRegistry(URL)
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun dropSchema() {
+            GlobalTypeRegistry.removeRegistry(URL)
+            dataSource().use { ds ->
+                OctaviusClient.fromDataSource(ds).use { db ->
+                    db.rawQuery("DROP TABLE IF EXISTS dyn_strategy").execute()
+                    db.rawQuery("DROP TYPE IF EXISTS public.honour").execute()
+                }
+            }
+            GlobalTypeRegistry.removeRegistry(URL)
+        }
+    }
+
+    @BeforeEach
+    fun clearTable() {
+        GlobalTypeRegistry.removeRegistry(URL)
+        dataSource().use { ds ->
+            OctaviusClient.fromDataSource(ds).use { db ->
+                db.rawQuery("TRUNCATE dyn_strategy RESTART IDENTITY").execute()
+            }
+        }
+        GlobalTypeRegistry.removeRegistry(URL)
+    }
+
+    /**
+     * Runs [block] against a client on [strategy], with both classes registered and the registry dropped
+     * either side so no converter outlives the test that installed it.
+     */
+    private fun withStrategy(strategy: DynamicWriteStrategy, block: (OctaviusClient) -> Unit) {
+        GlobalTypeRegistry.removeRegistry(URL)
+        try {
+            dataSource().use { ds ->
+                OctaviusClient.fromDataSource(ds, dynamicWriteStrategy = strategy).use { db ->
+                    db.dynamicTypes.register<Triumph>("triumph")
+                    db.dynamicTypes.register<Honour>("honour_dyn")
+                    db.execute { typeManager.registerAutoComposite<Honour>("honour", "public") }
+                    block(db)
+                }
+            }
+        } finally {
+            GlobalTypeRegistry.removeRegistry(URL)
+        }
+    }
+
+    private fun OctaviusClient.writeDynamic(value: Any) =
+        insertInto("dyn_strategy").values(listOf("as_dynamic")).update("as_dynamic" to value)
+
+    private fun OctaviusClient.readDynamic() =
+        select("as_dynamic").from("dyn_strategy").fetchFieldStrict<Any>()
+
+    // --- The unambiguous class, which is nearly all of them ---------------------------------------
+
+    @Test
+    fun `automatic writes a registered class without wrapping`() {
+        withStrategy(DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS) { db ->
+            val triumph = Triumph("Scipio", "Carthage")
+            db.writeDynamic(triumph)
+
+            assertEquals(triumph, db.readDynamic())
+        }
+    }
+
+    @Test
+    fun `prefer writes it without wrapping as well`() {
+        withStrategy(DynamicWriteStrategy.PREFER_DYNAMIC_DTO) { db ->
+            val triumph = Triumph("Scipio", "Carthage")
+            db.writeDynamic(triumph)
+
+            assertEquals(triumph, db.readDynamic())
+        }
+    }
+
+    @Test
+    fun `explicit only refuses it unwrapped and names the wrapper`() {
+        withStrategy(DynamicWriteStrategy.EXPLICIT_ONLY) { db ->
+            val thrown = assertFailsWith<MappingException> {
+                db.writeDynamic(Triumph("Scipio", "Carthage"))
+            }
+
+            assertTrue(
+                thrown.details.contains("toDynamicDto"),
+                "the message should point at the wrapper, not at a missing codec: ${thrown.details}"
+            )
+            assertTrue(thrown.details.contains("Triumph"))
+        }
+    }
+
+    @Test
+    fun `explicit only writes it once wrapped`() {
+        withStrategy(DynamicWriteStrategy.EXPLICIT_ONLY) { db ->
+            val triumph = Triumph("Scipio", "Carthage")
+            db.writeDynamic(db.dynamicTypes.toDynamicDto(triumph))
+
+            assertEquals(triumph, db.readDynamic())
+        }
+    }
+
+    // --- The class registered both ways, which is what the modes disagree about -------------------
+
+    @Test
+    fun `automatic leaves a class that is also a composite to the composite`() {
+        withStrategy(DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS) { db ->
+            val honour = Honour("Corona Civica", 47)
+            db.insertInto("dyn_strategy").values(listOf("as_composite"))
+                .update("as_composite" to honour)
+
+            assertEquals(
+                honour,
+                db.select("as_composite").from("dyn_strategy").fetchFieldStrict<Honour>()
+            )
+        }
+    }
+
+    @Test
+    fun `wrapping is how that class reaches the dynamic column under automatic`() {
+        withStrategy(DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS) { db ->
+            val honour = Honour("Corona Civica", 47)
+            db.writeDynamic(db.dynamicTypes.toDynamicDto(honour))
+
+            assertEquals(honour, db.readDynamic())
+        }
+    }
+
+    @Test
+    fun `prefer takes that class for the dynamic form instead`() {
+        withStrategy(DynamicWriteStrategy.PREFER_DYNAMIC_DTO) { db ->
+            val honour = Honour("Corona Civica", 47)
+            // Unwrapped, and into the dynamic_dto column: under AUTOMATIC the composite path would claim it
+            // and the server would refuse a public.honour here.
+            db.writeDynamic(honour)
+
+            assertEquals(honour, db.readDynamic())
+        }
+    }
+
+    @Test
+    fun `automatic really does hand that class to the composite path`() {
+        // The other half of the pair above, and what makes it discriminate: the same unwrapped value into the
+        // same column fails under AUTOMATIC, because what arrives is a public.honour rather than a dynamic_dto.
+        withStrategy(DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS) { db ->
+            assertFailsWith<OctaviusException> {
+                db.writeDynamic(Honour("Corona Civica", 47))
+            }
+        }
+    }
+}
