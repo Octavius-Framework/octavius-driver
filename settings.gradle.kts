@@ -12,6 +12,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "octavius-driver"
+include("annotations")
 include("driver")
 include("hikari-integration-tests")
 include("driver-spring-integration")

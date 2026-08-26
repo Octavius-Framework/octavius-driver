@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.converter.EnumParameterConverter
 import io.github.octaviusframework.driver.converter.EnumResultConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.registry.TypeRegistry
@@ -80,7 +80,7 @@ class TypeManager internal constructor(
      * Registers a composite type mapped reflectively onto the data class [T].
      *
      * Property names are matched to attribute names by converting `camelCase` to `snake_case`;
-     * [PgName][io.github.octaviusframework.driver.annotation.PgName] overrides that per property.
+     * [PgName][io.github.octaviusframework.annotation.PgName] overrides that per property.
      *
      * @param T The Kotlin data class representing the composite type.
      * @param typeName Optional custom type name in the database. If empty, the name is derived from the class name

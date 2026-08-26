@@ -5,7 +5,7 @@ import io.github.octaviusframework.driver.converter.result.mapper.Deserializatio
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.identifier.CaseConvention
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.type.PgType
 import kotlin.reflect.KClass

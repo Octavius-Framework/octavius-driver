@@ -6,7 +6,7 @@ import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterCo
 import io.github.octaviusframework.driver.converter.parameter.mapper.SerializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.DeserializationContext
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.driver.identifier.CaseConvention
+import io.github.octaviusframework.identifier.CaseConvention
 import io.github.octaviusframework.driver.identifier.CaseConverter
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.type.PgType
