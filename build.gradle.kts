@@ -26,6 +26,7 @@ dependencies {
     dokka(projects.annotations)
     dokka(projects.driver)
     dokka(projects.client)
+    dokka(projects.clientScanner)
     dokka(projects.hikariIntegrationTests)
     dokka(projects.driverSpringIntegration)
 }
@@ -73,7 +74,7 @@ subprojects {
         }
     }
 
-    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client")
+    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client", "client-scanner")
 
     if (publishedProjects.contains(project.name)) {
         apply(plugin = "com.vanniktech.maven.publish")

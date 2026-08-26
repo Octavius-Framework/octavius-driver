@@ -7,6 +7,7 @@ datetime = "0.8.0"
 kotlin-logging = "8.0.4"
 logback = "1.5.38"
 slf4j = "2.0.18"
+classgraph = "4.8.180"
 dokka = "2.2.0"
 vanniktech-publish = "0.37.0"
 jmh = "0.7.2"
@@ -20,6 +21,7 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.r
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
 logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+classgraph = { group = "io.github.classgraph", name = "classgraph", version.ref = "classgraph" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
