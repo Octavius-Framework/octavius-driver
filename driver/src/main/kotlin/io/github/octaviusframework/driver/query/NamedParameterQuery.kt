@@ -33,7 +33,7 @@ class NamedParameterQuery internal constructor(
     sql: String,
     queryExecutor: QueryExecutor,
     typeManager: TypeManager
-) : OctaviusQuery<NamedParameterQuery>(sql, queryExecutor, typeManager) {
+) : Query<NamedParameterQuery>(sql, queryExecutor, typeManager) {
 
     @PublishedApi
     internal fun prepareNamedQuery(params: Map<String, Any?>): Pair<String, Array<out Any?>> {

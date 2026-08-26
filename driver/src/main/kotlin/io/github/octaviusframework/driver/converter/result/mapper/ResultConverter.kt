@@ -12,7 +12,7 @@ import kotlin.reflect.KType
  * converter's job is to reshape that into [T]. Register one on a session through
  * [TypeManager.registerResultConverter][io.github.octaviusframework.driver.registry.TypeManager.registerResultConverter],
  * or on a single query through
- * [registerResultConverter][io.github.octaviusframework.driver.query.OctaviusQuery.registerResultConverter].
+ * [registerResultConverter][io.github.octaviusframework.driver.query.Query.registerResultConverter].
  *
  * Converters are consulted in reverse registration order, so a later one wins over an earlier one, and
  * lookup is keyed on [supportedSourceClass]. Registering under `Any::class` opts into being asked about

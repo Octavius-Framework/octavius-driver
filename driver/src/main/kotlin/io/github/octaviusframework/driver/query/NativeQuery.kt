@@ -25,7 +25,7 @@ class NativeQuery internal constructor(
     sql: String,
     queryExecutor: QueryExecutor,
     typeManager: TypeManager
-) : OctaviusQuery<NativeQuery>(sql, queryExecutor, typeManager) {
+) : Query<NativeQuery>(sql, queryExecutor, typeManager) {
 
     /**
      * Names this query's parameters for a [QueryContext] and runs [block] under it.

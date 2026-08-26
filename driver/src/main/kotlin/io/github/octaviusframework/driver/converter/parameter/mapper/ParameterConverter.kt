@@ -13,7 +13,7 @@ import kotlin.reflect.KClass
  * one on a session through
  * [TypeManager.registerParameterConverter][io.github.octaviusframework.driver.registry.TypeManager.registerParameterConverter],
  * or on a single query through
- * [registerParameterConverter][io.github.octaviusframework.driver.query.OctaviusQuery.registerParameterConverter].
+ * [registerParameterConverter][io.github.octaviusframework.driver.query.Query.registerParameterConverter].
  *
  * Converters are consulted in reverse registration order, so a later one wins over an earlier one, and
  * the first whose [canConvert] answers `true` takes the value. A value nothing claims is passed through

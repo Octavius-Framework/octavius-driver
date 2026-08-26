@@ -25,7 +25,7 @@ import io.github.octaviusframework.driver.registry.TypeManager
  * @property typeManager The session's type manager, resolving OIDs and holding the parent registries.
  */
 @Suppress("UNCHECKED_CAST")
-abstract class OctaviusQuery<T : OctaviusQuery<T>> internal constructor(
+abstract class Query<T : Query<T>> internal constructor(
     @PublishedApi internal val sql: String,
     @PublishedApi internal val queryExecutor: QueryExecutor,
     internal val typeManager: TypeManager
