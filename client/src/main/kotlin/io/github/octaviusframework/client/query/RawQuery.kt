@@ -21,7 +21,7 @@ import io.github.octaviusframework.client.session.SessionProvider
 class RawQuery @PublishedApi internal constructor(
     provider: SessionProvider,
     private val sql: String
-) : RunnableQuery(provider) {
+) : RunnableQuery<RawQuery>(provider) {
 
     override fun querySql(): String = sql
 

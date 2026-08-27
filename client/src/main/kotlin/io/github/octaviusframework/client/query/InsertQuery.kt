@@ -103,7 +103,7 @@ class OnConflictClause @PublishedApi internal constructor() {
 class InsertQuery @PublishedApi internal constructor(
     provider: SessionProvider,
     private val table: String
-) : RunnableQuery(provider) {
+) : RunnableQuery<InsertQuery>(provider) {
 
     private val cte = CteClause()
     private val assignments = LinkedHashMap<String, String>()
@@ -174,6 +174,7 @@ class InsertQuery @PublishedApi internal constructor(
 
     /** Returns an independent copy, so that variants can be built from a shared base. */
     fun copy(): InsertQuery = InsertQuery(queryProvider, table).also {
+        it.copyConvertersFrom(this)
         it.cte.copyFrom(cte)
         it.assignments.putAll(assignments)
         it.targetColumns.addAll(targetColumns)

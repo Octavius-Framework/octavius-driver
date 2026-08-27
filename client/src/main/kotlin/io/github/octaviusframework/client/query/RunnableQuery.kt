@@ -2,7 +2,11 @@ package io.github.octaviusframework.client.query
 
 import io.github.octaviusframework.client.session.SessionProvider
 import io.github.octaviusframework.client.transaction.StepBuilder
+import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
+import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
+import io.github.octaviusframework.driver.query.NamedParameterQuery
 import io.github.octaviusframework.driver.row.Row
+import io.github.octaviusframework.driver.session.OctaviusSessionOperations
 
 /**
  * Something that knows how to produce a query, and can therefore be run.
@@ -23,7 +27,8 @@ import io.github.octaviusframework.driver.row.Row
  * Parameters are `@name` only. Positional `$1` placeholders stay reachable where they always were -
  * `db.execute { createNativeQuery(…) }`.
  */
-abstract class RunnableQuery @PublishedApi internal constructor(
+@Suppress("UNCHECKED_CAST")
+abstract class RunnableQuery<T : RunnableQuery<T>> @PublishedApi internal constructor(
     /** Decides which session the terminals run on. */
     @PublishedApi internal val queryProvider: SessionProvider
 ) {
@@ -31,6 +36,77 @@ abstract class RunnableQuery @PublishedApi internal constructor(
     /** Renders the SQL. Called once per terminal call, so a builder may put off assembling it until here. */
     @PublishedApi
     internal abstract fun querySql(): String
+
+    // Null until something is registered, a query being a thing an application builds per request: an empty
+    // list apiece would be two allocations on every one of them for a feature most never use.
+    @PublishedApi
+    internal var queryResultConverters: MutableList<ResultConverter<*, *>>? = null
+
+    @PublishedApi
+    internal var queryParameterConverters: MutableList<ParameterConverter<*>>? = null
+
+    /**
+     * Builds the driver query a terminal is about to run, with this query's own converters on it.
+     *
+     * Every terminal goes through here rather than calling `createNamedQuery` itself, which is what makes
+     * [registerResultConverter] apply to all of them at once.
+     */
+    @PublishedApi
+    internal fun OctaviusSessionOperations.preparedQuery(): NamedParameterQuery {
+        val query = createNamedQuery(querySql())
+        queryResultConverters?.forEach { query.registerResultConverter(it) }
+        queryParameterConverters?.forEach { query.registerParameterConverter(it) }
+        return query
+    }
+
+    /**
+     * Registers a [ResultConverter] for this query and nothing else.
+     *
+     * The driver gives every query converter registries of its own, chained to the session's and thrown away
+     * with the query; this is how a builder reaches them. A one-off mapping - a column read as something other
+     * than what the registry says, a shape that exists in one report and nowhere else - therefore costs nothing
+     * outside the query it was written for, where registering on the type manager would reach every session
+     * pointing at the same database.
+     *
+     * Registered ahead of whatever the session already holds, and later registrations here win over earlier
+     * ones.
+     *
+     * ```kotlin
+     * db.select("payload").from("dispatches")
+     *     .registerResultConverter(SealedEnvelopeConverter)
+     *     .where("legion_id = @id")
+     *     .fetchObjects<Envelope>("id" to 7)
+     * ```
+     *
+     * @param converter The converter to consult for this query.
+     * @return This query, as its own type, so it can sit anywhere in a builder chain.
+     */
+    fun registerResultConverter(converter: ResultConverter<*, *>): T {
+        (queryResultConverters ?: mutableListOf<ResultConverter<*, *>>().also { queryResultConverters = it })
+            .add(converter)
+        return this as T
+    }
+
+    /**
+     * Registers a [ParameterConverter] for this query and nothing else.
+     *
+     * The write-side mirror of [registerResultConverter], on the same terms: local to the query, ahead of the
+     * session's, and discarded with it.
+     *
+     * @param converter The converter to consult for this query.
+     * @return This query, as its own type.
+     */
+    fun registerParameterConverter(converter: ParameterConverter<*>): T {
+        (queryParameterConverters ?: mutableListOf<ParameterConverter<*>>().also { queryParameterConverters = it })
+            .add(converter)
+        return this as T
+    }
+
+    /** Carries registered converters into a builder's `copy()`, alongside whatever clauses it copies. */
+    internal fun copyConvertersFrom(other: RunnableQuery<*>) {
+        other.queryResultConverters?.let { queryResultConverters = it.toMutableList() }
+        other.queryParameterConverters?.let { queryParameterConverters = it.toMutableList() }
+    }
 
     /**
      * Renders the SQL this query would send.
@@ -77,21 +153,21 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** Runs the query and returns every row. */
     fun fetchRows(params: Map<String, Any?> = emptyMap()): List<Row> =
-        queryProvider.execute { createNamedQuery(querySql()).fetchRows(params) }
+        queryProvider.execute { preparedQuery().fetchRows(params) }
 
     /** Runs the query and returns every row. */
     fun fetchRows(vararg params: Pair<String, Any?>): List<Row> = fetchRows(params.toMap())
 
     /** Runs the query and returns its single row, or `null` where none matched. */
     fun fetchRow(params: Map<String, Any?> = emptyMap()): Row? =
-        queryProvider.execute { createNamedQuery(querySql()).fetchRow(params) }
+        queryProvider.execute { preparedQuery().fetchRow(params) }
 
     /** Runs the query and returns its single row, or `null` where none matched. */
     fun fetchRow(vararg params: Pair<String, Any?>): Row? = fetchRow(params.toMap())
 
     /** Runs the query and returns its single row, throwing where the count was anything but one. */
     fun fetchRowStrict(params: Map<String, Any?> = emptyMap()): Row =
-        queryProvider.execute { createNamedQuery(querySql()).fetchRowStrict(params) }
+        queryProvider.execute { preparedQuery().fetchRowStrict(params) }
 
     /** Runs the query and returns its single row, throwing where the count was anything but one. */
     fun fetchRowStrict(vararg params: Pair<String, Any?>): Row = fetchRowStrict(params.toMap())
@@ -110,7 +186,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
         params: Map<String, Any?> = emptyMap(),
         fetchSize: Int,
         block: (Row) -> Unit
-    ) = queryProvider.execute { createNamedQuery(querySql()).forEachRow(params, fetchSize, block) }
+    ) = queryProvider.execute { preparedQuery().forEachRow(params, fetchSize, block) }
 
 
     /** Runs the query and hands each row to [block] as it arrives, in batches of [fetchSize]. */
@@ -124,7 +200,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** Runs the query and maps every row onto [T]. */
     inline fun <reified T : Any> fetchObjects(params: Map<String, Any?> = emptyMap()): List<T> =
-        queryProvider.execute { createNamedQuery(querySql()).fetchObjects<T>(params) }
+        queryProvider.execute { preparedQuery().fetchObjects<T>(params) }
 
     /** Runs the query and maps every row onto [T]. */
     inline fun <reified T : Any> fetchObjects(vararg params: Pair<String, Any?>): List<T> =
@@ -132,7 +208,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** Runs the query and maps its single row onto [T], or `null` where none matched. */
     inline fun <reified T : Any> fetchObject(params: Map<String, Any?> = emptyMap()): T? =
-        queryProvider.execute { createNamedQuery(querySql()).fetchObject<T>(params) }
+        queryProvider.execute { preparedQuery().fetchObject<T>(params) }
 
     /** Runs the query and maps its single row onto [T], or `null` where none matched. */
     inline fun <reified T : Any> fetchObject(vararg params: Pair<String, Any?>): T? =
@@ -140,7 +216,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** Runs the query and maps its single row onto [T], throwing where the count was anything but one. */
     inline fun <reified T : Any> fetchObjectStrict(params: Map<String, Any?> = emptyMap()): T =
-        queryProvider.execute { createNamedQuery(querySql()).fetchObjectStrict<T>(params) }
+        queryProvider.execute { preparedQuery().fetchObjectStrict<T>(params) }
 
     /** Runs the query and maps its single row onto [T], throwing where the count was anything but one. */
     inline fun <reified T : Any> fetchObjectStrict(vararg params: Pair<String, Any?>): T =
@@ -156,7 +232,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
         fetchSize: Int,
         crossinline block: (T) -> Unit
     ) {
-        queryProvider.execute { createNamedQuery(querySql()).forEachObject<T>(params, fetchSize, block) }
+        queryProvider.execute { preparedQuery().forEachObject<T>(params, fetchSize, block) }
     }
 
     /** Runs the query and hands each row, mapped onto [T], to [block] as it arrives. */
@@ -170,7 +246,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** Runs the query and returns the first column of every row as [T]. */
     inline fun <reified T> fetchFields(params: Map<String, Any?> = emptyMap()): List<T> =
-        queryProvider.execute { createNamedQuery(querySql()).fetchFields<T>(params) }
+        queryProvider.execute { preparedQuery().fetchFields<T>(params) }
 
     /** Runs the query and returns the first column of every row as [T]. */
     inline fun <reified T> fetchFields(vararg params: Pair<String, Any?>): List<T> =
@@ -183,7 +259,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
      * `NULL` alike are thrown - the declaration asserted a value would be there.
      */
     inline fun <reified T> fetchField(params: Map<String, Any?> = emptyMap()): T =
-        queryProvider.execute { createNamedQuery(querySql()).fetchField<T>(params) }
+        queryProvider.execute { preparedQuery().fetchField<T>(params) }
 
     /** Runs the query and returns the first column of its single row as [T]. */
     inline fun <reified T> fetchField(vararg params: Pair<String, Any?>): T =
@@ -191,7 +267,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** As [fetchField], but the query must return exactly one row rather than at most one. */
     inline fun <reified T> fetchFieldStrict(params: Map<String, Any?> = emptyMap()): T =
-        queryProvider.execute { createNamedQuery(querySql()).fetchFieldStrict<T>(params) }
+        queryProvider.execute { preparedQuery().fetchFieldStrict<T>(params) }
 
     /** As [fetchField], but the query must return exactly one row rather than at most one. */
     inline fun <reified T> fetchFieldStrict(vararg params: Pair<String, Any?>): T =
@@ -206,7 +282,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
         params: Map<String, Any?> = emptyMap(),
         fetchSize: Int,
         crossinline block: (T) -> Unit
-    ) = queryProvider.execute { createNamedQuery(querySql()).forEachField<T>(params, fetchSize, block) }
+    ) = queryProvider.execute { preparedQuery().forEachField<T>(params, fetchSize, block) }
 
 
     /** Runs the query and hands the first column of each row, as [T], to [block] as it arrives. */
@@ -220,7 +296,7 @@ abstract class RunnableQuery @PublishedApi internal constructor(
 
     /** Runs the statement and returns how many rows it affected. */
     fun update(params: Map<String, Any?> = emptyMap()): Long =
-        queryProvider.execute { createNamedQuery(querySql()).update(params) }
+        queryProvider.execute { preparedQuery().update(params) }
 
     /** Runs the statement and returns how many rows it affected. */
     fun update(vararg params: Pair<String, Any?>): Long = update(params.toMap())

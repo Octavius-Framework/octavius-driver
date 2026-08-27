@@ -14,7 +14,7 @@ import io.github.octaviusframework.driver.row.Row
  * @param T What running it will produce.
  */
 class TransactionStep<T> @PublishedApi internal constructor(
-    @PublishedApi internal val query: RunnableQuery,
+    @PublishedApi internal val query: RunnableQuery<*>,
     @PublishedApi internal val params: Map<String, Any?>,
     @PublishedApi internal val run: (Map<String, Any?>) -> T
 )
@@ -52,7 +52,7 @@ class TransactionStep<T> @PublishedApi internal constructor(
  * ```
  */
 class StepBuilder @PublishedApi internal constructor(
-    @PublishedApi internal val query: RunnableQuery
+    @PublishedApi internal val query: RunnableQuery<*>
 ) {
 
     /** A step that returns every row. */

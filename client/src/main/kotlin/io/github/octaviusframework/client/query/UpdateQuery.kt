@@ -25,7 +25,7 @@ import io.github.octaviusframework.client.session.SessionProvider
 class UpdateQuery @PublishedApi internal constructor(
     provider: SessionProvider,
     private val table: String
-) : RunnableQuery(provider) {
+) : RunnableQuery<UpdateQuery>(provider) {
 
     private val cte = CteClause()
     private val assignments = LinkedHashMap<String, String>()
@@ -75,6 +75,7 @@ class UpdateQuery @PublishedApi internal constructor(
 
     /** Returns an independent copy, so that variants can be built from a shared base. */
     fun copy(): UpdateQuery = UpdateQuery(queryProvider, table).also {
+        it.copyConvertersFrom(this)
         it.cte.copyFrom(cte)
         it.assignments.putAll(assignments)
         it.fromClause = fromClause

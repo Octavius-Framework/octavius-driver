@@ -36,7 +36,7 @@ enum class LockWaitMode {
 class SelectQuery @PublishedApi internal constructor(
     provider: SessionProvider,
     private val selectClause: String
-) : RunnableQuery(provider) {
+) : RunnableQuery<SelectQuery>(provider) {
 
     private val cte = CteClause()
     private var fromClause: String? = null
@@ -129,6 +129,7 @@ class SelectQuery @PublishedApi internal constructor(
      * ```
      */
     fun copy(): SelectQuery = SelectQuery(queryProvider, selectClause).also {
+        it.copyConvertersFrom(this)
         it.cte.copyFrom(cte)
         it.fromClause = fromClause
         it.whereCondition = whereCondition

@@ -252,7 +252,7 @@ class DynamicTypes internal constructor(
      * @return The value as a `dynamic_dto`.
      * @throws InvalidOperationException `INVALID_ARGUMENT` where [value]'s class was never registered.
      */
-    fun toDynamicDto(value: Any): DynamicDto {
+    fun toDynamicDto(value: Any, json: Json = this.json): DynamicDto {
         val registration = registrationFor(value::class) ?: throw InvalidOperationException(
             InvalidOperationExceptionReason.INVALID_ARGUMENT,
             details = "${value::class.simpleName} is not a registered dynamic type; call " +
@@ -260,6 +260,40 @@ class DynamicTypes internal constructor(
         )
         return DynamicDto(registration.name, registration.encode(value, json))
     }
+
+    /**
+     * A read converter for these registrations that decodes payloads with [json] rather than with the
+     * client's own.
+     *
+     * For the query whose payloads are shaped differently from the rest - built in SQL with
+     * `jsonb_build_object` and therefore named the way SQL names things, or written by a service that is not
+     * this one. Register it on a single query with
+     * [registerResultConverter][io.github.octaviusframework.client.query.RunnableQuery.registerResultConverter]: query
+     * registries sit ahead of the session's and are discarded with the query, so nothing else on the
+     * connection reads that way.
+     *
+     * ```kotlin
+     * db.select("benefit").from("veterans")
+     *     .registerResultConverter(db.dynamicTypes.resultConverter(snakeCaseJson))
+     *     .fetchFields<Benefit>()
+     * ```
+     *
+     * @param json How to read the payloads.
+     * @return The converter, registered nowhere until you register it.
+     */
+    fun resultConverter(json: Json): ResultConverter<*, *> = DynamicDtoResultConverter(this, json)
+
+    /**
+     * A write converter for these registrations that encodes payloads with [json] rather than with the
+     * client's own, and the mirror of [resultConverter].
+     *
+     * [toDynamicDto] is the other half of the same question and takes a [Json] of its own, for the value
+     * wrapped by hand rather than written straight.
+     *
+     * @param json How to write the payloads.
+     * @return The converter, registered nowhere until you register it.
+     */
+    fun parameterConverter(json: Json): ParameterConverter<*> = DynamicDtoParameterConverter(this, json)
 
     internal fun forName(name: String): Registration<*>? = byName[name]
 
@@ -285,8 +319,8 @@ class DynamicTypes internal constructor(
     private fun ensureConvertersInstalled() {
         if (!convertersInstalled.compareAndSet(false, true)) return
         client.execute {
-            typeManager.registerResultConverter(DynamicDtoResultConverter(this@DynamicTypes))
-            typeManager.registerParameterConverter(DynamicDtoParameterConverter(this@DynamicTypes))
+            typeManager.registerResultConverter(DynamicDtoResultConverter(this@DynamicTypes, json))
+            typeManager.registerParameterConverter(DynamicDtoParameterConverter(this@DynamicTypes, json))
         }
     }
 
@@ -317,7 +351,8 @@ class DynamicTypes internal constructor(
  * per parameter. Two attributes whose names [DYNAMIC_DTO_DDL] fixes do not need discovering.
  */
 private class DynamicDtoParameterConverter(
-    private val types: DynamicTypes
+    private val types: DynamicTypes,
+    private val json: Json
 ) : ParameterConverter<Any> {
 
     override val supportedClass: KClass<Any> = Any::class
@@ -356,7 +391,7 @@ private class DynamicDtoParameterConverter(
                 )
             }
             typeName = registration.name
-            payload = registration.encode(source, types.json)
+            payload = registration.encode(source, json)
         }
 
         val composite = context.typeManager.containers.createComposite(DYNAMIC_DTO_NAME, DYNAMIC_DTO_SCHEMA)
@@ -375,7 +410,8 @@ private class DynamicDtoParameterConverter(
  * [convert], where the value is in hand and the message can say which name and which class.
  */
 private class DynamicDtoResultConverter(
-    private val types: DynamicTypes
+    private val types: DynamicTypes,
+    private val json: Json
 ) : ResultConverter<PgComposite, Any> {
 
     override val supportedSourceClass: KClass<PgComposite> = PgComposite::class
@@ -423,7 +459,7 @@ private class DynamicDtoResultConverter(
         if (expectedClass == DynamicDto::class) return DynamicDto(typeName, payload)
 
         val decoded = try {
-            registration.decode(payload, types.json)
+            registration.decode(payload, json)
         } catch (e: Exception) {
             throw MappingException(
                 MappingExceptionReason.CONVERSION_ERROR,

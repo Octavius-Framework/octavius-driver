@@ -25,7 +25,7 @@ import io.github.octaviusframework.driver.row.Row
  * rather than committing over one.
  */
 class ResultQuery @PublishedApi internal constructor(
-    @PublishedApi internal val query: RunnableQuery
+    @PublishedApi internal val query: RunnableQuery<*>
 ) {
 
     /** As [RunnableQuery.toSql] - the rendered SQL, for embedding in a larger statement or for a log line. */

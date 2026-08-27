@@ -203,6 +203,20 @@
   than what its codec left behind, which is the same thing `row.get<Any?>` gives anywhere else. An enum column
   arrives as the enum and a `jsonb` column as a `JsonElement`, each of which names its own PostgreSQL type on
   the way back out; the codec's `String` was declared `text` and refused by the very column it had come from.
+- `registerResultConverter` and `registerParameterConverter` on any query the client hands out, which is how a
+  builder reaches the converter registries the driver gives every query. A one-off mapping — a column read as
+  something the registry has never been told about, a shape that exists in one report and nowhere else — is now
+  a line in the chain rather than a drop down to `db.execute { createNamedQuery(…) }` and the loss of the
+  builder with it. A query's registries sit ahead of the session's and are discarded with the query, so nothing
+  else on the connection is touched; registering on the type manager instead reaches every session pointing at
+  that database. `RunnableQuery` is self-typed for them, as the driver's own `Query` is and for the same
+  reason: each hands back the builder's own type, so it can sit anywhere in the chain and needs no import where
+  it is called. `copy()` carries what was registered.
+- `dynamicTypes.resultConverter(json)`, `parameterConverter(json)` and `toDynamicDto(value, json)` — the same
+  mechanism applied to the case that most wants it. A payload built in SQL with `jsonb_build_object` is named
+  the way SQL names things, against classes whose properties are not; supply a `Json` with
+  `JsonNamingStrategy.SnakeCase` for that one query and the rest of the application goes on reading as it did.
+  Before this the `Json` was fixed when the client was built, and the read side had no way in at all.
 - **`forEach*` has no default `fetchSize`**, as it has none on the driver, where the absence is documented
   rather than accidental: a walk that streams wants batches and a walk that folds wants `0` — the whole result
   in one `Execute` — and nothing here can tell which it is. The client had invented `100`, which silently chose

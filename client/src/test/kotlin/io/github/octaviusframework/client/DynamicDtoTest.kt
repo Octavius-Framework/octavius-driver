@@ -6,7 +6,9 @@ import io.github.octaviusframework.client.dynamic.DynamicDto
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.MappingException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNamingStrategy
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.AfterAll
@@ -24,6 +26,9 @@ import kotlin.test.assertTrue
  */
 class DynamicDtoTest {
 
+    @OptIn(ExperimentalSerializationApi::class)
+    private val snakeCase = Json { namingStrategy = JsonNamingStrategy.SnakeCase }
+
     sealed interface Benefit
 
     @Serializable
@@ -34,6 +39,10 @@ class DynamicDtoTest {
 
     @Serializable
     data class Citation(val text: String)
+
+    /** camelCase properties, so a payload SQL built the way SQL names things does not fit the default Json. */
+    @Serializable
+    data class Stipend(val provinceName: String, val annualAmount: Int)
 
     companion object {
         private lateinit var dataSource: HikariDataSource
@@ -58,6 +67,7 @@ class DynamicDtoTest {
             db.dynamicTypes.register<LandGrant>("land_grant")
             db.dynamicTypes.register<MilitaryPension>("military_pension")
             db.dynamicTypes.register<Citation>("citation")
+            db.dynamicTypes.register<Stipend>("stipend")
 
             db.rawQuery(
                 """
@@ -185,6 +195,49 @@ class DynamicDtoTest {
         db.insertInto("dyn_veterans").values(listOf("name")).update("name" to "Sine Praemio")
 
         assertEquals(null, db.select("benefit").from("dyn_veterans").fetchFieldStrict<Benefit?>())
+    }
+
+    // --- A different Json, for one query --------------------------------------------------------------
+
+    @Test
+    fun `a payload named the way SQL names things reads under a Json given to that query alone`() {
+        val out = db.rawQuery(
+            "SELECT dynamic_dto('stipend', jsonb_build_object('province_name', @p, 'annual_amount', @a))"
+        )
+            .registerResultConverter(db.dynamicTypes.resultConverter(snakeCase))
+            .fetchFieldStrict<Stipend>("p" to "Aegyptus", "a" to 500)
+
+        assertEquals(Stipend("Aegyptus", 500), out)
+    }
+
+    @Test
+    fun `and the client's own Json still refuses it everywhere else`() {
+        // Which is what says the converter was the query's and not the connection's: the same SQL, one line
+        // shorter, has to fail - the default Json being strict about a key the class does not declare.
+        assertFailsWith<MappingException> {
+            db.rawQuery(
+                "SELECT dynamic_dto('stipend', jsonb_build_object('province_name', @p, 'annual_amount', @a))"
+            ).fetchFieldStrict<Stipend>("p" to "Aegyptus", "a" to 500)
+        }
+    }
+
+    @Test
+    fun `the write side takes a Json the same two ways`() {
+        val stipend = Stipend("Cyrenaica", 220)
+
+        // Once through the wrapper, which takes one directly...
+        db.insertInto("dyn_veterans").values(listOf("name", "benefit"))
+            .update("name" to "Marcus", "benefit" to db.dynamicTypes.toDynamicDto(stipend, snakeCase))
+        // ...and once unwrapped, through a converter given to this query alone.
+        db.insertInto("dyn_veterans").values(listOf("name", "benefit"))
+            .registerParameterConverter(db.dynamicTypes.parameterConverter(snakeCase))
+            .update("name" to "Lucius", "benefit" to stipend)
+
+        assertEquals(
+            listOf("Cyrenaica", "Cyrenaica"),
+            db.select("(benefit).data_payload ->> 'province_name'").from("dyn_veterans").orderBy("id")
+                .fetchFields<String>()
+        )
     }
 
     // --- What it refuses --------------------------------------------------------------------------

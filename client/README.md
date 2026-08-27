@@ -31,6 +31,11 @@ the column list paired with its own placeholders, and above all the clauses that
 nothing to say. `where(null)` leaves out the `WHERE`, which is what makes a filter assembled at runtime
 bearable to write. `QueryFragment` keeps such a filter and the parameters it names together.
 
+**A converter, for one query.** `registerResultConverter` on a builder reaches the registries the driver gives
+every query — consulted ahead of the session's, thrown away with the query. A mapping that one report needs
+does not have to be registered against the whole database, and reaching it does not mean dropping out of the
+builders. It is also how `dynamic_dto` reads a payload under a different `Json` for the length of one query.
+
 **Transaction plans.** For when the sequence itself is data — built by the layer that knows what has to happen,
 run by another. A step's parameters can point at what an earlier step produced, two plans merge into one
 transaction, and the whole plan is checked before any of it runs rather than partway through.

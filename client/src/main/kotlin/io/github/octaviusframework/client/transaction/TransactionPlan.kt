@@ -114,7 +114,7 @@ class TransactionPlan {
     /** A step and the handle it was filed under, which is all the executor needs of either. */
     internal class PlannedStep(
         val handle: StepHandle<*>,
-        val query: RunnableQuery,
+        val query: RunnableQuery<*>,
         val params: Map<String, Any?>,
         val run: (Map<String, Any?>) -> Any?
     )
