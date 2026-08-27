@@ -118,7 +118,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [Message Format and Logging](exceptions.md#message-format-and-logging) — What a thrown exception prints
 - [Query Context](exceptions.md#query-context) — The SQL and parameters your application sent
 - [SQLSTATE Routing](exceptions.md#sqlstate-routing) — Which code becomes which class
-- [Exception Reference](exceptions.md#exception-reference) — All fifteen types, one by one
+- [Exception Reference](exceptions.md#exception-reference) — All seventeen types, one by one
 - [Catching at the Right Altitude](exceptions.md#catching-at-the-right-altitude) — Including retrying concurrency failures
 - [Crossing into JDBC and Spring](exceptions.md#crossing-into-jdbc-and-spring) — `SQLExceptionWrapper`, `OctaviusDataAccessException`, and unwrapping a pool's own exception
 
@@ -158,7 +158,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [Sending Parameters In](functions-procedures.md#sending-parameters-in) — Including how argument types pick the overload
 - [Getting Values Back](functions-procedures.md#getting-values-back) — Scalars, rows, sets, and void
 - [OUT and INOUT Parameters in a `CALL`](functions-procedures.md#out-and-inout-parameters-in-a-call) — Procedures that return values
-- [When a Routine Fails](functions-procedures.md#when-a-routine-fails) — `RAISE` and `RoutineExecutionException`
+- [When a Routine Fails](functions-procedures.md#when-a-routine-fails) — A routine deciding, and a routine turning out to be wrong
 - [Summary](functions-procedures.md#summary) — Function against procedure, side by side
 
 ### COPY Protocol

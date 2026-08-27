@@ -55,24 +55,24 @@ class DriverExceptionIntegrationTest {
     }
 
     @Test
-    fun `should throw StatementException with INCORRECT_RESULT_SIZE for fetchRowStrict on empty result`() {
+    fun `should throw InvalidOperationException with INCORRECT_RESULT_SIZE for fetchRowStrict on empty result`() {
         getSession().use { session ->
-            val exception = assertFailsWith<StatementException> {
+            val exception = assertFailsWith<InvalidOperationException> {
                 session.createNativeQuery("SELECT 1 WHERE false").fetchRowStrict()
             }
             logger.error(exception) { "" }
-            assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
+            assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
         }
     }
     
     @Test
-    fun `should throw StatementException with INCORRECT_RESULT_SIZE for fetchRow on multiple results`() {
+    fun `should throw InvalidOperationException with INCORRECT_RESULT_SIZE for fetchRow on multiple results`() {
         getSession().use { session ->
-            val exception = assertFailsWith<StatementException> {
+            val exception = assertFailsWith<InvalidOperationException> {
                 session.createNativeQuery("SELECT 1 UNION ALL SELECT 2").fetchRow()
             }
             logger.error(exception) { "" }
-            assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
+            assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
         }
     }
 }

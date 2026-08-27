@@ -79,7 +79,9 @@ Queries throw, the way the driver throws. That is what keeps them usable from a 
 
 Where a failure should be a value instead, the split is decided in one place, and it reads **the exception's
 type and nothing finer** — never the `reason` enum inside it, which exists to say what happened in a log line
-rather than to be branched on.
+rather than to be branched on. Where a distinction is worth acting on, the driver states it as a type: a
+routine that raised an error of its own and a routine whose own assertion failed are two classes rather than
+two reasons on one, which is what lets them land on opposite sides of this table.
 
 | Thrown — the calling code is wrong                 | Returned as `Failure` — the operation did not work out    |
 |----------------------------------------------------|-----------------------------------------------------------|
@@ -88,17 +90,30 @@ rather than to be branched on.
 | A type the registry has never heard of             | A serialization failure                                   |
 | A value no codec would encode                      | A routine's `RAISE EXCEPTION` — a business rule saying no |
 | An operation the session's state forbids           | A statement that ran out of time                          |
-| A session that could not be obtained at all        | Anything the driver gains later                           |
+| A transaction whose state forbids the statement    | Anything the driver gains later                           |
+| A routine's own assertion, falsified by the data   |                                                           |
+| A session that could not be obtained at all        |                                                           |
 
-Everything on the left is the same on every run, so a `Failure` branch would be a slower way of reaching a
-stack trace. Everything unlisted goes right, deliberately including exception types added in future versions: a
-caller who reached for a result boundary is already handling failures, and an unrecognised one arriving there
-costs nothing, where the same one thrown past a boundary that was asked to catch it is the surprise.
+Everything on the left is a defect rather than an outcome — most of it the same on every run, the rest for the
+reasons given below — so a `Failure` branch would be a slower way of reaching a stack trace. Everything
+unlisted goes right, deliberately including exception types added in future versions: a caller who reached for
+a result boundary is already handling failures, and an unrecognised one arriving there costs nothing, where
+the same one thrown past a boundary that was asked to catch it is the surprise.
 
 **A `fetch*Strict` that found no row is thrown**, and that is the whole point of the suffix. `Strict` asserts
 that exactly one row is there, so a run that finds none has falsified something the calling code claimed. The
 same reading covers a non-nullable `T` over a `NULL`. Absence that is expected says so in the type instead —
 `fetchRow` returns `Row?`, `fetchField<String?>` returns `null` — and neither raises.
+
+**A routine's own assertion is on the left for the same reason.** `INTO STRICT` and `ASSERT` are that claim
+written in PL/pgSQL rather than in Kotlin, so `RoutineAssertionException` is read as a defect in the routine.
+A `RAISE EXCEPTION` is the opposite case and goes right: nothing was falsified there, the database declined on
+purpose, and a business rule answering is exactly the kind of failure worth carrying as a value.
+
+**A doomed transaction is on the left for a different reason.** PostgreSQL refuses everything after an error
+inside a transaction until it is rolled back, so `TransactionStateException(IN_FAILED_TRANSACTION)` reaches you
+only where an earlier failure was turned into a value and the work carried on regardless — the combination two
+sections down. Throwing it is the loudest way of saying so, and the failure worth reading is the earlier one.
 
 ## Three Doors, Three Widths
 

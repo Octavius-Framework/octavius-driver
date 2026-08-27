@@ -1,11 +1,10 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.StatementException
-import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.execution.QueryExecutor
 
 import io.github.octaviusframework.driver.row.Row
@@ -68,13 +67,13 @@ class NativeQuery internal constructor(
      *
      * @param params Values for `$1`, `$2`, … in declaration order.
      * @return The single row, or `null` if there were none.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if more than one row matched.
      */
     fun fetchRow(vararg params: Any?): Row? {
         return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2)
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
             rows.firstOrNull()
@@ -86,17 +85,17 @@ class NativeQuery internal constructor(
      *
      * @param params Values for `$1`, `$2`, … in declaration order.
      * @return The single row.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
      */
     fun fetchRowStrict(vararg params: Any?): Row {
         return withPositionalContext(params) {
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2)
-            if (rows.isEmpty()) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.isEmpty()) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
             )
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got at least 2 rows."
             )
             rows.first()
@@ -153,7 +152,7 @@ class NativeQuery internal constructor(
      * @param T The type the row is mapped to.
      * @param params Values for `$1`, `$2`, … in declaration order.
      * @return The mapped row, or `null` if there were none.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if more than one row matched.
      * @throws MappingException if the row cannot be mapped onto [T].
      */
     inline fun <reified T : Any> fetchObject(vararg params: Any?): T? {
@@ -163,8 +162,8 @@ class NativeQuery internal constructor(
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
             rows.firstOrNull()
@@ -177,7 +176,7 @@ class NativeQuery internal constructor(
      * @param T The type the row is mapped to.
      * @param params Values for `$1`, `$2`, … in declaration order.
      * @return The mapped row.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
      * @throws MappingException if the row cannot be mapped onto [T].
      */
     inline fun <reified T : Any> fetchObjectStrict(vararg params: Any?): T {
@@ -187,12 +186,12 @@ class NativeQuery internal constructor(
             val rows = queryExecutor.query(sql, params, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got at least 2 rows."
             )
-            if (rows.isEmpty()) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.isEmpty()) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
             )
             rows.first()
@@ -256,7 +255,7 @@ class NativeQuery internal constructor(
      *   as declared, so a non-nullable one is guaranteed non-null and never needs unwrapping.
      * @param params Values for `$1`, `$2`, … in declaration order.
      * @return The value, which is `null` only where [T] is itself nullable.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if more than one row matched.
      * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if [T] is not nullable and no row matched, or
      *   the value was `NULL`.
      */
@@ -269,8 +268,8 @@ class NativeQuery internal constructor(
                     targetType
                 )
             }
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
             // A missing row and a NULL value are the same absence as far as the caller's type is
@@ -295,7 +294,7 @@ class NativeQuery internal constructor(
      * @param T The type the column is mapped to.
      * @param params Values for `$1`, `$2`, … in declaration order.
      * @return The value.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
      * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if the value is `NULL` and [T] is not nullable.
      */
     inline fun <reified T> fetchFieldStrict(vararg params: Any?): T {
@@ -307,12 +306,12 @@ class NativeQuery internal constructor(
                     targetType
                 )
             }
-            if (rows.isEmpty()) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.isEmpty()) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
             )
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got at least 2 rows."
             )
             rows.first()

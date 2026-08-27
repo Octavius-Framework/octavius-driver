@@ -200,10 +200,10 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
      * @param data The bytes to send.
      * @param offset Where to start in [data].
      * @param length How many bytes to send.
-     * @throws InvalidOperationException `COPY_NOT_ACTIVE` if the operation has already finished.
+     * @throws InvalidOperationException `RESOURCE_CLOSED` if the operation has already finished.
      */
     fun writeToCopy(data: ByteArray, offset: Int = 0, length: Int = data.size) = stream.lock.withLock {
-        if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.COPY_NOT_ACTIVE, "Copy operation is no longer active.")
+        if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.RESOURCE_CLOSED, "This COPY operation is no longer active. Handles are single-use - start a new one through the CopyManager.")
         stream.sendMessage(FrontendCopyDataMessage(data, offset, length))
         stream.flush()
     }
@@ -216,12 +216,12 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
      * mode either way.
      *
      * @return The number of rows the server accepted.
-     * @throws InvalidOperationException `COPY_NOT_ACTIVE` if the operation has already finished.
+     * @throws InvalidOperationException `RESOURCE_CLOSED` if the operation has already finished.
      */
     fun endCopy(): Long {
         stream.lock.lock()
         try {
-            if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.COPY_NOT_ACTIVE, "Copy operation is no longer active.")
+            if (!isActive) throw InvalidOperationException(InvalidOperationExceptionReason.RESOURCE_CLOSED, "This COPY operation is no longer active. Handles are single-use - start a new one through the CopyManager.")
             stream.sendMessage(FrontendCopyDoneMessage())
             stream.flush()
             

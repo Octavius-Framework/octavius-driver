@@ -41,7 +41,7 @@ That is worth knowing mostly because of how long the wait can be. Most exchanges
 
 A listener loop is the extreme case: it owns the connection for its entire life, and a query issued on that same session from another thread simply waits for it — [measured at over two seconds](listen-notify.md#listener-loops) against a loop that was merely left running. Give a listener its own session.
 
-`COPY` is the one that refuses rather than waits: with a transfer open, anything else on that session throws `InvalidOperationException(COPY_IN_PROGRESS)` instead of blocking behind it, because a copy is a mode the connection is in rather than a statement it is running. See [COPY](copy.md#practical-rules-and-gotchas).
+`COPY` is the one that refuses rather than waits: with a transfer open, anything else on that session throws `InvalidOperationException(CONNECTION_BUSY)` instead of blocking behind it, because a copy is a mode the connection is in rather than a statement it is running. See [COPY](copy.md#practical-rules-and-gotchas).
 
 One operation deliberately steps around the queue: `isValid(timeout)`, which pools call to probe a connection, takes the same lock — so a probe never shortens the deadline of a query already in flight on another thread and never kills a healthy connection with a read timeout it did not ask for.
 
@@ -52,7 +52,7 @@ A `ReentrantLock` lets the *same* thread re-enter, which is exactly wrong here: 
 ```kotlin
 session.createNativeQuery("SELECT id FROM senators").forEachRow(fetchSize = 100) { row ->
     // Same connection, inside an unfinished exchange
-    session.createNativeQuery("UPDATE …").update()   // InvalidOperationException(EXECUTION_IN_PROGRESS)
+    session.createNativeQuery("UPDATE …").update()   // InvalidOperationException(CONNECTION_BUSY)
 }
 ```
 
@@ -193,7 +193,7 @@ Two ways to stay clear of it:
 
 * **One session per unit of work.** Sharing a session across threads is safe and buys nothing; borrowing one per task is what makes the work concurrent.
 * **Give listeners and long `COPY` transfers their own session.** Both hold the connection lock for their entire duration, and everything else on that session waits behind them.
-* **Never query the session from inside a `forEach*` block or a converter.** That is reentrancy, and it is refused with `EXECUTION_IN_PROGRESS` — use a second session.
+* **Never query the session from inside a `forEach*` block or a converter.** That is reentrancy, and it is refused with `CONNECTION_BUSY` — use a second session.
 * **Pool size is your concurrency, not thread count.** Virtual threads remove the thread ceiling; the connection ceiling stays where you set it — and the server's own `max_connections`, 100 by default, caps every pool against it put together.
 * **`Virtual` for driver work, `IO` if you prefer, never `Default`.** Blocking the CPU dispatcher starves the whole process.
 * **Register types once, at startup, from one thread.** The registries are global, lock-free to read, and copy-on-write to update.

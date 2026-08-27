@@ -154,20 +154,30 @@ Compare that with the JDBC route — `prepareCall("{call adjust_tribute(?, ?)}")
 
 ## When a routine fails
 
-Errors raised inside PL/pgSQL — `RAISE EXCEPTION`, a failed `ASSERT`, a `SELECT INTO STRICT` that matched the wrong number of rows — surface as `RoutineExecutionException`, separate from the exceptions that ordinary statements produce.
+Errors raised inside PL/pgSQL are their own exceptions, separate from the ones ordinary statements produce, and there are two of them because a routine can fail in two different ways.
+
+A `RAISE EXCEPTION` is the routine **deciding** — your own business rules, expressed where the data is:
 
 ```kotlin
 try {
     session.createNativeQuery("SELECT consult_auspices($1)").fetchField<Unit>(7)
-} catch (e: RoutineExecutionException) {
-    e.reason      // RAISE_EXCEPTION, ASSERT_FAILURE, NO_DATA_FOUND, TOO_MANY_ROWS
+} catch (e: RoutineRaiseException) {
     e.dbMessage   // the text passed to RAISE
     e.hint        // its HINT clause, when there is one
     e.where       // the PL/pgSQL call stack: "PL/pgSQL function consult_auspices(int) line 2 at RAISE"
 }
 ```
 
-`where` is what makes these genuinely debuggable — it names the routine and the line, not just the statement you sent. The full reason table lives in [Error Handling and Exceptions](exceptions.md#8-routineexecutionexception).
+A failed `ASSERT`, or a `SELECT INTO STRICT` that matched no row or several, is the routine having **claimed** something the data then falsified — a defect in the routine rather than an answer from it:
+
+```kotlin
+catch (e: RoutineAssertionException) {
+    e.reason      // NO_DATA_FOUND, TOO_MANY_ROWS, ASSERT_FAILURE
+    e.where       // same call stack, naming the line that asserted
+}
+```
+
+`where` is what makes both genuinely debuggable — it names the routine and the line, not just the statement you sent. The full tables live in [Error Handling and Exceptions](exceptions.md#9-routineraiseexception).
 
 ## Summary
 

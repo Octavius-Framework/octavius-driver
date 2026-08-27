@@ -14,6 +14,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 
 class CopyManagerTest {
@@ -97,7 +98,9 @@ class CopyManagerTest {
         val error = assertFailsWith<InvalidOperationException> {
             session.createNativeQuery("SELECT 1").fetchFieldStrict<Int>()
         }
-        assertEquals(InvalidOperationExceptionReason.COPY_IN_PROGRESS, error.reason)
+        assertEquals(InvalidOperationExceptionReason.CONNECTION_BUSY, error.reason)
+        // The reason is shared with reentrant execution, so the details are what say which branch fired.
+        assertTrue(error.details!!.contains("COPY operation is still in progress"))
 
         // The rejection must not disturb the transfer itself
         assertEquals(1, copyIn.endCopy())
@@ -111,7 +114,8 @@ class CopyManagerTest {
             val error = assertFailsWith<InvalidOperationException> {
                 session.copy.copyOut("COPY copy_test TO STDOUT WITH (FORMAT CSV)")
             }
-            assertEquals(InvalidOperationExceptionReason.COPY_IN_PROGRESS, error.reason)
+            assertEquals(InvalidOperationExceptionReason.CONNECTION_BUSY, error.reason)
+            assertTrue(error.details!!.contains("COPY operation is still in progress"))
         } finally {
             copyIn.cancelCopy()
         }

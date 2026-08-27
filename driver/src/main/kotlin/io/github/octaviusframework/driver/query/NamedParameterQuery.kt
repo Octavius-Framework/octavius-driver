@@ -1,11 +1,10 @@
 package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
-import io.github.octaviusframework.driver.exception.StatementException
-import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.execution.QueryExecutor
 
 import io.github.octaviusframework.driver.row.Row
@@ -27,7 +26,7 @@ import kotlin.reflect.typeOf
  *
  * Every method here takes values either as a `Map` or as `Pair`s; the `vararg` forms simply build the map.
  * A name the statement uses but the values omit raises
- * [StatementException] `MISSING_NAMED_PARAMETER`; an extra value the statement does not use is ignored.
+ * [InvalidOperationException] `MISSING_NAMED_PARAMETER`; an extra value the statement does not use is ignored.
  */
 class NamedParameterQuery internal constructor(
     sql: String,
@@ -42,7 +41,7 @@ class NamedParameterQuery internal constructor(
         val arrayParams = Array(paramNames.size) { i ->
             val name = paramNames[i]
             if (!params.containsKey(name)) {
-                throw StatementException(StatementExceptionReason.MISSING_NAMED_PARAMETER, "Missing parameter: $name")
+                throw InvalidOperationException(InvalidOperationExceptionReason.MISSING_NAMED_PARAMETER, "Missing parameter: $name")
             }
             params[name]
         }
@@ -71,7 +70,7 @@ class NamedParameterQuery internal constructor(
      *
      * @param params Values by parameter name, without the leading `@`.
      * @return All matching rows; empty when nothing matched.
-     * @throws StatementException `MISSING_NAMED_PARAMETER` if the statement names a parameter [params] omits.
+     * @throws InvalidOperationException `MISSING_NAMED_PARAMETER` if the statement names a parameter [params] omits.
      */
     fun fetchRows(params: Map<String, Any?>): List<Row> {
         return withPreparedQuery(params) { transformedSql, listParams ->
@@ -90,14 +89,14 @@ class NamedParameterQuery internal constructor(
      *
      * @param params Values by parameter name, without the leading `@`.
      * @return The single row, or `null` if there were none.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched,
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if more than one row matched,
      *   `MISSING_NAMED_PARAMETER` if the statement names a parameter [params] omits.
      */
     fun fetchRow(params: Map<String, Any?>): Row? {
         return withPreparedQuery(params) { transformedSql, listParams ->
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
             rows.firstOrNull()
@@ -112,18 +111,18 @@ class NamedParameterQuery internal constructor(
      *
      * @param params Values by parameter name, without the leading `@`.
      * @return The single row.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched,
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if no row or more than one row matched,
      *   `MISSING_NAMED_PARAMETER` if the statement names a parameter [params] omits.
      */
     fun fetchRowStrict(params: Map<String, Any?>): Row {
         return withPreparedQuery(params) { transformedSql, listParams ->
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2)
-            if (rows.isEmpty()) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.isEmpty()) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
             )
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got at least 2 rows."
             )
             rows.first()
@@ -189,7 +188,7 @@ class NamedParameterQuery internal constructor(
      * @param T The type the row is mapped to.
      * @param params Values by parameter name, without the leading `@`.
      * @return The mapped row, or `null` if there were none.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if more than one row matched.
      * @throws MappingException if the row cannot be mapped onto [T].
      */
     inline fun <reified T: Any> fetchObject(params: Map<String, Any?>): T? {
@@ -199,8 +198,8 @@ class NamedParameterQuery internal constructor(
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
             rows.firstOrNull()
@@ -216,7 +215,7 @@ class NamedParameterQuery internal constructor(
      * @param T The type the row is mapped to.
      * @param params Values by parameter name, without the leading `@`.
      * @return The mapped row.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
      * @throws MappingException if the row cannot be mapped onto [T].
      */
     inline fun <reified T : Any> fetchObjectStrict(params: Map<String, Any?>): T {
@@ -226,12 +225,12 @@ class NamedParameterQuery internal constructor(
             val rows = queryExecutor.query(transformedSql, listParams, parameterSerializer, resultMapper, maxRows = 2) {
                 resultMapper.deserialize<T>(it, targetType, recordType)
             }
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got at least 2 rows."
             )
-            if (rows.isEmpty()) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.isEmpty()) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
             )
             rows.first()
@@ -304,7 +303,7 @@ class NamedParameterQuery internal constructor(
      *   as declared, so a non-nullable one is guaranteed non-null and never needs unwrapping.
      * @param params Values by parameter name, without the leading `@`.
      * @return The value, which is `null` only where [T] is itself nullable.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if more than one row matched.
      * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if [T] is not nullable and no row matched, or
      *   the value was `NULL`.
      */
@@ -317,8 +316,8 @@ class NamedParameterQuery internal constructor(
                     targetType
                 )
             }
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 0 or 1, got at least 2 rows."
             )
             // A missing row and a NULL value are the same absence as far as the caller's type is
@@ -346,7 +345,7 @@ class NamedParameterQuery internal constructor(
      * @param T The type the column is mapped to.
      * @param params Values by parameter name, without the leading `@`.
      * @return The value.
-     * @throws StatementException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
+     * @throws InvalidOperationException `INCORRECT_RESULT_SIZE` if no row or more than one row matched.
      * @throws MappingException `REQUIRED_ATTRIBUTE_MISSING` if the value is `NULL` and [T] is not nullable.
      */
     inline fun <reified T> fetchFieldStrict(params: Map<String, Any?>): T {
@@ -358,12 +357,12 @@ class NamedParameterQuery internal constructor(
                     targetType
                 )
             }
-            if (rows.isEmpty()) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.isEmpty()) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got 0 rows."
             )
-            if (rows.size > 1) throw StatementException(
-                StatementExceptionReason.INCORRECT_RESULT_SIZE,
+            if (rows.size > 1) throw InvalidOperationException(
+                InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE,
                 details = "Expected 1, got at least two rows."
             )
             rows.first()

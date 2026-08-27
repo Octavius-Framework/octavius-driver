@@ -75,17 +75,17 @@ Decoding and mapping happen *while* the result stream is being consumed, so a ma
 
 Plenty of failures are decided locally, before a single byte goes out. They have no `sqlState` (except where the driver picks a conventional one) and no `serverErrorMessage`:
 
-| Situation                                                            | Exception                                     |
-|:---------------------------------------------------------------------|:----------------------------------------------|
-| Unclosed quote / dollar-quote / comment found while parsing `@names` | `StatementException(UNCLOSED_*)`              |
-| A named parameter present in the SQL has no value supplied           | `StatementException(MISSING_NAMED_PARAMETER)` |
-| `fetchRowStrict` got 0 rows, `fetchRow` got 2+                       | `StatementException(INCORRECT_RESULT_SIZE)`   |
-| Commit on an auto-commit session, closed statement, unwrap failure   | `InvalidOperationException`                   |
-| Type missing from the registry, no codec for an OID                  | `TypeException`                               |
-| A codec's `toBinary` / `fromBinary` blew up                          | `CodecException`                              |
-| A column is missing, a non-nullable property got `null`              | `MappingException`                            |
-| Socket timeout, broken pipe, use of a closed connection              | `NetworkException`                            |
-| Handshake, authentication, SSL negotiation, version check            | `InitializationException`                     |
+| Situation                                                            | Exception                                            |
+|:---------------------------------------------------------------------|:-----------------------------------------------------|
+| Unclosed quote / dollar-quote / comment found while parsing `@names` | `StatementException(UNCLOSED_TOKEN)`                 |
+| A named parameter present in the SQL has no value supplied           | `InvalidOperationException(MISSING_NAMED_PARAMETER)` |
+| `fetchRowStrict` got 0 rows, `fetchRow` got 2+                       | `InvalidOperationException(INCORRECT_RESULT_SIZE)`   |
+| Commit on an auto-commit session, closed statement, unwrap failure   | `InvalidOperationException`                          |
+| Type missing from the registry, no codec for an OID                  | `TypeException`                                      |
+| A codec's `toBinary` / `fromBinary` blew up                          | `CodecException`                                     |
+| A column is missing, a non-nullable property got `null`              | `MappingException`                                   |
+| Socket timeout, broken pipe, use of a closed connection              | `NetworkException`                                   |
+| Handshake, authentication, SSL negotiation, version check            | `InitializationException`                            |
 
 ## Message format and logging
 
@@ -185,8 +185,8 @@ How it is populated depends on the query type and on *when* things broke:
 | `createNamedQuery`, failing at execution       | as written | your named map                | the `$n` rewrite   | the values     |
 | `createNamedQuery`, failing *before* rewriting | as written | your named map                | `null`             | `null`         |
 
-That last row is the parser and missing-parameter case: an `UNCLOSED_QUOTE` or `MISSING_NAMED_PARAMETER` is detected
-before the SQL is transformed, so there is no database-level form to show.
+That last row is the parser and missing-parameter case: an `UNCLOSED_TOKEN` or a `MISSING_NAMED_PARAMETER` is
+detected before the SQL is transformed, so there is no database-level form to show.
 
 Exceptions raised outside a query — connection setup, `session.commit()`, savepoint misuse — have
 `queryContext == null`. Always treat it as nullable.
@@ -225,7 +225,7 @@ The statement survives, which is usually what makes the entry worth keeping; onl
 | 4  | `21*`, `0A*`, `3D*`, `3F*` | `StatementException(INVALID_DEFINITION)`                  |
 | 5  | `23*`                      | `ConstraintViolationException` — reason per code          |
 | 6  | `25P03`, `25P04`           | `ExecutionAbortedException(TRANSACTION_TIMEOUT)`          |
-| 7  | `25*` (everything else)    | `StatementException(INVALID_TRANSACTION_STATE)`           |
+| 7  | `25*` (everything else)    | `TransactionStateException` — reason per code             |
 | 8  | `40002`                    | `ConstraintViolationException(UNKNOWN)`                   |
 | 9  | `40*` (everything else)    | `ConcurrencyException` — `40001`, `40P01`, else `UNKNOWN` |
 | 10 | `42501`                    | `PermissionDeniedException`                               |
@@ -235,8 +235,9 @@ The statement survives, which is usually what makes the entry worth keeping; onl
 | 14 | `55*` (everything else)    | `DatabaseSystemException`                                 |
 | 15 | `57014`                    | `ExecutionAbortedException(QUERY_CANCELED)`               |
 | 16 | `57*`, `53*`, `58*`, `XX*` | `DatabaseSystemException`                                 |
-| 17 | `P0*`                      | `RoutineExecutionException` — reason per code             |
-| 18 | anything else              | `UncategorizedDatabaseException`                          |
+| 17 | `P0002`, `P0003`, `P0004`  | `RoutineAssertionException` — reason per code             |
+| 18 | `P0*` (everything else)    | `RoutineRaiseException`                                   |
+| 19 | anything else              | `UncategorizedDatabaseException`                          |
 
 **Class 22 (data) → `DataExceptionReason`**
 
@@ -307,25 +308,20 @@ Which of those the database actually fills in varies by violation: a unique viol
 ### 3. `StatementException`
 
 **Thrown when:** SQL parsing, planning, or execution fails — and also for a handful of client-side statement problems.
-**Raised by:** the server (classes `42`, `54`, `25`, `21`, `0A`, `3D`, `3F`) **and** the driver (`SqlParameterParser`, `NamedParameterQuery`, `NativeQuery`).
+**Raised by:** the server (classes `42`, `54`, `21`, `0A`, `3D`, `3F`) **and** the driver's own SQL parser (`SqlParameterParser`).
 **Properties:** `reason`, `details`, `position` — the 1-based character position of the error, used to render the caret.
 
-| Reason (`StatementExceptionReason`) | Origin | Description                                                             |
-|:------------------------------------|:-------|:------------------------------------------------------------------------|
-| `SYNTAX_ERROR`                      | server | SQL syntax error (also class `54`, program limits exceeded).            |
-| `UNCLOSED_QUOTE`                    | driver | Unclosed string or identifier quote found while scanning for `@params`. |
-| `UNCLOSED_DOLLAR_QUOTE`             | driver | Unclosed dollar-quoted string.                                          |
-| `UNCLOSED_COMMENT`                  | driver | Unclosed multi-line comment.                                            |
-| `UNDEFINED_OBJECT`                  | server | Referenced function, column, or table does not exist.                   |
-| `DUPLICATE_OBJECT`                  | server | Object already exists (DDL statements).                                 |
-| `AMBIGUOUS_OBJECT`                  | server | Ambiguous reference (e.g. an unqualified column across JOINs).          |
-| `DATA_TYPE_ERROR`                   | server | Type mismatch at the query level.                                       |
-| `INVALID_DEFINITION`                | server | Invalid definition or object state; also the class-42 catch-all.        |
-| `INVALID_TRANSACTION_STATE`         | server | Class `25` — read-only transaction, or a transaction already aborted.   |
-| `MISSING_NAMED_PARAMETER`           | driver | A `@name` in the SQL had no value in the supplied map.                  |
-| `INCORRECT_RESULT_SIZE`             | driver | `fetch*Strict` found 0 rows, or a single-row fetch found 2+.            |
+| Reason (`StatementExceptionReason`) | Origin | Description                                                                                           |
+|:------------------------------------|:-------|:------------------------------------------------------------------------------------------------------|
+| `SYNTAX_ERROR`                      | server | SQL syntax error (also class `54`, program limits exceeded).                                          |
+| `UNCLOSED_TOKEN`                    | driver | A quote, dollar-quoted body or comment left open while scanning for `@params`. `details` names which. |
+| `UNDEFINED_OBJECT`                  | server | Referenced function, column, or table does not exist.                                                 |
+| `DUPLICATE_OBJECT`                  | server | Object already exists (DDL statements).                                                               |
+| `AMBIGUOUS_OBJECT`                  | server | Ambiguous reference (e.g. an unqualified column across JOINs).                                        |
+| `DATA_TYPE_ERROR`                   | server | Type mismatch at the query level.                                                                     |
+| `INVALID_DEFINITION`                | server | Invalid definition or object state; also the class-42 catch-all.                                      |
 
-The `INCORRECT_RESULT_SIZE` case is why single-row fetches request `maxRows = 2` — enough to detect "more than one" without dragging the rest of the result set across the wire.
+Every reason here is about the statement itself, and `position` is the evidence of it: server-reported or parser-reported, there is somewhere in the SQL to point at. A call that asked for something the statement cannot give — a parameter left out of the map, a row count the chosen terminal forbids — is `InvalidOperationException` instead.
 
 ### 4. `InitializationException`
 
@@ -345,7 +341,7 @@ The `INCORRECT_RESULT_SIZE` case is why single-row fetches request `maxRows = 2`
 | `CONNECTION_ERROR`                       | General connection failure before authentication could begin.              |
 
 > [!NOTE]
-> Class `28` maps here even mid-session. A `SET ROLE` to a role you may not assume produces an `InitializationException(SERVER_REJECTED_CREDENTIALS)` on a long-established connection.
+> This is a login-time failure, and the authorization statements a live session can run do not produce it.
 
 ### 5. `NetworkException`
 
@@ -389,28 +385,57 @@ This is the one category that is routinely **retryable** — see the retry loop 
 | `TRANSACTION_TIMEOUT`                      | `25P03`, `25P04` | `idle_in_transaction_session_timeout` or `transaction_timeout` fired. |
 | `QUERY_CANCELED`                           | `57014`          | Cancelled via `statement_timeout` or `session.cancelQuery()`.         |
 
-### 8. `RoutineExecutionException`
+### 8. `TransactionStateException`
 
-**Thrown when:** something goes wrong *inside* a PL/pgSQL routine — usually your own business rules, expressed as `RAISE EXCEPTION`.
-**Raised by:** the server, SQLSTATE class `P0`.
-**Properties:** `reason`, `dbMessage`, `dbDetail`, `hint`, `where`.
+**Thrown when:** the statement is fine and the transaction it arrived in is not — one an earlier error already doomed, one declared `READ ONLY`, one open where the command forbids it, or none open where the command needs one.
+**Raised by:** the server, SQLSTATE class `25` apart from `25P03` / `25P04`.
+**Properties:** `reason`, `dbMessage`, `hint`.
+
+There is no `position` here, and that is the whole reason this is not a `StatementException`: the server rejects these before the statement is considered on its own merits, so it sends nothing to point at. Nothing about the SQL is wrong.
+
+| Reason (`TransactionStateExceptionReason`) | SQLSTATE    | Description                                                                                     |
+|:-------------------------------------------|:------------|:------------------------------------------------------------------------------------------------|
+| `IN_FAILED_TRANSACTION`                    | `25P02`     | An earlier error doomed the transaction; everything is refused until it is rolled back.         |
+| `READ_ONLY_TRANSACTION`                    | `25006`     | A write inside a transaction declared `READ ONLY`.                                              |
+| `NO_ACTIVE_TRANSACTION`                    | `25P01`     | The statement requires an open transaction and there is none.                                   |
+| `ACTIVE_TRANSACTION`                       | `25001`     | The statement refuses to run inside a transaction block, and one is open.                       |
+| `UNKNOWN`                                  | other `25*` | Another class-25 state, including the two-phase-commit codes Octavius does not otherwise touch. |
+
+`IN_FAILED_TRANSACTION` is a consequence rather than a cause. After any error inside an explicit transaction PostgreSQL discards the work and refuses every further command until a `ROLLBACK` arrives, so this exception only says the session never left that state — **the failure worth reading is the earlier one**. See [One failed statement poisons the whole transaction](#practical-rules-and-gotchas).
+
+The two class-25 timeouts are elsewhere: a transaction the server ended on a timer is `ExecutionAbortedException(TRANSACTION_TIMEOUT)`, alongside the statement timeout it belongs with.
+
+### 9. `RoutineRaiseException`
+
+**Thrown when:** a PL/pgSQL routine raises an error of its own — `RAISE EXCEPTION`, which is usually your own business rules expressed where the data is.
+**Raised by:** the server, SQLSTATE `P0001`, `P0000`, and anything else in class `P0` that is not an assertion failure.
+**Properties:** `dbMessage`, `dbDetail`, `hint`, `where`. No reason enum — its `message` is simply `ROUTINE_RAISE_EXCEPTION`.
 
 `where` is the PL/pgSQL call stack (`PL/pgSQL function elect_consul(text) line 12 at RAISE`), which is what makes this exception genuinely debuggable. `dbMessage` is the text you passed to `RAISE`, `dbDetail` and `hint` the `DETAIL` and `HINT` clauses.
 
-| Reason (`RoutineExecutionExceptionReason`) | SQLSTATE    | Description                                      |
-|:-------------------------------------------|:------------|:-------------------------------------------------|
-| `RAISE_EXCEPTION`                          | `P0001`     | User-defined exception raised by the routine.    |
-| `NO_DATA_FOUND`                            | `P0002`     | `SELECT INTO STRICT` returned no rows.           |
-| `TOO_MANY_ROWS`                            | `P0003`     | `SELECT INTO STRICT` returned more than one row. |
-| `ASSERT_FAILURE`                           | `P0004`     | An `ASSERT` failed during execution.             |
-| `UNKNOWN`                                  | other `P0*` | Unmapped PL/pgSQL error.                         |
+There is no reason enum because there is nothing to tell apart. A plain `RAISE EXCEPTION` reports `P0001`; `P0000` is reachable only by asking for it — `RAISE ... USING ERRCODE = 'plpgsql_error'` — so it is another deliberate raise rather than an unclassified failure. Which one it was is `sqlState`.
 
 > [!TIP]
-> `RAISE EXCEPTION` accepts `USING ERRCODE = '...'`. Raise a domain-specific SQLSTATE and it routes through the normal table — `ERRCODE = '23505'` will reach your application as a `ConstraintViolationException`, not a `RoutineExecutionException`.
+> `RAISE EXCEPTION` accepts `USING ERRCODE = '...'`. Raise a domain-specific SQLSTATE and it routes through the normal
+> table — `ERRCODE = '23505'` will reach your application as a `ConstraintViolationException`, not as this.
+
+### 10. `RoutineAssertionException`
+
+**Thrown when:** an assertion inside a PL/pgSQL routine turns out to be false — an `INTO STRICT` that matched no row or several, or an `ASSERT` that did not hold.
+**Raised by:** the server, SQLSTATE `P0002`, `P0003`, `P0004`.
+**Properties:** `reason`, `dbMessage`, `dbDetail`, `hint`, `where`.
+
+| Reason (`RoutineAssertionExceptionReason`) | SQLSTATE | Description                                      |
+|:-------------------------------------------|:---------|:-------------------------------------------------|
+| `NO_DATA_FOUND`                            | `P0002`  | `SELECT INTO STRICT` returned no rows.           |
+| `TOO_MANY_ROWS`                            | `P0003`  | `SELECT INTO STRICT` returned more than one row. |
+| `ASSERT_FAILURE`                           | `P0004`  | An `ASSERT` failed during execution.             |
+
+Separate from `RoutineRaiseException` because it says something different. A `RAISE` is the routine deciding; these are the routine having claimed something the data then falsified, which makes them defects in the database code — the same reading that has a `fetch*Strict` finding no row raise `InvalidOperationException(INCORRECT_RESULT_SIZE)` rather than return `null`. This is that failure one level down, asserted in PL/pgSQL rather than in Kotlin.
 
 See [Functions and Procedures](functions-procedures.md) for calling conventions.
 
-### 9. `PermissionDeniedException`
+### 11. `PermissionDeniedException`
 
 **Thrown when:** the database user lacks the privileges for an action or object.
 **Raised by:** the server, SQLSTATE `42501`.
@@ -418,29 +443,29 @@ See [Functions and Procedures](functions-procedures.md) for calling conventions.
 
 The object-identifying fields come straight from the server's error message, so they pinpoint what was refused rather than making you parse `permission denied for table ...`.
 
-### 10. `InvalidOperationException`
+### 12. `InvalidOperationException`
 
 **Thrown when:** the driver is asked to do something not allowed in its current state. Purely client-side — no `sqlState`, no `serverErrorMessage`.
-**Raised by:** `OctaviusConnection`, `OctaviusStatement`, `OctaviusSavepoint`, `OctaviusDataSource`, `LargeObject`, `CopyManager`, `QueryExecutor`.
-**Properties:** `reason`, `details`.
+**Raised by:** `OctaviusConnection`, `OctaviusStatement`, `OctaviusSavepoint`, `OctaviusDataSource`, `LargeObject`, `CopyManager`, `QueryExecutor`, `NamedParameterQuery`, `NativeQuery`.
+**Properties:** `reason`, `details`. Raised inside a query it still carries the `queryContext`, the way every driver exception does.
 
-| Reason (`InvalidOperationExceptionReason`) | Description                                                                                                                                                                    |
-|:-------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `AUTO_COMMIT_VIOLATION`                    | `commit()`, `rollback()` or a savepoint attempted while auto-commit is enabled.                                                                                                |
-| `INVALID_SAVEPOINT`                        | Savepoint is unknown, already released, or belongs to another connection.                                                                                                      |
-| `OBJECT_CLOSED`                            | Operation attempted on a closed statement or large object.                                                                                                                     |
-| `INVALID_ARGUMENT`                         | An argument is not acceptable — a negative timeout, a null SQL string, an unsupported isolation level, a non-positive COPY `bufferSize`. `details` names the rejected value.   |
-| `UNWRAP_ERROR`                             | JDBC `unwrap()` to an interface this object does not implement.                                                                                                                |
-| `FEATURE_NOT_SUPPORTED`                    | A legacy JDBC feature Octavius deliberately does not implement.                                                                                                                |
-| `UNEXPECTED_RESULT`                        | `execute()`/`update()` received result rows — use a `fetch*` method for DQL. Also raised when a `COPY` did not start, or when a `DataRow` arrives before its `RowDescription`. |
-| `COPY_IN_PROGRESS`                         | The connection is in copy mode. Anything else on that session — a query, a second `COPY`, a notification listener — is refused until the transfer ends. See [COPY](copy.md).   |
-| `EXECUTION_IN_PROGRESS`                    | A statement is already executing on this connection — usually a query issued from a `forEach` block or a converter. See [Queries](queries.md).                                 |
-| `COPY_NOT_ACTIVE`                          | A `CopyIn` / `CopyOut` handle was used after it was ended or cancelled. Handles are single-use — start a new one through the `CopyManager`.                                    |
+| Reason (`InvalidOperationExceptionReason`) | Description                                                                                                                                                                                                                                                                                |
+|:-------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `AUTO_COMMIT_VIOLATION`                    | `commit()`, `rollback()` or a savepoint attempted while auto-commit is enabled.                                                                                                                                                                                                            |
+| `INVALID_SAVEPOINT`                        | Savepoint is unknown, already released, or belongs to another connection.                                                                                                                                                                                                                  |
+| `RESOURCE_CLOSED`                          | The statement, Large Object or `COPY` handle is already closed. `details` names it; handles are single-use, so the answer is a new one.                                                                                                                                                    |
+| `INVALID_ARGUMENT`                         | An argument is not acceptable — a negative timeout, a null SQL string, an unsupported isolation level, a non-positive COPY `bufferSize`, a `PgTyped` wrapping another, a `PgRecord` read out of a result and handed back as a parameter. `details` names the rejected value.               |
+| `MISSING_NAMED_PARAMETER`                  | A `@name` in the SQL had no value in the supplied map. `details` names the parameter.                                                                                                                                                                                                      |
+| `UNWRAP_ERROR`                             | JDBC `unwrap()` to an interface this object does not implement.                                                                                                                                                                                                                            |
+| `FEATURE_NOT_SUPPORTED`                    | A legacy JDBC feature Octavius deliberately does not implement.                                                                                                                                                                                                                            |
+| `UNEXPECTED_RESULT`                        | `execute()`/`update()` received result rows — use a `fetch*` method for DQL. Also raised when a `COPY` did not start, or when a `DataRow` arrives before its `RowDescription`.                                                                                                             |
+| `INCORRECT_RESULT_SIZE`                    | `fetch*Strict` found 0 rows, or a single-row fetch found 2+ — which is why single-row fetches request `maxRows = 2`. The statement ran; the terminal chosen for it is what does not fit.                                                                                                   |
+| `CONNECTION_BUSY`                          | The connection is already carrying an exchange and can carry only one — a `COPY` still open, or a statement still being read, usually a query issued from a `forEach` block or a converter. `details` says which, and how to let it finish. See [COPY](copy.md) and [Queries](queries.md). |
 
-### 11. `TypeException`
+### 13. `TypeException`
 
 **Thrown when:** type resolution fails in the registry.
-**Raised by:** `TypeDictionary`, `ContainerFactory`, `PgTyped`, `ParameterSerializer`.
+**Raised by:** `TypeDictionary`, `ContainerFactory`, `ParameterSerializer`.
 **Properties:** `reason`, `oid`, `typeName`, `details`.
 
 | Reason (`TypeExceptionReason`)   | Description                                                                                                                    |
@@ -448,10 +473,8 @@ The object-identifying fields come straight from the server's error message, so 
 | `TYPE_NOT_FOUND`                 | Type is missing from the registry — often a `CREATE TYPE` executed after the catalog was loaded; call `session.reloadTypes()`. |
 | `NOT_A_CONTAINER`                | The OID is not a composite/array/enum/range container.                                                                         |
 | `MISSING_CODEC`                  | The driver has no codec for that OID (see [Type System](type-system.md#base-types-the-driver-does-not-implement)).             |
-| `ANONYMOUS_RECORD_NOT_SUPPORTED` | PostgreSQL cannot accept an anonymous `record` as a parameter.                                                                 |
-| `NESTED_PGTYPED_NOT_ALLOWED`     | A `PgTyped` cannot wrap another `PgTyped`.                                                                                     |
 
-### 12. `CodecException`
+### 14. `CodecException`
 
 **Thrown when:** encoding or decoding a value against PostgreSQL's binary format fails. Every codec call is routed through `encodeSafely` / `decodeSafely`, which catch *anything* the codec throws and re-wrap it here with the original as `cause`.
 **Properties:** `action`, `value`, `name`, `schema`, `oid`, `kotlinClass`.
@@ -463,7 +486,7 @@ The object-identifying fields come straight from the server's error message, so 
 
 `value` is truncated before it is stored — a `ByteArray` is reported as `ByteArray(n bytes)` and decoding keeps at most the first 100 bytes; a `toString()` longer than 100 characters is cut with an ellipsis. Diagnostics stay readable and a 40 MB `bytea` never ends up in your log file.
 
-### 13. `MappingException`
+### 15. `MappingException`
 
 **Thrown when:** a conversion or object-mapping step fails, on either side of the wire.
 **Raised by:** `ResultMapper`, `ReflectionMappingUtils`, and the `PgComposite` / `PgRecord` / `PgArray` / `PgRange` accessors.
@@ -478,13 +501,13 @@ The object-identifying fields come straight from the server's error message, so 
 
 `path` accumulates as the exception unwinds through nested structures — each frame appends its own key name — and is printed reversed, outermost first: `Path: consul -> province -> founded`. That tells you *which* field five levels down in a nested composite was the problem.
 
-### 14. `DatabaseSystemException`
+### 16. `DatabaseSystemException`
 
 **Thrown when:** the database engine itself is in trouble rather than your query being wrong — out of memory, disk full, configuration limits, internal errors.
 **Raised by:** the server, SQLSTATE classes `53`, `55` (except `55P03`), `57` (except `57014`), `58`, `XX`.
-**Properties:** `errorMessage` — a pre-formatted string that already includes the SQLSTATE and the server's message. No reason enum.
+**Properties:** `details` — a pre-formatted string that already includes the SQLSTATE and the server's message. No reason enum.
 
-### 15. `UncategorizedDatabaseException`
+### 17. `UncategorizedDatabaseException`
 
 **Thrown when:** a database error arrives with a SQLSTATE no branch of the routing table claims.
 **Properties:** `details`. No reason enum.
@@ -533,9 +556,14 @@ catch (e: ConstraintViolationException) {
 
 `SERIALIZATION_FAILURE` and `DEADLOCK_DETECTED` mean "nothing was wrong with your statement, the timing was unlucky" — the same work may well succeed on a second attempt. Getting the retry right takes a little care about what state the transaction is actually in.
 
-On such an error PostgreSQL **dooms** the transaction: everything it did is discarded, and the session moves to failed-transaction state (`ReadyForQuery` reports `E`), rejecting every further command with `25P02` → `StatementException(INVALID_TRANSACTION_STATE)`. What it does *not* do is end the transaction block — someone still has to send `ROLLBACK`. That someone is whoever owns the boundary: `transaction.required { }` if it opened the transaction, `session.rollback()` if you are driving `autoCommit = false` yourself.
+On such an error PostgreSQL **dooms** the transaction: everything it did is discarded, and the session moves to
+failed-transaction state (`ReadyForQuery` reports `E`), rejecting every further command with `25P02` →
+`TransactionStateException(IN_FAILED_TRANSACTION)`. What it does *not* do is end the transaction block — someone still
+has to send `ROLLBACK`. That someone is whoever owns the boundary: `transaction.required { }` if it opened the
+transaction, `session.rollback()` if you are driving `autoCommit = false` yourself.
 
-So a retry has to restart the *whole* transaction — only a new transaction gets a new snapshot, which is the entire point under `REPEATABLE READ` / `SERIALIZABLE` — which puts the retry wrapper around the frame that owns the boundary:
+So a retry has to restart the *whole* transaction — only a new transaction gets a new snapshot, which is the entire
+point under `REPEATABLE READ` / `SERIALIZABLE` — which puts the retry wrapper around the frame that owns the boundary:
 
 ```kotlin
 fun <T> withRetry(attempts: Int = 3, block: () -> T): T {
@@ -581,7 +609,8 @@ class SQLExceptionWrapper(val wrappedException: OctaviusException)
     : SQLException(wrappedException.message, wrappedException.sqlState)
 ```
 
-The wrapper carries the message and SQLSTATE, but **not** the cause chain — `wrapper.cause` is `null`. Reach for `wrapper.wrappedException` to get back the typed exception with its context and stack trace intact:
+The wrapper carries the message and SQLSTATE, but **not** the cause chain — `wrapper.cause` is `null`. Reach for
+`wrapper.wrappedException` to get back the typed exception with its context and stack trace intact:
 
 ```kotlin
 try {
@@ -592,13 +621,21 @@ try {
 }
 ```
 
-Going the other way, `OctaviusSessionImpl` unwraps automatically: session-level operations that delegate to the JDBC connection (`autoCommit`, `commit()`, `rollback()`, `transactionIsolationLevel`, `networkTimeout`, …) catch `SQLExceptionWrapper` and re-throw the original. **Session API users never see the wrapper.**
+Going the other way, `OctaviusSessionImpl` unwraps automatically: session-level operations that delegate to the JDBC
+connection (`autoCommit`, `commit()`, `rollback()`, `transactionIsolationLevel`, `networkTimeout`, …) catch
+`SQLExceptionWrapper` and re-throw the original. **Session API users never see the wrapper.**
 
 ### Spring
 
-`OctaviusExceptionTranslator` plugs into Spring's `SQLExceptionTranslator` contract. It searches the incoming `SQLException` and its entire cause chain for anything Octavius-shaped — a `SQLExceptionWrapper`, or a bare `OctaviusException` such as the `InitializationException` a pool reports when it could not open a connection at all — and produces an `OctaviusDataAccessException` carrying the original. Searching the whole chain is what keeps a driver failure recognizable after HikariCP has wrapped it in an exception of its own. Anything it doesn't recognize falls through to Spring's own `SQLStateSQLExceptionTranslator`, so you never lose the standard hierarchy.
+`OctaviusExceptionTranslator` plugs into Spring's `SQLExceptionTranslator` contract. It searches the incoming
+`SQLException` and its entire cause chain for anything Octavius-shaped — a `SQLExceptionWrapper`, or a bare
+`OctaviusException` such as the `InitializationException` a pool reports when it could not open a connection at all —
+and produces an `OctaviusDataAccessException` carrying the original. Searching the whole chain is what keeps a driver
+failure recognizable after HikariCP has wrapped it in an exception of its own. Anything it doesn't recognize falls
+through to Spring's own `SQLStateSQLExceptionTranslator`, so you never lose the standard hierarchy.
 
-**Spring users never see the wrapper either**: whatever the layers on the way, `octaviusException` is the driver's exception itself.
+**Spring users never see the wrapper either**: whatever the layers on the way, `octaviusException` is the driver's
+exception itself.
 
 `OctaviusDataAccessException` keeps the original available as `octaviusException`:
 
@@ -616,8 +653,8 @@ class GlobalExceptionHandler {
                 .body(mapOf("error" to "Already enrolled.", "constraint" to (root.constraint ?: "")))
         }
 
-        if (root is StatementException &&
-            root.reason == StatementExceptionReason.INVALID_TRANSACTION_STATE) {
+        if (root is TransactionStateException &&
+            root.reason == TransactionStateExceptionReason.READ_ONLY_TRANSACTION) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(mapOf("error" to "Cannot write in a read-only transaction."))
         }
@@ -632,9 +669,14 @@ See [Spring Integration](spring-integration.md) for the surrounding configuratio
 
 ### Digging it out yourself
 
-The translator above only runs where Spring is holding the exception. The one place nothing does it for you is **building the pool** — `HikariDataSource(config)` opens a connection to check the configuration works, and a driver failure there comes back as Hikari's `PoolInitializationException`, thrown from a Hikari constructor you called directly. That is correct layering rather than a gap: you called their API, you get their exception, and no amount of driver code changes that.
+The translator above only runs where Spring is holding the exception. The one place nothing does it for you is *
+*building the pool** — `HikariDataSource(config)` opens a connection to check the configuration works, and a driver
+failure there comes back as Hikari's `PoolInitializationException`, thrown from a Hikari constructor you called
+directly. That is correct layering rather than a gap: you called their API, you get their exception, and no amount of
+driver code changes that.
 
-What the driver does provide is the same tool its own translator uses. `findOctaviusCause()` is an extension on `Throwable`, not on `SQLException`, so it works on anything:
+What the driver does provide is the same tool its own translator uses. `findOctaviusCause()` is an extension on
+`Throwable`, not on `SQLException`, so it works on anything:
 
 ```kotlin
 import io.github.octaviusframework.driver.exception.findOctaviusCause
@@ -648,26 +690,48 @@ val pool = try {
 }
 ```
 
-It walks the receiver first and then the cause chain, returning the driver's own exception — unwrapping a `SQLExceptionWrapper` where it finds one — or `null` when the failure did not start in the driver. The walk is depth-bounded, so a self-referential chain ends rather than spinning.
+It walks the receiver first and then the cause chain, returning the driver's own exception — unwrapping a
+`SQLExceptionWrapper` where it finds one — or `null` when the failure did not start in the driver. The walk is
+depth-bounded, so a self-referential chain ends rather than spinning.
 
-Outside pool construction you rarely need it: [`getOctaviusSession`](initialization.md#getting-a-session) already restates whatever a pool refuses a connection with, and the Spring translator already searches the chain.
+Outside pool construction you rarely need it: [`getOctaviusSession`](initialization.md#getting-a-session) already
+restates whatever a pool refuses a connection with, and the Spring translator already searches the chain.
 
 ## Practical rules and gotchas
 
-* **Log the exception, not its message.** `message` is the `EXCEPTION_NAME:REASON` identifier by design. The diagnostic block — details, SQL, parameters, caret — lives in `toString()`, which loggers invoke when the throwable is passed as such.
+* **Log the exception, not its message.** `message` is the `EXCEPTION_NAME:REASON` identifier by design. The diagnostic
+  block — details, SQL, parameters, caret — lives in `toString()`, which loggers invoke when the throwable is passed as
+  such.
 
-* **One failed statement poisons the whole transaction.** After any error inside an explicit transaction, PostgreSQL marks the session aborted (`ReadyForQuery` reports `E`) and rejects every further statement with `25P02` → `StatementException(INVALID_TRANSACTION_STATE)` until you roll back. If a failure is *expected* — a speculative insert, say — isolate it in `session.transaction.nested { }` so only its savepoint is discarded. See [Transactions](transactions.md).
+* **One failed statement poisons the whole transaction.** After any error inside an explicit transaction, PostgreSQL
+  marks the session aborted (`ReadyForQuery` reports `E`) and rejects every further statement with `25P02` →
+  `TransactionStateException(IN_FAILED_TRANSACTION)` until you roll back. That exception is the *consequence*; the
+  failure that caused it is the one before it. If a failure is *expected* — a speculative insert, say — isolate it in
+  `session.transaction.nested { }` so only its savepoint is discarded. See [Transactions](transactions.md).
 
-* **`queryContext` is nullable, and the driver sets it once.** The first frame to unwind with a null context fills it in. Errors raised outside a query — handshake, `commit()`, savepoint misuse — never get one. You may overwrite it yourself, which is how a [redacted copy](#query-context) keeps parameter values out of a log entry.
+* **`queryContext` is nullable, and the driver sets it once.** The first frame to unwind with a null context fills it
+  in. Errors raised outside a query — handshake, `commit()`, savepoint misuse — never get one. You may overwrite it
+  yourself, which is how a [redacted copy](#query-context) keeps parameter values out of a log entry.
 
-* **`position` indexes the database-level SQL.** For named queries that means the `$n` form, not your `@name` form. The two strings sit side by side in the query context precisely so you can line them up.
+* **`position` indexes the database-level SQL.** For named queries that means the `$n` form, not your `@name` form. The
+  two strings sit side by side in the query context precisely so you can line them up.
 
-* **Parser errors have no `dbSql`.** `UNCLOSED_QUOTE`, `UNCLOSED_COMMENT`, `MISSING_NAMED_PARAMETER` all fire before the rewrite, so the database-level half of the context is empty.
+* **Parser errors have no `dbSql`.** `UNCLOSED_TOKEN` and `MISSING_NAMED_PARAMETER` both fire before the rewrite, so the
+  database-level half of the context is empty.
 
-* **Your exceptions don't escape streaming blocks unchanged.** Anything non-Octavius thrown inside a `forEachRow` / `forEachObject` / `forEachField` block comes back as `MappingException(CONVERSION_ERROR)` with your exception as `cause`.
+* **Your exceptions don't escape streaming blocks unchanged.** Anything non-Octavius thrown inside a `forEachRow` /
+  `forEachObject` / `forEachField` block comes back as `MappingException(CONVERSION_ERROR)` with your exception as
+  `cause`.
 
-* **A caught exception usually leaves the session alive — `NetworkException` does not.** For errors the server reported, and for mapping failures, the protocol is drained to `ReadyForQuery` before the throw, so you can keep using the connection. An I/O failure is the opposite case: there is nothing left to drain, `PgStream.isBroken` latches, and every later call fails immediately with `CONNECTION_CLOSED` / `CONNECTION_ERROR`. Don't retry on that session — drop it and take a fresh one from the pool.
+* **A caught exception usually leaves the session alive — `NetworkException` does not.** For errors the server reported,
+  and for mapping failures, the protocol is drained to `ReadyForQuery` before the throw, so you can keep using the
+  connection. An I/O failure is the opposite case: there is nothing left to drain, `PgStream.isBroken` latches, and
+  every later call fails immediately with `CONNECTION_CLOSED` / `CONNECTION_ERROR`. Don't retry on that session — drop
+  it and take a fresh one from the pool.
 
-* **Retry concurrency failures, not constraint violations.** `SERIALIZATION_FAILURE` and `DEADLOCK_DETECTED` are timing artifacts; a `UNIQUE_CONSTRAINT_VIOLATION` will fail identically forever.
+* **Retry concurrency failures, not constraint violations.** `SERIALIZATION_FAILURE` and `DEADLOCK_DETECTED` are timing
+  artifacts; a `UNIQUE_CONSTRAINT_VIOLATION` will fail identically forever.
 
-* **`UncategorizedDatabaseException` is a request, not a dead end.** It means a SQLSTATE fell through every branch. `sqlState` and `serverErrorMessage` still hold everything the server said — and it is worth reporting so the routing table can grow a branch for it.
+* **`UncategorizedDatabaseException` is a request, not a dead end.** It means a SQLSTATE fell through every branch.
+  `sqlState` and `serverErrorMessage` still hold everything the server said — and it is worth reporting so the routing
+  table can grow a branch for it.

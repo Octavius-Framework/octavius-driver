@@ -53,7 +53,9 @@ class ReentrantExecutionTest {
                 session.createNativeQuery("SELECT 99").fetchFieldStrict<Int>()
             }
         }
-        assertEquals(InvalidOperationExceptionReason.EXECUTION_IN_PROGRESS, error.reason)
+        assertEquals(InvalidOperationExceptionReason.CONNECTION_BUSY, error.reason)
+        // The reason is shared with the COPY branch, so the details are what prove this is reentrancy.
+        assertTrue(error.details!!.contains("statement is already executing"))
 
         // Refused before anything was sent, so the connection is still healthy
         assertEquals(1, session.createNativeQuery("SELECT 1").fetchFieldStrict<Int>())
@@ -66,7 +68,8 @@ class ReentrantExecutionTest {
                 session.createNativeQuery("SET application_name = 'nope'").execute()
             }
         }
-        assertEquals(InvalidOperationExceptionReason.EXECUTION_IN_PROGRESS, error.reason)
+        assertEquals(InvalidOperationExceptionReason.CONNECTION_BUSY, error.reason)
+        assertTrue(error.details!!.contains("statement is already executing"))
         assertEquals(1, session.createNativeQuery("SELECT 1").fetchFieldStrict<Int>())
     }
 
@@ -77,7 +80,8 @@ class ReentrantExecutionTest {
                 session.copy.copyOut("COPY reentrant_test TO STDOUT")
             }
         }
-        assertEquals(InvalidOperationExceptionReason.EXECUTION_IN_PROGRESS, error.reason)
+        assertEquals(InvalidOperationExceptionReason.CONNECTION_BUSY, error.reason)
+        assertTrue(error.details!!.contains("statement is already executing"))
         assertEquals(1, session.createNativeQuery("SELECT 1").fetchFieldStrict<Int>())
     }
 

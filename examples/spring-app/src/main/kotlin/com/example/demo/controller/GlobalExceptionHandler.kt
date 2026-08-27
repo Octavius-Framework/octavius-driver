@@ -2,8 +2,8 @@ package com.example.demo.controller
 
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.ConstraintViolationExceptionReason
-import io.github.octaviusframework.driver.exception.StatementException
-import io.github.octaviusframework.driver.exception.StatementExceptionReason
+import io.github.octaviusframework.driver.exception.TransactionStateException
+import io.github.octaviusframework.driver.exception.TransactionStateExceptionReason
 import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -23,9 +23,9 @@ class GlobalExceptionHandler {
             )
         }
 
-        if (rootEx is StatementException && rootEx.reason == StatementExceptionReason.INVALID_TRANSACTION_STATE) {
+        if (rootEx is TransactionStateException && rootEx.reason == TransactionStateExceptionReason.READ_ONLY_TRANSACTION) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                mapOf("error" to "Cannot modify data in a read-only transaction.", "details" to (rootEx.details ?: ""))
+                mapOf("error" to "Cannot modify data in a read-only transaction.", "details" to rootEx.dbMessage)
             )
         }
 

@@ -18,7 +18,7 @@ internal class OctaviusStatement(private val connection: OctaviusConnection) : S
 
     private fun checkClosed() {
         if (isClosedFlag || connection.isClosed) throw InvalidOperationException(
-            InvalidOperationExceptionReason.OBJECT_CLOSED,
+            InvalidOperationExceptionReason.RESOURCE_CLOSED,
             "Statement is already closed"
         )
     }

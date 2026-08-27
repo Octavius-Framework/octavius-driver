@@ -177,13 +177,13 @@ either - and failing on the description makes it fail the same way every time.
 
 Two independent things can go missing here, and they are handled by different halves of the API. **How many rows came back** is what the `Strict` suffix governs; **whether a value was there at all** is governed by how you type `T`. Confusing the two is the usual source of surprise, so here is the whole matrix for the field family:
 
-| Situation                                  | `fetchField<T>()`                              | `fetchFieldStrict<T>()`                        |
-|:-------------------------------------------|:-----------------------------------------------|:-----------------------------------------------|
-| No rows, `T` nullable                      | `null`                                         | `StatementException(INCORRECT_RESULT_SIZE)`    |
-| No rows, `T` not nullable                  | `MappingException(REQUIRED_ATTRIBUTE_MISSING)` | `StatementException(INCORRECT_RESULT_SIZE)`    |
-| More than one row                          | `StatementException(INCORRECT_RESULT_SIZE)`    | `StatementException(INCORRECT_RESULT_SIZE)`    |
-| One row, value is `NULL`, `T` nullable     | `null`                                         | `null`                                         |
-| One row, value is `NULL`, `T` not nullable | `MappingException(REQUIRED_ATTRIBUTE_MISSING)` | `MappingException(REQUIRED_ATTRIBUTE_MISSING)` |
+| Situation                                  | `fetchField<T>()`                                  | `fetchFieldStrict<T>()`                            |
+|:-------------------------------------------|:---------------------------------------------------|:---------------------------------------------------|
+| No rows, `T` nullable                      | `null`                                             | `InvalidOperationException(INCORRECT_RESULT_SIZE)` |
+| No rows, `T` not nullable                  | `MappingException(REQUIRED_ATTRIBUTE_MISSING)`     | `InvalidOperationException(INCORRECT_RESULT_SIZE)` |
+| More than one row                          | `InvalidOperationException(INCORRECT_RESULT_SIZE)` | `InvalidOperationException(INCORRECT_RESULT_SIZE)` |
+| One row, value is `NULL`, `T` nullable     | `null`                                             | `null`                                             |
+| One row, value is `NULL`, `T` not nullable | `MappingException(REQUIRED_ATTRIBUTE_MISSING)`     | `MappingException(REQUIRED_ATTRIBUTE_MISSING)`     |
 
 The thing to read twice is that **`T`'s nullability covers both ways a value can be absent**, and treats them the same. A row that never matched and a row carrying SQL `NULL` are the same answer as far as your type is concerned — you asked for a `String`, there is no `String` — so both raise `REQUIRED_ATTRIBUTE_MISSING`. If the lookup is allowed to find nothing, say so: `fetchField<String?>()`, and the same goes for the list form, `fetchFields<String?>()`.
 
@@ -253,7 +253,7 @@ This has nothing to do with streaming. A plain `fetchFields<T>()` whose converte
 | `ResultConverter` under any mapping fetch            | Collides                             |
 | After `fetchRows()`, calling `row.get<T>()` yourself | Fine — the exchange is already over  |
 
-The driver refuses such a call outright, **before anything reaches the wire**: you get `InvalidOperationException(EXECUTION_IN_PROGRESS)`, or that same exception as the `cause` of a `MappingException(CONVERSION_ERROR)` when it came from a converter — the wrapper is what carries the `path` to the column being mapped, so read both. Nothing is corrupted, the connection stays healthy, and the next statement works normally — only the operation you interrupted is lost. The same guard covers a `COPY` started from that position.
+The driver refuses such a call outright, **before anything reaches the wire**: you get `InvalidOperationException(CONNECTION_BUSY)`, or that same exception as the `cause` of a `MappingException(CONVERSION_ERROR)` when it came from a converter — the wrapper is what carries the `path` to the column being mapped, so read both. Nothing is corrupted, the connection stays healthy, and the next statement works normally — only the operation you interrupted is lost. The same guard covers a `COPY` started from that position.
 
 If code in that position needs the database, give it a second session.
 

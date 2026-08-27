@@ -9,14 +9,14 @@ import io.github.octaviusframework.driver.message.ServerErrorMessage
  * or other administrative failures originating from the database engine itself rather than
  * from user query mistakes.
  *
- * @property errorMessage The primary error message provided by the database system.
+ * @property details The primary error message provided by the database system, with the SQLSTATE already in it.
  * @param sqlState The SQL state code returned by the database.
  * @param serverErrorMessage The original error message from the database server.
  */
 class DatabaseSystemException(
-    val errorMessage: String,
+    val details: String,
     sqlState: String,
     serverErrorMessage: ServerErrorMessage
 ) : OctaviusException("DATABASE_SYSTEM_EXCEPTION", sqlState = sqlState, serverErrorMessage = serverErrorMessage) {
-    override fun getDetailedMessage(): String = errorMessage
+    override fun getDetailedMessage(): String = details
 }

@@ -43,11 +43,11 @@ class BasicQueryIntegrationTest {
 
         // Generate 1000 rows. Thanks to maxRows=2 and PortalSuspended, it should fetch exactly 2 rows
         // and throw StatementException without loading all 1000 rows into memory.
-        val exception = assertFailsWith<StatementException> {
+        val exception = assertFailsWith<InvalidOperationException> {
             session.createNativeQuery("SELECT generate_series(1, 1000)").fetchRowStrict()
         }
 
-        assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
+        assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, exception.reason)
 
         // Make sure the connection is in a healthy state and can execute subsequent queries
         val subsequentResult = session.createNativeQuery("SELECT 42").fetchRowStrict().get<Int>(0)

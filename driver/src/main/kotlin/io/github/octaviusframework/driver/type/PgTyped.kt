@@ -1,7 +1,7 @@
 package io.github.octaviusframework.driver.type
 
-import io.github.octaviusframework.driver.exception.TypeException
-import io.github.octaviusframework.driver.exception.TypeExceptionReason
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
 
 /**
@@ -11,12 +11,15 @@ import io.github.octaviusframework.driver.identifier.QualifiedName
  *
  * @property value Value to embed in the query (avoid using with data classes where this is added automatically!).
  * @property pgType PostgreSQL type name to which the value should be cast.
- * @throws TypeException `NESTED_PGTYPED_NOT_ALLOWED` if [value] is itself a [PgTyped].
+ * @throws InvalidOperationException `INVALID_ARGUMENT` if [value] is itself a [PgTyped].
  */
 data class PgTyped(val value: Any?, val pgType: QualifiedName) {
     init {
         if (value is PgTyped) {
-            throw TypeException(TypeExceptionReason.NESTED_PGTYPED_NOT_ALLOWED)
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                "A PgTyped cannot wrap another PgTyped - name the target type once, on the value itself."
+            )
         }
     }
 }

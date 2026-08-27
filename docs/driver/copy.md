@@ -27,7 +27,7 @@ Starting a copy puts the connection into a dedicated mode that lasts until the t
 > **The SQL is not parameterized.** `COPY` has nothing to bind, so the statement is sent verbatim. Never build one by interpolating user input — a table or column name coming from outside your code needs [validating or quoting yourself](queries.md#quoting-a-name-that-comes-from-outside). Pass a single statement, too: the driver would silently ignore anything you chained ahead of the copy with `;`.
 
 > [!IMPORTANT]
-> **The connection is occupied for the whole operation.** Between the moment a copy starts and the moment it finishes, that session can do nothing else — no queries, no transaction control. Attempting it throws `InvalidOperationException(COPY_IN_PROGRESS)` instead of corrupting the connection. See [Practical rules and gotchas](#practical-rules-and-gotchas).
+> **The connection is occupied for the whole operation.** Between the moment a copy starts and the moment it finishes, that session can do nothing else — no queries, no transaction control. Attempting it throws `InvalidOperationException(CONNECTION_BUSY)` instead of corrupting the connection. See [Practical rules and gotchas](#practical-rules-and-gotchas).
 
 ## Two levels of API
 
@@ -151,7 +151,7 @@ Both handles expose `isActive`, and both go through the same one-way transition:
 | Finished normally            | `false`    | after `endCopy()`                | after `readFromCopy()` returned `null` |
 | Aborted                      | `false`    | after `cancelCopy()` / `close()` | after `cancelCopy()` / `close()`       |
 
-Once inactive, a handle is spent — there is no restarting it, and you start a new copy through the manager instead. Calling `writeToCopy` or `endCopy` on an inactive `CopyIn` throws `InvalidOperationException(COPY_NOT_ACTIVE)`; `readFromCopy` on an inactive `CopyOut` simply returns `null`; `cancelCopy()` on an already-inactive handle is a no-op, which is what makes `close()` safe to call unconditionally.
+Once inactive, a handle is spent — there is no restarting it, and you start a new copy through the manager instead. Calling `writeToCopy` or `endCopy` on an inactive `CopyIn` throws `InvalidOperationException(RESOURCE_CLOSED)`; `readFromCopy` on an inactive `CopyOut` simply returns `null`; `cancelCopy()` on an already-inactive handle is a no-op, which is what makes `close()` safe to call unconditionally.
 
 ## Cancelling
 
@@ -197,8 +197,8 @@ Errors from the server follow the driver's normal path: the exchange is drained 
 | Duplicate key, FK or NOT NULL violation among the rows             | `ConstraintViolationException` with the usual reason enum.                                                                                                                |
 | No permission on the table, or a server-side `COPY … FROM '/file'` | `PermissionDeniedException` (`42501`), raised before copy mode is ever entered.                                                                                           |
 | Statement ran but never entered copy mode                          | `InvalidOperationException(UNEXPECTED_RESULT)` — *"Query did not initiate a COPY IN/OUT operation."*                                                                      |
-| Handle used after it finished                                      | `InvalidOperationException(COPY_NOT_ACTIVE)` — handles are single-use; start a new one through the manager.                                                               |
-| Session used for anything else while a copy is open                | `InvalidOperationException(COPY_IN_PROGRESS)` — raised before anything goes out, so the transfer itself is untouched.                                                     |
+| Handle used after it finished                                      | `InvalidOperationException(RESOURCE_CLOSED)` — handles are single-use; start a new one through the manager.                                                               |
+| Session used for anything else while a copy is open                | `InvalidOperationException(CONNECTION_BUSY)` — raised before anything goes out, so the transfer itself is untouched.                                                      |
 | Socket failure mid-transfer                                        | `NetworkException`. Unlike the others, this one leaves the connection broken for good.                                                                                    |
 
 The `UNEXPECTED_RESULT` case deserves a note, because its wording is generic while the cause usually isn't: it means the SQL you passed *was* accepted by the server but produced something other than a copy — most often a plain `SELECT` reaching `copyOut`, or a server-side file copy reaching `copyIn`. Full details of the hierarchy live in [Error Handling and Exceptions](exceptions.md).
@@ -214,7 +214,7 @@ For exports, the streaming handle keeps memory constant; the one-shot overload d
 
 ## Practical rules and gotchas
 
-* **One copy at a time, and nothing else on that session.** While a transfer is open, any other use of the session — a query, a second `COPY`, starting a notification listener — is refused with `InvalidOperationException(COPY_IN_PROGRESS)` rather than being interleaved into the transfer. The check is on connection state, not on the lock, so it catches the single-threaded case too: calling `createNativeQuery(...)` inside your own `writeToCopy` loop fails immediately instead of desynchronizing the connection.
+* **One copy at a time, and nothing else on that session.** While a transfer is open, any other use of the session — a query, a second `COPY`, starting a notification listener — is refused with `InvalidOperationException(CONNECTION_BUSY)` rather than being interleaved into the transfer. The check is on connection state, not on the lock, so it catches the single-threaded case too: calling `createNativeQuery(...)` inside your own `writeToCopy` loop fails immediately instead of desynchronizing the connection.
 * **A copy you never finish costs you the connection.** Closing a session with a transfer still open evicts that connection instead of returning it, so a pooled connection is never handed to the next borrower mid-transfer. Ending the transfer for you is not on offer: `CopyOut.cancelCopy()` has to read the rest of the export first (see [Cancelling](#cancelling)), and `close()` runs on whoever gave the session back — a `finally`, or a pool reclaiming its connection. Nothing of the copy is lost that a cancel would have kept, a COPY IN that never reached `endCopy()` committing nothing either way; what it costs is the connection, so reach a terminal state yourself — `use` gets this right for free.
 * **Close your own streams.** The driver never closes an `InputStream` or `OutputStream` you passed in, and never flushes the latter.
 * **`copyOut` returns bytes, `copyIn` returns rows.** Easy to conflate when both are `Long`.

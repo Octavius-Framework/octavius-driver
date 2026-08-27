@@ -168,7 +168,7 @@ runCatching { session.createNativeQuery("INSERT INTO senators (id) VALUES (1)").
 
 session.transactionState                                  // FAILED
 session.createNativeQuery("SELECT 1").fetchFieldStrict<Int>()
-// throws StatementException(INVALID_TRANSACTION_STATE) - the transaction is aborted
+// throws TransactionStateException(IN_FAILED_TRANSACTION) - the transaction is aborted
 
 session.rollback()
 session.transactionState                                  // IN_TRANSACTION again, and usable

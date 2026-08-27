@@ -199,7 +199,7 @@ fun updateUserDetails() {
 
 `@Transactional(readOnly = true)` and `@Transactional(isolation = ...)` reach the connection through the JDBC setters Octavius implements, and HikariCP restores both when the connection goes back to the pool.
 
-Read-only is enforced by *PostgreSQL*, not by a client-side check, so a write attempted inside such a transaction comes back as a `StatementException(INVALID_TRANSACTION_STATE)` inside an `OctaviusDataAccessException`. Setting either of these by running the SQL yourself escapes Hikari's tracking entirely and leaks to the next borrower — see [What survives a return to the pool](initialization.md#what-survives-a-return-to-the-pool).
+Read-only is enforced by *PostgreSQL*, not by a client-side check, so a write attempted inside such a transaction comes back as a `TransactionStateException(READ_ONLY_TRANSACTION)` inside an `OctaviusDataAccessException`. Setting either of these by running the SQL yourself escapes Hikari's tracking entirely and leaks to the next borrower — see [What survives a return to the pool](initialization.md#what-survives-a-return-to-the-pool).
 
 ### `session.transaction` inside a block
 

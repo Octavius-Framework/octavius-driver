@@ -9,10 +9,10 @@ import org.junit.jupiter.api.assertNotNull
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-class RoutineExecutionExceptionIntegrationTest {
-companion object {
-    private val logger = KotlinLogging.logger {}
-}
+class RoutineAssertionExceptionIntegrationTest {
+    companion object {
+        private val logger = KotlinLogging.logger {}
+    }
 
     private fun getSession() = getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", OctaviusProperties().apply {
         user = "postgres"
@@ -20,28 +20,9 @@ companion object {
     })
 
     @Test
-    fun `should throw RAISE_EXCEPTION`() {
-        getSession().use { session ->
-            val exception = assertFailsWith<RoutineExecutionException> {
-                session.createNativeQuery("""
-                    DO $$
-                    BEGIN
-                        RAISE EXCEPTION 'Test exception';
-                    END;
-                    $$;
-                """).execute()
-            }
-            logger.error(exception) { "" }
-            assertEquals(RoutineExecutionExceptionReason.RAISE_EXCEPTION, exception.reason)
-            assertNotNull(exception.where)
-            assertTrue(exception.where!!.isNotEmpty())
-        }
-    }
-
-    @Test
     fun `should throw NO_DATA_FOUND`() {
         getSession().use { session ->
-            val exception = assertFailsWith<RoutineExecutionException> {
+            val exception = assertFailsWith<RoutineAssertionException> {
                 session.createNativeQuery("""
                     DO $$
                     DECLARE
@@ -53,7 +34,8 @@ companion object {
                 """).execute()
             }
             logger.error(exception) { "" }
-            assertEquals(RoutineExecutionExceptionReason.NO_DATA_FOUND, exception.reason)
+            assertEquals("P0002", exception.sqlState)
+            assertEquals(RoutineAssertionExceptionReason.NO_DATA_FOUND, exception.reason)
             assertNotNull(exception.where)
             assertTrue(exception.where!!.isNotEmpty())
         }
@@ -62,7 +44,7 @@ companion object {
     @Test
     fun `should throw TOO_MANY_ROWS`() {
         getSession().use { session ->
-            val exception = assertFailsWith<RoutineExecutionException> {
+            val exception = assertFailsWith<RoutineAssertionException> {
                 session.createNativeQuery("""
                     DO $$
                     DECLARE
@@ -74,7 +56,8 @@ companion object {
                 """).execute()
             }
             logger.error(exception) { "" }
-            assertEquals(RoutineExecutionExceptionReason.TOO_MANY_ROWS, exception.reason)
+            assertEquals("P0003", exception.sqlState)
+            assertEquals(RoutineAssertionExceptionReason.TOO_MANY_ROWS, exception.reason)
             assertNotNull(exception.where)
             assertTrue(exception.where!!.isNotEmpty())
         }
@@ -83,7 +66,7 @@ companion object {
     @Test
     fun `should throw ASSERT_FAILURE`() {
         getSession().use { session ->
-            val exception = assertFailsWith<RoutineExecutionException> {
+            val exception = assertFailsWith<RoutineAssertionException> {
                 session.createNativeQuery("""
                     DO $$
                     BEGIN
@@ -93,7 +76,8 @@ companion object {
                 """).execute()
             }
             logger.error(exception) { "" }
-            assertEquals(RoutineExecutionExceptionReason.ASSERT_FAILURE, exception.reason)
+            assertEquals("P0004", exception.sqlState)
+            assertEquals(RoutineAssertionExceptionReason.ASSERT_FAILURE, exception.reason)
             assertNotNull(exception.where)
             assertTrue(exception.where!!.isNotEmpty())
         }

@@ -1,9 +1,9 @@
 package io.github.octaviusframework.driver.query
 
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
-import io.github.octaviusframework.driver.exception.StatementException
-import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.session.OctaviusSession
@@ -140,10 +140,10 @@ class FieldNullabilityIntegrationTest {
     @Test
     fun `fetchFieldStrict should report an empty result as a size problem even for a nullable type`() {
         session().use { s ->
-            val e = assertFailsWith<StatementException> {
+            val e = assertFailsWith<InvalidOperationException> {
                 s.createNativeQuery(noRows).fetchFieldStrict<String?>()
             }
-            assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, e.reason)
+            assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, e.reason)
         }
     }
 
@@ -157,15 +157,15 @@ class FieldNullabilityIntegrationTest {
     @Test
     fun `both variants should reject more than one row`() {
         session().use { s ->
-            val plain = assertFailsWith<StatementException> {
+            val plain = assertFailsWith<InvalidOperationException> {
                 s.createNativeQuery("SELECT i FROM generate_series(1, 2) AS i").fetchField<Int>()
             }
-            assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, plain.reason)
+            assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, plain.reason)
 
-            val strict = assertFailsWith<StatementException> {
+            val strict = assertFailsWith<InvalidOperationException> {
                 s.createNativeQuery("SELECT i FROM generate_series(1, 2) AS i").fetchFieldStrict<Int>()
             }
-            assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, strict.reason)
+            assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, strict.reason)
         }
     }
 

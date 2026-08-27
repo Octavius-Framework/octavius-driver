@@ -74,7 +74,7 @@ class StatementExceptionIntegrationTest {
                     .fetchRow("param" to 1)
             }
             logger.error(exception) { "" }
-            assertEquals(StatementExceptionReason.UNCLOSED_QUOTE, exception.reason)
+            assertEquals(StatementExceptionReason.UNCLOSED_TOKEN, exception.reason)
             // position is 1-indexed, so 15 + 1 = 16
             assertEquals(16, exception.position)
 
@@ -109,7 +109,7 @@ class StatementExceptionIntegrationTest {
                     .fetchRow("param" to 1)
             }
             logger.error(exception) { "" }
-            assertEquals(StatementExceptionReason.UNCLOSED_COMMENT, exception.reason)
+            assertEquals(StatementExceptionReason.UNCLOSED_TOKEN, exception.reason)
             // position is 1-indexed, so 14 + 1 = 15
             assertEquals(15, exception.position)
             val ctx = assertNotNull(exception.queryContext)

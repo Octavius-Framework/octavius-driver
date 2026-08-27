@@ -5,7 +5,9 @@ import io.github.octaviusframework.driver.exception.InitializationException
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.OctaviusException
+import io.github.octaviusframework.driver.exception.RoutineAssertionException
 import io.github.octaviusframework.driver.exception.StatementException
+import io.github.octaviusframework.driver.exception.TransactionStateException
 import io.github.octaviusframework.driver.exception.TypeException
 
 /**
@@ -54,12 +56,16 @@ inline fun <T> dbResult(crossinline block: () -> T): DataResult<T> =
  * The split is on the exception's type and nothing finer. Every one of these classes carries a `reason`
  * enum, and none of them is consulted here: those exist to say what happened in a log line, not to be
  * branched on, and a rule that read them would have to be rewritten every time the driver names a new one.
+ * Where a distinction is worth acting on, the driver states it as a type - which is why a routine that
+ * raised an error of its own and a routine whose own assertion failed are two classes rather than two
+ * reasons on one.
  *
  * The listed types are what the driver raises about the request itself - SQL the server would not parse,
  * a row that does not fit the class it was asked for, a type name the registry does not know, a value no
- * codec would encode, an operation the session's state does not allow. Every one of them is a defect that
- * is the same on every run, so a `DataResult.Failure` branch would only be a slower way of reaching a
- * stack trace.
+ * codec would encode, an operation the session's state does not allow, a transaction whose state forbids
+ * the statement sent into it. Every one of them is a defect rather than an outcome - most of them the same on
+ * every run, the rest for the reasons given below - so a `DataResult.Failure` branch would only be a slower
+ * way of reaching a stack trace.
  *
  * A `fetch*Strict` that found no row is thrown along with the rest, and that is the whole point of the
  * suffix: `Strict` states that exactly one row is there, so a run that finds none has falsified something
@@ -68,6 +74,20 @@ inline fun <T> dbResult(crossinline block: () -> T): DataResult<T> =
  * `fetchRow` over `fetchRowStrict`, `fetchField<String?>` over `fetchField<String>` - which return `null`
  * and raise nothing. Picking the strict form for a lookup that is allowed to miss is the bug being
  * reported.
+ *
+ * [RoutineAssertionException] is that same failure one level down and is read the same way: an `INTO
+ * STRICT` that matched no row or several, or an `ASSERT` that did not hold, is an assertion written in
+ * PL/pgSQL rather than in Kotlin, and the routine is the code that turned out to be wrong. A routine's
+ * `RAISE EXCEPTION` is the opposite case and becomes a `Failure` - nothing was falsified there, the
+ * database declined on purpose, which is a business rule answering and an answer worth carrying as a value.
+ *
+ * [TransactionStateException] is mostly of the same-on-every-run kind - a write inside a read-only
+ * transaction, a statement that refuses to run in a transaction block - with `IN_FAILED_TRANSACTION` as the
+ * one that earns its place differently. PostgreSQL rejects everything after an error in a transaction until
+ * it is rolled back, so that failure reaches a caller only where an earlier one was turned into a value and
+ * the work carried on regardless: the trap
+ * [transactionResult][OctaviusClient.transactionResult] exists to close. Throwing it is the loudest
+ * available way of saying so, and the failure worth reading is in any case the earlier one.
  *
  * [InitializationException] is listed for a different reason: it is raised where no session could be
  * obtained at all - bad credentials, a server that refused the handshake, a pool that timed out handing
@@ -87,6 +107,8 @@ inline fun <T> dbResult(crossinline block: () -> T): DataResult<T> =
 @PublishedApi
 internal fun isCallerBug(e: OctaviusException): Boolean = when (e) {
     is StatementException,
+    is TransactionStateException,
+    is RoutineAssertionException,
     is MappingException,
     is TypeException,
     is CodecException,

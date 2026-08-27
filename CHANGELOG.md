@@ -19,6 +19,60 @@
   class has an internal constructor, so nothing outside the driver ever built one or extended it, and
   `registerResultConverter` and `registerParameterConverter` are inherited members that go on resolving on the concrete
   queries. What changes is a signature that named the base type by hand: `Query<*>` now.
+- **Breaking:** `RoutineExecutionException` is two classes, and which one a PL/pgSQL failure arrives as says what kind
+  of failure it was. A routine saying no on purpose is `RoutineRaiseException`: `P0001`, and `P0000` with it, that one
+  being reachable only by asking for it - `RAISE ... USING ERRCODE = 'plpgsql_error'` - which makes it another
+  deliberate raise rather than the unclassified error the old `UNKNOWN` reason called it. It carries no reason enum at
+  all, there being nothing left to tell apart, and `sqlState` still names the code. A routine whose own assertion turned
+  out false is `RoutineAssertionException`, with `NO_DATA_FOUND`, `TOO_MANY_ROWS` and `ASSERT_FAILURE`: an `INTO STRICT`
+  that matched no row or several, or an `ASSERT` that did not hold. The two say different things - one is the database
+  deciding, the other is the database code being wrong, which is the same reading that has a `fetch*Strict` finding no
+  row raise rather than return `null` - and a type is the only shape that distinction can take for a caller that
+  branches on it. octavius-client's result boundary is one such caller: it reads types and never reasons, so it could
+  not have acted on this at all while both were one class.
+  See [Error handling](docs/driver/exceptions.md#9-routineraiseexception)
+- **Breaking:** SQLSTATE class `25` is `TransactionStateException`, and
+  `StatementExceptionReason.INVALID_TRANSACTION_STATE` is gone with it. Nothing about those statements is wrong; the
+  transaction they arrived in is - doomed by an earlier error, declared `READ ONLY`, or open where the command refuses
+  to run inside one - and the server sends no error position for any of them, so the one property `StatementException`
+  exists to carry was null on every instance of it. The reasons name the state instead: `IN_FAILED_TRANSACTION`
+  (`25P02`), `READ_ONLY_TRANSACTION` (`25006`), `NO_ACTIVE_TRANSACTION` (`25P01`), `ACTIVE_TRANSACTION` (`25001`),
+  `UNKNOWN`. `25P03` and `25P04` are untouched and remain `ExecutionAbortedException(TRANSACTION_TIMEOUT)`, a
+  transaction the server ended on a timer belonging with the statement timeout rather than here. Which side of
+  octavius-client's result boundary this lands on is unchanged: it was thrown as a `StatementException` and is thrown as
+  this. See [Error handling](docs/driver/exceptions.md#8-transactionstateexception)
+- **Breaking:** `MISSING_NAMED_PARAMETER` and `INCORRECT_RESULT_SIZE` move from `StatementExceptionReason` to
+  `InvalidOperationExceptionReason`, those two being what the driver raises about the *call* rather than about the
+  statement. `position` is what gives the line away: every other reason on `StatementException` has somewhere in the SQL
+  to point at - the server reports one, and the driver's own parser passes one for each of the three `UNCLOSED_*`
+  reasons - while these two never carried a position and never could. Each also had a sibling waiting in the class it
+  moves to: `INCORRECT_RESULT_SIZE` is `UNEXPECTED_RESULT` with the row count wrong instead of the shape, both of them
+  the chosen terminal not matching what the query produced, and `MISSING_NAMED_PARAMETER` is `INVALID_ARGUMENT` for an
+  argument that was never supplied at all. The reason names are unchanged, so a log line reads as it did but for the
+  class in front of it, and nothing moves across octavius-client's result boundary - both classes are caller bugs there.
+  Nor is any context lost: `queryContext` is filled for every `OctaviusException` the query layer sees rather than for
+  `StatementException` specially, so the SQL and the parameters still travel with the failure.
+  See [Error handling](docs/driver/exceptions.md#12-invalidoperationexception)
+- **Breaking:** six reasons fewer across three enums, each of them a distinction `details` was already making.
+  `UNCLOSED_QUOTE`, `UNCLOSED_DOLLAR_QUOTE` and `UNCLOSED_COMMENT` are one `UNCLOSED_TOKEN`: all four of the parser's
+  throw sites already named the construct - "Unclosed dollar-quoted string", "Unclosed multi-line comment" - and passed
+  a position that draws the caret under where it opened. `OBJECT_CLOSED` and `COPY_NOT_ACTIVE` are `RESOURCE_CLOSED`,
+  all three of their sites already naming the handle, and the answer being a new one either way. `COPY_IN_PROGRESS` and
+  `EXECUTION_IN_PROGRESS` are `CONNECTION_BUSY`: those two were raised from the same guard three lines apart, over the
+  one invariant that guard exists for - a connection carries one exchange at a time - so what used to be two fixed
+  developer messages is now the advice each site passes in `details`, which is the half that actually differed.
+  `UNCLOSED_TOKEN` deliberately stays out of `SYNTAX_ERROR`: the scanner refuses before anything is sent, and on the day
+  it trips over SQL the server would have taken, "syntax error" would be the one sentence that misleads. And
+  `TypeExceptionReason` gives up `NESTED_PGTYPED_NOT_ALLOWED` and `ANONYMOUS_RECORD_NOT_SUPPORTED` to
+  `INVALID_ARGUMENT`, neither being the registry failing to resolve a type, which is what that class is for: one is a
+  constructor refusing its own argument, and the other takes a `PgRecord` - which has an internal constructor and can
+  only have come out of a result - handed back as a bound parameter. That pair changes class, from `TypeException` to
+  `InvalidOperationException`; the merges change none, and all of them are caller bugs on octavius-client's boundary
+  before and after.
+  See [Error handling](docs/driver/exceptions.md#exception-reference)
+- **Breaking:** `DatabaseSystemException.errorMessage` is `details`, which is what the other nine exceptions in the
+  hierarchy call the same thing, and what nobody confuses with the `serverErrorMessage` sitting next to it. Nothing in
+  the driver, the tests or the docs read the old name.
 
 - `sslpassword` decrypts the client private key, where before it was handed to the in-memory keystore the driver assembles and to nothing else. That keystore is built inside `createKeyManagers`, read once by the `KeyManagerFactory` and dropped - nothing persists it and nothing else can reach it - so the password protected nothing that could be observed, while an encrypted `sslkey` failed to load no matter what was set. It is now the password for the key file, which is what it means to libpq and to pgjdbc, and the keystore is given an empty one always. Which cipher the key was locked with is neither asked for nor configurable: `EncryptedPrivateKeyInfo` resolves it from the file, PBES2 parameter blocks included, so what OpenSSL writes by default today and what it wrote with `-v1` a decade ago both open. An encrypted key with no `sslpassword` is now refused with a message naming the property, rather than with generic advice about PKCS#8
 - **Breaking:** `setSchema`, `getSchema`, `setCatalog` and `getCatalog` raise `InvalidOperationException(FEATURE_NOT_SUPPORTED)` where they used to answer. Neither is connection state in PostgreSQL: a catalog is the database itself, which nothing on an open connection can change, and a schema is not a setting but the head of `search_path` - reported by the server and readable through `getSearchPath()` all along. The setters accepted whatever they were given and did nothing with it, so a pool configured with a schema set none and every query after it ran somewhere else; the getters answered `"public"` and `"octavius"`, constants that were true of nothing. HikariCP calls a setter only where it was configured with a schema or a catalog, and never calls the getters itself, so what becomes a failure is exactly the setting that was being ignored - raised when the pool opens the connection rather than discovered in a query that read the wrong table. See [Schema and catalog](docs/driver/octavius-vs-jdbc.md#7-schema-and-catalog)
@@ -27,7 +81,7 @@
 
 - **Breaking:** the driver internals are no longer public by omission. `TypeRegistry`, `TypeRegistryLoader`, `ParameterMapper`, `SqlParameterParser`, `DataRowMessage`, both enum converters and the reflective mapper's own machinery are internal, and `Row`, `PgArray`, `ColumnMetadata`, `ColumnOrigin`, `TypeManager`, `ContainerFactory`, `ConverterRegistry`, `ParameterSerializer` and `TransactionManager` keep their types but take an internal constructor, joining the fifteen classes that already worked that way - a `Row` was never yours to build, and building one took the connection's own row buffer as an argument. `Row.typeRegistry` and `Row.resultMapper` are private, which closes the one public path to a registry that is global per database and mutable: `row.typeRegistry.codecs = ...` reached every session pointing at the same host, port and database, not only the one the row came from. The composite maps on `ConverterRegistry` are read-only rather than assignable, and `String.toSnakeCase()`, `toCamelCase()` and `toPascalCase()` are gone - unused by the driver and undocumented, they claimed three very general names on `String`, and `CaseConverter.convert` is what the driver itself uses. Nothing documented moved: `typeManager` and every registration on it, `containers`, `toDataObject`/`toDataMap` with `ReflectionCache` still public behind them, `GlobalTypeRegistry.removeRegistry`, `PgArray` as the raw form of a result column, and the settable `queryContext` are all where they were. See [Type System](docs/driver/type-system.md)
 
-- A `LargeObject` operation on a connection that has gone now reports the connection rather than the descriptor. `checkClosed` asked `session.octaviusConnection.isClosed`, and on a pooled connection that is a question about whoever borrowed it next - the connection outlives the session it was handed to - so a descriptor nothing had happened to came back as `InvalidOperationException(OBJECT_CLOSED)`. It now guards only what it owns, its own `close()`. The other two ways a descriptor goes dead were already reported, in their own words, by whichever layer knows: a session given up raises `NetworkException(CONNECTION_CLOSED)` before any statement is built, and a descriptor outliving the transaction that opened it is PostgreSQL's `StatementException(UNDEFINED_OBJECT)`. Nothing could reach a connection it no longer owned either way - every operation goes through the session, which checks first
+- A `LargeObject` operation on a connection that has gone now reports the connection rather than the descriptor. `checkClosed` asked `session.octaviusConnection.isClosed`, and on a pooled connection that is a question about whoever borrowed it next - the connection outlives the session it was handed to - so a descriptor nothing had happened to came back as though it had been closed itself. It now guards only what it owns, its own `close()`. The other two ways a descriptor goes dead were already reported, in their own words, by whichever layer knows: a session given up raises `NetworkException(CONNECTION_CLOSED)` before any statement is built, and a descriptor outliving the transaction that opened it is PostgreSQL's `StatementException(UNDEFINED_OBJECT)`. Nothing could reach a connection it no longer owned either way - every operation goes through the session, which checks first
 
 #### Fixed
 
@@ -120,10 +174,11 @@
 - One place that decides what `dbResult` catches and what it lets through, `isCallerBug`, and it reads nothing
   but the exception's type — never the `reason` enum inside it. SQL the server would not parse, a row that
   does not fit the class it was asked for, a type the registry has never heard of, a value no codec would
-  encode, an operation the session's state forbids, and a session that could not be obtained at all: all
-  thrown, being the same on every run. Everything else — a violated constraint, a deadlock, a serialization
-  failure, a `RAISE EXCEPTION`, a statement that ran out of time, and any exception type the driver gains
-  later — becomes a `Failure`.
+  encode, an operation the session's state forbids, a transaction whose state forbids the statement sent into
+  it, and a routine's own assertion falsified by the data, along with a session that could not be obtained at
+  all: all thrown, as defects rather than outcomes. Everything else — a violated constraint, a deadlock, a
+  serialization failure, a routine's `RAISE EXCEPTION`, a statement that ran out of time, and any exception
+  type the driver gains later — becomes a `Failure`.
 - **A `fetch*Strict` that found no row is thrown, where octavius-database returned it as a failure.** That is
   a deliberate correction rather than a difference left unnoticed. `Strict` states that exactly one row is
   there, so a run that finds none has falsified something the calling code asserted, and the same reading

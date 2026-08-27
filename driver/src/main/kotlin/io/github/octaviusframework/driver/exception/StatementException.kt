@@ -8,12 +8,12 @@ import io.github.octaviusframework.driver.message.ServerErrorMessage
 enum class StatementExceptionReason {
     /** The statement contains a syntax error. */
     SYNTAX_ERROR,
-    /** The statement contains an unclosed string or identifier quote. */
-    UNCLOSED_QUOTE,
-    /** The statement contains an unclosed dollar-quoted string. */
-    UNCLOSED_DOLLAR_QUOTE,
-    /** The statement contains an unclosed multi-line comment. */
-    UNCLOSED_COMMENT,
+    /**
+     * The statement leaves something open where the driver's own parser needed it closed - a string or
+     * identifier quote, a dollar-quoted body, a multi-line comment. `details` names which, and `position`
+     * points at where it began.
+     */
+    UNCLOSED_TOKEN,
     /** An object's definition or current state does not permit what was asked of it. */
     INVALID_DEFINITION,
     /** The statement references a table, column, function or type that does not exist. */
@@ -23,13 +23,7 @@ enum class StatementExceptionReason {
     /** A name in the statement matches more than one candidate; qualify it. */
     AMBIGUOUS_OBJECT,
     /** A value's type does not fit where it was used, and no implicit cast applies. */
-    DATA_TYPE_ERROR,
-    /** The statement is not permitted in the session's current transaction state. */
-    INVALID_TRANSACTION_STATE,
-    /** Raised by the driver: the statement names a parameter the supplied values do not include. */
-    MISSING_NAMED_PARAMETER,
-    /** Raised by the driver: the query returned a number of rows the chosen fetch method forbids. */
-    INCORRECT_RESULT_SIZE
+    DATA_TYPE_ERROR
 }
 
 /**
@@ -38,6 +32,9 @@ enum class StatementExceptionReason {
  * This exception covers various query-related errors such as syntax errors, undefined objects,
  * ambiguous references, and data type mismatches. If the database provides error positioning, 
  * this exception will format the original SQL query to visually indicate where the error occurred.
+ *
+ * Every reason here is about the statement itself, which is what [position] is the evidence of: whether the
+ * server reported it or the driver's own parser did, there is somewhere in the SQL to point at.
  *
  * @property reason The categorized reason for the statement failure.
  * @property details Additional context or hints provided by the database regarding the error.
@@ -79,15 +76,10 @@ class StatementException(
 private fun generateDeveloperMessage(reason: StatementExceptionReason): String =
     when (reason) {
         StatementExceptionReason.SYNTAX_ERROR -> "The SQL statement contains a syntax error."
-        StatementExceptionReason.UNCLOSED_QUOTE -> "The SQL statement contains an unclosed string or identifier quote."
-        StatementExceptionReason.UNCLOSED_DOLLAR_QUOTE -> "The SQL statement contains an unclosed dollar-quoted string."
-        StatementExceptionReason.UNCLOSED_COMMENT -> "The SQL statement contains an unclosed multi-line comment."
+        StatementExceptionReason.UNCLOSED_TOKEN -> "The SQL statement leaves a quote, a dollar-quoted body or a comment unclosed. See the details for which."
         StatementExceptionReason.INVALID_DEFINITION -> "Invalid definition or object state."
         StatementExceptionReason.UNDEFINED_OBJECT -> "The referenced object is undefined."
         StatementExceptionReason.DUPLICATE_OBJECT -> "The referenced object already exists."
         StatementExceptionReason.AMBIGUOUS_OBJECT -> "The referenced object is ambiguous."
         StatementExceptionReason.DATA_TYPE_ERROR -> "Data type error in statement."
-        StatementExceptionReason.INVALID_TRANSACTION_STATE -> "Invalid transaction state."
-        StatementExceptionReason.MISSING_NAMED_PARAMETER -> "A required named parameter is missing."
-        StatementExceptionReason.INCORRECT_RESULT_SIZE -> "The query returned an unexpected number of rows."
     }

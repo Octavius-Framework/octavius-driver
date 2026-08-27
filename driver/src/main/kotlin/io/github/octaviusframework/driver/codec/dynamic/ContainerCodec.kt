@@ -4,6 +4,8 @@ import io.github.octaviusframework.driver.io.PgByteWriter
 import io.github.octaviusframework.driver.codec.decodeSafely
 import io.github.octaviusframework.driver.codec.encodeSafely
 import io.github.octaviusframework.driver.container.*
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.io.getIntBE
@@ -323,10 +325,10 @@ internal object ContainerCodec {
      * since PostgreSQL does not accept anonymous records as bound parameters.
      */
     fun serializePgRecord() {
-        throw TypeException(
-            TypeExceptionReason.ANONYMOUS_RECORD_NOT_SUPPORTED,
-            oid = 2249,
-            details = "Postgres cannot accept 'record' type directly as a bound parameter. Use a registered composite type instead."
+        throw InvalidOperationException(
+            InvalidOperationExceptionReason.INVALID_ARGUMENT,
+            "PostgreSQL cannot accept an anonymous record (OID 2249) as a bound parameter. A PgRecord only " +
+                "comes out of a result and cannot go back in as one - pass a registered composite type instead."
         )
     }
 

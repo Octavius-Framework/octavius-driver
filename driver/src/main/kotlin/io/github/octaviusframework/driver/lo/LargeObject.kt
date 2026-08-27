@@ -43,7 +43,7 @@ class LargeObject internal constructor(
      */
     private fun checkClosed() {
         if (closed) throw InvalidOperationException(
-            InvalidOperationExceptionReason.OBJECT_CLOSED,
+            InvalidOperationExceptionReason.RESOURCE_CLOSED,
             "Large Object is already closed"
         )
     }

@@ -15,14 +15,16 @@ class TypeExceptionTest {
     }
 
     @Test
-    fun `should throw NESTED_PGTYPED_NOT_ALLOWED when nesting PgTyped`() {
+    fun `should refuse a PgTyped wrapping another PgTyped as a bad argument`() {
+        // The registry is not consulted here and no type failed to resolve - the constructor is refusing
+        // its own argument, which is why this is not a TypeException.
         val nested = "test".withPgType(PgStandardType.VARCHAR)
-        
-        val exception = assertFailsWith<TypeException> {
+
+        val exception = assertFailsWith<InvalidOperationException> {
             nested.withPgType(PgStandardType.TEXT)
         }
         logger.error(exception) { "" }
-        assertEquals(TypeExceptionReason.NESTED_PGTYPED_NOT_ALLOWED, exception.reason)
+        assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, exception.reason)
     }
     
     @Test

@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.spring
 
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.StatementException
+import io.github.octaviusframework.driver.exception.TransactionStateException
+import io.github.octaviusframework.driver.exception.TransactionStateExceptionReason
 import io.github.octaviusframework.driver.spring.exception.OctaviusDataAccessException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -103,7 +105,8 @@ class OctaviusSpringIntegrationTest {
         try {
             testService.insertReadOnly()
         } catch (e: OctaviusDataAccessException) {
-            assertInstanceOf<StatementException>(e.octaviusException)
+            val root = assertInstanceOf<TransactionStateException>(e.octaviusException)
+            assertEquals(TransactionStateExceptionReason.READ_ONLY_TRANSACTION, root.reason)
         }
         
         val count = octaviusTemplate.execute { createNativeQuery("SELECT count(*) as c FROM test_spring").fetchRowStrict().get<Long>("c") }

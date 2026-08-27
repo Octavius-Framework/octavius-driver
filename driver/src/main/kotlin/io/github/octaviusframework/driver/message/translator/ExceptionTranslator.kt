@@ -82,13 +82,14 @@ internal object ExceptionTranslator {
                         serverErrorMessage = serverErrorMessage
                     )
                 } else {
-                    StatementException(
-                        StatementExceptionReason.INVALID_TRANSACTION_STATE,
-                        details = serverErrorMessage.message,
-                        position = errorMsg.position,
-                        sqlState = state,
-                        serverErrorMessage = serverErrorMessage
-                    )
+                    val reason = when (state) {
+                        "25P02" -> TransactionStateExceptionReason.IN_FAILED_TRANSACTION
+                        "25006" -> TransactionStateExceptionReason.READ_ONLY_TRANSACTION
+                        "25P01" -> TransactionStateExceptionReason.NO_ACTIVE_TRANSACTION
+                        "25001" -> TransactionStateExceptionReason.ACTIVE_TRANSACTION
+                        else -> TransactionStateExceptionReason.UNKNOWN
+                    }
+                    TransactionStateException(reason, state, serverErrorMessage)
                 }
             }
 
@@ -160,20 +161,22 @@ internal object ExceptionTranslator {
                 "Database system error ($state): ${serverErrorMessage.message}", sqlState = state, serverErrorMessage = serverErrorMessage
             )
 
-            // Class P0 — PL/pgSQL Error
+            // Class P0 — PL/pgSQL Error. Split by what the routine did: an assertion of its own that the data
+            // falsified is a defect, a RAISE is the routine deciding something, and the two are handled apart.
             state.startsWith("P0") -> {
-                val reason = when (state) {
-                    "P0001" -> RoutineExecutionExceptionReason.RAISE_EXCEPTION
-                    "P0002" -> RoutineExecutionExceptionReason.NO_DATA_FOUND
-                    "P0003" -> RoutineExecutionExceptionReason.TOO_MANY_ROWS
-                    "P0004" -> RoutineExecutionExceptionReason.ASSERT_FAILURE
-                    else -> RoutineExecutionExceptionReason.UNKNOWN
+                val assertionReason = when (state) {
+                    "P0002" -> RoutineAssertionExceptionReason.NO_DATA_FOUND
+                    "P0003" -> RoutineAssertionExceptionReason.TOO_MANY_ROWS
+                    "P0004" -> RoutineAssertionExceptionReason.ASSERT_FAILURE
+                    else -> null
                 }
-                RoutineExecutionException(
-                    reason = reason,
-                    sqlState = state,
-                    serverErrorMessage = serverErrorMessage
-                )
+
+                if (assertionReason != null) {
+                    RoutineAssertionException(assertionReason, state, serverErrorMessage)
+                } else {
+                    // P0001, P0000, and any code the class gains later: all of them are raised deliberately.
+                    RoutineRaiseException(state, serverErrorMessage)
+                }
             }
 
             else -> UncategorizedDatabaseException(

@@ -4,7 +4,12 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.client.transaction.TransactionPropagation
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.RoutineAssertionException
+import io.github.octaviusframework.driver.exception.RoutineAssertionExceptionReason
+import io.github.octaviusframework.driver.exception.RoutineRaiseException
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import org.junit.jupiter.api.AfterAll
@@ -216,6 +221,47 @@ class ClientIntegrationTest {
     }
 
     @Test
+    fun `dbResult turns a routine's RAISE EXCEPTION into a value`() {
+        // The database declining on purpose is a business rule answering, so it comes back as a value.
+        val result = dbResult {
+            db.rawQuery(
+                """
+                DO $$
+                BEGIN
+                    RAISE EXCEPTION 'The augury forbids it';
+                END;
+                $$
+                """.trimIndent()
+            ).execute()
+        }
+
+        assertIs<DataResult.Failure>(result)
+        assertIs<RoutineRaiseException>(result.error)
+    }
+
+    @Test
+    fun `dbResult does not catch a routine's own failed assertion`() {
+        // INTO STRICT is fetchRowStrict written in PL/pgSQL: the routine claimed exactly one row and the data
+        // said otherwise, which is the routine being wrong rather than the call not working out.
+        val thrown = assertFailsWith<RoutineAssertionException> {
+            dbResult {
+                db.rawQuery(
+                    """
+                    DO $$
+                    DECLARE
+                        found_id INT;
+                    BEGIN
+                        SELECT id INTO STRICT found_id FROM client_senators WHERE cognomen = 'nobody at all';
+                    END;
+                    $$
+                    """.trimIndent()
+                ).execute()
+            }
+        }
+        assertEquals(RoutineAssertionExceptionReason.NO_DATA_FOUND, thrown.reason)
+    }
+
+    @Test
     fun `dbResult around a whole transaction reports the failure that rolled it back`() {
         db.recordSenator("Cato", 7)
 
@@ -262,7 +308,7 @@ class ClientIntegrationTest {
         assertFailsWith<StatementException> {
             db.rawQuery("SELECT FROM WHERE").asResult().fetchRows()
         }
-        assertFailsWith<StatementException> {
+        assertFailsWith<InvalidOperationException> {
             db.rawQuery("SELECT id FROM client_senators WHERE cognomen = @c")
                 .asResult()
                 .fetchRowStrict("c" to "nobody at all")
@@ -337,13 +383,13 @@ class ClientIntegrationTest {
     fun `a strict fetch that finds no row is thrown, not caught`() {
         // Strict asserts exactly one row. Finding none falsifies that, and a falsified assertion is a
         // defect rather than an outcome - so not even dbResult turns it into a value.
-        val thrown = assertFailsWith<StatementException> {
+        val thrown = assertFailsWith<InvalidOperationException> {
             dbResult {
                 db.rawQuery("SELECT id FROM client_senators WHERE cognomen = @c")
                     .fetchRowStrict("c" to "nobody at all")
             }
         }
-        assertEquals(StatementExceptionReason.INCORRECT_RESULT_SIZE, thrown.reason)
+        assertEquals(InvalidOperationExceptionReason.INCORRECT_RESULT_SIZE, thrown.reason)
     }
 
     @Test

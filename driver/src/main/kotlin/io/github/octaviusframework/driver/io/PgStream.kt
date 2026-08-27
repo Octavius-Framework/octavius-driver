@@ -109,10 +109,19 @@ internal class PgStream(
      */
     fun checkAvailable() {
         if (copyInProgress) {
-            throw InvalidOperationException(InvalidOperationExceptionReason.COPY_IN_PROGRESS)
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.CONNECTION_BUSY,
+                "A COPY operation is still in progress on this connection. Finish it - endCopy/cancelCopy, or " +
+                    "read the export to its end - before using the session for anything else."
+            )
         }
         if (exchangeInProgress) {
-            throw InvalidOperationException(InvalidOperationExceptionReason.EXECUTION_IN_PROGRESS)
+            throw InvalidOperationException(
+                InvalidOperationExceptionReason.CONNECTION_BUSY,
+                "A statement is already executing on this connection. This usually means a query was issued " +
+                    "from inside a forEach block or a ResultConverter, while the driver was still reading the " +
+                    "result - such code needs a separate session."
+            )
         }
     }
 

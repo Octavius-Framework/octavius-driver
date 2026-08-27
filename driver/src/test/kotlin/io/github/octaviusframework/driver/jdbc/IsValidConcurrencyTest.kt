@@ -91,7 +91,7 @@ class IsValidConcurrencyTest {
             }
 
             // The reason is the whole point: it names the mistake, where `false` would have hidden it.
-            assertEquals(InvalidOperationExceptionReason.EXECUTION_IN_PROGRESS, thrown?.reason)
+            assertEquals(InvalidOperationExceptionReason.CONNECTION_BUSY, thrown?.reason)
 
             // And the connection was never unhealthy - it was only busy.
             assertTrue(session.isValid(1), "the connection should be valid once the stream is done")

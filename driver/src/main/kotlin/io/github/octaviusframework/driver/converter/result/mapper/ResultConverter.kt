@@ -24,7 +24,7 @@ import kotlin.reflect.KType
  * decides whether the exchange with the server is still open. Under `fetchObject*`, `fetchField*` and
  * the `forEach*` family the mapping happens as rows arrive, so a converter runs *inside* an unfinished
  * exchange and issuing a query on that same session collides with it - the driver refuses the call with
- * `InvalidOperationException` (`EXECUTION_IN_PROGRESS`), surfacing as the `cause` of a
+ * `InvalidOperationException` (`CONNECTION_BUSY`), surfacing as the `cause` of a
  * `MappingException` (`CONVERSION_ERROR`) carrying the path to the column. `fetchRows` and its
  * siblings hand back undecoded rows instead, so a converter reached later through `Row.get` runs after
  * the exchange has finished and is free to query. Write a converter that needs the database against a

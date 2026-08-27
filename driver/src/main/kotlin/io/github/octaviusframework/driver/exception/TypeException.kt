@@ -9,11 +9,7 @@ enum class TypeExceptionReason {
     /** The type with the specified OID is not a valid container type (Composite, Array, Enum, etc.). */
     NOT_A_CONTAINER,
     /** Missing codec for the specific OID when parsing or serializing. */
-    MISSING_CODEC,
-    /** PostgreSQL does not support receiving anonymous composite types (record) as input parameters. */
-    ANONYMOUS_RECORD_NOT_SUPPORTED,
-    /** Nested PgTyped is not allowed. You cannot wrap a PgTyped instance within another PgTyped. */
-    NESTED_PGTYPED_NOT_ALLOWED
+    MISSING_CODEC
 }
 
 /**
@@ -46,6 +42,4 @@ private fun generateDeveloperMessage(reason: TypeExceptionReason): String =
         TypeExceptionReason.TYPE_NOT_FOUND -> "The specified type was not found in the TypeRegistry."
         TypeExceptionReason.NOT_A_CONTAINER -> "The type with the specified OID is not a valid container type (Composite, Array, etc.)."
         TypeExceptionReason.MISSING_CODEC -> "Missing codec for the specific OID when parsing or serializing."
-        TypeExceptionReason.ANONYMOUS_RECORD_NOT_SUPPORTED -> "PostgreSQL does not support receiving anonymous composite types (record) as input parameters."
-        TypeExceptionReason.NESTED_PGTYPED_NOT_ALLOWED -> "Nested PgTyped is not allowed. You cannot wrap a PgTyped instance within another PgTyped."
     }
