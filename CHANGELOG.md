@@ -4,298 +4,165 @@
 
 #### Added
 
-- `applicationName` connection property, so the name a connection reports in `pg_stat_activity` is set like every other setting instead of being pushed into the `additionalProperties` map by hand. Either spelling fills it - `applicationName` or PostgreSQL's own `application_name` - and it is a plain `String` accessor on `OctaviusDataSource`, which is what puts it within reach of HikariCP's `addDataSourceProperty` and Spring's `data-source-properties`: a startup parameter previously had nowhere to go there but the URL. Set both ways, the property wins over an `application_name` left in `additionalProperties`. Left unset, a connection now reports `Octavius Driver` where it used to report nothing at all - pgjdbc has long done the same under `PostgreSQL JDBC Driver`. An `application_name` already in `additionalProperties` still stands: the default only fills a gap. See [Startup parameters](docs/driver/initialization.md#startup-parameters)
-- Cleartext password authentication, on an encrypted connection and nowhere else. The server asks for one when `pg_hba.conf` names `password`, `ldap`, `pam` or `radius` - the last three because the server has to hold the password itself to check it against something that is not PostgreSQL - and the driver used to refuse every one of them, which left an LDAP or AD deployment with no way to connect at all rather than with a weaker way. There is nothing a client can do to make that exchange safer, so the one thing the driver can decide is whether it happens: over TLS the password goes out, in plaintext it is never sent and the failure says to raise `sslmode`. `channelBinding=require` refuses before the password leaves the JVM, a cleartext login being one that can never be bound to the channel. MD5 is still refused outright. See [Authentication](docs/driver/initialization.md#authentication-is-scram-sha-256-or-a-password-inside-tls)
-- `@PgEnumType`, `@PgCompositeType` and `@DynamicallyMappable` in the `annotations` module, alongside `@PgName`. `@PgEnumType` carries the same case conventions `registerEnum` takes, which is why `CaseConvention` moved there too. They register nothing on their own and the driver does not read them: they are what a classpath scanner would look for, and they live in a multiplatform module so that a class shared with another platform can carry them in `commonMain`. The scanner that reads them is `client-scanner`, in this same release.
+- `applicationName` connection property, settable like any other rather than through `additionalProperties`, and
+  therefore reachable from HikariCP and Spring. Unset, a connection now reports `Octavius Driver`.
+- Cleartext password authentication, over TLS and nowhere else — which is what `pg_hba.conf` needs for `ldap`,
+  `pam` and `radius`, previously unable to connect at all. `channelBinding=require` still refuses it, and MD5
+  is still refused outright.
+- `@PgEnumType`, `@PgCompositeType` and `@DynamicallyMappable` in the new multiplatform `annotations` module,
+  alongside `@PgName`. The driver reads only `@PgName` as before; they are what a scanner looks for, and living in
+  `commonMain` is what lets a class shared with another platform carry them.
 
 #### Changed
 
-- **Breaking:** `CaseConvention` moves to the `annotations` module, from `io.github.octaviusframework.driver.identifier` to `io.github.octaviusframework.identifier`. The import changes; nothing else does. It is a bare enum with no dependencies, and `@PgEnumType` needs to name it - an annotation in a multiplatform module cannot reference a type that only exists on the JVM, and leaving the conventions off the annotation would have made a limitation look like a decision. `CaseConverter` stays in the driver, being logic rather than vocabulary
-- **Breaking:** `@PgName` moves out of the driver into a new `annotations` module, and from `io.github.octaviusframework.driver.annotation` to `io.github.octaviusframework.annotation`. The import changes; nothing else does. The reason is what the annotation is for: it goes on **your** classes, not on the driver's, and those classes are often shared with another platform - a desktop app and a browser extension reading the same DTOs. An annotation compiled only for the JVM cannot be written on a class in `commonMain`, which left exactly the schema that needs an attribute-name override unable to state one. The new module is multiplatform (`jvm` and `js`) and holds nothing but annotation declarations - no code, no dependencies of its own beyond the standard library - and the driver takes it as `api`, so it arrives transitively and nobody adds it by hand. The driver itself stays a plain JVM project. Maven consumers are unaffected in the way that matters: Gradle resolves the platform variant when it generates the POM, so `driver`'s POM names `annotations-jvm` directly and never the metadata module
-- **Breaking:** `TypeManager.registerEnum`'s non-reified overload takes `KClass<*>` rather than `KClass<T>` where `T : Enum<T>`. Source-compatible for anyone passing `MyEnum::class`; what changes is that a caller holding a class it found - a classpath scan, a configuration file - no longer needs an unchecked cast and a placeholder enum to satisfy a bound that was erased anyway. Being an enum is checked inside the driver instead, once, and refused as `InvalidOperationException(INVALID_ARGUMENT)` naming the class. The reified overload is unchanged and still catches it at compile time.
-- **Breaking:** the abstract base of `NativeQuery` and `NamedParameterQuery` is `Query`, where it was `OctaviusQuery`.
-  The prefix is what keeps a driver type apart from the `java.sql` interface it implements - `OctaviusConnection`,
-  `OctaviusStatement`, `OctaviusDataSource`, `OctaviusDriver` - and nothing named `Query` was ever in the way here. The
-  class has an internal constructor, so nothing outside the driver ever built one or extended it, and
-  `registerResultConverter` and `registerParameterConverter` are inherited members that go on resolving on the concrete
-  queries. What changes is a signature that named the base type by hand: `Query<*>` now.
-- **Breaking:** `RoutineExecutionException` is two classes, and which one a PL/pgSQL failure arrives as says what kind
-  of failure it was. A routine saying no on purpose is `RoutineRaiseException`: `P0001`, and `P0000` with it, that one
-  being reachable only by asking for it - `RAISE ... USING ERRCODE = 'plpgsql_error'` - which makes it another
-  deliberate raise rather than the unclassified error the old `UNKNOWN` reason called it. It carries no reason enum at
-  all, there being nothing left to tell apart, and `sqlState` still names the code. A routine whose own assertion turned
-  out false is `RoutineAssertionException`, with `NO_DATA_FOUND`, `TOO_MANY_ROWS` and `ASSERT_FAILURE`: an `INTO STRICT`
-  that matched no row or several, or an `ASSERT` that did not hold. The two say different things - one is the database
-  deciding, the other is the database code being wrong, which is the same reading that has a `fetch*Strict` finding no
-  row raise rather than return `null` - and a type is the only shape that distinction can take for a caller that
-  branches on it. octavius-client's result boundary is one such caller: it reads types and never reasons, so it could
-  not have acted on this at all while both were one class.
-  See [Error handling](docs/driver/exceptions.md#9-routineraiseexception)
+- **Breaking:** `@PgName` and `CaseConvention` move to the `annotations` module —
+  `io.github.octaviusframework.annotation` and `io.github.octaviusframework.identifier`. Imports change and
+  nothing else does. The driver takes the module as `api`.
+- **Breaking:** `TypeManager.registerEnum`'s non-reified overload takes `KClass<*>`, not `KClass<T>` where
+  `T : Enum<T>`. Source-compatible for `MyEnum::class`; a caller holding a scanned class no longer needs an
+  unchecked cast. Being an enum is checked inside and refused as `InvalidOperationException(INVALID_ARGUMENT)`.
+- **Breaking:** the abstract base of `NativeQuery` and `NamedParameterQuery` is `Query`, not `OctaviusQuery` —
+  the prefix exists to separate a driver type from the `java.sql` interface it implements and for main entry points, and nothing named
+  `Query` was in the way. Only a signature naming the base type by hand changes: `Query<*>`.
+- **Breaking:** `RoutineExecutionException` is two classes. A routine saying no on purpose is
+  `RoutineRaiseException` (`P0001`, `P0000`) and carries no reason enum; a routine whose own assertion failed
+  is `RoutineAssertionException` (`NO_DATA_FOUND`, `TOO_MANY_ROWS`, `ASSERT_FAILURE`). One is the database
+  deciding, the other is database code being wrong, and only a type lets a caller branch on that.
 - **Breaking:** SQLSTATE class `25` is `TransactionStateException`, and
-  `StatementExceptionReason.INVALID_TRANSACTION_STATE` is gone with it. Nothing about those statements is wrong; the
-  transaction they arrived in is - doomed by an earlier error, declared `READ ONLY`, or open where the command refuses
-  to run inside one - and the server sends no error position for any of them, so the one property `StatementException`
-  exists to carry was null on every instance of it. The reasons name the state instead: `IN_FAILED_TRANSACTION`
-  (`25P02`), `READ_ONLY_TRANSACTION` (`25006`), `NO_ACTIVE_TRANSACTION` (`25P01`), `ACTIVE_TRANSACTION` (`25001`),
-  `UNKNOWN`. `25P03` and `25P04` are untouched and remain `ExecutionAbortedException(TRANSACTION_TIMEOUT)`, a
-  transaction the server ended on a timer belonging with the statement timeout rather than here. Which side of
-  octavius-client's result boundary this lands on is unchanged: it was thrown as a `StatementException` and is thrown as
-  this. See [Error handling](docs/driver/exceptions.md#8-transactionstateexception)
-- **Breaking:** `MISSING_NAMED_PARAMETER` and `INCORRECT_RESULT_SIZE` move from `StatementExceptionReason` to
-  `InvalidOperationExceptionReason`, those two being what the driver raises about the *call* rather than about the
-  statement. `position` is what gives the line away: every other reason on `StatementException` has somewhere in the SQL
-  to point at - the server reports one, and the driver's own parser passes one for each of the three `UNCLOSED_*`
-  reasons - while these two never carried a position and never could. Each also had a sibling waiting in the class it
-  moves to: `INCORRECT_RESULT_SIZE` is `UNEXPECTED_RESULT` with the row count wrong instead of the shape, both of them
-  the chosen terminal not matching what the query produced, and `MISSING_NAMED_PARAMETER` is `INVALID_ARGUMENT` for an
-  argument that was never supplied at all. The reason names are unchanged, so a log line reads as it did but for the
-  class in front of it, and nothing moves across octavius-client's result boundary - both classes are caller bugs there.
-  Nor is any context lost: `queryContext` is filled for every `OctaviusException` the query layer sees rather than for
-  `StatementException` specially, so the SQL and the parameters still travel with the failure.
-  See [Error handling](docs/driver/exceptions.md#12-invalidoperationexception)
-- **Breaking:** six reasons fewer across three enums, each of them a distinction `details` was already making.
-  `UNCLOSED_QUOTE`, `UNCLOSED_DOLLAR_QUOTE` and `UNCLOSED_COMMENT` are one `UNCLOSED_TOKEN`: all four of the parser's
-  throw sites already named the construct - "Unclosed dollar-quoted string", "Unclosed multi-line comment" - and passed
-  a position that draws the caret under where it opened. `OBJECT_CLOSED` and `COPY_NOT_ACTIVE` are `RESOURCE_CLOSED`,
-  all three of their sites already naming the handle, and the answer being a new one either way. `COPY_IN_PROGRESS` and
-  `EXECUTION_IN_PROGRESS` are `CONNECTION_BUSY`: those two were raised from the same guard three lines apart, over the
-  one invariant that guard exists for - a connection carries one exchange at a time - so what used to be two fixed
-  developer messages is now the advice each site passes in `details`, which is the half that actually differed.
-  `UNCLOSED_TOKEN` deliberately stays out of `SYNTAX_ERROR`: the scanner refuses before anything is sent, and on the day
-  it trips over SQL the server would have taken, "syntax error" would be the one sentence that misleads. And
-  `TypeExceptionReason` gives up `NESTED_PGTYPED_NOT_ALLOWED` and `ANONYMOUS_RECORD_NOT_SUPPORTED` to
-  `INVALID_ARGUMENT`, neither being the registry failing to resolve a type, which is what that class is for: one is a
-  constructor refusing its own argument, and the other takes a `PgRecord` - which has an internal constructor and can
-  only have come out of a result - handed back as a bound parameter. That pair changes class, from `TypeException` to
-  `InvalidOperationException`; the merges change none, and all of them are caller bugs on octavius-client's boundary
-  before and after.
-  See [Error handling](docs/driver/exceptions.md#exception-reference)
-- **Breaking:** `DatabaseSystemException.errorMessage` is `details`, which is what the other nine exceptions in the
-  hierarchy call the same thing, and what nobody confuses with the `serverErrorMessage` sitting next to it. Nothing in
-  the driver, the tests or the docs read the old name.
-
-- `sslpassword` decrypts the client private key, where before it was handed to the in-memory keystore the driver assembles and to nothing else. That keystore is built inside `createKeyManagers`, read once by the `KeyManagerFactory` and dropped - nothing persists it and nothing else can reach it - so the password protected nothing that could be observed, while an encrypted `sslkey` failed to load no matter what was set. It is now the password for the key file, which is what it means to libpq and to pgjdbc, and the keystore is given an empty one always. Which cipher the key was locked with is neither asked for nor configurable: `EncryptedPrivateKeyInfo` resolves it from the file, PBES2 parameter blocks included, so what OpenSSL writes by default today and what it wrote with `-v1` a decade ago both open. An encrypted key with no `sslpassword` is now refused with a message naming the property, rather than with generic advice about PKCS#8
-- **Breaking:** `setSchema`, `getSchema`, `setCatalog` and `getCatalog` raise `InvalidOperationException(FEATURE_NOT_SUPPORTED)` where they used to answer. Neither is connection state in PostgreSQL: a catalog is the database itself, which nothing on an open connection can change, and a schema is not a setting but the head of `search_path` - reported by the server and readable through `getSearchPath()` all along. The setters accepted whatever they were given and did nothing with it, so a pool configured with a schema set none and every query after it ran somewhere else; the getters answered `"public"` and `"octavius"`, constants that were true of nothing. HikariCP calls a setter only where it was configured with a schema or a catalog, and never calls the getters itself, so what becomes a failure is exactly the setting that was being ignored - raised when the pool opens the connection rather than discovered in a query that read the wrong table. See [Schema and catalog](docs/driver/octavius-vs-jdbc.md#7-schema-and-catalog)
-
-- **Breaking:** a connection property whose value does not parse is refused where it is set, instead of leaving that property unset for its default to quietly apply. `sslmode=verify-fll` used to come back as `prefer`: the strongest rung asked for, close to the weakest connected under, and nothing said about it anywhere - and `channelBinding=requir` did the same. The rest got there by another route. `toBoolean()` reads everything that is not `true` as `false`, so `ssl=yes` meant `ssl=false`; `toIntOrNull()` reads `30s` as nothing at all, so a `socketTimeout` written with its unit meant waiting forever. All of them now raise `InvalidOperationException(INVALID_ARGUMENT)` naming the property and the value it was given, out of `setProperty` and out of `parse` alike - before any socket exists, so a pool fails while it is being built rather than on a borrow. libpq and pgjdbc refuse the two SSL ones too; this refuses the rest on the same grounds. A property *name* the driver does not recognise is untouched and still travels to the server as a startup parameter, that being what a startup parameter is. See [Configuration reference](docs/driver/initialization.md#configuration-reference)
-
-- **Breaking:** the driver internals are no longer public by omission. `TypeRegistry`, `TypeRegistryLoader`, `ParameterMapper`, `SqlParameterParser`, `DataRowMessage`, both enum converters and the reflective mapper's own machinery are internal, and `Row`, `PgArray`, `ColumnMetadata`, `ColumnOrigin`, `TypeManager`, `ContainerFactory`, `ConverterRegistry`, `ParameterSerializer` and `TransactionManager` keep their types but take an internal constructor, joining the fifteen classes that already worked that way - a `Row` was never yours to build, and building one took the connection's own row buffer as an argument. `Row.typeRegistry` and `Row.resultMapper` are private, which closes the one public path to a registry that is global per database and mutable: `row.typeRegistry.codecs = ...` reached every session pointing at the same host, port and database, not only the one the row came from. The composite maps on `ConverterRegistry` are read-only rather than assignable, and `String.toSnakeCase()`, `toCamelCase()` and `toPascalCase()` are gone - unused by the driver and undocumented, they claimed three very general names on `String`, and `CaseConverter.convert` is what the driver itself uses. Nothing documented moved: `typeManager` and every registration on it, `containers`, `toDataObject`/`toDataMap` with `ReflectionCache` still public behind them, `GlobalTypeRegistry.removeRegistry`, `PgArray` as the raw form of a result column, and the settable `queryContext` are all where they were. See [Type System](docs/driver/type-system.md)
-
-- A `LargeObject` operation on a connection that has gone now reports the connection rather than the descriptor. `checkClosed` asked `session.octaviusConnection.isClosed`, and on a pooled connection that is a question about whoever borrowed it next - the connection outlives the session it was handed to - so a descriptor nothing had happened to came back as though it had been closed itself. It now guards only what it owns, its own `close()`. The other two ways a descriptor goes dead were already reported, in their own words, by whichever layer knows: a session given up raises `NetworkException(CONNECTION_CLOSED)` before any statement is built, and a descriptor outliving the transaction that opened it is PostgreSQL's `StatementException(UNDEFINED_OBJECT)`. Nothing could reach a connection it no longer owned either way - every operation goes through the session, which checks first
+  `StatementExceptionReason.INVALID_TRANSACTION_STATE` is gone. Nothing is wrong with those statements — the
+  transaction is — and the server sends no error position for any of them. `25P03` and `25P04` are untouched.
+- **Breaking:** `MISSING_NAMED_PARAMETER` and `INCORRECT_RESULT_SIZE` move to
+  `InvalidOperationExceptionReason`, both being the caller's mistake rather than the server's.
+- **Breaking:** six reasons fewer across three enums, each a distinction `details` was already making.
+- **Breaking:** `DatabaseSystemException.errorMessage` is `details`, which is what the other nine exceptions
+  call the same thing.
+- **Breaking:** `setSchema`, `getSchema`, `setCatalog` and `getCatalog` raise
+  `InvalidOperationException(FEATURE_NOT_SUPPORTED)`. Neither is connection state in PostgreSQL: the setters
+  accepted anything and did nothing, so a pool configured with a schema set none.
+- **Breaking:** a connection property whose value does not parse is refused where it is set, rather than
+  leaving the default to apply quietly — `sslmode=verify-fll` used to connect as `prefer`, and `ssl=yes` meant
+  `ssl=false`. Raised before any socket exists, so a pool fails while being built.
+- **Breaking:** the driver internals are no longer public by omission. Fifteen more classes are `internal` or
+  take an internal constructor and three very general `String` extensions are gone. Nothing documented moved.
+- `sslpassword` decrypts the client private key, which is what it means to libpq and pgjdbc; before, an
+  encrypted `sslkey` failed to load whatever was set. The cipher is resolved from the file, and an encrypted
+  key with no password is refused by name.
+- A `LargeObject` operation on a connection that has gone reports the connection, not the descriptor.
+  `checkClosed` asked a pooled connection whether it was closed, which is a question about whoever borrowed it
+  next.
 
 #### Fixed
 
-- Encrypted connections now actually reach TLS 1.3, where every one of them used to settle on 1.2 no matter what the server offered. The handshake was run on an `SSLContext` asked for by version, and that version is a ceiling the connection never rises above - but not one anything reports: the context still lists TLS 1.3 among its *supported* protocols and still accepts it as an *enabled* one, so the driver's own restriction to 1.2 and 1.3 looked satisfied while nothing above 1.2 was ever negotiated. The restriction is unchanged and is now the only thing stating a floor. The SSL suite asserts the negotiated version out of `pg_stat_ssl` rather than only that the connection is encrypted, a `SELECT ssl` being true throughout and the reason this went unseen
-- An IPv6 address in a JDBC URL is read as one, where `jdbc:octavius://[::1]:5432/res_publica` used to be split on the first colon and connect to a host named `[`. The port is now taken from the last colon and only when it follows the closing bracket, which is how libpq and pgjdbc both read it, and the brackets are stripped before the address is stored: `serverName` holds the `::1` that a certificate is matched against and a log line prints, not the URL's punctuation. `toUrl()` puts them back. The brackets are required even with no port following, an unbracketed `::1` reading as the host `:` on port 1; setting `serverName` directly never needed them and still does not
-- A client certificate on anything other than an RSA key now works. The private key was read through `KeyFactory.getInstance("RSA")` regardless of what it actually was, so an EC key - what a good deal of modern tooling generates by default - failed with `InvalidKeySpecException: Invalid RSA private key` wrapped in `InitializationException(SSL_ERROR)`. The algorithm is now taken from the certificate the key is presented with, which is where it is stated and which the key has to match anyway; nothing in the JDK parses it out of the PKCS#8 bytes themselves, and pgjdbc resolves it the same way. No new property and no list of supported algorithms - whatever the JVM has a `KeyFactory` for now works
-- The exception raised when a client certificate or key will not load names both files and no longer asserts a cause it cannot know. It used to advise ensuring the key was "in PKCS8 format without password" - which for an EC key was already true, so the one thing it pointed at was the one thing that was not wrong. The cause has always been attached and is what actually tells an encrypted key from a PKCS#1 one from a mismatched pair
-- `toUrl()` no longer renders `sslpassword`, which is the one thing it renders that opens something. The password has always been left out of it and for a stated reason - the string tends to end up in logs and in diagnostics, and `OctaviusDataSource.url` is the getter somebody pastes into a bug report - and until this version `sslpassword` was not a second one of those in practice: it was handed to an in-memory keystore built, read once and dropped, so what travelled in the URL unlocked nothing. It now unlocks the client private key. A URL was never a lossless copy of a configuration and `copy()` is still what to reach for; it is one field further from being one
-- A connection that fails to open gives its socket back. Only the socket's own construction was guarded, so everything after it threw with the socket still open - a refused TLS handshake, a client key that will not load, a rejected password, a `pg_catalog` the login may not read - and nothing else held it by then, leaving it to be closed whenever the collector reached it. A pool answering an outage by retrying a bad password produced one per attempt. It is dropped rather than terminated: a Terminate is addressed to a session, and a login that failed never opened one. A server refused for its version is the exception and still gets one, being the only failure here that happens on a session that exists
-- A negative `fetchSize` is refused by the driver instead of being sent. `forEach*` passed it straight into `Execute`'s row limit, a field the protocol defines as a count, so what a server made of a negative one was never the driver's to predict. It now raises `InvalidOperationException(INVALID_ARGUMENT)` naming the value, and does so before the connection lock is taken - an argument that was never going to be accepted has no reason to first wait out whatever that connection is running. `0` is untouched, and is not a rejected batch size but `Execute`'s own "no limit": one batch carrying the whole result, at the same flat memory, which [Streaming large results](docs/driver/queries.md#streaming-large-results) now states rather than leaving to be discovered
-- A server whose reported version holds no dot is read for what it is rather than refused. The major version was taken as everything before the first dot, which for `18beta1`, `18rc1` or a `19devel` built from git is the whole string and parses as nothing - leaving `0`, and a refusal telling somebody running 18 that the driver requires 18 or higher. It is now the digits the version opens with. A version with no leading digit at all still reads as `0` and is still refused
+- Encrypted connections reach TLS 1.3, where every one settled on 1.2 whatever the server offered — the
+  `SSLContext` was asked for by version, and that version is a ceiling nothing reports. The suite now asserts
+  the negotiated version out of `pg_stat_ssl`.
+- An IPv6 address in a JDBC URL is read as one; `jdbc:octavius://[::1]:5432/db` used to connect to a host named
+  `[`. The port is taken from the last colon and only after the closing bracket, as libpq and pgjdbc read it.
+- A client certificate on a non-RSA key works. The key was read through `KeyFactory.getInstance("RSA")`
+  whatever it was, so an EC key — what most modern tooling generates — always failed. The algorithm now comes
+  from the certificate it is presented with.
+- The exception raised when a certificate or key will not load names both files and no longer asserts a cause
+  it cannot know. It used to advise PKCS8-without-password, which for an EC key was already true.
+- `toUrl()` no longer renders `sslpassword`. It became a secret this version, now that it unlocks the private
+  key rather than an in-memory keystore that was built, read once and dropped.
+- A connection that fails to open gives its socket back. Only the socket's construction was guarded, so a
+  refused handshake or a rejected password leaked one per attempt.
+- A negative `fetchSize` is refused, naming the value, before the connection lock is taken — it used to go
+  straight into `Execute`'s row limit, which the protocol defines as a count. `0` is untouched and means the
+  whole result in one batch.
+- A server whose reported version holds no dot is read for what it is. `18beta1` parsed as `0`, which told
+  somebody running 18 that the driver requires 18 or higher.
 
 ### Client and scanner
 
 #### Added
 
-- The `client` module: what the driver leaves to the caller, and nothing it already does. Octavius-database
-  was in large part a way around pgjdbc — text-protocol composites, enums the driver had to be taught, a
-  stateful `ResultSet`, no named parameters — and the driver answers all of that natively. What is left over
-  is a much smaller thing than a port of it would be, and this module is deliberately only that.
-- `OctaviusClient`, which hands out queries and runs transactions over them, and does nothing else. A query
-  taken from it — `rawQuery` or one of the builders — is a `RunnableQuery`, which carries the terminal family
-  and finds its own session when a terminal runs, so a single query stays a single expression with nothing
-  opened around it. Where the work is not a query — `copy`, `largeObjects`, `notifications`, several statements
-  that must share a session — `execute` hands over the driver's own `OctaviusSessionOperations` and gets out of
-  the way.
-- The terminal family is written **once**, on `RunnableQuery` itself: every builder and every hand-written
-  query inherits `fetchRows`, `fetchObjects`, `fetchField`, `forEach*` and `update` without restating a line.
-  The typed ones are `inline` members with a `reified` type argument, which a final member may be — the
-  restriction is on virtual functions — so they need no import at the call site and travel all the way down
-  to the driver's own family, where the mapping happens. The names and meanings are the driver's, unchanged,
-  and parameters are supplied at the terminal as they are there. What these add is the one thing a
-  `RunnableQuery` knows and a driver query does not: which session to run on.
-- The query builders: `select`, `insertInto`, `update` and `deleteFrom` on `OctaviusClient`, each extending
-  `RunnableQuery` and so inheriting the whole terminal family without a line of its own. Every clause takes SQL
-  and passes it through — `from("legions l JOIN provinces p ON l.province_id = p.id")` is written out because
-  that is the join — and what the builder contributes is the mechanical part: the keywords, their order, the
-  column list paired with its own placeholders so the two cannot drift, and above all the clauses that
-  disappear when they have nothing to say. `where(null)` leaves out the `WHERE`, which is what makes a filter
-  assembled at runtime bearable to write.
+- The `client` module: what the driver leaves to the caller, and nothing it already does. Much smaller than a
+  port of octavius-database would be, that library having largely existed to work around pgjdbc.
+  See [the client's guides](docs/client/README.md)
+- `OctaviusClient`, which hands out queries and runs transactions over them. A query taken from it is a
+  `RunnableQuery` that finds its own session when a terminal runs, so nothing has to be opened around it. Where
+  the work is not a query, `execute { }` hands over the driver's own session operations.
+- The terminal family is written once, on `RunnableQuery`: every builder and every hand-written query inherits
+  `fetchRows`, `fetchObjects`, `fetchField`, `forEach*` and `update` under the driver's names and meanings. The
+  typed ones are `inline` members with a `reified` argument, so they need no import at the call site.
+- The query builders — `select`, `insertInto`, `update`, `deleteFrom`. Every clause takes SQL and passes it
+  through; what the builder contributes is the keywords, the column list paired with its own placeholders, and
+  the clauses that disappear when they have nothing to say.
 - **An `UPDATE` or `DELETE` built here requires a `WHERE`.** Emptying a table is a statement worth having to
-  mean, and a builder that lets it fall out of a `null` filter is how it happens by accident. Where it is
-  meant, `rawQuery` says so in the diff.
-- `QueryFragment`, `withParam` and `join`, which keep a runtime-assembled condition and the parameters it names
-  together. `join` drops the filters that were not there rather than leaving a dangling separator, parenthesises
-  each fragment so that a joined `OR` keeps its precedence, and refuses two fragments that name one parameter
-  differently — silently keeping one value would make the result depend on the order the filters were listed in.
-- `TransactionPlan`, `StepHandle` and `executeTransactionPlan`, for the case a `transaction { }` block does not
-  cover: the sequence itself is data, built by the layer that knows what has to happen and run by another.
-  Steps run in order, and a step's parameters may hold a `TransactionValue` pointing at what an earlier step
-  produced — `handle.value()` for the result of a typed terminal, `field`/`column`/`row` for a row-shaped one,
-  and `map { }` to transform any of them on the way. A `row` used as a parameter is **spread**: its columns
-  become parameters under their own names. Where the sequence is fixed and written out in one place, a
-  `transaction { }` block says the same thing with fewer moving parts and the values in plain Kotlin locals;
-  the plan is for when it is not.
-- `copy()` on every builder, for variants off a shared base: `base.copy().where(…)` twice, with `base`
-  untouched.
-- `RunnableQuery.toSql()`, which renders the SQL a query would send. Not only a logging getter: a query here
-  is a value, so the rendered SQL drops into a `WITH` clause, a subquery or an arm of a `UNION`, and because no
-  query carries its own parameters the `@name` placeholders survive the embedding and are bound by whoever runs
-  the outer statement. The same embedded query can therefore be run again under a different binding.
-- `RawQuery.execute()` is on `RawQuery` alone rather than on the shared surface. It speaks the Simple Query
-  Protocol, which binds nothing: the SQL reaches the server exactly as written and an `@name` left in it
-  arrives as literal text. A builder always has values to bind, so offering it there would only be a trap.
-- `SessionProvider`, the seam under that. It exists for one shape: a repository function that opens a scope
-  without knowing whether it is already inside a transaction, and is right either way. `DefaultSessionProvider`
-  binds a transaction's session to the thread that started it, so a nested `execute` joins it, commits with it
-  and rolls back with it — and outside a transaction borrows a session per call and gives it straight back,
-  which costs no round trip unless the session registered a `LISTEN` or left a transaction open. Propagation
-  covers `REQUIRED`, `REQUIRES_NEW` and `NESTED`; isolation and read-only are applied before the transaction
-  begins, both timeouts as `SET LOCAL` inside it so neither can follow a connection back into the pool.
-- `RunnableQuery.asResult()`, which switches one query to result-returning terminals so a chain stays a chain
-  instead of being indented inside a lambda — the same boundary, only a different shape at the call site.
-- `OctaviusClient.transactionResult`, a transaction that understands a returned failure: a `Failure` rolls it
-  back and comes out as the value it already was, a `Success` commits. It is not sugar over `transaction` —
-  the two do not compose, because a plain transaction rolls back on a throw and on nothing else, so a failure
-  caught into a value inside one would be committed over. It and `executeTransactionPlan` are members with
-  default bodies rather than extensions: both are definable in terms of `transaction`, which a default body
-  says outright, and neither then needs an import at the call site.
-- `DataResult<T>` and `dbResult { }`, the result style as one opt-in function rather than as a return type.
-  Baking it into the terminals would cost nothing now that there is one surface, and it was weighed on those
-  terms; throwing won because it composes — a `dbResult` naturally wraps a whole unit of work, which is the
-  granularity at which the "transaction commits over a caught failure" trap does not exist.
-  Nothing under it returns a `DataResult`: queries throw, the way the driver throws, which is what keeps them
-  usable from a `try`/`catch` and from a Spring `@Transactional` without either knowing about this module.
-  Wrapping is for where a failure should be a value — a fat client turning it into UI state is what it was
-  written for. It carries the driver's own `OctaviusException` rather than a parallel hierarchy, so a
-  `ConstraintViolationException` caught here is the one the driver raised, constraint name and query context
-  intact.
-- One place that decides what `dbResult` catches and what it lets through, `isCallerBug`, and it reads nothing
-  but the exception's type — never the `reason` enum inside it. SQL the server would not parse, a row that
-  does not fit the class it was asked for, a type the registry has never heard of, a value no codec would
-  encode, an operation the session's state forbids, a transaction whose state forbids the statement sent into
-  it, and a routine's own assertion falsified by the data, along with a session that could not be obtained at
-  all: all thrown, as defects rather than outcomes. Everything else — a violated constraint, a deadlock, a
-  serialization failure, a routine's `RAISE EXCEPTION`, a statement that ran out of time, and any exception
-  type the driver gains later — becomes a `Failure`.
-- **A `fetch*Strict` that found no row is thrown, where octavius-database returned it as a failure.** That is
-  a deliberate correction rather than a difference left unnoticed. `Strict` states that exactly one row is
-  there, so a run that finds none has falsified something the calling code asserted, and the same reading
-  covers a non-nullable `T` over a `NULL`. Absence that is expected has its own way of being said and it is in
-  the type: `fetchRow` returns `Row?` and `fetchField<String?>` returns `null`, neither of them raising.
-  Reaching for the strict form on a lookup allowed to miss is the bug being reported.
-
-- `dynamic_dto`: one column holding whichever of several unrelated shapes a row happens to carry, which is the
-  case a `COMPOSITE` cannot cover — a composite fixes the shape at schema level, and this fixes it per row.
-  `db.dynamicTypes.register<LandGrant>("land_grant")` binds a class to a discriminator, and from then on the
-  column reads back as that class, or as whatever supertype was asked for where the rows hold several. Values
-  built in SQL read the same way, which is what makes an ad-hoc projection work without a schema change.
-- Registration **states the name**; it is not read off an annotation and not derived from the class. The
-  discriminator is stored in the data, so tying it to a Kotlin identifier means a rename silently orphans every
-  row written before it — at runtime, on whichever query reaches one first. Stating it also keeps domain
-  classes free of a JVM-only annotation, which matters where they are shared with another platform. Classpath
-  scanning stays a separate module for the same reason it always was: it is the only part of any of this that
-  needs a classpath-walking dependency.
-- `DYNAMIC_DTO_DDL` and `dynamicTypes.install()`. The type and its constructor functions are **not** created
-  behind you: put the DDL in a migration, which is the reading this library prefers, or call `install()` where
-  a migration would be ceremony. `install()` also reloads the driver's type catalogue, which is read once when
-  a connection opens — a type created after that is one the driver has never heard of.
-
-- `dynamicTypes.register<T>()` and `register(kClass)` without a name, reading it off `@DynamicallyMappable`.
-  The annotation lives in the multiplatform `annotations` module, so it sits on a class shared with another
-  platform — which is what made it possible to have at all, the earlier objection to it having been that a
-  JVM-only annotation cannot go on `commonMain` code. Stating the name at the call still works and wins where
-  both are present.
-- The `client-scanner` module. `db.registerAnnotatedTypes("com.roma.domain")` walks the named packages and
-  registers every `@PgEnumType`, `@PgCompositeType` and `@DynamicallyMappable` it finds. It does nothing the
-  hand-written calls cannot — `registerEnum`, `registerAutoComposite` and `dynamicTypes.register` are the whole
-  of what it ends up doing — and is a module of its own for one reason: walking a classpath correctly, jars
-  inside jars and Spring Boot fat jars included, is a dependency worth keeping off everyone who registers by
-  hand. A name the database has no type for goes into `ScanReport.unresolved` and is **reported, not refused**,
-  because registering ahead of a type that does not exist yet is a working flow — converters survive a
-  `reloadTypes()`. A scan that matched nothing logs a warning, a package name with a typo in it otherwise
-  registering nothing and saying nothing.
-- **An instance of a registered class is written as a `dynamic_dto` without being wrapped.** `toDynamicDto` is
-  no longer the only way in: a parameter converter claims a registered class and builds the composite itself.
-  `DynamicWriteStrategy` says when, and defaults to `AUTOMATIC_WHEN_UNAMBIGUOUS` — automatic unless the class is
-  registered as a composite as well, in which case the composite takes it and wrapping is how you ask for the
-  other. `PREFER_DYNAMIC_DTO` takes it either way; `EXPLICIT_ONLY` refuses an unwrapped value and refuses it by
-  name, rather than letting it die a layer down as a missing codec. A mode exists at all because the driver
-  declares parameter types itself instead of asking the server, so at a top-level parameter there is no
-  expected type to consult and the Kotlin class is the only thing to go on.
-- `DynamicDto.dataPayload` is the payload as JSON **text**, and no tree is built in either direction: `jsonb`'s
-  codec encodes and decodes a `String`, so text is the form both paths already pass through. Reading decodes
-  straight from it and `toDynamicDto` encodes straight to it, which is what stops the wrapped path being slower
-  than the unwrapped one; a tree is one `Json.parseToJsonElement` away. Writing also builds the composite
-  itself rather than going through the driver's reflective composite mapping, which read the two properties
-  back off the object and allocated a map of them per parameter. Only `toDynamicDto` constructs one, which is
-  what keeps the discriminator honest — a name is checked against the registry there and nowhere else, the
-  column being a plain `(text, jsonb)` that the server has never heard a registry mentioned to.
-- `dynamicJson` and `dynamicWriteStrategy` on `fromDataSource` and `fromSessionProvider`. The `Json` was
-  previously a `DynamicTypes` default that nothing could reach, while its own documentation told you to supply
-  one with `JsonNamingStrategy.SnakeCase` where the payload is built in SQL.
-- `TransactionPlan.addPlan(other)`, which is what makes a plan compose: one layer builds the plan for its part
-  of the work, another for its part, and something above them runs the two as one transaction without knowing
-  what either put in. Handles the merged plan handed out keep working, a result being filed under the handle
-  itself rather than under a position. Merging the same plan twice is refused — directly, or through two plans
-  that both hold it — since its steps would run twice under one handle and only the last result of each would
-  be reachable.
-- A plan is checked before its transaction is opened rather than partway through it. Every step's SQL is
-  rendered, so an `UPDATE` that never got its `WHERE` is refused naming the step instead of surfacing once the
-  steps before it have done their work, and every parameter is walked for handles — through however many
-  `map { }` wrap them — so one belonging to another plan is caught before anything runs. An empty plan returns
-  an empty result without opening a transaction at all. What is deliberately not checked is a step depending on
-  a later one: a handle comes from `add` and nowhere else, and `addPlan` appends whole plans in order, so a
-  forward reference has no way to be written.
-- An exception out of a `map { }` arrives as a `MappingException` naming the parameter, with what was actually
-  thrown as its cause. A transformation is the one place a plan runs code the caller wrote, and a bare
-  `ClassCastException` out of `map { it as Int }` used to travel as itself — past `dbResult` and
-  `transactionResult`, which catch `OctaviusException` and nothing else, so the result style never saw it at
-  all. An `OctaviusException` raised in there is passed through as it is, being already more specific than any
-  wrapper could be about it.
-- A value carried between steps by `field`, `column` or `row` is what the result converters make of it rather
-  than what its codec left behind, which is the same thing `row.get<Any?>` gives anywhere else. An enum column
-  arrives as the enum and a `jsonb` column as a `JsonElement`, each of which names its own PostgreSQL type on
-  the way back out; the codec's `String` was declared `text` and refused by the very column it had come from.
-- `registerResultConverter` and `registerParameterConverter` on any query the client hands out, which is how a
-  builder reaches the converter registries the driver gives every query. A one-off mapping — a column read as
-  something the registry has never been told about, a shape that exists in one report and nowhere else — is now
-  a line in the chain rather than a drop down to `db.execute { createNamedQuery(…) }` and the loss of the
-  builder with it. A query's registries sit ahead of the session's and are discarded with the query, so nothing
-  else on the connection is touched; registering on the type manager instead reaches every session pointing at
-  that database. `RunnableQuery` is self-typed for them, as the driver's own `Query` is and for the same
-  reason: each hands back the builder's own type, so it can sit anywhere in the chain and needs no import where
-  it is called. `copy()` carries what was registered.
-- `dynamicTypes.resultConverter(json)`, `parameterConverter(json)` and `toDynamicDto(value, json)` — the same
-  mechanism applied to the case that most wants it. A payload built in SQL with `jsonb_build_object` is named
-  the way SQL names things, against classes whose properties are not; supply a `Json` with
-  `JsonNamingStrategy.SnakeCase` for that one query and the rest of the application goes on reading as it did.
-  Before this the `Json` was fixed when the client was built, and the read side had no way in at all.
-- **`forEach*` has no default `fetchSize`**, as it has none on the driver, where the absence is documented
-  rather than accidental: a walk that streams wants batches and a walk that folds wants `0` — the whole result
-  in one `Execute` — and nothing here can tell which it is. The client had invented `100`, which silently chose
-  the streaming answer and hid the other entirely.
+  mean, and `rawQuery` is where it says so.
+- `QueryFragment`, `withParam` and `join`, keeping a runtime-assembled condition and its parameters together.
+  `join` drops empty fragments, parenthesises each one so a joined `OR` keeps its precedence, and refuses two
+  that name one parameter differently.
+- `RunnableQuery.toSql()`, which makes a query a value: no query carries its own parameters, so the rendered
+  SQL drops into a `WITH`, a subquery or a `UNION` with its `@name` placeholders intact.
+- `copy()` on every builder, for variants off a shared base, carrying registered converters with it.
+- `RawQuery.execute()`, on `RawQuery` alone. It speaks the Simple Query Protocol, which binds nothing, so an
+  `@name` left in the SQL arrives as literal text — and a builder always has values to bind. Several statements
+  in one round trip.
+- `registerResultConverter` and `registerParameterConverter` on any query, reaching the per-query registries
+  the driver already gives every query — ahead of the session's, discarded with the query. `RunnableQuery` is
+  self-typed for them, as the driver's `Query` is, so each returns the builder's own type.
+- `SessionProvider`, and `DefaultSessionProvider` binding a transaction's session to the thread that started
+  it — so a repository function opens a scope without knowing whether it is already inside a transaction.
+  `REQUIRED`, `REQUIRES_NEW` and `NESTED`; isolation and read-only before the transaction begins, both timeouts
+  as `SET LOCAL` inside it.
+- `DataResult<T>` and `dbResult { }` — the result style as one opt-in function rather than a return type.
+  Queries throw, the way the driver throws, which keeps them usable from a `try`/`catch` and from
+  `@Transactional`. It carries the driver's own `OctaviusException` rather than a parallel hierarchy.
+- `RunnableQuery.asResult()` and `OctaviusClient.transactionResult`, the same boundary at two other widths.
+  `transactionResult` is not sugar: a plain transaction rolls back on a throw and on nothing else, so a failure
+  caught into a value inside one would be committed over.
+- One place decides what `dbResult` catches, `isCallerBug`, and it reads the exception's **type** and nothing
+  finer — never the `reason` enum, which exists for a log line. Anything unlisted becomes a `Failure`, future
+  exception types included.
+- **A `fetch*Strict` that found no row is thrown, where octavius-database returned it as a failure.** A
+  deliberate correction: `Strict` asserts one row is there. Absence that is expected says so in the type —
+  `fetchRow` returns `Row?`, `fetchField<String?>` returns `null`.
+- `TransactionPlan`, `StepHandle` and `executeTransactionPlan`, for when the sequence itself is data — built by
+  the layer that knows what has to happen, run by another. A step's parameters may hold a `TransactionValue`
+  pointing at what an earlier step produced.
+- `TransactionPlan.addPlan(other)`, so two plans run as one transaction. Handles keep working, a result being
+  filed under the handle rather than under a position. Merging one twice is refused.
+- A plan is validated before its transaction is opened: every step's SQL rendered, every parameter walked for
+  handles belonging to another plan. An empty plan opens no transaction.
+- An exception out of a `map { }` arrives as a `MappingException` naming the parameter, with what was thrown as
+  its cause — a transformation is the one place a plan runs the caller's code, and a bare `ClassCastException`
+  travelled past `dbResult` unseen.
+- A value carried between steps by `field`, `column` or `row` is what the result converters make of it, the
+  same as `row.get<Any?>` anywhere else — so an enum arrives as the enum and `jsonb` as a `JsonElement`, each
+  naming its own PostgreSQL type on the way back out.
+- `dynamic_dto`: one column holding whichever of several unrelated shapes a row happens to carry — the case a
+  `COMPOSITE` cannot cover, fixing the shape per row rather than at schema level. Values built in SQL read the
+  same way.
+- `dynamic_dto` registration **states the name** rather than deriving it from the class. The discriminator is stored in the
+  data, so deriving it means a rename silently orphaning every row written before it. `@DynamicallyMappable`
+  declares one instead — `register<T>()` and `register(kClass)` read it — and being multiplatform it can sit on
+  a class shared with another platform.
+- `DYNAMIC_DTO_DDL` and `dynamicTypes.install()`. The type is not created behind you: put the DDL in a
+  migration, or call `install()`, which also reloads the catalogue a connection read when it opened.
+- **An instance of a registered class is written as a `dynamic_dto` without being wrapped.**
+  `DynamicWriteStrategy` says when, defaulting to `AUTOMATIC_WHEN_UNAMBIGUOUS`; `toDynamicDto` overrides all
+  three and is the only way to make a `DynamicDto`, which is where the name is checked against the registry.
+- `DynamicDto.dataPayload` is JSON **text**, and no tree is built in either direction — `jsonb`'s codec encodes
+  and decodes a `String`, so text is the form both paths already pass through.
+- `dynamicJson` and `dynamicWriteStrategy` on `fromDataSource` and `fromSessionProvider`, plus
+  `resultConverter(json)`, `parameterConverter(json)` and `toDynamicDto(value, json)` for one query at a time —
+  a payload built with `jsonb_build_object` is named the way SQL names things.
+- The `client-scanner` module: `registerAnnotatedTypes("com.roma.domain")` walks the named packages and
+  registers what it finds. A name the database has no type for goes into `ScanReport.unresolved` and is
+  reported, not refused — registering ahead of a migration is a working flow.
 
 #### Notes
 
-- Three ways into the result style, for three widths. `RunnableQuery.asResult()` for one query, `dbResult { }`
-  for anything wider that is not a transaction, and `transactionResult` for a transaction. Reaching for
-  `dbResult` *inside* a plain `transaction` is the one combination that misleads: it catches the failure, the
-  block finishes normally, and the transaction commits over it — which is exactly why `transactionResult`
-  exists rather than being left to composition.
-- The escaping rule octavius-database needed for `?` is gone rather than ported. The driver rewrites `@name`
-  to PostgreSQL's own `$n` placeholders, so `?` is never a placeholder and a JSONB operator written as `?`
-  needs no doubling.
-- There is no `client-spring-integration` and none is planned. Running under a framework that owns its own
-  transactions means implementing `SessionProvider` against it and passing that to
-  `OctaviusClient.fromSessionProvider` — for Spring, under thirty lines over the driver's existing
-  `OctaviusTemplate` and a `PlatformTransactionManager`, and that is the whole of what such a module would
-  contain. `execute` is a single line of delegation, the template already taking the same receiver-lambda the
-  interface asks for. What is **not** delegation is the timeouts: Spring has one, it means the transaction
-  rather than the statement, and it enforces it itself, so both `SET LOCAL`s are the wrapper's to issue and
-  account for about a third of it. The target here is the standalone case, so it is left to whoever needs it
-  rather than shipped, versioned and documented for nobody.
+- Three ways into the result style, for three widths — `asResult()`, `dbResult { }`, `transactionResult`.
+  Reaching for `dbResult` *inside* a plain `transaction` is the one combination that misleads.
+- The escaping rule octavius-database needed for `?` is gone rather than ported: the driver rewrites `@name` to
+  `$n`, so a JSONB operator written as `?` needs no doubling.
+- There is no `client-spring-integration` and none is planned. Implementing `SessionProvider` against Spring is
+  under thirty lines over `OctaviusTemplate` and a `PlatformTransactionManager`, and that is the whole of what
+  such a module would contain.
+  See [`SessionProvider`](docs/client/transactions-failures.md#sessionprovider)
 
 ## Version 0.9.7 (v0.9.7)
 
