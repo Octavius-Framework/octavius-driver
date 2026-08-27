@@ -139,14 +139,15 @@ class DynamicTypes internal constructor(
      * Nothing else here touches the schema, and this only does because it was asked to. Where migrations
      * manage the schema, put [DYNAMIC_DTO_DDL] in one instead and never call this.
      *
-     * It also reloads the driver's type catalogue, which is read once when a connection is opened: a type
-     * created after that point is otherwise one the driver has never heard of. A type installed by a
-     * migration that ran before the pool was built needs no such thing.
+     * It also reloads the driver's type catalogue, which is loaded once per database on the first connection
+     * opened to it and shared by every session after that: a type created later is one the driver has never
+     * heard of, and opening a fresh connection does not help. A type that was already there before anything
+     * connected needs no reload.
      */
     fun install() {
         client.rawQuery(DYNAMIC_DTO_DDL).execute()
-        // The driver reads the type catalogue when it connects, so a type created after that is one it has
-        // never heard of - and a column of it would come back as an unknown OID rather than as anything.
+        // The catalogue is loaded once per database and shared from then on, so a type created after the
+        // first connection is one the driver has never heard of - and no fresh connection reloads it.
         client.execute { reloadTypes() }
     }
 

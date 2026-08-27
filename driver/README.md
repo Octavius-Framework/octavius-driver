@@ -22,14 +22,14 @@ val senators: List<Senator> = session
 ## Key Features
 
 - **Native protocol implementation** — Wire Protocol v3.2 spoken directly, nothing wrapped underneath.
-- **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them. [How it behaves under concurrency](../docs/concurrency.md).
+- **Virtual threads without pinning** — blocking I/O scales on Java 21 virtual threads because nothing in the driver is `synchronized`; it locks with `ReentrantLock` throughout. `OctaviusDispatchers.Virtual` hands you a dispatcher backed by them. [How it behaves under concurrency](../docs/driver/concurrency.md).
 - **Parameters bound, not interpolated** — queries and DML go through the Extended Query Protocol's Parse/Bind/Execute cycle, in binary. Statements with nothing to bind (DDL, `SET`, `LISTEN`, `COPY`) use the simple protocol, which is what it is for.
 - **A type system that reads your database** — the catalog is loaded from *your* schema at connect time, so a type you created is never an unknown OID: enums, composites, domains, ranges and table row types all come back as usable values without being taught to the driver. Binding one to a class of your own is a single `registerEnum<T>()` or `registerAutoComposite<T>()` at startup, and nested structures like `List<YourDataClass>` follow from there.
-- **PostgreSQL's own types, not just the portable ones** — `json`/`jsonb` as Kotlinx Serialization elements, `uuid`, `interval`, `inet`/`cidr`/`macaddr`, `bit`/`varbit`, the geometric family, and dates and times as `kotlinx.datetime` values. [The full table](../docs/type-system.md#basic-codecs) fits on one page.
+- **PostgreSQL's own types, not just the portable ones** — `json`/`jsonb` as Kotlinx Serialization elements, `uuid`, `interval`, `inet`/`cidr`/`macaddr`, `bit`/`varbit`, the geometric family, and dates and times as `kotlinx.datetime` values. [The full table](../docs/driver/type-system.md#basic-codecs) fits on one page.
 - **Results in the shape you asked for** — `fetchRows`, `fetchObjects<T>`, `fetchField<T>`, each with single-row and strict variants, plus `forEach*` for streaming results too large to hold.
 - **Exceptions you can act on** — a flat hierarchy keyed by SQLSTATE, each carrying the server's own error fields plus the SQL and parameters your application sent.
 - **Asynchronous notifications** — `LISTEN` / `NOTIFY` as a Kotlin Coroutines `SharedFlow`.
-- **Bulk paths that are actually fast** — native `COPY` support, and [`UNNEST` inserts](../docs/bulk-writes.md) that beat classic JDBC batching by ~3×.
+- **Bulk paths that are actually fast** — native `COPY` support, and [`UNNEST` inserts](../docs/driver/bulk-writes.md) that beat classic JDBC batching by ~3×.
 - **Large Objects as a first-class API** — `lo` support without unwrapping to a vendor interface.
 - **TLS with the property names you already know** — the full `sslmode` ladder from `prefer` to `verify-full`, client certificates and root CA included, with the handshake restricted to TLS 1.2 and 1.3.
 - **Connection pool ready** — designed around HikariCP, with the Kotlin session API layered on top.
@@ -99,7 +99,7 @@ session.close() // Safely returns the connection to the pool
 
 ## Performance
 
-Measured against `pgjdbc` on the same machine, same JVM, same work ([full numbers and caveats](../docs/performance.md)):
+Measured against `pgjdbc` on the same machine, same JVM, same work ([full numbers and caveats](../docs/driver/performance.md)):
 
 - **Object mapping ties** — 0.227 ± 0.008 against 0.223 ± 0.009 ops/ms, a dead heat on the path most applications live on.
 - **`UNNEST` bulk inserts are 3.4× faster than classic JDBC batching**, and tie with pgjdbc's `reWriteBatchedInserts` optimization — while remaining usable for `UPDATE` and `DELETE`, where that optimization does not apply.
@@ -110,30 +110,30 @@ Measured against `pgjdbc` on the same machine, same JVM, same work ([full number
 
 **[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every declaration across `driver`, `driver-spring-integration` and `hikari-integration-tests`, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the values of an enum.
 
-The guides cover what a signature cannot show — how the pieces behave together. [The documentation index](../docs/README.md) lists every one of them section by section; below is the shortlist.
+The guides cover what a signature cannot show — how the pieces behave together. [The documentation index](../docs/driver/README.md) lists every one of them section by section; below is the shortlist.
 
 **Start here**
-- [Quickstart](../docs/quickstart.md) — from an empty project to a first query.
-- [**Octavius vs Legacy JDBC**](../docs/octavius-vs-jdbc.md) — what was dropped, and why.
-- [Session Initialization and Configuration](../docs/initialization.md) — every connection option, pooling, and what survives a return to the pool.
+- [Quickstart](../docs/driver/quickstart.md) — from an empty project to a first query.
+- [**Octavius vs Legacy JDBC**](../docs/driver/octavius-vs-jdbc.md) — what was dropped, and why.
+- [Session Initialization and Configuration](../docs/driver/initialization.md) — every connection option, pooling, and what survives a return to the pool.
 
 **Everyday work**
-- [Executing Queries](../docs/queries.md) — parameters, the `fetch*` family, streaming.
-- [Transaction Management](../docs/transactions.md) — block API, manual control, savepoints, isolation.
-- [Type System & Mapping](../docs/type-system.md) — how columns become Kotlin types, and how to extend that.
-- [Arrays, Ranges and JSON](../docs/arrays-ranges-json.md) — reading and writing the three that have corners worth knowing.
-- [Composites & Reflection](../docs/composites-reflection.md) — data classes in and out, and what to write when reflection is not the mapping you want.
-- [Bulk Writes](../docs/bulk-writes.md) — thousands of rows in one statement, and what replaced `addBatch()`.
-- [Error Handling & Exceptions](../docs/exceptions.md) — the hierarchy, and catching at the right altitude.
-- [Spring Integration](../docs/spring-integration.md) — `OctaviusTemplate` and autoconfiguration.
+- [Executing Queries](../docs/driver/queries.md) — parameters, the `fetch*` family, streaming.
+- [Transaction Management](../docs/driver/transactions.md) — block API, manual control, savepoints, isolation.
+- [Type System & Mapping](../docs/driver/type-system.md) — how columns become Kotlin types, and how to extend that.
+- [Arrays, Ranges and JSON](../docs/driver/arrays-ranges-json.md) — reading and writing the three that have corners worth knowing.
+- [Composites & Reflection](../docs/driver/composites-reflection.md) — data classes in and out, and what to write when reflection is not the mapping you want.
+- [Bulk Writes](../docs/driver/bulk-writes.md) — thousands of rows in one statement, and what replaced `addBatch()`.
+- [Error Handling & Exceptions](../docs/driver/exceptions.md) — the hierarchy, and catching at the right altitude.
+- [Spring Integration](../docs/driver/spring-integration.md) — `OctaviusTemplate` and autoconfiguration.
 
 **Specialized**
-- [Concurrency and Virtual Threads](../docs/concurrency.md) — what one connection serializes, and where the real limit is.
-- [Functions and Procedures](../docs/functions-procedures.md) — no `CallableStatement` required.
-- [COPY Protocol](../docs/copy.md) — bulk import and export.
-- [Listen & Notify](../docs/listen-notify.md) — asynchronous events as a flow.
-- [Large Objects](../docs/large-objects.md) — beyond what `bytea` can hold.
-- [Performance](../docs/performance.md) — JMH benchmarks against `pgjdbc`.
+- [Concurrency and Virtual Threads](../docs/driver/concurrency.md) — what one connection serializes, and where the real limit is.
+- [Functions and Procedures](../docs/driver/functions-procedures.md) — no `CallableStatement` required.
+- [COPY Protocol](../docs/driver/copy.md) — bulk import and export.
+- [Listen & Notify](../docs/driver/listen-notify.md) — asynchronous events as a flow.
+- [Large Objects](../docs/driver/large-objects.md) — beyond what `bytea` can hold.
+- [Performance](../docs/driver/performance.md) — JMH benchmarks against `pgjdbc`.
 
 ## Architecture
 

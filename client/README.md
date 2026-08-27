@@ -75,9 +75,20 @@ A `fetch*Strict` that found no row is thrown, and so is a non-nullable `T` over 
 the calling code made about its own data. A lookup allowed to find nothing says so in its type instead —
 `fetchRow` returns `Row?`, `fetchField<String?>` returns `null`.
 
+## Documentation
+
+[The client's guides](../docs/client/README.md) cover what a signature cannot show; they assume the
+[driver's](../docs/driver/README.md) and point back at them rather than restating them.
+
+- [Quickstart](../docs/client/quickstart.md) — from a pool to a row, and the line that leaves your signatures
+- [Queries](../docs/client/queries.md) — the builders, `QueryFragment`, `toSql`, per-query converters
+- [Transactions and Failures](../docs/client/transactions-failures.md) — propagation, timeouts, and when a failure is a value
+- [Transaction Plans](../docs/client/plans.md) — a sequence as data, and what fits what
+- [`dynamic_dto`](../docs/client/dynamic-dto.md) — one column, several unrelated shapes
+
 ## Status
 
-Early. The API is not frozen and the module has no release yet; the repository's
+Early, and first released in 0.9.8. The API is not frozen; the repository's
 [CHANGELOG](../CHANGELOG.md) is where changes are recorded, under a section of its own within each version. It
 includes the places this deliberately parts company with octavius-database.
 

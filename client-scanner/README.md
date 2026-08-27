@@ -63,6 +63,12 @@ only says what it saw.
 It is not required. Registering by hand is the driver's own story and stays fully supported; this is for the
 application with enough types that naming them individually is where the next one gets forgotten.
 
+## Documentation
+
+- [Annotation Scanning](../docs/client/scanner.md) — this page at length, and what `unresolved` is for
+- [`dynamic_dto`](../docs/client/dynamic-dto.md) — what `@DynamicallyMappable` registers into
+- [Type System](../docs/driver/type-system.md#registering-your-own-mappings) — the calls this is a shortcut for
+
 ## License
 
 Licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).

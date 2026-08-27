@@ -72,9 +72,10 @@ across two.
 declaration, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the
 values of an enum.
 
-The guides cover what a signature cannot show — how the pieces behave together. They are the driver's;
-[the documentation index](docs/README.md) lists every one section by section, and
-[Quickstart](docs/quickstart.md) is where to start from an empty project.
+The guides cover what a signature cannot show — how the pieces behave together. There are two sets, because
+the driver stands on its own and the client is optional on top of it:
+[the documentation index](docs/README.md) points at both, and the driver's
+[Quickstart](docs/driver/quickstart.md) is where to start from an empty project.
 
 ## Relation to octavius-database
 
