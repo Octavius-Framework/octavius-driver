@@ -1,3 +1,18 @@
+## Version 0.9.9 (v0.9.9)
+
+### Driver
+
+#### Added
+
+- `SqlScript.split` cuts a script into the statements it is made of, each carrying the offset it stood at in
+  the original text and its own first word, upper-cased and found past whatever comments stand in front of it.
+  It splits on the `;` that separate statements and on no other: not inside `'...'`,
+  `E'...'`, `"..."`, a `$tag$...$tag$` body, a `--` comment, a `/* */` comment nested to any depth, or
+  parentheses, where `CREATE RULE ... DO (a; b)` puts one legitimately. Whitespace and comments between
+  separators are not a statement, so a trailing `;` adds nothing to the list. This is what it takes to send a
+  statement the server refuses inside a transaction block - `CREATE INDEX CONCURRENTLY`, `VACUUM` - in a
+  message of its own, since a script sent whole runs inside an implicit transaction.
+
 ## Version 0.9.8 (v0.9.8)
 
 ### Driver and annotations

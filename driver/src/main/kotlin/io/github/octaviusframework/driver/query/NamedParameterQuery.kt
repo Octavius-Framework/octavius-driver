@@ -6,6 +6,7 @@ import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.execution.QueryExecutor
+import io.github.octaviusframework.driver.parser.SqlParameterParser
 
 import io.github.octaviusframework.driver.row.Row
 import io.github.octaviusframework.driver.type.PgType

@@ -139,7 +139,7 @@ The guides cover what a signature cannot show — how the pieces behave together
 
 - **IO, SSL & Auth** — socket handling (`PgStream`), buffering, TLS negotiation, SCRAM-SHA-256 with channel binding.
 - **Message** — parsing and building Wire Protocol v3.2 packets.
-- **Query & Execution** — the operational core: Extended Query Protocol with named-parameter support.
+- **Query, Execution & Parser** — the operational core: Extended Query Protocol with named-parameter support.
 - **Codec, Converter & Registry** — the two-layer type system, from raw binary through to your own classes.
 - **Type & Container** — the PostgreSQL value model the layer above hands back: `Row`, `PgArray`, `PgComposite`, `PgRange`, `PgMultirange`.
 - **Session & Transaction** — `OctaviusSession`, transaction blocks and savepoints.
