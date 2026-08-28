@@ -161,10 +161,14 @@ class QueryExecutor internal constructor(
     }
 
     /**
-     * Uses Simple Query Protocol (Q). 
+     * Uses Simple Query Protocol (Q).
      * Intended for calls that do not return results or where results are ignored (e.g., SET TIME ZONE, BEGIN).
+     *
+     * Rows are read and dropped whatever [ignoreRows] says - the exchange has to reach
+     * [ReadyForQueryMessage] before this connection is usable again, and that means draining whatever the
+     * server sent. What [ignoreRows] governs is only whether their arrival is reported as a mistake.
      */
-    fun execute(sql: String) = exchange {
+    fun execute(sql: String, ignoreRows: Boolean = false) = exchange {
         val startedAt = traceStart(sql, emptyArray())
 
         stream.sendMessage(SimpleQueryMessage(sql))
@@ -178,10 +182,11 @@ class QueryExecutor internal constructor(
                 is ErrorOrNoticeMessage -> errorResponse = msg
                 is ReadyForQueryMessage -> break
                 is RowDescriptionMessage, is DataRowMessage -> {
-                    if (errorResponse == null && executionError == null) {
+                    if (!ignoreRows && errorResponse == null && executionError == null) {
                         executionError = InvalidOperationException(
                             InvalidOperationExceptionReason.UNEXPECTED_RESULT,
-                            "Method execute() received result rows. Use query() for DQL queries."
+                            "Method execute() received result rows. Use query() for DQL queries, " +
+                                "or execute(ignoreRows = true) for a script whose rows are not wanted."
                         )
                     }
                 }

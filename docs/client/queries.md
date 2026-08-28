@@ -175,7 +175,10 @@ db.rawQuery(
 written, so an `@name` left in it arrives as literal text rather than as a parameter. That is why no builder
 offers it — a builder always has values to bind — and why an `INSERT`, `UPDATE` or `DELETE` written by hand
 belongs in `update()` instead. What it does accept is several statements separated by `;` in one round trip,
-which PostgreSQL wraps in an implicit transaction. A statement that returned rows is refused.
+which PostgreSQL wraps in an implicit transaction. A statement that returned rows is refused, unless
+`execute(ignoreRows = true)` says to drop them instead — which is what a script written elsewhere needs, a
+`pg_dump` one emitting `SELECT pg_catalog.setval(...)` for every sequence. There is no reading those rows
+from here either way.
 
 ## Per-Query Converters
 

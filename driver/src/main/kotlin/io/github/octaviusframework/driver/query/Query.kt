@@ -91,15 +91,20 @@ abstract class Query<T : Query<T>> internal constructor(
      * Executes a statement with no result and no row count — DDL, `SET`, administrative commands.
      *
      * This method speaks the Simple Query Protocol and takes **no parameters at all**: the SQL is sent
-     * exactly as written, so any placeholders (like `$1` or `@name`) in it reach the server as literal text 
-     * rather than being substituted. It accepts a whole script of statements separated by `;` in a single 
+     * exactly as written, so any placeholders (like `$1` or `@name`) in it reach the server as literal text
+     * rather than being substituted. It accepts a whole script of statements separated by `;` in a single
      * round trip, which PostgreSQL wraps in an implicit transaction.
      *
-     * @throws io.github.octaviusframework.driver.exception.InvalidOperationException `UNEXPECTED_RESULT` if any statement in the SQL returned rows.
+     * @param ignoreRows Whether a statement returning rows may pass. Rows are discarded either way and there
+     * is no reading them from here; what this decides is whether their arrival is reported. Left `false`,
+     * `execute("SELECT …")` — a query sent where `fetchRows` was meant — is caught instead of quietly doing
+     * nothing, which is worth keeping. Set it where the SQL is a script somebody else wrote and a `SELECT`
+     * in it is legitimate: `pg_dump` emits `SELECT pg_catalog.setval(...)` for every sequence it carries.
+     * @throws io.github.octaviusframework.driver.exception.InvalidOperationException `UNEXPECTED_RESULT` if any statement in the SQL returned rows and [ignoreRows] is `false`.
      */
-    fun execute() {
+    fun execute(ignoreRows: Boolean = false) {
         withQueryContext(sql, { emptyMap() }) {
-            queryExecutor.execute(sql)
+            queryExecutor.execute(sql, ignoreRows)
         }
     }
 }

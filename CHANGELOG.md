@@ -13,6 +13,16 @@
   statement the server refuses inside a transaction block - `CREATE INDEX CONCURRENTLY`, `VACUUM` - in a
   message of its own, since a script sent whole runs inside an implicit transaction.
 
+#### Changed
+
+- `execute()` takes `ignoreRows`, default `false`. Unchanged where it is left alone: a statement returning
+  rows is still `InvalidOperationException(UNEXPECTED_RESULT)`, which is what catches a `SELECT` sent where
+  `fetchRows` was meant. Set it and the rows are dropped instead - what a script written elsewhere needs,
+  `pg_dump` emitting `SELECT pg_catalog.setval(...)` for every sequence it carries. Rows are drained either
+  way, there being no reaching `ReadyForQuery` otherwise; the flag decides only whether their arrival is
+  reported. `RawQuery.execute()` in the client takes it too. Source-compatible, but a caller compiled against
+  0.9.8 has to be recompiled.
+
 ## Version 0.9.8 (v0.9.8)
 
 ### Driver and annotations
