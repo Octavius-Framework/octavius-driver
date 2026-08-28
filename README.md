@@ -7,21 +7,23 @@
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
 Everything Octavius has to say about talking to PostgreSQL from Kotlin: a driver that speaks the wire protocol
-directly, and a data access layer built on it.
+directly, a data access layer built on it, and a migrator that keeps the schema up to date.
 
-The two are separate artifacts on purpose. The driver is complete on its own — a connection pool and the
-driver are a working stack, and plenty of applications need nothing else. The client is for the layer above:
-somewhere to put a query that does not want a session threaded through its signature.
+They are separate artifacts on purpose. The driver is complete on its own — a connection pool and the driver
+are a working stack, and plenty of applications need nothing else. The client is for the layer above:
+somewhere to put a query that does not want a session threaded through its signature. Migrations answers a
+different question again, and takes the driver alone — never the client.
 
 ## What is here
 
-| Artifact                        | What it is                                                                                                                                                    |
-|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **`driver`**                    | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md) |
-| **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                      |
-| **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)   |
-| **`annotations`**               | Multiplatform, and nothing but annotation declarations — what Octavius reads off your own classes, in a form `commonMain` can carry.                          |
-| **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                     |
+| Artifact                        | What it is                                                                                                                                                                  |
+|:--------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`driver`**                    | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md)               |
+| **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                                    |
+| **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)                 |
+| **`migrations`**                | A migrator on the driver: `V`/`R` naming, `.sql` files and Kotlin classes, checksums, an advisory lock, and a history table it keeps itself. [README](migrations/README.md) |
+| **`annotations`**               | Multiplatform, and nothing but annotation declarations — what Octavius reads off your own classes, in a form `commonMain` can carry.                                        |
+| **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                                   |
 
 Not published: `hikari-integration-tests` (integration tests against a real pool), `benchmarks` (JMH against
 `pgjdbc`), and `examples/spring-app` (a runnable sample, its own build pulling the driver in through
@@ -37,6 +39,10 @@ Spring application, or code that is happy to open a session and use it. You writ
 leaves open — which session does this operation run on — so that a repository function can open a scope
 without knowing whether it is already inside a transaction, and be right either way. The query builders and
 `dynamic_dto` come with it.
+
+**Migrations** where keeping this database's schema up to date is this application's job rather than
+somebody else's. It sits beside the client rather than under it, needing only the driver, so it goes with the
+client, without it, or not at all. `OctaviusMigrator(dataSource).migrate()` at startup is the whole of it.
 
 Adding the client later costs nothing: it wraps no query and renames no method, so driver code keeps working
 unchanged next to it.
@@ -58,9 +64,9 @@ Pre-1.0 and written by one person. Every push runs the suite against a real Post
 generates certificates and exercises the TLS modes end to end, and a third that points the driver at
 PostgreSQL 17 to prove the handshake refuses it rather than half-working.
 
-The API is not frozen. The driver is the settled part of it and the client is early; every module carries the
-same version and is released together, so the number says when something shipped rather than how mature it is.
-Neither has seen long production use.
+The API is not frozen. The driver is the settled part of it; the client and migrations are early. Every module
+carries the same version and is released together, so the number says when something shipped rather than how
+mature it is. None of it has seen long production use.
 
 Every change is recorded in the [CHANGELOG](CHANGELOG.md), grouped by module under each version — one file,
 because one version covers all of them and a release where only half the repository moved reads oddly split
@@ -72,9 +78,9 @@ across two.
 declaration, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the
 values of an enum.
 
-The guides cover what a signature cannot show — how the pieces behave together. There are two sets, because
-the driver stands on its own and the client is optional on top of it:
-[the documentation index](docs/README.md) points at both, and the driver's
+The guides cover what a signature cannot show — how the pieces behave together. There are three sets, because
+the driver stands on its own and the client and migrations are each optional beside it:
+[the documentation index](docs/README.md) points at all three, and the driver's
 [Quickstart](docs/driver/quickstart.md) is where to start from an empty project.
 
 ## Relation to octavius-database

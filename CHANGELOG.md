@@ -49,6 +49,9 @@
   was already at, and a release that ships migrations ahead of the code needing them.
 - **No undo and no placeholders.** A migration that turns out to be wrong is corrected by a migration that
   comes after it, that being the only correction which leaves every copy of the database in the same state.
+- Documented in [docs/migrations](docs/migrations/README.md): [Quickstart](docs/migrations/quickstart.md),
+  [Writing Migrations](docs/migrations/writing-migrations.md) and
+  [History and Validation](docs/migrations/history-and-validation.md).
 
 ## Version 0.9.8 (v0.9.8)
 
