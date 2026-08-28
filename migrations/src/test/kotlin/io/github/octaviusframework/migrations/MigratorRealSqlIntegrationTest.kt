@@ -2,6 +2,9 @@ package io.github.octaviusframework.migrations
 
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.TransactionState
+import io.github.octaviusframework.migrations.execution.MigrationReport
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -10,8 +13,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import kotlin.io.path.writeText
 
 /**
  * The SQL that made the design what it is, run against a real server.

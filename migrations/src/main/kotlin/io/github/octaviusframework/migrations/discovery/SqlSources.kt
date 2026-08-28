@@ -1,6 +1,8 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
 
 import io.github.classgraph.ClassGraph
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths

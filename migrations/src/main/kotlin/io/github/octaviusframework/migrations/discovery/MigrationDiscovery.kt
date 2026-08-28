@@ -1,7 +1,11 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
 
 import io.github.classgraph.ClassGraph
 import io.github.classgraph.ClassInfo
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
+import io.github.octaviusframework.migrations.MigratorConfig
+import io.github.octaviusframework.migrations.OctaviusMigration
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}

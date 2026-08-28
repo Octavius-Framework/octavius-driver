@@ -1,4 +1,13 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.execution
+
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
+import io.github.octaviusframework.migrations.MigrationVersion
+import io.github.octaviusframework.migrations.discovery.DiscoveredMigration
+import io.github.octaviusframework.migrations.discovery.label
+import io.github.octaviusframework.migrations.history.AppliedMigration
+import io.github.octaviusframework.migrations.history.MigrationState
+import io.github.octaviusframework.migrations.history.MigrationType
 
 /**
  * Puts what was found next to what has run, and decides what each migration's situation is.

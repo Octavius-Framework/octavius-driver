@@ -1,16 +1,17 @@
 package io.github.octaviusframework.migrations
 
+import io.github.octaviusframework.migrations.execution.MigrationReport
+import java.nio.file.Path
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
+import kotlin.io.path.writeText
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import java.util.concurrent.CyclicBarrier
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.thread
-import kotlin.io.path.writeText
 
 /**
  * Two applications coming up at the same time against one database.

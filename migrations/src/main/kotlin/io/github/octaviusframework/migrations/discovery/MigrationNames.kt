@@ -1,4 +1,8 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
+
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
+import io.github.octaviusframework.migrations.MigrationVersion
 
 /**
  * What a migration's name says about it.

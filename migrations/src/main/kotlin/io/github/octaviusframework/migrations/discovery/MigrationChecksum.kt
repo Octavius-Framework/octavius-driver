@@ -1,4 +1,4 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
 
 import java.util.zip.CRC32
 

@@ -2,6 +2,16 @@ package io.github.octaviusframework.migrations
 
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.driver.session.TransactionState
+import io.github.octaviusframework.migrations.discovery.MigrationDiscovery
+import io.github.octaviusframework.migrations.discovery.label
+import io.github.octaviusframework.migrations.execution.MigrationInfo
+import io.github.octaviusframework.migrations.execution.MigrationReport
+import io.github.octaviusframework.migrations.execution.MigrationRunner
+import io.github.octaviusframework.migrations.execution.MigrationStatus
+import io.github.octaviusframework.migrations.execution.MigrationValidation
+import io.github.octaviusframework.migrations.history.MigrationHistory
+import io.github.octaviusframework.migrations.history.MigrationLock
 import io.github.oshai.kotlinlogging.KotlinLogging
 import javax.sql.DataSource
 
@@ -126,7 +136,7 @@ class OctaviusMigrator private constructor(
     }
 
     private fun requireAutoCommit(session: OctaviusSession) {
-        if (!session.autoCommit) {
+        if (!session.autoCommit || session.transactionState != TransactionState.IDLE) {
             throw MigrationException(
                 MigrationExceptionReason.CONFIGURATION,
                 "This session already has a transaction open. The run opens and commits transactions of its " +

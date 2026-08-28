@@ -1,9 +1,16 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.execution
 
 import io.github.octaviusframework.driver.parser.SqlScript
 import io.github.octaviusframework.driver.parser.SqlStatement
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
+import io.github.octaviusframework.migrations.OctaviusMigration
+import io.github.octaviusframework.migrations.discovery.DiscoveredMigration
+import io.github.octaviusframework.migrations.discovery.label
+import io.github.octaviusframework.migrations.history.MigrationHistory
+import io.github.octaviusframework.migrations.history.MigrationState
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}

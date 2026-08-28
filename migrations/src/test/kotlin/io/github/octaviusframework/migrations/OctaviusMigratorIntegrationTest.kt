@@ -1,6 +1,13 @@
 package io.github.octaviusframework.migrations
 
 import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.migrations.execution.MigrationInfo
+import io.github.octaviusframework.migrations.execution.MigrationReport
+import io.github.octaviusframework.migrations.execution.MigrationStatus
+import io.github.octaviusframework.migrations.history.MigrationState
+import io.github.octaviusframework.migrations.history.MigrationType
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -10,8 +17,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
-import java.nio.file.Path
-import kotlin.io.path.writeText
 
 class OctaviusMigratorIntegrationTest {
 

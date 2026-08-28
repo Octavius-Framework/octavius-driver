@@ -1,4 +1,4 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals

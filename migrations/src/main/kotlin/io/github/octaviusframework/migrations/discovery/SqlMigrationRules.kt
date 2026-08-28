@@ -1,6 +1,8 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
 
 import io.github.octaviusframework.driver.parser.SqlScript
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
 
 /**
  * What a `.sql` migration is allowed to say, checked while the database is still untouched.

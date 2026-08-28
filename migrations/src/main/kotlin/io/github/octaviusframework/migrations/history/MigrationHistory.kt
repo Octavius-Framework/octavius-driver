@@ -1,7 +1,9 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.history
 
 import io.github.octaviusframework.driver.identifier.quoteAsPgIdentifier
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
+import io.github.octaviusframework.migrations.MigrationVersion
+import io.github.octaviusframework.migrations.discovery.DiscoveredMigration
 import kotlin.time.Instant
 
 /**

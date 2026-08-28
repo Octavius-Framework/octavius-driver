@@ -1,8 +1,10 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.history
 
 import io.github.octaviusframework.driver.exception.ConcurrencyException
 import io.github.octaviusframework.driver.exception.ConcurrencyExceptionReason
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationExceptionReason
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.zip.CRC32
 import kotlin.time.Duration

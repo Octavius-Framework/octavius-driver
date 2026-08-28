@@ -1,4 +1,10 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.execution
+
+import io.github.octaviusframework.migrations.MigrationException
+import io.github.octaviusframework.migrations.MigrationVersion
+import io.github.octaviusframework.migrations.MigratorConfig
+import io.github.octaviusframework.migrations.discovery.label
+import io.github.octaviusframework.migrations.history.AppliedMigration
 
 /**
  * What is going to happen to one migration, or what already has.

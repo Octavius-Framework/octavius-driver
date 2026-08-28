@@ -1,5 +1,6 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
 
+import io.github.octaviusframework.migrations.MigrationException
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

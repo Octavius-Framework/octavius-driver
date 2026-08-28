@@ -1,7 +1,11 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.history
 
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.session.OctaviusSession
+import io.github.octaviusframework.migrations.MigrationTestDatabase
+import io.github.octaviusframework.migrations.MigrationVersion
+import io.github.octaviusframework.migrations.OctaviusMigration
+import io.github.octaviusframework.migrations.discovery.DiscoveredMigration
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

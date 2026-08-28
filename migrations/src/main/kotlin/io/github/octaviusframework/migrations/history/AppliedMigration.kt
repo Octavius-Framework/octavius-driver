@@ -1,5 +1,7 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.history
 
+import io.github.octaviusframework.migrations.MigrationVersion
+import io.github.octaviusframework.migrations.OctaviusMigration
 import kotlin.time.Instant
 
 /** What kind of thing a history row records. */

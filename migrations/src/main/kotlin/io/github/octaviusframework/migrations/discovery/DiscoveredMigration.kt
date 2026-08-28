@@ -1,4 +1,7 @@
-package io.github.octaviusframework.migrations
+package io.github.octaviusframework.migrations.discovery
+
+import io.github.octaviusframework.migrations.MigrationVersion
+import io.github.octaviusframework.migrations.OctaviusMigration
 
 /**
  * A migration the scan found, before anything about the database is known.
@@ -6,7 +9,7 @@ package io.github.octaviusframework.migrations
  * The two kinds carry different things, so they are separate types rather than one with nullable fields: a
  * `.sql` file arrives with its text and checksum read, a class as a class that has not been constructed.
  */
-sealed interface DiscoveredMigration {
+internal sealed interface DiscoveredMigration {
 
     /** The version, or `null` where the name marked this repeatable. */
     val version: MigrationVersion?
@@ -33,7 +36,7 @@ sealed interface DiscoveredMigration {
     val checksum: Long?
 
     /** A migration read out of a `.sql` file. */
-    class Sql internal constructor(
+    class Sql(
         override val version: MigrationVersion?,
         override val description: String,
         override val script: String,
@@ -53,7 +56,7 @@ sealed interface DiscoveredMigration {
     ) : DiscoveredMigration
 
     /** A migration read off an [OctaviusMigration] class, which the scan has not constructed. */
-    class Code internal constructor(
+    class Code(
         override val version: MigrationVersion?,
         override val description: String,
         override val script: String,
