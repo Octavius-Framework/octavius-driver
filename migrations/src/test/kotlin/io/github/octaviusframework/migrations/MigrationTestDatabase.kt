@@ -1,5 +1,6 @@
 package io.github.octaviusframework.migrations
 
+import io.github.octaviusframework.driver.jdbc.OctaviusDataSource
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
 import io.github.octaviusframework.driver.session.OctaviusSession
@@ -32,6 +33,13 @@ internal object MigrationTestDatabase {
                 """.trimIndent()
             ).execute()
         }
+    }
+
+    /** The same database behind a `DataSource`, which is how the migrator is meant to be reached. */
+    fun dataSource(): OctaviusDataSource = OctaviusDataSource().apply {
+        url = "jdbc:octavius://localhost:5432/octavius_test"
+        user = "postgres"
+        password = "1234"
     }
 
     fun drop() {

@@ -351,6 +351,49 @@ class OctaviusMigratorIntegrationTest {
         assertTrue(info.checksum != info.applied?.checksum, "both checksums should be there to compare")
     }
 
+    // ---------------------------------------------------------------- through a DataSource
+
+    @Test
+    fun `a migrator reached through a DataSource borrows a session and gives it back`(@TempDir dir: Path) {
+        // The documented way in, and until now the untested one: every other test here hands it a session.
+        dir.resolve("V1__first.sql").writeText(creates("first"))
+
+        val report = OctaviusMigrator(MigrationTestDatabase.dataSource(), config(dir)).migrate()
+
+        assertEquals(1, report.applied.size)
+        assertTrue(tableExists("first"))
+    }
+
+    @Test
+    fun `info through a DataSource answers without applying anything`(@TempDir dir: Path) {
+        dir.resolve("V1__first.sql").writeText(creates("first"))
+
+        val infos = OctaviusMigrator(MigrationTestDatabase.dataSource(), config(dir)).info()
+
+        assertEquals(listOf(MigrationStatus.PENDING), infos.map { it.status })
+        assertFalse(tableExists("first"))
+    }
+
+    // ---------------------------------------------------------------- a migration that throws
+
+    @Test
+    fun `a code migration that throws is reported with what it threw`() {
+        val e = assertThrows<MigrationException> {
+            migrate(
+                MigratorConfig(
+                    sqlLocations = emptyList(),
+                    codePackages = listOf("io.github.octaviusframework.migrations.fixtures.throwing"),
+                    historySchema = schema,
+                    historyTable = "history"
+                )
+            )
+        }
+
+        assertEquals(MigrationExceptionReason.MIGRATION_FAILED, e.reason)
+        assertTrue(e.details!!.contains("V30"), "should name the migration: ${e.details}")
+        assertEquals("the aqueduct is dry", e.cause?.message, "the original failure should still be the cause")
+    }
+
     // ---------------------------------------------------------------- the session it is given
 
     @Test
