@@ -6,10 +6,12 @@ import io.github.octaviusframework.client.transaction.StepHandle
 import io.github.octaviusframework.client.transaction.TransactionPlan
 import io.github.octaviusframework.client.transaction.TransactionValue
 import io.github.octaviusframework.client.transaction.map
+import io.github.octaviusframework.client.transaction.spread
 import io.github.octaviusframework.client.transaction.toTransactionValue
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.row.Row
 import org.junit.jupiter.api.AfterAll
@@ -24,10 +26,10 @@ import kotlin.test.assertTrue
 /**
  * Every kind of [TransactionValue] against every shape of result a step terminal can produce.
  *
- * The two axes do not multiply cleanly, and that is the point of writing them out. `value()` hands on whatever
- * the terminal produced, so whether it can be used at all depends on whether the driver can bind that as a
- * parameter; `field`, `column` and `row` need a result that has columns, which only the `fetchRow*` family
- * produces. What each combination does - work, or fail and how - is what this pins down.
+ * A handle reaches one thing, `value()`, typed as its terminal declared it, and everything read out of a
+ * result is read in `map { }` over that type. What is pinned here is what runs: that each shape resolves, that
+ * the driver can then send it, and what happens where it cannot. Reaching for a column of something that has
+ * none does not compile, so it is not among these.
  */
 class TransactionValueMatrixTest {
 
@@ -109,11 +111,14 @@ class TransactionValueMatrixTest {
      *
      * Passing the value through the server and reading it again is what says it really resolved *and* that
      * the driver could send it - a resolution nothing can bind is not a usable one.
+     *
+     * [H] is what the producing step's terminal declared, so [use] gets a handle carrying that type and can
+     * reach into the result as ordinary Kotlin.
      */
-    private inline fun <reified R> throughParameter(
-        producer: (TransactionPlan) -> StepHandle<*>,
+    private inline fun <reified R, H> throughParameter(
+        producer: (TransactionPlan) -> StepHandle<H>,
         sql: String = "SELECT @v AS v",
-        use: (StepHandle<*>) -> Any?
+        use: (StepHandle<H>) -> Any?
     ): R {
         val plan = TransactionPlan()
         val source = producer(plan)
@@ -159,7 +164,7 @@ class TransactionValueMatrixTest {
     @Test
     fun `value on a row-shaped step resolves to a Row, which nothing can bind`() {
         val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
+            throughParameter<Any?, Row>(
                 producer = { it.add(probeOne().fetchRowStrict()) },
                 use = { it.value() }
             )
@@ -171,9 +176,23 @@ class TransactionValueMatrixTest {
     }
 
     @Test
+    fun `value on a map step is not something to send either, which is what the spread is for`() {
+        val thrown = assertFailsWith<OctaviusException> {
+            throughParameter<Any?, Map<String, Any?>>(
+                producer = { it.add(probeOne().fetchObjectStrict<Map<String, Any?>>()) },
+                use = { it.value() }
+            )
+        }
+        assertTrue(
+            thrown.getDetailedMessage()!!.contains("Map"),
+            "the failure should name what it could not send: ${thrown.getDetailedMessage()}"
+        )
+    }
+
+    @Test
     fun `value on an object step needs the class to be a type the registry knows`() {
         val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
+            throughParameter<Any?, Probe>(
                 producer = { it.add(probeOne().fetchObjectStrict<Probe>()) },
                 use = { it.value() }
             )
@@ -199,156 +218,82 @@ class TransactionValueMatrixTest {
     @Test
     fun `map is how an object result becomes something bindable`() {
         // Which is what Transformed is for: value() reaches the object, map() takes the part that can be sent.
+        // The handle carries Probe, so the property is read without a cast anywhere.
         val out: String = throughParameter(
             producer = { it.add(probeOne().fetchObjectStrict<Probe>()) },
-            use = { handle ->
-                @Suppress("UNCHECKED_CAST")
-                (handle.value() as TransactionValue<Probe>).map { probe -> probe.name }
-            }
+            use = { handle -> handle.value().map { probe -> probe.name } }
         )
         assertEquals("Gallia", out)
     }
 
-    // --- field(), which needs columns --------------------------------------------------------------
+    // --- map(), which is how a row-shaped result is reached into -----------------------------------
 
     @Test
-    fun `field takes a column of a fetchRowStrict result`() {
+    fun `map takes a column of a fetchRowStrict result`() {
         val out: String = throughParameter(
             producer = { it.add(probeOne().fetchRowStrict()) },
-            use = { it.field("name") }
+            use = { handle -> handle.value().map { row -> row.get<String>("name") } }
         )
         assertEquals("Gallia", out)
     }
 
     @Test
-    fun `field takes a column of a fetchRow result`() {
+    fun `map takes a column of a fetchRow result, which says in its type that there may be none`() {
         val out: String = throughParameter(
             producer = { it.add(probeOne().fetchRow()) },
-            use = { it.field("name") }
+            use = { handle -> handle.value().map { row -> row!!.get<String>("name") } }
         )
         assertEquals("Gallia", out)
     }
 
     @Test
-    fun `field indexes into a fetchRows result`() {
+    fun `map indexes into a fetchRows result`() {
         val out: String = throughParameter(
             producer = { it.add(probeAll().fetchRows()) },
-            use = { it.field("name", rowIndex = 2) }
+            use = { handle -> handle.value().map { rows -> rows[2].get<String>("name") } }
         )
         assertEquals("Britannia", out)
     }
 
     @Test
-    fun `field on a scalar result says it has no columns`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = { it.add(probeOne().fetchFieldStrict<Int>()) },
-                use = { it.field("name") }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("no columns"), thrown.getDetailedMessage()!!)
-    }
-
-    @Test
-    fun `field on an object result says it has no columns`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = { it.add(probeOne().fetchObjectStrict<Probe>()) },
-                use = { it.field("name") }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("no columns"), thrown.getDetailedMessage()!!)
-    }
-
-    @Test
-    fun `field on a list of non-rows says it has no columns`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = { it.add(probeAll().fetchFields<Int>()) },
-                use = { it.field("name") }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("no columns"), thrown.getDetailedMessage()!!)
-    }
-
-    @Test
-    fun `field on a null fetchRow result says it has no columns`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = {
-                    it.add(db.select("id").from("tv_probe").where("false").asStep().fetchRow())
-                },
-                use = { it.field("id") }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("no columns"), thrown.getDetailedMessage()!!)
-    }
-
-    @Test
-    fun `field naming a column the rows do not have lists the ones they do`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = { it.add(probeOne().fetchRowStrict()) },
-                use = { it.field("tribute") }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("tribute"), thrown.getDetailedMessage()!!)
-        assertTrue(thrown.getDetailedMessage()!!.contains("name"), thrown.getDetailedMessage()!!)
-    }
-
-    @Test
-    fun `field past the last row says how many there were`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = { it.add(probeAll().fetchRows()) },
-                use = { it.field("name", rowIndex = 9) }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("3 row"), thrown.getDetailedMessage()!!)
-    }
-
-    // --- column(), one column of every row ---------------------------------------------------------
-
-    @Test
-    fun `column gathers a column of a fetchRows result`() {
+    fun `map gathers one column of every row, and the list binds as an array`() {
+        // The column is asked for at Int, so what comes out is a List<Int>, which the driver sends as an
+        // int array.
         val out: Long = throughParameter(
             producer = { it.add(probeAll().fetchRows()) },
             sql = "SELECT count(*) FROM tv_probe WHERE id = ANY(@v)",
-            use = { it.column("id") }
+            use = { handle -> handle.value().map { rows -> rows.map { row -> row.get<Int>("id") } } }
         )
         assertEquals(3L, out)
     }
 
     @Test
-    fun `column of a single-row result is a list of one`() {
-        val out: Long = throughParameter(
-            producer = { it.add(probeOne().fetchRowStrict()) },
-            sql = "SELECT count(*) FROM tv_probe WHERE id = ANY(@v)",
-            use = { it.column("id") }
+    fun `map can collapse a result to a scalar`() {
+        val out: Int = throughParameter(
+            producer = { it.add(probeAll().fetchRows()) },
+            use = { handle -> handle.value().map { rows -> rows.size } }
         )
-        assertEquals(1L, out)
+        assertEquals(3, out)
     }
 
     @Test
-    fun `column on a scalar result says it has no columns`() {
-        val thrown = assertFailsWith<OctaviusException> {
-            throughParameter<Any?>(
-                producer = { it.add(probeOne().fetchFieldStrict<Int>()) },
-                use = { it.column("id") }
-            )
-        }
-        assertTrue(thrown.getDetailedMessage()!!.contains("no columns"), thrown.getDetailedMessage()!!)
+    fun `map nests`() {
+        val out: Int = throughParameter(
+            producer = { it.add(probeAll().fetchRows()) },
+            use = { handle -> handle.value().map { rows -> rows.size }.map { size -> size * 10 } }
+        )
+        assertEquals(30, out)
     }
 
-    // --- row(), which is spread rather than assigned -----------------------------------------------
+    // --- spread(), which fills a slot with parameters rather than with one -------------------------
 
     @Test
-    fun `row spreads its columns into parameters of their own`() {
+    fun `spread puts a map's entries into parameters of their own`() {
         val plan = TransactionPlan()
-        val source = plan.add(probeOne().fetchRowStrict())
+        val source = plan.add(probeOne().fetchObjectStrict<Map<String, Any?>>())
         plan.add(
             db.insertInto("tv_sink").values(listOf("name", "amount"))
-                .asStep().update("ignored" to source.row())
+                .asStep().update("ignored" to source.value().spread())
         )
         db.executeTransactionPlan(plan)
 
@@ -359,12 +304,31 @@ class TransactionValueMatrixTest {
     }
 
     @Test
-    fun `row indexes into a fetchRows result`() {
+    fun `spread comes after map, which is how an entry is dropped or overwritten on the way`() {
+        // The mark is on the parameter slot rather than on the value in it, so everything ordinary Kotlin
+        // does to a map can be done first.
         val plan = TransactionPlan()
-        val source = plan.add(probeAll().fetchRows())
+        val source = plan.add(probeOne().fetchObjectStrict<Map<String, Any?>>())
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name", "amount")).asStep().update(
+                "ignored" to source.value().map { row -> row - "id" + ("amount" to 7) }.spread()
+            )
+        )
+        db.executeTransactionPlan(plan)
+
+        assertEquals(
+            Probe(1, "Gallia", 7),
+            db.select("id", "name", "amount").from("tv_sink").fetchObjectStrict<Probe>()
+        )
+    }
+
+    @Test
+    fun `spread comes after map, which is also how a row other than the first is spread`() {
+        val plan = TransactionPlan()
+        val source = plan.add(probeAll().fetchObjects<Map<String, Any?>>())
         plan.add(
             db.insertInto("tv_sink").values(listOf("name", "amount"))
-                .asStep().update("ignored" to source.row(rowIndex = 2))
+                .asStep().update("ignored" to source.value().map { rows -> rows[2] }.spread())
         )
         db.executeTransactionPlan(plan)
 
@@ -372,16 +336,26 @@ class TransactionValueMatrixTest {
     }
 
     @Test
-    fun `row on a scalar result says it has no columns`() {
-        val plan = TransactionPlan()
-        val source = plan.add(probeOne().fetchFieldStrict<Int>())
-        plan.add(
-            db.insertInto("tv_sink").values(listOf("name", "amount"))
-                .asStep().update("ignored" to source.row())
-        )
+    fun `the map's value type is the terminal's to choose, and the spread carries what it made`() {
+        // The terminal decides what the columns are converted to. At Any? this jsonb column is a JsonElement,
+        // which goes back out as jsonb and a text column refuses; asked for as String no converter claims it
+        // and the codec's own text arrives, which the text column takes.
+        db.rawQuery("INSERT INTO tv_shapes (rank, doc) VALUES ('LEGATUS', '{\"a\": 1}')").execute()
 
-        val thrown = assertFailsWith<OctaviusException> { db.executeTransactionPlan(plan) }
-        assertTrue(thrown.getDetailedMessage()!!.contains("no columns"), thrown.getDetailedMessage()!!)
+        val plan = TransactionPlan()
+        val source = plan.add(
+            db.rawQuery("SELECT doc AS name FROM tv_shapes").asStep().fetchObjectStrict<Map<String, String>>()
+        )
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name"))
+                .asStep().update("ignored" to source.value().spread())
+        )
+        db.executeTransactionPlan(plan)
+
+        assertTrue(
+            db.select("name").from("tv_sink").fetchFieldStrict<String>().contains("\"a\""),
+            "the text the codec produced, not a JsonElement the converters made"
+        )
     }
 
     // --- Value and Transformed ---------------------------------------------------------------------
@@ -402,60 +376,24 @@ class TransactionValueMatrixTest {
         assertEquals(42, db.executeTransactionPlan(plan)[sink])
     }
 
-    @Test
-    fun `map runs over a field`() {
-        val out: String = throughParameter(
-            producer = { it.add(probeOne().fetchRowStrict()) },
-            use = { it.field("name").map { name -> "Provincia $name" } }
-        )
-        assertEquals("Provincia Gallia", out)
-    }
-
-    @Test
-    fun `map runs over a column, and can collapse it to a scalar`() {
-        val out: Int = throughParameter(
-            producer = { it.add(probeAll().fetchRows()) },
-            use = { it.column("id").map { ids -> ids.size } }
-        )
-        assertEquals(3, out)
-    }
-
-    @Test
-    fun `map nests`() {
-        val out: Int = throughParameter(
-            producer = { it.add(probeAll().fetchRows()) },
-            use = { it.column("id").map { ids -> ids.size }.map { size -> size * 10 } }
-        )
-        assertEquals(30, out)
-    }
-
-    @Test
-    fun `map over a row sees the map and is assigned rather than spread`() {
-        // The spread is a property of FromStep.Row itself, so wrapping it in a Transformed takes that away:
-        // what comes out is one ordinary parameter again.
-        val out: Int = throughParameter(
-            producer = { it.add(probeOne().fetchRowStrict()) },
-            use = { handle -> handle.row().map { row -> row.size } }
-        )
-        assertEquals(3, out)
-    }
-
     // --- What a value looks like when it is carried between steps -----------------------------------
 
     @Test
     fun `an enum and a jsonb column carry between steps, type and all`() {
         // These are the two that would not, were the codec's own output carried: an enum's label and a jsonb
         // document are both Strings, and a parameter's type is declared from its Kotlin class, so both would
-        // go back out as `text` and be refused by the column they came from. Asking the row for Any? runs the
-        // result converters instead, and what they produce - the enum, a JsonElement - has a parameter
-        // converter that names its own PostgreSQL type.
+        // go back out as `text` and be refused by the column they came from. Map<String, Any?> asks the
+        // result converters what each column is instead, and what they produce - the enum, a JsonElement -
+        // has a parameter converter that names its own PostgreSQL type.
         db.rawQuery("INSERT INTO tv_shapes (rank, doc) VALUES ('LEGATUS', '{\"a\": 1}')").execute()
 
         val plan = TransactionPlan()
-        val source = plan.add(db.select("rank", "doc").from("tv_shapes").asStep().fetchRowStrict())
+        val source = plan.add(
+            db.select("rank", "doc").from("tv_shapes").asStep().fetchObjectStrict<Map<String, Any?>>()
+        )
         plan.add(
             db.insertInto("tv_shapes").values(listOf("rank", "doc"))
-                .asStep().update("rank" to source.field("rank"), "doc" to source.field("doc"))
+                .asStep().update("ignored" to source.value().spread())
         )
         db.executeTransactionPlan(plan)
 
@@ -478,7 +416,7 @@ class TransactionValueMatrixTest {
         val source = plan.add(db.select("doc").from("tv_shapes").asStep().fetchRowStrict())
         val kind = plan.add(
             db.rawQuery("SELECT @v AS v").asStep()
-                .fetchFieldStrict<String>("v" to source.field("doc").map { it!!::class.simpleName })
+                .fetchFieldStrict<String>("v" to source.value().map { it.get<Any?>("doc")!!::class.simpleName })
         )
 
         assertTrue(
@@ -490,13 +428,15 @@ class TransactionValueMatrixTest {
     @Test
     fun `an int column carries between steps, its codec class being its own type`() {
         // The other side of the limitation above: where the codec's class maps back to the same PostgreSQL
-        // type, which is most of them, carrying a value between steps round-trips as it should.
+        // type, which is most of them, carrying a value between steps round-trips as it should. Asked for at
+        // Any?, so it is the converters' output being sent and not a type the call site imposed.
         val plan = TransactionPlan()
         val source = plan.add(probeOne().fetchRowStrict())
         val sink = plan.add(
-            db.rawQuery("SELECT @v AS v").asStep().fetchFieldStrict<Int>("v" to source.field("amount"))
+            db.rawQuery("SELECT @v + 1 AS v").asStep()
+                .fetchFieldStrict<Int>("v" to source.value().map { it.get<Any?>("amount") })
         )
-        assertEquals(300, db.executeTransactionPlan(plan)[sink])
+        assertEquals(301, db.executeTransactionPlan(plan)[sink])
     }
 
     // --- What the caller's own code does ------------------------------------------------------------
@@ -507,25 +447,25 @@ class TransactionValueMatrixTest {
         val source = plan.add(probeOne().fetchRowStrict())
         plan.add(
             db.insertInto("tv_sink").values(listOf("amount"))
-                .asStep().update("amount" to source.field("name").map { it as Int })
+                .asStep().update("amount" to source.value().map { it.get<String>("name").toInt() })
         )
 
         val thrown = assertFailsWith<MappingException> { db.executeTransactionPlan(plan) }
 
         assertTrue(thrown.details.contains("'amount'"), thrown.details)
-        assertIs<ClassCastException>(thrown.cause, "what was actually thrown has to survive as the cause")
+        assertIs<NumberFormatException>(thrown.cause, "what was actually thrown has to survive as the cause")
         assertEquals(0L, db.rawQuery("SELECT count(*) FROM tv_sink").fetchFieldStrict<Long>())
     }
 
     @Test
     fun `a transformation that throws is a failure the result style can see`() {
         // The reason wrapping is worth doing at all: dbResult catches OctaviusException and nothing else, so
-        // a bare ClassCastException would travel straight through the boundary instead of being classified.
+        // a bare NumberFormatException would travel straight through the boundary instead of being classified.
         val plan = TransactionPlan()
         val source = plan.add(probeOne().fetchRowStrict())
         plan.add(
             db.insertInto("tv_sink").values(listOf("amount"))
-                .asStep().update("amount" to source.field("name").map { it as Int })
+                .asStep().update("amount" to source.value().map { it.get<String>("name").toInt() })
         )
 
         // MappingException is a caller bug, so the boundary rethrows it rather than returning it - which is
@@ -539,7 +479,7 @@ class TransactionValueMatrixTest {
         val source = plan.add(probeOne().fetchRowStrict())
         plan.add(
             db.insertInto("tv_sink").values(listOf("amount")).asStep().update(
-                "amount" to source.field("name").map<Any?, Any?> {
+                "amount" to source.value().map<Row, Any?> {
                     throw InvalidOperationException(
                         InvalidOperationExceptionReason.INVALID_ARGUMENT,
                         details = "raised by the caller's own code"
@@ -553,12 +493,27 @@ class TransactionValueMatrixTest {
     }
 
     @Test
+    fun `a column the row has not got is the driver's failure, and arrives as the driver raised it`() {
+        // Row.get raises this one, and it is already an OctaviusException, so it is not wrapped.
+        val plan = TransactionPlan()
+        val source = plan.add(probeOne().fetchRowStrict())
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name"))
+                .asStep().update("name" to source.value().map { it.get<String>("tribute") })
+        )
+
+        val thrown = assertFailsWith<MappingException> { db.executeTransactionPlan(plan) }
+        assertEquals(MappingExceptionReason.COLUMN_NOT_FOUND, thrown.reason)
+        assertTrue(thrown.getDetailedMessage()!!.contains("tribute"), thrown.getDetailedMessage()!!)
+    }
+
+    @Test
     fun `the parameter is named however deep the transformation that threw`() {
         val plan = TransactionPlan()
         val source = plan.add(probeOne().fetchRowStrict())
         plan.add(
             db.insertInto("tv_sink").values(listOf("amount")).asStep().update(
-                "amount" to source.field("amount").map { it as Int }.map { listOf<Int>()[it] }
+                "amount" to source.value().map { it.get<Int>("amount") }.map { listOf<Int>()[it] }
             )
         )
 
@@ -577,7 +532,7 @@ class TransactionValueMatrixTest {
         val plan = TransactionPlan()
         plan.add(
             db.insertInto("tv_sink").values(listOf("name"))
-                .asStep().update("name" to stranger.field("name"))
+                .asStep().update("name" to stranger.value().map { it.get<String>("name") })
         )
 
         val thrown = assertFailsWith<OctaviusException> { db.executeTransactionPlan(plan) }
@@ -594,8 +549,26 @@ class TransactionValueMatrixTest {
 
         val plan = TransactionPlan()
         plan.add(
-            db.insertInto("tv_sink").values(listOf("name"))
-                .asStep().update("name" to stranger.field("name").map { it.toString() }.map { it.uppercase() })
+            db.insertInto("tv_sink").values(listOf("name")).asStep().update(
+                "name" to stranger.value().map { it.get<String>("name") }.map { it.uppercase() }
+            )
+        )
+
+        val thrown = assertFailsWith<OctaviusException> { db.executeTransactionPlan(plan) }
+        assertTrue(thrown.getDetailedMessage()!!.contains("not a step of"), thrown.getDetailedMessage()!!)
+    }
+
+    @Test
+    fun `a foreign handle is found under a spread as well as under a value`() {
+        // A spread is not a TransactionValue, so validation walks it through a branch of its own - and a
+        // handle the plan never held is caught there too, not only where a plain value would have caught it.
+        val other = TransactionPlan()
+        val stranger = other.add(probeOne().fetchObjectStrict<Map<String, Any?>>())
+
+        val plan = TransactionPlan()
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name", "amount"))
+                .asStep().update("ignored" to stranger.value().spread())
         )
 
         val thrown = assertFailsWith<OctaviusException> { db.executeTransactionPlan(plan) }
@@ -620,18 +593,6 @@ class TransactionValueMatrixTest {
         // contract either way round: no steps, no result, no exception.
         val results = db.executeTransactionPlan(TransactionPlan())
         assertEquals(0, results.size)
-    }
-
-    @Test
-    fun `rows carried between steps keep their decoded values`() {
-        // getRaw hands on what the driver decoded, so what the next step binds is a Kotlin Int and a String,
-        // not text that happens to look like them.
-        val plan = TransactionPlan()
-        val source = plan.add(probeOne().fetchRowStrict())
-        val sink = plan.add(
-            db.rawQuery("SELECT @amount + 1 AS v").asStep().fetchFieldStrict<Int>("amount" to source.field("amount"))
-        )
-        assertEquals(301, db.executeTransactionPlan(plan)[sink])
     }
 
     @Test

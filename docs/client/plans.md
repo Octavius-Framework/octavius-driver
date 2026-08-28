@@ -53,73 +53,72 @@ binds nothing and could therefore take no reference to an earlier step.
 `plan.add` returns a `StepHandle`. It is identity and nothing else — two handles are the same handle or they
 are not — and it is useful only inside the plan whose `add` returned it.
 
-| From a handle           | Gives                                                        |
-|-------------------------|--------------------------------------------------------------|
-| `value()`               | The step's result, whole, as its terminal produced it        |
-| `field(name, rowIndex)` | One column of one row                                        |
-| `column(name)`          | One column of every row, as a list                           |
-| `row(rowIndex)`         | A whole row as a map — **spread** into parameters of its own |
+A handle reaches one thing, `value()`: the step's result, whole, as its terminal produced it. The type comes
+with it, so reaching *into* a result is ordinary Kotlin, written in `map { }`:
 
-Anything that is not one of these is passed through untouched, so an ordinary parameter map needs no wrapping:
-only the values that depend on an earlier step do.
+```kotlin
+"edict_id" to edict.value().map { it.get<Int>("id") }                      // one column of a fetchRowStrict
+"name"     to items.value().map { rows -> rows[2].get<String>("name") }    // one column of one row of many
+"ids"      to items.value().map { rows -> rows.map { it.get<Int>("id") } } // one column of every row
+```
 
-## What Fits What
+The third asks for the column at `Int`, so what comes out is a `List<Int>`, which binds as an array. Where
+only one column is wanted at all, the terminal says so — `fetchFields<Int>()` and `value()`, with no lambda in
+it.
 
-The two axes do not multiply cleanly, and this is the part worth reading before writing a plan. `field`,
-`column` and `row` need a result that **has columns**, which only the `fetchRow*` family produces. `value()`
-hands on whatever the terminal produced — and whether the next step can then *bind* it is a separate question,
-answered by whether the driver can send that class as a parameter.
+Anything that is not a `TransactionValue` is passed through untouched, so an ordinary parameter map needs no
+wrapping: only the values that depend on an earlier step do.
 
-| The step's terminal                | `value()`                                   | `field` / `column` / `row` |
-|------------------------------------|---------------------------------------------|----------------------------|
-| `fetchRow`, `fetchRowStrict`       | resolves, but a `Row` cannot be bound       | ✅                          |
-| `fetchRows`                        | resolves, but a `List<Row>` cannot be bound | ✅                          |
-| `fetchObject`, `fetchObjectStrict` | only if the class is a registered composite | ❌ "no columns to take"     |
-| `fetchField`, `fetchFieldStrict`   | ✅                                           | ❌                          |
-| `fetchFields`, `fetchObjects`      | ✅ — a list of scalars binds as an array     | ❌                          |
-| `update`                           | ✅ — the affected-row count                  | ❌                          |
-| `fetchRow` that matched nothing    | ✅ — binds as `NULL`                         | ❌                          |
+## What Binds and What Does Not
 
-The failures say which is which: reaching for a column of something that has none names the class it got and
-points at `value()`, and a `value()` nothing can send fails where the parameter is encoded, naming the class.
+`value()` hands on whatever the terminal produced. Whether the next step can then *bind* it is a separate
+question, answered by whether the driver can send that class as a parameter.
 
-**A value carried between steps is what the result converters make of it**, not what its codec left behind —
-the same thing `row.get<Any?>` gives anywhere else. An enum column arrives as the enum and a `jsonb` column as
-a `JsonElement`, each of which names its own PostgreSQL type on the way back out. Carrying the codec's `String`
-instead would declare it `text`, and the server would refuse it at the very column it had come from.
+| The step's terminal                       | `value()` binds                             |
+|-------------------------------------------|---------------------------------------------|
+| `fetchField`, `fetchFieldStrict`          | ✅                                           |
+| `fetchFields`, `fetchObjects`             | ✅ — a list of scalars binds as an array     |
+| `update`                                  | ✅ — the affected-row count                  |
+| `fetchObject`, `fetchObjectStrict`        | only if the class is a registered composite |
+| `fetchObject*<Map<String, Any?>>`         | ❌ — nothing sends a Map; `spread()` does    |
+| `fetchRow`, `fetchRowStrict`, `fetchRows` | ❌ — a `Row` is not something to send        |
+| `fetchRow` that matched nothing           | ✅ — binds as `NULL`                         |
+
+A `value()` nothing can send fails where the parameter is encoded, naming the class. `map` is the way across:
+it reaches the object and takes the part that can be sent.
 
 ## `map` and the Spread
 
-`map { }` applies a function once the value resolves, so a handle on an id can become a formatted reference and
-a list can become its size, without adding a step just to compute it:
+`map { }` applies a function once the value resolves, so a handle on a row can become the one column of it the
+next step wants, and a list can become its size, without adding a step just to compute it:
 
 ```kotlin
 plan.add(
     db.insertInto("audit").values(listOf("summary"))
-        .asStep().update("summary" to itemIds.column("id").map { "granted to ${it.size} provinces" })
+        .asStep().update("summary" to items.value().map { "granted to ${it.size} provinces" })
 )
 ```
 
-It is also the way across for a result nothing can bind: `value()` reaches the object, `map` takes the part
-that can be sent.
-
 **A transformation is the one place a plan runs code you wrote.** Anything it throws arrives as a
 `MappingException` naming the parameter, with what was actually thrown as its cause — a bare
-`ClassCastException` out of `map { it as Int }` would otherwise travel as itself, past `dbResult` and
-`transactionResult`, which catch `OctaviusException` and nothing else. An `OctaviusException` raised in there is
-passed through as it is.
+`NumberFormatException` out of `map { it.toInt() }` would otherwise travel as itself, past `dbResult` and
+`transactionResult`, which catch `OctaviusException` and nothing else. An `OctaviusException` raised in there
+is passed through as it is, which is what a `row.get` for a column the row has not got raises.
 
 ### The spread
 
-`row()` is the one value that is **not** assigned under the name it was filed under. Its entries become
-parameters in their own right, under the row's own column names:
+`spread()` marks a value to become **parameters of its own** rather than one parameter. Its entries arrive
+under their own keys, and the name it was filed under is dropped:
 
 ```kotlin
-val original = plan.add(db.select("*").from("edicts").where("id = @id").asStep().fetchRowStrict("id" to id))
+val original = plan.add(
+    db.select("title", "tribute", "province").from("edicts").where("id = @id")
+        .asStep().fetchObjectStrict<Map<String, Any?>>("id" to id)
+)
 
 plan.add(
     db.insertInto("edict_archive").values(listOf("title", "tribute", "province"))
-        .asStep().update("anything" to original.row())
+        .asStep().update("anything" to original.value().spread())
 )
 ```
 
@@ -127,8 +126,20 @@ plan.add(
 placeholder — a map of parameters needs a key — and it is the one parameter name in a step that means nothing.
 This is what makes copying a row with a change or two a single step rather than one parameter per column.
 
-The spread belongs to `row()` itself, not to the map inside it, so putting a `map` around one takes it away:
-what comes out is one ordinary parameter again, under the name it was filed under, which then starts mattering.
+**The map comes from a `fetchObject*` terminal**, which treats a row as a record like any other. That is
+where the columns' type is chosen: `Map<String, Any?>` asks the result converters what each column is, and
+anything narrower asks them for that instead. `fetchObject` returns `Map<String, Any?>?`, which does not
+spread — what an absent row contributes is said in a `map` first, `map { it ?: emptyMap() }`.
+
+The mark is on the parameter slot rather than on the value in it, so everything ordinary Kotlin does to a map
+can still be done first:
+
+```kotlin
+"anything" to original.value().map { it - "id" + ("archived_at" to Instant.now()) }.spread()
+```
+
+`spread()` is the last thing written: what it returns is not a `TransactionValue`, so `map` cannot follow
+it.
 
 ## Merging Plans
 

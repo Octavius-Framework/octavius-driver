@@ -31,7 +31,9 @@ class TransactionStep<T> @PublishedApi internal constructor(
  * lambda does not. DDL and `SET` belong in a query run on the transaction's own session; the timeouts worth
  * setting are properties of [TransactionDefinition] already.
  *
- * Parameters may hold [TransactionValue]s among ordinary values, and only those are resolved.
+ * Parameters may hold [TransactionValue]s among ordinary values, and only those are resolved. A
+ * [SpreadParameters] goes among them too, and fills its slot with a row's worth of parameters rather
+ * than with one.
  *
  * ```kotlin
  * val edictId = plan.add(

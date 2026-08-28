@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.client.transaction.TransactionPlan
 import io.github.octaviusframework.client.transaction.map
+import io.github.octaviusframework.client.transaction.spread
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
@@ -282,10 +283,10 @@ class TransactionPlanTest {
         assertIs<ConstraintViolationException>(result.error)
     }
 
-    // --- The ways a handle can be read ------------------------------------------------------------
+    // --- Reading a handle -------------------------------------------------------------------------
 
     @Test
-    fun `field takes one column of a row-shaped result`() {
+    fun `map takes one column of a row-shaped result`() {
         val plan = TransactionPlan()
 
         val edict = plan.add(
@@ -295,9 +296,9 @@ class TransactionPlanTest {
         plan.add(
             db.insertInto("plan_items").values(listOf("edict_id", "province", "amount"))
                 .asStep().update(
-                    "edict_id" to edict.field("id"),
+                    "edict_id" to edict.value().map { it.get<Int>("id") },
                     "province" to "Gallia",
-                    "amount" to edict.field("tribute")
+                    "amount" to edict.value().map { it.get<Int>("tribute") }
                 )
         )
 
@@ -307,7 +308,7 @@ class TransactionPlanTest {
     }
 
     @Test
-    fun `column takes one column of every row, and map turns it into something bindable`() {
+    fun `map gathers one column of every row into something bindable`() {
         val plan = TransactionPlan()
 
         val ids = plan.add(
@@ -321,7 +322,9 @@ class TransactionPlanTest {
         val total = plan.add(
             db.select("sum(tribute)").from("plan_edicts").where("id = ANY(@ids)")
                 .asStep().fetchFieldStrict<Long>(
-                    "ids" to ids.column("id").map { column -> column.filterIsInstance<Int>() }
+                    // The row asked for the column at Int rather than at Any?, so what arrives is a List<Int>
+                    // the driver sends as an array - no filtering a list of Any? into one it will accept.
+                    "ids" to ids.value().map { rows -> rows.map { row -> row.get<Int>("id") } }
                 )
         )
 
@@ -332,7 +335,7 @@ class TransactionPlanTest {
     }
 
     @Test
-    fun `row is spread into parameters under its own column names`() {
+    fun `a map result is spread into parameters under its own keys`() {
         db.insertInto("plan_edicts").values(listOf("title", "tribute"))
             .update("title" to "De Tributis", "tribute" to 650)
 
@@ -340,13 +343,13 @@ class TransactionPlanTest {
 
         val source = plan.add(
             db.select("tribute").from("plan_edicts").where("title = @title")
-                .asStep().fetchRowStrict("title" to "De Tributis")
+                .asStep().fetchObjectStrict<Map<String, Any?>>("title" to "De Tributis")
         )
-        // "row" is not a parameter the statement names - the columns the row carries are, and they arrive
-        // under those names because a spread row drops the key it was filed under.
+        // "row" is not a parameter the statement names - the map's keys are, and they arrive under those
+        // names because a spread drops the key it was filed under.
         plan.add(
             db.insertInto("plan_edicts").values(listOf("title", "tribute"))
-                .asStep().update("title" to "De Tributis II", "row" to source.row())
+                .asStep().update("title" to "De Tributis II", "row" to source.value().spread())
         )
 
         db.executeTransactionPlan(plan)
@@ -360,22 +363,27 @@ class TransactionPlanTest {
     // --- What it refuses --------------------------------------------------------------------------
 
     @Test
-    fun `asking a scalar result for one of its columns says so`() {
+    fun `a fetchObject that matched nothing spreads whatever map takes its place`() {
+        // fetchObject returns Map<String, Any?>?, which does not spread. What an absent row contributes is
+        // said in a map() before the spread.
         val plan = TransactionPlan()
 
-        val id = plan.add(
-            db.insertInto("plan_edicts").values(listOf("title", "tribute")).returning("id")
-                .asStep().fetchFieldStrict<Int>("title" to "De Tributis", "tribute" to 650)
+        val missing = plan.add(
+            db.select("title", "tribute").from("plan_edicts").where("false")
+                .asStep().fetchObject<Map<String, Any?>>()
         )
         plan.add(
-            db.insertInto("plan_items").values(listOf("edict_id", "province", "amount"))
-                .asStep().update("edict_id" to id.field("id"), "province" to "Gallia", "amount" to 1)
+            db.insertInto("plan_edicts").values(listOf("title", "tribute")).asStep().update(
+                "row" to missing.value().map { it ?: mapOf("title" to "Nihil", "tribute" to 0) }.spread()
+            )
         )
 
-        val thrown = assertFailsWith<InvalidOperationException> { db.executeTransactionPlan(plan) }
-        assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, thrown.reason)
-        assertTrue(thrown.details!!.contains("value()"), "the message should point at the fix")
-        assertEquals(0L, edictCount(), "and the transaction is still undone")
+        db.executeTransactionPlan(plan)
+
+        assertEquals(
+            0,
+            db.rawQuery("SELECT tribute FROM plan_edicts WHERE title = @t").fetchFieldStrict<Int>("t" to "Nihil")
+        )
     }
 
     @Test

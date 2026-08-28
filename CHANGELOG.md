@@ -23,6 +23,36 @@
   reported. `RawQuery.execute()` in the client takes it too. Source-compatible, but a caller compiled against
   0.9.8 has to be recompiled.
 
+### Client
+
+#### Changed
+
+- **A `StepHandle` in a `TransactionPlan` reaches one thing, `value()`.** `field(name, rowIndex)` and
+  `column(name)` are gone: both threw away the type the step's terminal declared, handing back `Any?` and
+  `List<Any?>`, and the only way back to a type from there was a cast the caller wrote. `value()` carries the
+  terminal's own type, so taking a column is `map { it.get<Int>("id") }` and gathering one is
+  `map { rows -> rows.map { it.get<Int>("id") } }` - checked where it is written, and a `List<Int>` the driver
+  sends as an array rather than a `List<Any?>` that has to be filtered into one first. Asking a scalar or an
+  object result for a column it has not got no longer runs and fails; it does not compile.
+- **`row(rowIndex)` is replaced by `spread()`**, which marks a value to fill its parameter slot with entries
+  of its own rather than with one value. It is written last and takes a map, so `map { }` composes *before*
+  it: `map { it - "id" + ("archived_at" to now) }.spread()` copies a row with a column dropped and one added,
+  which the old spread could not express. What `spread()` returns is not a `TransactionValue`, so nothing
+  composes after it - a `map` around a spread used to take the spread silently away, and that is now
+  unwritable rather than documented.
+- A step whose result is to be spread is fetched as a map - `fetchObjectStrict<Map<String, Any?>>()` - which
+  is where the columns' type is chosen. That is why the spread does not take a `Row`: `Map<String, Any?>` asks
+  the result converters what each column is, and anything narrower asks them for that instead, where reading a
+  row for the purpose had that decision made for it.
+- The shape failures the plan raised of its own - a result with no columns to take, a column the rows have not
+  got, a row index past the end, a row that was not there to spread - are gone from it. Two of them the
+  compiler refuses outright, `spread()` taking `Map<String, Any?>` and not the `Map<String, Any?>?` a
+  `fetchObject` returns. The other two are whatever the caller's own `map` raised: an
+  `IndexOutOfBoundsException` wrapped as a `MappingException` naming the parameter, or the driver's own
+  `COLUMN_NOT_FOUND` passed through as it was thrown.
+
+See [Transaction Plans](docs/client/plans.md) for the whole of it.
+
 ### Migrations
 
 #### Added

@@ -45,7 +45,10 @@ internal fun validatePlan(steps: List<TransactionPlan.PlannedStep>) {
         }
 
         for ((name, value) in step.params) {
-            if (value is TransactionValue<*>) checkHandles(value, index, name, indexByHandle)
+            when (value) {
+                is TransactionValue<*> -> checkHandles(value, index, name, indexByHandle)
+                is SpreadParameters -> checkHandles(value.source, index, name, indexByHandle)
+            }
         }
     }
 }
@@ -60,7 +63,7 @@ private fun checkHandles(
     when (value) {
         is TransactionValue.Value -> Unit
         is TransactionValue.Transformed<*, *> -> checkHandles(value.source, stepIndex, paramName, indexByHandle)
-        is TransactionValue.FromStep<*> -> {
+        is TransactionValue.FromStep -> {
             if (!indexByHandle.containsKey(value.handle)) {
                 throw InvalidOperationException(
                     InvalidOperationExceptionReason.INVALID_ARGUMENT,
