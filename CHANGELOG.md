@@ -23,6 +23,33 @@
   reported. `RawQuery.execute()` in the client takes it too. Source-compatible, but a caller compiled against
   0.9.8 has to be recompiled.
 
+### Migrations
+
+#### Added
+
+- A new `migrations` module: a migrator built on the driver. `V`/`R` naming as in Flyway, migrations written as
+  `.sql` files or as Kotlin classes, checksums, an advisory lock, and a history table it keeps itself.
+  `OctaviusMigrator(dataSource, MigratorConfig(...)).migrate()` is the whole entry point, and `info()` answers
+  the same question without applying anything or creating anything.
+- **Two transaction paths, differing in where the history row sits.** By default a migration runs inside a
+  transaction and its row goes into that same transaction, so a failure leaves neither the work nor a record of
+  it - there is nothing to repair, and no `repair` command to do it with. A file whose header carries
+  `-- octavius:no-transaction` runs statement by statement instead, which is what `CREATE INDEX CONCURRENTLY`,
+  `VACUUM` and `ALTER SYSTEM` need; a failure there records which statement stopped it, and the next run
+  refuses to go on until somebody has looked.
+- **A migration class is read as a name and never constructed by the scan.** `V2_1__Add_indexes` is version
+  2.1 - a class name cannot hold a `.`, so `_` separates the parts there - and the class is built once,
+  immediately before it runs. A migration that ran months ago therefore costs nothing at startup and runs none
+  of your code.
+- Checksums are CRC32 over content normalised for a byte-order mark, line endings and trailing whitespace, so
+  a Windows checkout meeting a Linux one is not reported as an edit. A class records no checksum unless it
+  declares one: hashing bytecode reports a change when a blank line moves or the compiler is upgraded, and
+  hashing the class name detects only a rename, which the version already catches.
+- `outOfOrder`, `baselineVersion` and `target`, for a branch merged late, a database adopted at a version it
+  was already at, and a release that ships migrations ahead of the code needing them.
+- **No undo and no placeholders.** A migration that turns out to be wrong is corrected by a migration that
+  comes after it, that being the only correction which leaves every copy of the database in the same state.
+
 ## Version 0.9.8 (v0.9.8)
 
 ### Driver and annotations

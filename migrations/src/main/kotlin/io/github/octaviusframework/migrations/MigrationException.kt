@@ -20,7 +20,28 @@ enum class MigrationExceptionReason {
     DUPLICATE_MIGRATION,
 
     /** The migrator was set up in a way it cannot work with: nowhere to look, or somewhere that is not there. */
-    CONFIGURATION
+    CONFIGURATION,
+
+    /**
+     * The wait for the migration lock ran out. Another migrator is still going, or a session is holding the
+     * lock and not finishing - this is the one reason here that a caller might sensibly retry on.
+     */
+    LOCK_NOT_ACQUIRED,
+
+    /**
+     * The migrations on disk and the ones in the history disagree: one has changed since it ran, one the
+     * database has run is gone, or one arrived with a version below what is already applied.
+     */
+    VALIDATION_FAILED,
+
+    /**
+     * A previous run died in the middle of a migration that was not in a transaction, so part of it is
+     * applied and part is not. Only a person can say what to do about that.
+     */
+    HISTORY_INCOMPLETE,
+
+    /** A migration ran and failed. What the server or the migration's own code said is the cause. */
+    MIGRATION_FAILED
 }
 
 /**
@@ -54,4 +75,12 @@ private fun generateDeveloperMessage(reason: MigrationExceptionReason): String =
             "Two migrations claim the same identity, and there is no way to tell which one ran."
         MigrationExceptionReason.CONFIGURATION ->
             "The migrator has nowhere usable to look for migrations."
+        MigrationExceptionReason.LOCK_NOT_ACQUIRED ->
+            "Another migrator holds the lock on this database's migration history."
+        MigrationExceptionReason.VALIDATION_FAILED ->
+            "The migrations on disk do not line up with what this database has already run."
+        MigrationExceptionReason.HISTORY_INCOMPLETE ->
+            "A previous run stopped part-way through a migration and left the database between two states."
+        MigrationExceptionReason.MIGRATION_FAILED ->
+            "A migration failed. See the cause for what the database or the migration itself said."
     }
