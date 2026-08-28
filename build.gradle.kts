@@ -75,37 +75,15 @@ subprojects {
         }
     }
 
-    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client", "client-scanner", "migrations")
-
-    if (publishedProjects.contains(project.name)) {
-        apply(plugin = "com.vanniktech.maven.publish")
-
+    // Everything a published POM carries that is the same for every module. Applying the publish plugin is
+    // what marks a module as published - the module's own build file adds the two fields that are not
+    // shared: what it is called and what it is for.
+    plugins.withId("com.vanniktech.maven.publish") {
         extensions.configure<MavenPublishBaseExtension> {
             coordinates(group.toString(), project.name, version.toString())
 
             pom {
-                val isAnnotations = project.name == "annotations"
-                val isClient = project.name == "client" || project.name.startsWith("client-")
-                val isMigrations = project.name == "migrations"
-                name.set(
-                    when {
-                        isAnnotations -> "Octavius - ${project.name}"
-                        isClient -> "Octavius Client - ${project.name}"
-                        isMigrations -> "Octavius - ${project.name}"
-                        else -> "Octavius Driver - ${project.name}"
-                    }
-                )
-                description.set(
-                    when {
-                        isAnnotations ->
-                            "Annotations Octavius reads off your own classes, multiplatform so that shared code can carry them."
-                        isClient -> "SQL-first data access for Kotlin and PostgreSQL, built on the Octavius driver."
-                        isMigrations ->
-                            "Schema migrations for PostgreSQL, built on the Octavius driver: versioned and repeatable, in SQL or in Kotlin."
-                        else -> "Kotlin-first PostgreSQL driver built on Virtual Threads and the raw wire protocol."
-                    }
-                )
-                url.set("https://github.com/octavius-framework/octavius-driver")
+                url.set("https://github.com/Octavius-Framework/octavius-postgresql")
                 licenses {
                     license {
                         name.set("The Apache License, Version 2.0")
@@ -122,9 +100,9 @@ subprojects {
                     }
                 }
                 scm {
-                    connection.set("scm:git:git://github.com/Octavius-Framework/octavius-driver.git")
-                    developerConnection.set("scm:git:ssh://github.com/Octavius-Framework/octavius-driver.git")
-                    url.set("https://github.com/Octavius-Framework/octavius-driver")
+                    connection.set("scm:git:git://github.com/Octavius-Framework/octavius-postgresql.git")
+                    developerConnection.set("scm:git:ssh://github.com/Octavius-Framework/octavius-postgresql.git")
+                    url.set("https://github.com/Octavius-Framework/octavius-postgresql")
                 }
             }
 

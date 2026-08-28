@@ -71,4 +71,4 @@ it again.
 
 ## API Reference
 
-- [API Reference](https://octavius-framework.github.io/octavius-driver/) — `client`, `client-scanner`
+- [API Reference](https://octavius-framework.github.io/octavius-postgresql/) — `client`, `client-scanner`

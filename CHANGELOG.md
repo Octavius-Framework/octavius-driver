@@ -1,5 +1,21 @@
 ## Version 0.9.9 (v0.9.9)
 
+### Project
+
+#### Changed
+
+- **The repository is now `octavius-postgresql`.** `octavius-driver` named one of the six artifacts inside it
+  rather than the thing itself, and collided with the `driver` module every time either was written down.
+  GitHub redirects the old URL, so a remote pointing at it keeps working; GitHub Pages does not, and the API
+  reference has moved to https://octavius-framework.github.io/octavius-postgresql/. Maven coordinates are
+  untouched - `io.github.octavius-framework:driver` and the rest resolve exactly as before.
+- **Every published artifact carries its own POM name and description.** They were derived in the root build
+  from a `when` over the module name, and two modules fell through it: `client-scanner` was published with the
+  client's description and `driver-spring-integration` with the driver's, so both described themselves on
+  Maven Central as something they are not. Each module's own build file now declares both, and applying the
+  publish plugin is what marks a module as published - the root build no longer keeps a list of names that
+  could drift from the modules it names.
+
 ### Driver
 
 #### Added

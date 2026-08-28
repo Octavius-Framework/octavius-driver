@@ -1,5 +1,16 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.vanniktech.publish)
+}
+
+mavenPublishing {
+    pom {
+        name.set("Octavius Migrations")
+        description.set(
+            "Schema migrations for PostgreSQL on the Octavius driver: versioned and repeatable, in SQL or in Kotlin, " +
+            "with checksums, an advisory lock and a history table it keeps itself."
+        )
+    }
 }
 
 dependencies {

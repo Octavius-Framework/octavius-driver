@@ -1,6 +1,17 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.vanniktech.publish)
+}
+
+mavenPublishing {
+    pom {
+        name.set("Octavius Spring Boot Integration")
+        description.set(
+            "Spring Boot autoconfiguration for the Octavius PostgreSQL driver: OctaviusTemplate, a transaction " +
+            "manager, DataSource wiring and exception translation. Requires Spring Boot 4.x."
+        )
+    }
 }
 
 dependencies {

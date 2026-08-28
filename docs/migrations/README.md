@@ -39,4 +39,4 @@ rather than a race.
 
 For signatures, properties and enum values, see the generated KDoc:
 
-- [API Reference](https://octavius-framework.github.io/octavius-driver/)
+- [API Reference](https://octavius-framework.github.io/octavius-postgresql/)

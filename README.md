@@ -1,8 +1,8 @@
 # Octavius for PostgreSQL
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
-[![Build and Test](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml)
-[![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-driver/)
+[![Build and Test](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml)
+[![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-postgresql/)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
@@ -74,7 +74,7 @@ across two.
 
 ## Documentation
 
-**[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every
+**[API Reference](https://octavius-framework.github.io/octavius-postgresql/)** — generated KDoc for every
 declaration, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the
 values of an enum.
 

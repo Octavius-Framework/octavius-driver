@@ -196,4 +196,4 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 
 For signatures, properties and enum values, see the generated KDoc — rebuilt on every push to `master`:
 
-- [API Reference](https://octavius-framework.github.io/octavius-driver/) — `driver`, `driver-spring-integration`
+- [API Reference](https://octavius-framework.github.io/octavius-postgresql/) — `driver`, `driver-spring-integration`

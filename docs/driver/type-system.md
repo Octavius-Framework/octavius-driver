@@ -5,7 +5,7 @@ it, its status and its obligations, drawn up on arrival because nobody back in R
 there. Octavius does the same on its first connection to a database: it reads the catalog rather than assuming it, which
 is why a type you created yourself is never an unknown OID.*
 
-Type mapping in `octavius-driver` rests on a flexible **2-layer architecture** that keeps low-level binary wire communication cleanly separated from high-level mapping onto Kotlin objects.
+Type mapping in `octavius-postgresql` rests on a flexible **2-layer architecture** that keeps low-level binary wire communication cleanly separated from high-level mapping onto Kotlin objects.
 
 Two things are worth internalizing before the details:
 

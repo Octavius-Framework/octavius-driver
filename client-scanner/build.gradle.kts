@@ -2,6 +2,17 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     // The test fixtures declare @Serializable classes for the scanner to find.
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.vanniktech.publish)
+}
+
+mavenPublishing {
+    pom {
+        name.set("Octavius Client Scanner")
+        description.set(
+            "Classpath scanning for Octavius Client: finds the annotated classes in your packages and registers them, " +
+            "so that thirty types are named once instead of thirty times."
+        )
+    }
 }
 
 dependencies {

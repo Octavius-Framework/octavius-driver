@@ -7,7 +7,7 @@ one of them closes the sluice.*
 
 The PostgreSQL `COPY` command is the fastest way to move bulk data in and out of the database. Instead of parsing, planning and executing a statement per row, the server opens a dedicated sub-protocol on the existing connection and both sides simply stream bytes at each other until one of them says stop. There is no per-row round trip, no per-row parameter binding, and — on the way in — no per-row plan.
 
-`octavius-driver` exposes this natively through `CopyManager`, reachable at `session.copy`. The manager is created together with the session and bound to that session's connection stream, so `session.copy` is always the same instance, and every COPY it starts runs on that one connection.
+`octavius-postgresql` exposes this natively through `CopyManager`, reachable at `session.copy`. The manager is created together with the session and bound to that session's connection stream, so `session.copy` is always the same instance, and every COPY it starts runs on that one connection.
 
 Contents:
 * [Two levels of API](#two-levels-of-api)

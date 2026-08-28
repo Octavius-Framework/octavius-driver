@@ -3,6 +3,17 @@ plugins {
     // For the test fixtures only: dynamic_dto payloads are kotlinx-serialized, so the tests declare
     // @Serializable classes. Nothing in main does.
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.vanniktech.publish)
+}
+
+mavenPublishing {
+    pom {
+        name.set("Octavius Client")
+        description.set(
+            "SQL-first data access on the Octavius PostgreSQL driver: session scoping, thread-bound transactions, " +
+            "query builders and transaction plans."
+        )
+    }
 }
 
 dependencies {

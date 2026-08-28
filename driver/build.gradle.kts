@@ -1,6 +1,18 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.vanniktech.publish)
+}
+
+mavenPublishing {
+    pom {
+        name.set("Octavius Driver")
+        description.set(
+            "A PostgreSQL driver for Kotlin that speaks Wire Protocol v3.2 directly: types read from your catalog, " +
+            "COPY, LISTEN/NOTIFY, large objects and TLS. Blocking by design and pin-free on virtual threads. Requires " +
+            "PostgreSQL 18 or newer."
+        )
+    }
 }
 
 dependencies {

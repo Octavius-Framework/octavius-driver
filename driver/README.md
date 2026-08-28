@@ -1,8 +1,8 @@
 # Octavius Driver
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
-[![Build and Test](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-driver/actions/workflows/tests.yml)
-[![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-driver/)
+[![Build and Test](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml)
+[![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-postgresql/)
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
@@ -45,7 +45,7 @@ val senators: List<Senator> = session
 
 Octavius is pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that generates certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to prove the handshake refuses it rather than half-working.
 
-What the badge means in practice: the API is not frozen. Signatures can still change before 1.0, and the [release notes](https://github.com/Octavius-Framework/octavius-driver/releases) say what moved. It has not seen long production use — the numbers below come from benchmarks, not from a year of traffic.
+What the badge means in practice: the API is not frozen. Signatures can still change before 1.0, and the [release notes](https://github.com/Octavius-Framework/octavius-postgresql/releases) say what moved. It has not seen long production use — the numbers below come from benchmarks, not from a year of traffic.
 
 ## Quick Start
 
@@ -108,7 +108,7 @@ Measured against `pgjdbc` on the same machine, same JVM, same work ([full number
 
 ## Documentation
 
-**[API Reference](https://octavius-framework.github.io/octavius-driver/)** — generated KDoc for every declaration across `driver`, `driver-spring-integration` and `hikari-integration-tests`, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the values of an enum.
+**[API Reference](https://octavius-framework.github.io/octavius-postgresql/)** — generated KDoc for every declaration across `driver`, `driver-spring-integration` and `hikari-integration-tests`, rebuilt on each push to `master`. Reach for it when you need a signature, a property, or the values of an enum.
 
 The guides cover what a signature cannot show — how the pieces behave together. [The documentation index](../docs/driver/README.md) lists every one of them section by section; below is the shortlist.
 

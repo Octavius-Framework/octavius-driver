@@ -11,7 +11,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "octavius-driver"
+rootProject.name = "octavius-postgresql"
 include("annotations")
 include("driver")
 include("client")

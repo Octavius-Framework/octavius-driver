@@ -24,4 +24,4 @@ the client or in migrations is reachable before that.
 For signatures, properties and enum values, see the generated KDoc — rebuilt on every push to `master` and
 covering every published module:
 
-- [API Reference](https://octavius-framework.github.io/octavius-driver/)
+- [API Reference](https://octavius-framework.github.io/octavius-postgresql/)
