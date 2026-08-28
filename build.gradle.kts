@@ -27,6 +27,7 @@ dependencies {
     dokka(projects.driver)
     dokka(projects.client)
     dokka(projects.clientScanner)
+    dokka(projects.migrations)
     dokka(projects.hikariIntegrationTests)
     dokka(projects.driverSpringIntegration)
 }
@@ -74,7 +75,7 @@ subprojects {
         }
     }
 
-    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client", "client-scanner")
+    val publishedProjects = listOf("annotations", "driver", "driver-spring-integration", "client", "client-scanner", "migrations")
 
     if (publishedProjects.contains(project.name)) {
         apply(plugin = "com.vanniktech.maven.publish")
@@ -85,10 +86,12 @@ subprojects {
             pom {
                 val isAnnotations = project.name == "annotations"
                 val isClient = project.name == "client" || project.name.startsWith("client-")
+                val isMigrations = project.name == "migrations"
                 name.set(
                     when {
                         isAnnotations -> "Octavius - ${project.name}"
                         isClient -> "Octavius Client - ${project.name}"
+                        isMigrations -> "Octavius - ${project.name}"
                         else -> "Octavius Driver - ${project.name}"
                     }
                 )
@@ -97,6 +100,8 @@ subprojects {
                         isAnnotations ->
                             "Annotations Octavius reads off your own classes, multiplatform so that shared code can carry them."
                         isClient -> "SQL-first data access for Kotlin and PostgreSQL, built on the Octavius driver."
+                        isMigrations ->
+                            "Schema migrations for PostgreSQL, built on the Octavius driver: versioned and repeatable, in SQL or in Kotlin."
                         else -> "Kotlin-first PostgreSQL driver built on Virtual Threads and the raw wire protocol."
                     }
                 )

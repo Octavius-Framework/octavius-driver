@@ -37,10 +37,15 @@ class RawQuery @PublishedApi internal constructor(
      * What it does accept is several statements separated by `;` in one round trip, which PostgreSQL wraps in
      * an implicit transaction.
      *
+     * @param ignoreRows Whether a statement returning rows may pass. Rows are discarded either way and there
+     * is no reading them from here; what this decides is whether their arrival is reported. Left `false`,
+     * `execute()` on a `SELECT` is caught rather than quietly doing nothing. Set it where the SQL is a script
+     * somebody else wrote and a `SELECT` in it is legitimate — `pg_dump` emits `SELECT pg_catalog.setval(...)`
+     * for every sequence.
      * @throws io.github.octaviusframework.driver.exception.InvalidOperationException `UNEXPECTED_RESULT` if
-     * any statement in the SQL returned rows.
+     * any statement in the SQL returned rows and [ignoreRows] is `false`.
      */
-    fun execute() {
-        queryProvider.execute { createNamedQuery(sql).execute() }
+    fun execute(ignoreRows: Boolean = false) {
+        queryProvider.execute { createNamedQuery(sql).execute(ignoreRows) }
     }
 }

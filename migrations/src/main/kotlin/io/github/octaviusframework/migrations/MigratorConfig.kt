@@ -1,0 +1,46 @@
+package io.github.octaviusframework.migrations
+
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+
+/**
+ * Where the migrator looks and what it accepts.
+ *
+ * @property sqlLocations Where the `.sql` files are. A location is either a classpath path -
+ * `db/migration`, or `classpath:db/migration`, the prefix being optional because it is the usual case - or a
+ * directory, `filesystem:./ops/sql`, resolved against the process's working directory. Subdirectories are
+ * searched too. Empty is allowed for a project whose migrations are all Kotlin.
+ * @property codePackages Packages holding [OctaviusMigration] classes, subpackages included. Empty is
+ * allowed for a project whose migrations are all `.sql`; empty *along with* [sqlLocations] is not, there
+ * being nothing to do.
+ * @property classLoader Where to look for classes and classpath resources, for an application whose classes
+ * are not on the loader that loaded this one - an OSGi container, a plugin host. `null` uses the default.
+ * @property historySchema Where the history table lives. Created if it is not there, which it has to be:
+ * the table must exist before the first migration runs, so a schema a migration would have created is one
+ * the history could never be kept in.
+ * @property historyTable What the history table is called. Worth changing only where two applications
+ * keep separate histories in one database - and then they hold separate locks too, the lock key being
+ * derived from this name.
+ * @property lockTimeout How long to wait for the migration lock before giving up. Waiting is the point:
+ * two instances starting together is ordinary, and the one that lost the race should start a moment later
+ * rather than not at all. This is what keeps waiting from meaning forever.
+ * @property outOfOrder Whether to apply a migration whose version is below one already applied. Off by
+ * default, because the usual cause is a branch merged late and the usual consequence is two databases
+ * that ran the same migrations in different orders.
+ * @property baselineVersion The version an existing database is taken to already be at, written once when
+ * this migrator first meets a database with no history table. Everything at or below it is skipped rather
+ * than run - which is how a database that predates the migrator gets adopted instead of rebuilt.
+ * @property target The highest version to apply, or `null` for all of them. For a release that ships the
+ * migrations before the code that needs them.
+ */
+data class MigratorConfig(
+    val sqlLocations: List<String> = listOf("db/migration"),
+    val codePackages: List<String> = emptyList(),
+    val classLoader: ClassLoader? = null,
+    val historySchema: String = "public",
+    val historyTable: String = "octavius_migration_history",
+    val lockTimeout: Duration = 30.seconds,
+    val outOfOrder: Boolean = false,
+    val baselineVersion: String? = null,
+    val target: String? = null
+)

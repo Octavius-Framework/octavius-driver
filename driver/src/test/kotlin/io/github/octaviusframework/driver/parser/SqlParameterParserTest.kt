@@ -1,4 +1,4 @@
-package io.github.octaviusframework.driver.query
+package io.github.octaviusframework.driver.parser
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

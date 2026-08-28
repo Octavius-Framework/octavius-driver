@@ -4,7 +4,7 @@ import io.github.octaviusframework.driver.exception.*
 import io.github.octaviusframework.driver.execution.QueryExecutor
 import io.github.octaviusframework.driver.io.PgStream
 import io.github.octaviusframework.driver.message.frontend.CancelRequestMessage
-import io.github.octaviusframework.driver.query.SqlParameterParser
+import io.github.octaviusframework.driver.parser.SqlParameterParser
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
 import io.github.octaviusframework.driver.registry.RegistryKey
 import io.github.octaviusframework.driver.session.TransactionState
