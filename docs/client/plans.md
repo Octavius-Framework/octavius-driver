@@ -5,8 +5,9 @@ clauses were read in order, and a later one leaned on an earlier one having take
 before the legacies charged on him meant anything. The testator did not execute it. He wrote down what was to
 happen, and handed that over.*
 
-A `transaction { }` block is a lambda. A plan is a **value**: it can be built up, counted, inspected, merged,
-handed on, and run somewhere that knows nothing about what went into it.
+A `transaction { }` block is a lambda. A plan is a **value**: it can be built up, counted,
+[inspected](#reading-one-that-went-wrong), merged, handed on, and run somewhere that knows nothing about what
+went into it.
 
 ## When a Block Is Not Enough
 
@@ -100,10 +101,26 @@ plan.add(
 ```
 
 **A transformation is the one place a plan runs code you wrote.** Anything it throws arrives as a
-`MappingException` naming the parameter, with what was actually thrown as its cause — a bare
-`NumberFormatException` out of `map { it.toInt() }` would otherwise travel as itself, past `dbResult` and
-`transactionResult`, which catch `OctaviusException` and nothing else. An `OctaviusException` raised in there
-is passed through as it is, which is what a `row.get` for a column the row has not got raises.
+`MappingException` naming the step, the parameter and which `map` of the chain it was, with what was actually
+thrown as its cause — a bare `NumberFormatException` out of `map { it.toInt() }` would otherwise travel as
+itself, past `dbResult` and `transactionResult`, which catch `OctaviusException` and nothing else:
+
+```
+Details: Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1) threw
+         NumberFormatException: For input string: "Gallia"
+```
+
+`#2` is the second `map` written on that parameter. A lambda has no name to report and every `map` in a chain
+shares the parameter it is on, so the number is the whole of what tells them apart.
+
+An `OctaviusException` raised in there is passed through as it is, which is what a `row.get` for a column the
+row has not got raises. That one picks up the same three on its `path` — the breadcrumb the driver's own
+layers write to as they unwind, and the only thing that can be added to an exception without replacing it:
+
+```
+Details: Column not found: tribute
+Path: step 1 -> parameter 'name' -> map #1
+```
 
 ### The spread
 
@@ -175,6 +192,61 @@ one would describe a hazard the design has closed.
 
 The cost is one extra `toSql()` per step, rendering not being cached. Against a transaction's round trips that
 is nothing.
+
+## Reading One That Went Wrong
+
+A failure names its step. `describe()` is what turns that number back into a step:
+
+```kotlin
+println(plan.describe())
+```
+
+```
+TransactionPlan, 2 steps
+
+step 0
+  SELECT id, name, amount
+  FROM tv_probe
+  WHERE id = 1
+
+step 1
+  INSERT INTO tv_sink (name, amount)
+  VALUES (@name, @amount)
+  @name   <- literal
+  @amount <- step 0.map(#1).map(#2)
+```
+
+This is the piece a plan needs and a block does not. A block is read where it is written; a plan is assembled
+by one layer and run by another, so the code holding it when it fails is usually not the code that decided
+what went in — and a plan built in a loop has the same SQL and the same parameter names in all twenty of its
+steps, which is why the query context on the exception cannot separate the third iteration from the
+seventeenth and the step number can.
+
+**What a literal *is* is deliberately not shown.** The wiring is the part that cannot be read off the code
+that assembled the plan; a bound value can, and printing one would put a `bytea` parameter or a column of
+personal data into whatever the description was written to. The values a step actually ran with are on the
+`queryContext` of what it threw, which is bounded for the purpose.
+
+A step whose query cannot be rendered says so in place of its SQL rather than throwing — a plan holding one
+is among the things worth describing, and the other nineteen steps still describe.
+
+### Which step is step 2
+
+A step's number, in a description and in a failure alike, is **where it sits in the plan being run**. A
+handle's own `toString` is not: it carries the index the handle was *created* at, and after `addPlan` that is
+no longer where its step is.
+
+```kotlin
+val source = tail.add(…)    // step 0 of tail
+head.addPlan(tail)          // head had two steps of its own, so that step is now step 2
+
+source.toString()           // StepHandle(step 0)        - the index it was created at
+head.describe()             // @amount <- step 2.map(#1) - where it runs
+```
+
+So read the number off `describe()` or off the failure, and treat a handle's own as saying which plan it came
+from rather than where it will run. That distinction is also why a handle from another plan is reported the
+way it is: there, naming the plan it was created in is the whole point.
 
 ## Running One Twice
 

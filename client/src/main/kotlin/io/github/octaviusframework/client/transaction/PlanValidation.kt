@@ -26,11 +26,16 @@ import io.github.octaviusframework.driver.exception.InvalidOperationExceptionRea
  *
  * A handle belonging to a plan that was never merged in is a different fault, and is caught below.
  *
+ * The index it builds to answer that is returned rather than discarded, because resolving a parameter needs
+ * the same map to say which step a value was taken from - and a handle's own index is the one it was created
+ * at, which after [TransactionPlan.addPlan] is not where its step sits in the plan being run.
+ *
  * @param steps The plan's steps, in the order they will run.
+ * @return Where each step sits, by handle.
  * @throws InvalidOperationException `INVALID_ARGUMENT` where a step's query cannot render, or a step binds a
  * parameter to a handle from another plan.
  */
-internal fun validatePlan(steps: List<TransactionPlan.PlannedStep>) {
+internal fun validatePlan(steps: List<TransactionPlan.PlannedStep>): Map<StepHandle<*>, Int> {
     val indexByHandle = HashMap<StepHandle<*>, Int>(steps.size)
     steps.forEachIndexed { index, step -> indexByHandle[step.handle] = index }
 
@@ -51,6 +56,8 @@ internal fun validatePlan(steps: List<TransactionPlan.PlannedStep>) {
             }
         }
     }
+
+    return indexByHandle
 }
 
 /** Walks a value for the handles it depends on, through however many [TransactionValue.Transformed] wrap it. */

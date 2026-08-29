@@ -265,12 +265,14 @@ interface OctaviusClient : AutoCloseable {
 
         // Before the transaction rather than inside it, so a plan that was malformed when it arrived is
         // refused without any of it having run.
-        validatePlan(steps)
+        // The index it builds is kept: a failure while resolving a parameter names the step it came from,
+        // and after addPlan a handle's own index is not where its step sits here.
+        val stepIndices = validatePlan(steps)
 
         return transaction(propagation, isolation, readOnly, statementTimeout, transactionTimeout) {
             val results = LinkedHashMap<StepHandle<*>, Any?>(steps.size)
-            for (step in steps) {
-                results[step.handle] = step.run(resolveParams(step.params, results))
+            for ((index, step) in steps.withIndex()) {
+                results[step.handle] = step.run(resolveParams(step.params, results, index, stepIndices))
             }
             TransactionPlanResult(results, steps.size)
         }

@@ -35,7 +35,26 @@ sealed class TransactionValue<out T> {
     class Transformed<IN, out OUT>(
         val source: TransactionValue<IN>,
         val transform: (IN) -> OUT
-    ) : TransactionValue<OUT>()
+    ) : TransactionValue<OUT>() {
+
+        /**
+         * Which application of [map] this is, counting from the one nearest the source.
+         *
+         * A chain is written left to right and applied in that order, so `#1` is the first `map` written and
+         * the number is the whole of what tells two of them on one parameter apart when one throws. A lambda
+         * has no name to report, and the parameter's name is shared by every `map` on it.
+         */
+        internal val position: Int = if (source is Transformed<*, *>) source.position + 1 else 1
+
+        /**
+         * The chain that will produce this value, as far as a value holding no plan can say.
+         *
+         * The step is named by the index its handle was *created* at, which after
+         * [TransactionPlan.addPlan] is not where that step sits in the merged plan.
+         * [TransactionPlan.describe] has the plan in hand and says where the step really is.
+         */
+        override fun toString(): String = describeValue(this)
+    }
 }
 
 /**
@@ -50,10 +69,13 @@ sealed class TransactionValue<out T> {
  * ```
  *
  * Anything the function throws arrives as a
- * [MappingException][io.github.octaviusframework.driver.exception.MappingException] naming the parameter, with
- * what was thrown as its cause. An
+ * [MappingException][io.github.octaviusframework.driver.exception.MappingException] naming the step, the
+ * parameter and which `map` of the chain it was, with what was thrown as its cause. An
  * [OctaviusException][io.github.octaviusframework.driver.exception.OctaviusException] is passed through as it
- * was thrown.
+ * was thrown - a
+ * [MappingException][io.github.octaviusframework.driver.exception.MappingException] among them picking up the
+ * same three on its `path` on the way out, which is the breadcrumb the driver's own layers leave and the only
+ * thing that can be added to an exception without replacing it.
  *
  * @param transformation What to do to the resolved value.
  * @return The transformed value, still unresolved.

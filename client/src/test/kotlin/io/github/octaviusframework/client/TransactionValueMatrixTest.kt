@@ -595,6 +595,153 @@ class TransactionValueMatrixTest {
         assertEquals(0, results.size)
     }
 
+    // --- Saying which step, and which map ----------------------------------------------------------
+
+    @Test
+    fun `a failing transformation names the step, the parameter and which map of the chain it was`() {
+        val plan = TransactionPlan()
+        val source = plan.add(probeOne().fetchRowStrict())
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("amount"))
+                .asStep().update("amount" to source.value().map { it.get<String>("name").toInt() })
+        )
+
+        val thrown = assertFailsWith<MappingException> { db.executeTransactionPlan(plan) }
+
+        assertTrue(thrown.details.contains("Step 1 of the plan"), thrown.details)
+        assertTrue(thrown.details.contains("map #1 over step 0"), thrown.details)
+    }
+
+    @Test
+    fun `two maps on one parameter are told apart by their number`() {
+        // A lambda has no name to report and the parameter is the same in both, so the number is the whole of
+        // what separates them. Take it out of the message and these two failures read identically.
+        fun detailsOf(chain: (StepHandle<Row>) -> TransactionValue<Int>): String {
+            val plan = TransactionPlan()
+            val source = plan.add(probeOne().fetchRowStrict())
+            plan.add(
+                db.insertInto("tv_sink").values(listOf("amount"))
+                    .asStep().update("amount" to chain(source))
+            )
+            return assertFailsWith<MappingException> { db.executeTransactionPlan(plan) }.details
+        }
+
+        val firstThrows = detailsOf { it.value().map { row -> row.get<String>("name").toInt() }.map { n -> n + 1 } }
+        val secondThrows = detailsOf { it.value().map { row -> row.get<Int>("amount") }.map { n -> listOf<Int>()[n] } }
+
+        assertTrue(firstThrows.contains("map #1"), firstThrows)
+        assertTrue(secondThrows.contains("map #2"), secondThrows)
+    }
+
+    @Test
+    fun `a driver failure inside a transformation picks up the step on its path`() {
+        // It is passed through as it was thrown, so the path the driver's own layers write to as they unwind
+        // is the only place the step can be recorded without replacing the exception.
+        val plan = TransactionPlan()
+        val source = plan.add(probeOne().fetchRowStrict())
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name"))
+                .asStep().update("name" to source.value().map { it.get<String>("tribute") })
+        )
+
+        val thrown = assertFailsWith<MappingException> { db.executeTransactionPlan(plan) }
+        assertEquals(MappingExceptionReason.COLUMN_NOT_FOUND, thrown.reason)
+        assertEquals(listOf("step 1", "parameter 'name'", "map #1"), thrown.path.asReversed().take(3))
+    }
+
+    /** A merged plan whose last step maps a result produced by a step of the plan that was merged in. */
+    private fun mergedPlan(): TransactionPlan {
+        val head = TransactionPlan()
+        head.add(db.insertInto("tv_sink").values(listOf("name")).asStep().update("name" to "Roma"))
+        head.add(db.insertInto("tv_sink").values(listOf("name")).asStep().update("name" to "Ostia"))
+
+        val tail = TransactionPlan()
+        val source = tail.add(probeOne().fetchRowStrict())
+        tail.add(
+            db.insertInto("tv_sink").values(listOf("amount"))
+                .asStep().update("amount" to source.value().map { it.get<String>("name").toInt() })
+        )
+
+        // The handle keeps the index it was created at, which is 0 - and after this merge its step is third.
+        assertTrue(source.toString().contains("step 0"), source.toString())
+        head.addPlan(tail)
+        return head
+    }
+
+    @Test
+    fun `a failure names where a step sits in the merged plan, not where its handle was created`() {
+        val thrown = assertFailsWith<MappingException> { db.executeTransactionPlan(mergedPlan()) }
+
+        assertTrue(thrown.details.contains("Step 3 of the plan"), thrown.details)
+        assertTrue(thrown.details.contains("over step 2"), thrown.details)
+    }
+
+    // --- describe() ---------------------------------------------------------------------------------
+
+    @Test
+    fun `describe gives every step its index, its SQL and where each parameter comes from`() {
+        val plan = TransactionPlan()
+        val source = plan.add(probeOne().fetchRowStrict())
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name", "amount")).asStep().update(
+                "name" to "Roma",
+                "amount" to source.value().map { it.get<Int>("amount") }.map { it * 2 }
+            )
+        )
+
+        val described = plan.describe()
+
+        assertTrue(described.startsWith("TransactionPlan, 2 steps"), described)
+        assertTrue(described.contains("step 0"), described)
+        assertTrue(described.contains("tv_probe"), described)
+        assertTrue(described.contains("@amount <- step 0.map(#1).map(#2)"), described)
+        // Padded to the longest name, so the sources read as a column.
+        assertTrue(described.contains("@name   <- literal"), described)
+    }
+
+    @Test
+    fun `describe names a spread and says the name it was filed under is dropped`() {
+        val plan = TransactionPlan()
+        val source = plan.add(probeOne().fetchObjectStrict<Map<String, Any?>>())
+        plan.add(
+            db.insertInto("tv_sink").values(listOf("name", "amount"))
+                .asStep().update("anything" to source.value().map { it - "id" }.spread())
+        )
+
+        val described = plan.describe()
+
+        assertTrue(described.contains("@anything <- spread of step 0.map(#1), this name dropped"), described)
+    }
+
+    @Test
+    fun `describe reports where a step sits in the merged plan, not where its handle was created`() {
+        val described = mergedPlan().describe()
+
+        assertTrue(described.startsWith("TransactionPlan, 4 steps"), described)
+        assertTrue(described.contains("@amount <- step 2.map(#1)"), described)
+    }
+
+    @Test
+    fun `describe says so where a step's query cannot render, and describes the rest anyway`() {
+        // A plan holding one is among the things worth describing, so this is the one place the rendering
+        // failure is reported instead of thrown.
+        val plan = TransactionPlan()
+        plan.add(db.insertInto("tv_sink").values(listOf("name")).asStep().update("name" to "Roma"))
+        plan.add(db.update("tv_sink").setValues(listOf("name")).asStep().update("name" to "Ostia"))
+
+        val described = plan.describe()
+
+        assertTrue(described.contains("step 0"), described)
+        assertTrue(described.contains("tv_sink"), described)
+        assertTrue(described.contains("cannot be rendered"), described)
+    }
+
+    @Test
+    fun `an empty plan describes as one, and a plan says its size where a line has room for no more`() {
+        assertEquals("TransactionPlan, no steps", TransactionPlan().describe())
+        assertEquals("TransactionPlan(0 steps)", TransactionPlan().toString())
+    }
+
     @Test
     fun `a row-shaped step still answers value when nothing needs to bind it`() {
         // value() on a fetchRowStrict is only unusable as a *parameter*; as the plan's own result it is fine.

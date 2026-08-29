@@ -109,6 +109,44 @@ class TransactionPlan {
         entries += other.entries
     }
 
+    /**
+     * The whole of what this plan will do, as text: every step's index, its SQL, and where each of its
+     * parameters comes from.
+     *
+     * ```
+     * TransactionPlan, 2 steps
+     *
+     * step 0
+     *   INSERT INTO edicts (title, tribute) VALUES (@title, @tribute) RETURNING id
+     *   @title   <- literal
+     *   @tribute <- literal
+     *
+     * step 1
+     *   INSERT INTO edict_items (edict_id, amount) VALUES (@edict_id, @amount)
+     *   @edict_id <- step 0.map(#1)
+     *   @amount   <- literal
+     * ```
+     *
+     * This is the piece a plan needs and a `transaction { }` block does not. A block is read where it is
+     * written; a plan is assembled by one layer and run by another, so the code holding it when it fails is
+     * usually not the code that decided what went in - and a plan built in a loop has the same SQL in twenty
+     * steps, which is what makes "step 17" in a failure worth being able to look up.
+     *
+     * What a literal *is* is deliberately not shown. The wiring is the part that cannot be read off the code
+     * that assembled the plan; a bound value can, and printing one would put a `bytea` parameter or a column
+     * of personal data wherever this was written to. The values a step actually ran with are on the
+     * [queryContext][io.github.octaviusframework.driver.exception.OctaviusException.queryContext] of what it
+     * threw, which is bounded for the purpose.
+     *
+     * A step whose query cannot be rendered says so in place of its SQL rather than throwing: a plan holding
+     * one is among the things worth describing, and the other nineteen steps still describe.
+     *
+     * @return One block per step, in the order they will run.
+     */
+    fun describe(): String = describePlan(entries)
+
+    override fun toString(): String = "TransactionPlan($size ${if (size == 1) "step" else "steps"})"
+
     internal fun steps(): List<PlannedStep> = entries.toList()
 
     /** A step and the handle it was filed under, which is all the executor needs of either. */

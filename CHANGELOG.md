@@ -124,6 +124,15 @@
   scan found by `@PgEnumType` are covered alike - the enum needs no `@Serializable` and no serializer of its
   own, and `@Contextual` on the property is the whole of what turns it on. An enum the driver was never told
   about keeps the default, which is what keeps this from reaching anything that did not ask for it.
+- **`TransactionPlan.describe()`,** which renders the plan as text: every step's index, its SQL, and where
+  each of its parameters comes from. A plan is assembled by one layer and run by another, so the code holding
+  it when it fails is usually not the code that decided what went in - and the class advertised being
+  "inspected" while offering `size` and `isEmpty()` to do it with. What a literal *is* is deliberately not
+  shown: the wiring is the part that cannot be read off the code that assembled the plan, and printing a bound
+  value would put a `bytea` parameter or a column of personal data wherever the description was written to.
+  The values a step actually ran with are on the `queryContext` of what it threw, which is bounded for the
+  purpose. A step whose query cannot be rendered says so in place of its SQL rather than throwing, a plan
+  holding one being among the things worth describing.
 - `dynamicTypes.enumSerializers` is that module on its own, for a `Json` built elsewhere - an HTTP layer, or a
   `jsonb` column written through the driver rather than through a `dynamic_dto`. It answers for the enums
   registered when it is read, so take it after startup registration rather than during it.
@@ -162,6 +171,24 @@
   `fetchObject` returns. The other two are whatever the caller's own `map` raised: an
   `IndexOutOfBoundsException` wrapped as a `MappingException` naming the parameter, or the driver's own
   `COLUMN_NOT_FOUND` passed through as it was thrown.
+
+- **Everything a plan raises while resolving a step's parameters names the step.** A plan built in a loop has
+  the same SQL and the same parameter names in all twenty of its steps, so the parameter alone identified
+  nothing and the query context on the exception could not separate the third iteration from the seventeenth.
+  A failing transformation now reports `Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1)
+  threw NumberFormatException`, and so do the spread of something that is not a map and a handle reached
+  before its step has run.
+- **A `map` in a chain is numbered, and the chain prints.** A lambda has no name to report and every `map` on
+  a parameter shares that parameter's name, so `#1`, `#2` counting from the source is the whole of what tells
+  two of them apart when one throws. `TransactionValue.Transformed` renders as the chain that will produce it,
+  `StepHandle(step 0).map(#1).map(#2)`, where it rendered as an identity hash.
+- **The driver's own failure inside a transformation picks up the same three on its `path`** -
+  `step 1 -> parameter 'name' -> map #1`. It is passed through as it was thrown, so the breadcrumb its own
+  layers write to as they unwind is the only place the step can be recorded without replacing the exception.
+- **A step's number is where it sits in the plan being run**, in a description and in a failure alike. A
+  handle's own `toString` carries the index it was created at, which after `addPlan` is no longer where its
+  step is - so the number now comes from the plan's own index, and a handle's own is left saying which plan it
+  came from, which is what a report about a foreign handle wants it to say.
 
 See [Transaction Plans](docs/client/plans.md) for the whole of it.
 
