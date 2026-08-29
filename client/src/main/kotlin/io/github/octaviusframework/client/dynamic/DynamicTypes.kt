@@ -12,6 +12,7 @@ import io.github.octaviusframework.driver.exception.InvalidOperationExceptionRea
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.serializer.octaviusJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
@@ -111,15 +112,19 @@ internal fun declaredTypeNameOf(kClass: KClass<*>): String =
  * Registration is global to the database the client is connected to, the driver's type registry being keyed
  * that way, so it belongs at startup and not per request.
  *
- * @property json How payloads are read and written. The default is strict: a payload carrying a field the
- * class does not declare is an error rather than something dropped. Where the payload is built in SQL with
- * `jsonb_build_object`, its keys have to match the Kotlin property names - supply a [Json] with
- * `JsonNamingStrategy.SnakeCase` if the SQL side names them the way SQL usually does.
+ * @property json How payloads are read and written. The default is
+ * [octaviusJson][io.github.octaviusframework.serializer.octaviusJson], which is strict - a payload carrying a
+ * field the class does not declare is an error rather than something dropped - and carries
+ * [octaviusSerializersModule][io.github.octaviusframework.serializer.octaviusSerializersModule], so a
+ * `@Contextual BigDecimal` or date keeps in JSON what it would have kept in a column. Where the payload is
+ * built in SQL with `jsonb_build_object`, its keys have to match the Kotlin property names - supply a [Json]
+ * with `JsonNamingStrategy.SnakeCase` if the SQL side names them the way SQL usually does, and put that module
+ * on it too.
  * @property strategy When an unwrapped instance of a registered class is written as a `dynamic_dto`.
  */
 class DynamicTypes internal constructor(
     private val client: OctaviusClient,
-    val json: Json = Json,
+    val json: Json = octaviusJson,
     val strategy: DynamicWriteStrategy = DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
 ) {
 

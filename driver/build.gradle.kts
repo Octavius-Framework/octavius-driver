@@ -16,8 +16,9 @@ mavenPublishing {
 }
 
 dependencies {
-    // Part of the public contract, not an implementation detail: `@PgName` goes on the caller's own classes,
-    // so anyone using registerAutoComposite has to be able to write it without adding a dependency by hand.
+    // Part of the public contract, not an implementation detail: `@PgName` goes on the caller's own classes
+    // and `BigDecimal` is the type a `numeric` column comes back as, so anyone reading either has to be able
+    // to write it without adding a dependency by hand.
     api(projects.pgModel)
 
     // Exposed in the public API: SharedFlow notifications and OctaviusDispatchers,

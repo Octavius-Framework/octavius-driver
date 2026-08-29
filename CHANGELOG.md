@@ -12,9 +12,9 @@
   before - `annotations` is renamed below, for reasons of its own.
 - **The `annotations` module is now `pg-model`,** and so is its Maven coordinate:
   `io.github.octavius-framework:annotations` becomes `io.github.octavius-framework:pg-model`. It stopped being
-  a module of annotations - it now carries the case converter that decides what a type is called and the
-  values standing for PostgreSQL's infinite dates - and a name that listed only the first of those would have
-  to be re-read every time something was added. Nothing in it changed package:
+  a module of annotations - it now carries a multiplatform `BigDecimal`, the serializers a JSON payload needs
+  to keep one, and the case converter that decides what a type is called - and a name that listed only the
+  first of those would have to be re-read every time something was added. Nothing in it changed package:
   `io.github.octaviusframework.annotation.*` and `io.github.octaviusframework.identifier.CaseConvention` are
   where they were, so only the dependency line moves. Anyone taking `driver` transitively takes it either way.
 - **Every published artifact carries its own POM name and description.** They were derived in the root build
@@ -25,6 +25,32 @@
   could drift from the modules it names.
 
 ### pg-model
+
+#### Added
+
+- **`octaviusSerializersModule` and `octaviusJson`,** for the types whose JSON form does not match their
+  column form. Every one of them the driver already maps correctly in a column of its own and the default
+  serializer changes the moment the same value goes through JSON - which a `jsonb` column and a `dynamic_dto`
+  payload both are. `BigDecimal` has no serializer at all, so the class does not encode; `LocalDate`,
+  `LocalDateTime` and `Instant` holding PostgreSQL's `infinity` are written out as the far-away timestamp the
+  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity` and which
+  `::date` refuses outright, so an unbounded date stops comparing equal to itself across the two forms and
+  stops being readable as a date at all. The module answers all four contextually, so `@Contextual` on the
+  property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock `Json` and
+  nothing more, for the frontend or the HTTP layer that reads the same classes.
+- **`BigDecimalAsNumberSerializer`** writes an unquoted JSON number rather than a string, so `jsonb` stores it
+  as a `numeric` and `jsonb_typeof` says `number` - arithmetic, casts and an index on the value all work
+  without a cast written by hand. Reading goes back through the raw token, so a value longer than a `Double`
+  survives the round trip.
+- **`EnumWithCaseConventionSerializer`**, for an enum inside a payload. `registerEnum` teaches the driver that
+  `Praetor` is `PRAETOR` in an enum **column**; kotlinx.serialization never sees that and writes the Kotlin
+  name, so the same value reads two ways depending on where it is stored. Name one on the class, with the
+  conventions the registration used - which are also its defaults - and both ends agree by construction.
+- **`io.github.octaviusframework.type.BigDecimal`**, a `typealias` for `java.math.BigDecimal` on the JVM and
+  the decimal's text on JS. It exists so a class in `commonMain` can declare a `numeric` property at all;
+  being an alias and not a wrapper, it *is* the class the driver's codec produces, so nothing converts and
+  backend-only code can go on writing either name. On JS the digits are kept as text because a `Number` there
+  is a 64-bit float and would round exactly what `numeric` was chosen to keep.
 
 #### Changed
 
@@ -75,6 +101,13 @@
 
 #### Changed
 
+- **`dynamicJson` defaults to `octaviusJson` rather than to a stock `Json`.** A `dynamic_dto` payload is
+  JSON, so a registered class with a `BigDecimal` property did not encode at all and one holding an unbounded
+  date encoded to a year PostgreSQL will not read back. The new default carries the contextual serializers for
+  both; it is otherwise the same strict `Json` it was, so a payload carrying a field the class does not declare
+  is still an error. A `Json` passed in explicitly is untouched - put `octaviusSerializersModule` on it where
+  the class has a `@Contextual` property.
+  See [`dynamic_dto`](docs/client/dynamic-dto.md#what-json-does-not-carry).
 - **A `StepHandle` in a `TransactionPlan` reaches one thing, `value()`.** `field(name, rowIndex)` and
   `column(name)` are gone: both threw away the type the step's terminal declared, handing back `Any?` and
   `List<Any?>`, and the only way back to a type from there was a cast the caller wrote. `value()` carries the

@@ -142,10 +142,78 @@ cleanly and fail on whichever read reached it first, in some other process, much
 > dynamic type last is the one whose mode applies to both. Where an application builds a second client against
 > the same database, give it the same mode.
 
+## What JSON Does Not Carry
+
+The payload is JSON, and a few kinds of value mean less there than they do in a column of their own. The
+driver maps every one of them correctly in a `numeric`, a `date` or a `timestamptz` column; put the same value
+in a `jsonb` payload and the default serializer writes something else.
+
+| Type            | What the default serializer writes    | What that costs                                                |
+|:----------------|:--------------------------------------|:---------------------------------------------------------------|
+| `BigDecimal`    | nothing — it has no serializer        | the class does not encode at all                               |
+| `LocalDate`     | `+999999999-12-31`                    | not `infinity`, and `(payload->>'until')::date` fails outright |
+| `LocalDateTime` | `+999999999-12-31T23:59:59.999999999` | the same                                                       |
+| `Instant`       | `+100000-01-01T00:00:00Z`             | the same                                                       |
+
+All three dates fail for one reason and not three: PostgreSQL reads that leading `+` as a timezone offset and
+stops, so nothing kotlinx.serialization writes in that form casts back at all — the payload stops holding
+anything the database will take as a date, let alone one meaning "unbounded".
+
+`octaviusSerializersModule` answers all four, and the client's `dynamicJson` carries it already — so this is
+about one annotation on the property:
+
+```kotlin
+@Serializable
+@DynamicallyMappable("land_grant")
+data class LandGrant(
+    val province: String,
+    @Contextual val iugera: BigDecimal,   // a bare JSON number, every digit kept
+    @Contextual val until: LocalDate      // "infinity"
+)
+```
+
+`@Contextual` is what selects a contextual serializer; without it the property keeps the default and nothing
+above applies. That is deliberate — nothing changes that you have not asked to change.
+
+`BigDecimal` here is `io.github.octaviusframework.type.BigDecimal` from `pg-model`, which on the JVM is a
+`typealias` for `java.math.BigDecimal` — the same class the driver decodes a `numeric` into, so backend code
+can go on writing either name. It exists so that a class in `commonMain` can declare the property at all: on
+JS it holds the decimal's text, because a `Number` there is a 64-bit float and would round what `numeric` was
+chosen to keep.
+
+An enum is the remaining case, and the module cannot answer it, because its labels are not a fixed rule: they
+are whatever the enum was registered under. Say them once, in a serializer named on the class:
+
+```kotlin
+@Serializable(with = MagistratureSerializer::class)
+@PgEnumType(pgConvention = CaseConvention.SNAKE_CASE_UPPER)
+enum class Magistrature { Quaestor, Aedile, Praetor, Consul }
+
+object MagistratureSerializer : EnumWithCaseConventionSerializer<Magistrature>(
+    enumName = "Magistrature",
+    entries = Magistrature.entries
+)
+```
+
+Its defaults are `registerEnum`'s, so an enum that took them there takes them here.
+
+A `Json` you build yourself — for an HTTP layer, or for the frontend reading the same classes — needs the
+module put on it, since it is the client's default and not a global:
+
+```kotlin
+val json = Json {
+    serializersModule = octaviusSerializersModule + myAppModule
+    ignoreUnknownKeys = true
+}
+```
+
+`octaviusJson` is that module on a stock `Json` and nothing else, for the case where nothing else is being
+configured.
+
 ## A Different `Json` for One Query
 
-The client's `Json` is strict by default: a payload carrying a field the class does not declare is an error
-rather than something dropped. A payload built in SQL with `jsonb_build_object` is named the way SQL names
+The client's `Json` is `octaviusJson`: strict, so a payload carrying a field the class does not declare is an
+error rather than something dropped. A payload built in SQL with `jsonb_build_object` is named the way SQL names
 things, against classes whose properties are not — so for that one query, hand over a different one:
 
 ```kotlin
@@ -160,6 +228,10 @@ db.rawQuery("SELECT dynamic_dto('stipend', jsonb_build_object('province_name', @
 value wrapped by hand. Query registries sit ahead of the session's and are discarded with the query, so the
 rest of the application goes on reading the way it did — see
 [Per-Query Converters](queries.md#per-query-converters).
+
+A `Json` built here replaces the client's rather than adding to it, so put `octaviusSerializersModule` on it
+too where the class has a `@Contextual` property — otherwise that one query reads the payload differently from
+every other.
 
 The client-wide default is `dynamicJson` on `fromDataSource` and `fromSessionProvider`.
 

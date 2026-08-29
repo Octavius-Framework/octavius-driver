@@ -22,7 +22,7 @@ different question again, and takes the driver alone — never the client.
 | **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                                                    |
 | **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)                                 |
 | **`migrations`**                | A migrator on the driver: `V`/`R` naming, `.sql` files and Kotlin classes, checksums, an advisory lock, and a history table it keeps itself. [README](migrations/README.md)                 |
-| **`pg-model`**                  | Multiplatform: the annotations Octavius reads off your own classes, the case converter both sides name things with, and the values standing for PostgreSQL's infinite dates. |
+| **`pg-model`**                  | Multiplatform: the annotations Octavius reads off your own classes, a `BigDecimal` `commonMain` can name, and the serializers that keep it and PostgreSQL's `infinity` intact through JSON. |
 | **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                                                   |
 
 Not published: `hikari-integration-tests` (integration tests against a real pool), `benchmarks` (JMH against

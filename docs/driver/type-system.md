@@ -359,6 +359,13 @@ If your domain logic genuinely relies on `NaN` or `Infinity` (e.g. sensor readin
 1. Use standard IEEE 754 floating-point types (`float4` / `float8`), which map to Kotlin's `Float` and `Double` and fully support non-finite values.
 2. Override the default `NumericCodec` with your own custom codec that maps the `numeric` OID (1700) to a custom Kotlin wrapper class capable of representing both exact decimals and non-finite concepts.
 
+### `BigDecimal` in a Shared Class
+
+A class in `commonMain` cannot name `java.math.BigDecimal`, so `pg-model` carries `io.github.octaviusframework.type.BigDecimal` — a `typealias` for it on the JVM, and the decimal's text on JS, where a `Number` is a 64-bit float and would round exactly what `numeric` was chosen to keep.
+Being an alias and not a wrapper, it *is* the class the codec above produces: nothing converts anywhere, and backend-only code can go on writing either name.
+
+Both the infinities above and this one lose their meaning once the value travels as JSON rather than as a column — a `jsonb` column, or a `dynamic_dto` payload. `pg-model` carries the serializers that fix that; see [What JSON Does Not Carry](../client/dynamic-dto.md#what-json-does-not-carry).
+
 ### PgInterval
 
 By default, PostgreSQL's `interval` type maps to the driver's own `PgInterval` class rather than to a stock Kotlin type like `kotlin.time.Duration` or `kotlinx.datetime.DateTimePeriod`.

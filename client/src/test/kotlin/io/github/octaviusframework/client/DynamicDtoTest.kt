@@ -5,6 +5,10 @@ import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.client.dynamic.DynamicDto
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.type.BigDecimal
+import io.github.octaviusframework.type.datetime.DISTANT_FUTURE
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -44,6 +48,17 @@ class DynamicDtoTest {
     @Serializable
     data class Stipend(val provinceName: String, val annualAmount: Int)
 
+    /**
+     * The two types whose JSON form is not their column form. Neither encodes at all under a stock `Json`:
+     * `BigDecimal` has no serializer, and `@Contextual` finds nothing for `LocalDate` either.
+     */
+    @Serializable
+    data class TributeAssessment(
+        val province: String,
+        @Contextual val denarii: BigDecimal,
+        @Contextual val until: LocalDate
+    ) : Benefit
+
     companion object {
         private lateinit var dataSource: HikariDataSource
         private lateinit var db: OctaviusClient
@@ -68,6 +83,7 @@ class DynamicDtoTest {
             db.dynamicTypes.register<MilitaryPension>("military_pension")
             db.dynamicTypes.register<Citation>("citation")
             db.dynamicTypes.register<Stipend>("stipend")
+            db.dynamicTypes.register<TributeAssessment>("tribute_assessment")
 
             db.rawQuery(
                 """
@@ -237,6 +253,54 @@ class DynamicDtoTest {
             listOf("Cyrenaica", "Cyrenaica"),
             db.select("(benefit).data_payload ->> 'province_name'").from("dyn_veterans").orderBy("id")
                 .fetchFields<String>()
+        )
+    }
+
+    // --- Types JSON does not carry --------------------------------------------------------------------
+
+    @Test
+    fun `a BigDecimal and an unbounded date round-trip through the column`() {
+        // Under a stock Json this class does not encode at all, which is what the client's default fixes.
+        val assessment = TributeAssessment("Aegyptus", BigDecimal("12345678901234567890.99"), LocalDate.DISTANT_FUTURE)
+        record("Marcus", assessment)
+
+        assertEquals(assessment, db.select("benefit").from("dyn_veterans").fetchFieldStrict<TributeAssessment>())
+    }
+
+    @Test
+    fun `the decimal is stored as a JSON number, at full precision`() {
+        // A serializer writing it as a string would answer 'string' here, and one going through a Double
+        // would come back short: 20 significant digits is past what a binary64 carries.
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("12345678901234567890.99"), LocalDate(44, 3, 15)))
+
+        val payload = "(benefit).data_payload"
+        assertEquals(
+            "number",
+            db.select("jsonb_typeof($payload -> 'denarii')").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("($payload ->> 'denarii')::numeric = 12345678901234567890.99")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>()
+        )
+    }
+
+    @Test
+    fun `the unbounded date is the same value in the payload as it is in a date column`() {
+        // The point of the infinity serializer: +999999999-12-31 stores cleanly as text and then fails this
+        // cast outright, so the two forms of "no end date" would stop comparing equal - and the payload would
+        // not read back as a date at all.
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), LocalDate.DISTANT_FUTURE))
+
+        val payload = "(benefit).data_payload"
+        assertEquals(
+            "infinity",
+            db.select("$payload ->> 'until'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("($payload ->> 'until')::date = 'infinity'::date")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>()
         )
     }
 
