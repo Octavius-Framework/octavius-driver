@@ -71,21 +71,36 @@ internal class PgEnumSerializer(
 }
 
 /**
- * Builds the contextual module for a set of enum registrations, and hands back the same one until that set
- * changes.
+ * The registered enums' serializers, as a module and as a [Json] with that module folded in, both rebuilt
+ * only when the set of registrations changes.
  *
- * The driver replaces [ConverterRegistry.registeredEnums] wholesale on each registration, so the map's
- * identity *is* the version: a reader that sees the map it saw last time gets the module it built last time,
- * for the price of a volatile read and a reference comparison.
+ * They cannot be composed once and kept: a client is built before anything is registered on it, and the enums
+ * arrive afterwards - named one by one, or all at once by a classpath scan. So the base is kept as it was
+ * given and the derived pair is resolved per conversion. That costs a volatile read and a reference
+ * comparison, because the driver replaces [ConverterRegistry.registeredEnums] wholesale on each registration:
+ * the map's identity *is* the version, and a reader that sees the map it saw last time gets back what it
+ * built last time.
+ *
+ * The base's own registrations win over the generated ones, so an application that wrote a serializer for one
+ * of its enums keeps it and the rest are filled in.
+ *
+ * @property base The [Json] to fold them into, which is what is handed back where no enum is registered.
  */
-internal class PgEnumSerializersModule {
+internal class EnumAwareJson(private val base: Json) {
 
     @Volatile
-    private var cached: Pair<Map<KClass<*>, PgEnumRegistration>, SerializersModule>? = null
+    private var cached: Triple<Map<KClass<*>, PgEnumRegistration>, SerializersModule, Json>? = null
 
-    fun resolve(registry: ConverterRegistry): SerializersModule {
+    /** The module on its own, for a [Json] the caller is building rather than one being converted with. */
+    fun module(registry: ConverterRegistry): SerializersModule = derive(registry).second
+
+    /** [base] with the module folded in, or [base] itself where there is nothing to fold. */
+    fun resolve(registry: ConverterRegistry): Json =
+        if (registry.registeredEnums.isEmpty()) base else derive(registry).third
+
+    private fun derive(registry: ConverterRegistry): Triple<Map<KClass<*>, PgEnumRegistration>, SerializersModule, Json> {
         val source = registry.registeredEnums
-        cached?.let { (from, module) -> if (from === source) return module }
+        cached?.let { if (it.first === source) return it }
 
         @Suppress("UNCHECKED_CAST")
         val module = SerializersModule {
@@ -93,39 +108,8 @@ internal class PgEnumSerializersModule {
                 contextual(kClass as KClass<Any>, PgEnumSerializer(kClass, registration) as KSerializer<Any>)
             }
         }
-        cached = source to module
-        return module
-    }
-}
+        val json = Json(base) { serializersModule = module.overwriteWith(base.serializersModule) }
 
-/**
- * A [Json] with the registered enums' serializers folded into it, rebuilt only when that set changes.
- *
- * The two cannot simply be composed once: a client is built before anything is registered on it, and the
- * enums arrive afterwards - named one by one, or all at once by a classpath scan. So the base is kept as it
- * was given and the derived form is resolved per conversion, off the same identity check
- * [PgEnumSerializersModule] uses.
- *
- * The base's own registrations win over the generated ones, so an application that wrote a serializer for one
- * of its enums keeps it and the rest are filled in.
- *
- * @property base The [Json] as it was given, which is what is used where no enum is registered at all.
- */
-internal class EnumAwareJson(private val base: Json) {
-
-    private val enumModule = PgEnumSerializersModule()
-
-    @Volatile
-    private var cached: Pair<SerializersModule, Json>? = null
-
-    fun resolve(registry: ConverterRegistry): Json {
-        if (registry.registeredEnums.isEmpty()) return base
-
-        val module = enumModule.resolve(registry)
-        cached?.let { (from, json) -> if (from === module) return json }
-
-        val derived = Json(base) { serializersModule = module.overwriteWith(base.serializersModule) }
-        cached = module to derived
-        return derived
+        return Triple(source, module, json).also { cached = it }
     }
 }

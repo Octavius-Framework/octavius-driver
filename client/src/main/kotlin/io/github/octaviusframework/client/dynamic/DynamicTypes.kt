@@ -143,9 +143,6 @@ class DynamicTypes internal constructor(
     /** [json] with the driver's enum serializers folded in, which is what everything here actually encodes with. */
     private val enumAwareJson = EnumAwareJson(json)
 
-    /** The same module on its own, for [enumSerializers] to hand out. */
-    private val enumModule = PgEnumSerializersModule()
-
     /**
      * The driver's converter registry, remembered the first time anything here needs one.
      *
@@ -361,7 +358,7 @@ class DynamicTypes internal constructor(
      * something to take once and keep rather than to reach for per request.
      */
     val enumSerializers: SerializersModule
-        get() = enumModule.resolve(converterRegistry())
+        get() = enumAwareJson.module(converterRegistry())
 
     /**
      * The [Json] a conversion should run on: the query's own where one was given, the client's otherwise, and
