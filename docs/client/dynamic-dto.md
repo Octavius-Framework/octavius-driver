@@ -156,9 +156,13 @@ same value in a `jsonb` payload and the default serializer writes something else
 | `Instant`         | `+100000-01-01T00:00:00Z`             | the same                                                       |
 | a registered enum | the Kotlin constant's own name        | `Praetor` in the payload where the enum column holds `PRAETOR` |
 
-All three dates fail for one reason and not three: PostgreSQL reads that leading `+` as a timezone offset and
-stops, so nothing kotlinx.serialization writes in that form casts back at all — the payload stops holding
-anything the database will take as a date, let alone one meaning "unbounded".
+Those are marker values, and the marker years are far outside what the columns hold: `date` reaches
+5874897 AD, `timestamp` and `timestamptz` reach 294276 AD, against a marker of 999999999. A second and
+independent fault sits in front of that — kotlinx.serialization writes any year past four digits with a
+leading sign, and PostgreSQL reads that sign as the start of a timezone offset, so even `+2024-01-01` is
+refused before its range is looked at. `Instant`'s marker is the one that would otherwise fit, year 100000
+being inside `timestamptz`, and it fails on the sign alone. Either way the payload stops holding anything the
+database will take as a date, let alone one meaning "unbounded".
 
 Every one of them is answered already, and the whole of what a class has to say is one annotation on the
 property:

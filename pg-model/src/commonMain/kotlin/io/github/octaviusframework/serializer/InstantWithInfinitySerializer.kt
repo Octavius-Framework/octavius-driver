@@ -14,10 +14,11 @@ import kotlin.time.Instant
  *
  * The driver already maps those two constants onto PostgreSQL's infinities in a `timestamptz` column. A
  * `jsonb` payload is not that column: the value goes through JSON, where the default serializer writes
- * `+100000-01-01T00:00:00Z`, which is a timestamp far away rather than an unbounded one - and which
- * `(payload->>'issued')::timestamptz` refuses as it stands, PostgreSQL reading that leading `+` as a
- * timezone offset. So the two forms of "no end date" stop comparing equal, in SQL, in whichever query first
- * read one.
+ * `+100000-01-01T00:00:00Z`, which is a timestamp far away rather than an unbounded one. Year 100000 is
+ * inside what a `timestamptz` holds - unlike the `LocalDate` and `LocalDateTime` markers, which are past
+ * their columns' ceilings outright - so this one fails on the sign alone: `(payload->>'issued')::timestamptz`
+ * refuses the text because PostgreSQL reads that leading `+` as the start of a timezone offset. Either way
+ * the two forms of "no end date" stop comparing equal, in SQL, in whichever query first read one.
  *
  * Registered contextually by [octaviusSerializersModule]; `@Contextual` on the property is what selects it.
  */

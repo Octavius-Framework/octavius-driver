@@ -15,8 +15,10 @@ import kotlinx.serialization.encoding.Encoder
  * and `-infinity`, the way a `timestamp` column stores them, and everything else as ISO-8601.
  *
  * The default serializer writes those two out in full - `+999999999-12-31T23:59:59.999999999` and its
- * counterpart - and `(payload->>'taken')::timestamp` refuses the text, so the unbounded value a `timestamp`
- * column round-trips does not survive being put in a `jsonb` payload.
+ * counterpart - at a year a `timestamp` cannot hold, that type reaching 294276 AD.
+ * `(payload->>'taken')::timestamp` refuses the text before that is even tested, PostgreSQL reading the
+ * leading sign as the start of a timezone offset. Either way the unbounded value a `timestamp` column
+ * round-trips does not survive a `jsonb` payload.
  *
  * Registered contextually by [octaviusSerializersModule]; `@Contextual` on the property is what selects it.
  */

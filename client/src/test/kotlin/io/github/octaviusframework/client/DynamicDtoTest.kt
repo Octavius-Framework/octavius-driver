@@ -316,8 +316,9 @@ class DynamicDtoTest {
     @Test
     fun `the unbounded date is the same value in the payload as it is in a date column`() {
         // The point of the infinity serializer: +999999999-12-31 stores cleanly as text and then fails this
-        // cast outright, so the two forms of "no end date" would stop comparing equal - and the payload would
-        // not read back as a date at all.
+        // cast - the year being past what a date holds at all, and the leading sign failing the parse before
+        // that. So the two forms of "no end date" would stop comparing equal, and the payload would not read
+        // back as a date either.
         record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), LocalDate.DISTANT_FUTURE))
 
         val payload = "(benefit).data_payload"

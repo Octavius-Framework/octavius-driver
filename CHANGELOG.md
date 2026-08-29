@@ -33,11 +33,13 @@
   serializer changes the moment the same value goes through JSON - which a `jsonb` column and a `dynamic_dto`
   payload both are. `BigDecimal` has no serializer at all, so the class does not encode; `LocalDate`,
   `LocalDateTime` and `Instant` holding PostgreSQL's `infinity` are written out as the far-away timestamp the
-  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity` and which
-  `::date` refuses outright, so an unbounded date stops comparing equal to itself across the two forms and
-  stops being readable as a date at all. The module answers all four contextually, so `@Contextual` on the
-  property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock `Json` and
-  nothing more, for the frontend or the HTTP layer that reads the same classes.
+  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity`, is past
+  what the column type holds (`date` reaches 5874897 AD, `timestamp` 294276 AD), and fails the cast back
+  earlier still on the leading sign PostgreSQL reads as a timezone offset. So an unbounded date stops
+  comparing equal to itself across the two forms and stops being readable as a date at all. The module answers
+  all four contextually, so `@Contextual` on the property is what turns it on and nothing else changes.
+  `octaviusJson` is that module on a stock `Json` and nothing more, for the frontend or the HTTP layer that
+  reads the same classes.
 - **`BigDecimalAsNumberSerializer`** writes an unquoted JSON number rather than a string, so `jsonb` stores it
   as a `numeric` and `jsonb_typeof` says `number` - arithmetic, casts and an index on the value all work
   without a cast written by hand. Reading goes back through the raw token, so a value longer than a `Double`
