@@ -2,9 +2,14 @@ package io.github.octaviusframework.client
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.github.octaviusframework.annotation.PgEnumType
 import io.github.octaviusframework.client.dynamic.DynamicDto
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.type.BigDecimal
+import io.github.octaviusframework.type.datetime.DISTANT_FUTURE
+import kotlinx.datetime.LocalDate
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -44,6 +49,32 @@ class DynamicDtoTest {
     @Serializable
     data class Stipend(val provinceName: String, val annualAmount: Int)
 
+    /** Labels are `SNAKE_CASE_UPPER` in the database and `PascalCase` here, which is what the defaults assume. */
+    @PgEnumType(name = "magistrature")
+    enum class Magistrature { Quaestor, Aedile, Praetor, Consul }
+
+    /** Registered late, to prove the module is read per conversion and not composed once at startup. */
+    @PgEnumType(name = "legion_status")
+    enum class LegionStatus { Garrisoned, OnMarch, InBattle }
+
+    /** No `@Serializable` on either enum, and no serializer written by hand: `@Contextual` is the whole of it. */
+    @Serializable
+    data class Appointment(@Contextual val office: Magistrature) : Benefit
+
+    @Serializable
+    data class Deployment(@Contextual val status: LegionStatus) : Benefit
+
+    /**
+     * The two types whose JSON form is not their column form. Neither encodes at all under a stock `Json`:
+     * `BigDecimal` has no serializer, and `@Contextual` finds nothing for `LocalDate` either.
+     */
+    @Serializable
+    data class TributeAssessment(
+        val province: String,
+        @Contextual val denarii: BigDecimal,
+        @Contextual val until: LocalDate
+    ) : Benefit
+
     companion object {
         private lateinit var dataSource: HikariDataSource
         private lateinit var db: OctaviusClient
@@ -59,6 +90,10 @@ class DynamicDtoTest {
             })
             db = OctaviusClient.fromDataSource(dataSource)
 
+            db.rawQuery("DROP TYPE IF EXISTS public.magistrature").execute()
+            db.rawQuery("CREATE TYPE public.magistrature AS ENUM ('QUAESTOR', 'AEDILE', 'PRAETOR', 'CONSUL')")
+                .execute()
+
             // Installing after the pool was built is the harder case: the driver read its type catalogue when
             // it connected, so this only works if install() reloads it.
             db.dynamicTypes.install()
@@ -68,13 +103,21 @@ class DynamicDtoTest {
             db.dynamicTypes.register<MilitaryPension>("military_pension")
             db.dynamicTypes.register<Citation>("citation")
             db.dynamicTypes.register<Stipend>("stipend")
+            db.dynamicTypes.register<TributeAssessment>("tribute_assessment")
+            db.dynamicTypes.register<Appointment>("appointment")
+            db.dynamicTypes.register<Deployment>("deployment")
+
+            // After the client was built, which is the only order there is: a client is constructed before
+            // anything is registered on it.
+            db.execute { typeManager.registerEnum<Magistrature>("magistrature") }
 
             db.rawQuery(
                 """
                 CREATE TABLE IF NOT EXISTS dyn_veterans (
                     id      SERIAL PRIMARY KEY,
                     name    TEXT NOT NULL,
-                    benefit public.dynamic_dto
+                    benefit public.dynamic_dto,
+                    office  public.magistrature
                 )
                 """.trimIndent()
             ).execute()
@@ -84,6 +127,7 @@ class DynamicDtoTest {
         @JvmStatic
         fun tearDown() {
             db.rawQuery("DROP TABLE IF EXISTS dyn_veterans").execute()
+            db.rawQuery("DROP TYPE IF EXISTS public.magistrature").execute()
             db.close()
             dataSource.close()
         }
@@ -238,6 +282,175 @@ class DynamicDtoTest {
             db.select("(benefit).data_payload ->> 'province_name'").from("dyn_veterans").orderBy("id")
                 .fetchFields<String>()
         )
+    }
+
+    // --- Types JSON does not carry --------------------------------------------------------------------
+
+    @Test
+    fun `a BigDecimal and an unbounded date round-trip through the column`() {
+        // Under a stock Json this class does not encode at all, which is what the client's default fixes.
+        val assessment = TributeAssessment("Aegyptus", BigDecimal("12345678901234567890.99"), LocalDate.DISTANT_FUTURE)
+        record("Marcus", assessment)
+
+        assertEquals(assessment, db.select("benefit").from("dyn_veterans").fetchFieldStrict<TributeAssessment>())
+    }
+
+    @Test
+    fun `the decimal is stored as a JSON number, at full precision`() {
+        // A serializer writing it as a string would answer 'string' here, and one going through a Double
+        // would come back short: 20 significant digits is past what a binary64 carries.
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("12345678901234567890.99"), LocalDate(44, 3, 15)))
+
+        val payload = "(benefit).data_payload"
+        assertEquals(
+            "number",
+            db.select("jsonb_typeof($payload -> 'denarii')").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("($payload ->> 'denarii')::numeric = 12345678901234567890.99")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>()
+        )
+    }
+
+    @Test
+    fun `the unbounded date is the same value in the payload as it is in a date column`() {
+        // The point of the infinity serializer: +999999999-12-31 stores cleanly as text and then fails this
+        // cast - the year being past what a date holds at all, and the leading sign failing the parse before
+        // that. So the two forms of "no end date" would stop comparing equal, and the payload would not read
+        // back as a date either.
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), LocalDate.DISTANT_FUTURE))
+
+        val payload = "(benefit).data_payload"
+        assertEquals(
+            "infinity",
+            db.select("$payload ->> 'until'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("($payload ->> 'until')::date = 'infinity'::date")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>()
+        )
+    }
+
+    @Test
+    fun `a year past four digits casts back out of the payload`() {
+        // ISO writes +10000-01-02 and PostgreSQL reads that leading sign as a timezone offset, so the payload
+        // has to carry its spelling and not ISO's. 10000 is an ordinary storable year - this is not about the
+        // markers.
+        val year10000 = LocalDate(10000, 1, 2)
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), year10000))
+
+        assertEquals(
+            "10000-01-02",
+            db.select("(benefit).data_payload ->> 'until'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        // Against the driver's own binary encoding of the same value, which is the column's answer.
+        assertEquals(
+            true,
+            db.select("((benefit).data_payload ->> 'until')::date = @d")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>("d" to year10000)
+        )
+    }
+
+    @Test
+    fun `a date before year one casts back out of the payload`() {
+        // ISO counts through a year zero and PostgreSQL counts BC from one, so -0001-01-02 is 2 BC there.
+        val twoBc = LocalDate(-1, 1, 2)
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), twoBc))
+
+        assertEquals(
+            "0002-01-02 BC",
+            db.select("(benefit).data_payload ->> 'until'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("((benefit).data_payload ->> 'until')::date = @d")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>("d" to twoBc)
+        )
+    }
+
+    @Test
+    fun `and both come back as the dates they were`() {
+        val far = TributeAssessment("Aegyptus", BigDecimal("1"), LocalDate(5874897, 12, 31))
+        val old = TributeAssessment("Hispania", BigDecimal("2"), LocalDate(-4712, 1, 1))
+        record("Marcus", far)
+        record("Lucius", old)
+
+        assertEquals(
+            listOf(far, old),
+            db.select("benefit").from("dyn_veterans").orderBy("id").fetchFields<TributeAssessment>()
+        )
+    }
+
+    // --- Enums, under the labels they were registered with ---------------------------------------------
+
+    @Test
+    fun `an enum in a payload carries the same label the enum column holds`() {
+        // The whole claim in one row: one value, written twice, once through each path.
+        db.insertInto("dyn_veterans").values(listOf("name", "benefit", "office"))
+            .update(
+                "name" to "Marcus",
+                "benefit" to Appointment(Magistrature.Praetor),
+                "office" to Magistrature.Praetor
+            )
+
+        assertEquals(
+            true,
+            db.select("(benefit).data_payload ->> 'office' = office::text")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>()
+        )
+        assertEquals(
+            "PRAETOR",
+            db.select("(benefit).data_payload ->> 'office'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+    }
+
+    @Test
+    fun `and a payload built in SQL under those labels reads back as the constant`() {
+        // Reading its own writes would pass under the default serializer too - Consul out, Consul back. This
+        // is the asymmetric direction: SQL puts the database's label in the payload, and only a serializer
+        // that knows the conventions turns CONSUL back into Consul.
+        val read = db.rawQuery("SELECT dynamic_dto('appointment', jsonb_build_object('office', @o::text))")
+            .fetchFieldStrict<Appointment>("o" to Magistrature.Consul)
+
+        assertEquals(Appointment(Magistrature.Consul), read)
+    }
+
+    @Test
+    fun `an enum registered after the first query still takes effect`() {
+        // The reason the module is resolved per conversion rather than composed when the client was built:
+        // this write goes through a Json that did not exist when the one above ran.
+        record("Marcus", Appointment(Magistrature.Aedile))
+        assertEquals(1, db.select("count(*)").from("dyn_veterans").fetchFieldStrict<Long>())
+
+        db.execute { typeManager.registerEnum<LegionStatus>("legion_status") }
+        record("Lucius", Deployment(LegionStatus.OnMarch))
+
+        assertEquals(
+            "ON_MARCH",
+            db.select("(benefit).data_payload ->> 'status'").from("dyn_veterans").where("name = @n")
+                .fetchFieldStrict<String>("n" to "Lucius")
+        )
+    }
+
+    @Test
+    fun `the module is there for a Json of your own`() {
+        val api = Json { serializersModule = db.dynamicTypes.enumSerializers }
+
+        assertEquals("""{"office":"PRAETOR"}""", api.encodeToString(Appointment(Magistrature.Praetor)))
+    }
+
+    @Test
+    fun `a client that registered no dynamic type at all still hands out the module`() {
+        // It reads the driver's registry, which a dynamic type happens to be the usual way of reaching - but
+        // the case this exists for is a jsonb column written through the driver, where there is no
+        // dynamic_dto anywhere.
+        OctaviusClient.fromDataSource(dataSource).use { fresh ->
+            val api = Json { serializersModule = fresh.dynamicTypes.enumSerializers }
+
+            assertEquals("""{"office":"CONSUL"}""", api.encodeToString(Appointment(Magistrature.Consul)))
+        }
     }
 
     // --- What it refuses --------------------------------------------------------------------------

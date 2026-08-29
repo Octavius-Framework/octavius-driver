@@ -7,8 +7,16 @@
 - **The repository is now `octavius-postgresql`.** `octavius-driver` named one of the six artifacts inside it
   rather than the thing itself, and collided with the `driver` module every time either was written down.
   GitHub redirects the old URL, so a remote pointing at it keeps working; GitHub Pages does not, and the API
-  reference has moved to https://octavius-framework.github.io/octavius-postgresql/. Maven coordinates are
-  untouched - `io.github.octavius-framework:driver` and the rest resolve exactly as before.
+  reference has moved to https://octavius-framework.github.io/octavius-postgresql/. The repository name is not
+  part of any Maven coordinate, so `io.github.octavius-framework:driver` and the rest resolve exactly as
+  before - `annotations` is renamed below, for reasons of its own.
+- **The `annotations` module is now `pg-model`,** and so is its Maven coordinate:
+  `io.github.octavius-framework:annotations` becomes `io.github.octavius-framework:pg-model`. It stopped being
+  a module of annotations - it now carries a multiplatform `BigDecimal`, the serializers a JSON payload needs
+  to keep one, and the case converter that decides what a type is called - and a name that listed only the
+  first of those would have to be re-read every time something was added. Nothing in it changed package:
+  `io.github.octaviusframework.annotation.*` and `io.github.octaviusframework.identifier.CaseConvention` are
+  where they were, so only the dependency line moves. Anyone taking `driver` transitively takes it either way.
 - **Every published artifact carries its own POM name and description.** They were derived in the root build
   from a `when` over the module name, and two modules fell through it: `client-scanner` was published with the
   client's description and `driver-spring-integration` with the driver's, so both described themselves on
@@ -16,9 +24,65 @@
   publish plugin is what marks a module as published - the root build no longer keeps a list of names that
   could drift from the modules it names.
 
+### pg-model
+
+#### Added
+
+- **`octaviusSerializersModule` and `octaviusJson`,** for the types whose JSON form does not match their
+  column form. Every one of them the driver already maps correctly in a column of its own and the default
+  serializer changes the moment the same value goes through JSON - which a `jsonb` column and a `dynamic_dto`
+  payload both are. `BigDecimal` has no serializer at all, so the class does not encode; `LocalDate`,
+  `LocalDateTime` and `Instant` holding PostgreSQL's `infinity` are written out as the far-away timestamp the
+  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity` and is past
+  what the column type holds (`date` reaches 5874897 AD, `timestamp` 294276 AD), so an unbounded date stops
+  comparing equal to itself across the two forms. The module answers all four contextually, so `@Contextual`
+  on the property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock
+  `Json` and nothing more, for the frontend or the HTTP layer that reads the same classes.
+- **A date in a payload is spelled the way PostgreSQL spells it**, not the way ISO-8601 does, which is a
+  second thing the date serializers answer and has nothing to do with the markers. The two formats disagree
+  as soon as a year leaves `0001`..`9999` and no single string satisfies both: ISO requires a sign past four
+  digits and PostgreSQL reads that sign as the start of a timezone offset, so `+10000-01-02` is refused - and
+  so is `+5874897-12-31`, a year a `date` holds perfectly well. ISO also counts through a year zero where
+  PostgreSQL counts BC from one, making ISO `-0001-01-02` PostgreSQL's `0002-01-02 BC`. The serializers now
+  write PostgreSQL's spelling and read **either** back, so a payload built in SQL still decodes and so does
+  one written before this existed. It does not widen what a column holds - `date` reaches 4713 BC to
+  5874897 AD - only what can be cast back out of a payload.
+- **`BigDecimalAsNumberSerializer`** writes an unquoted JSON number rather than a string, so `jsonb` stores it
+  as a `numeric` and `jsonb_typeof` says `number` - arithmetic, casts and an index on the value all work
+  without a cast written by hand. Reading goes back through the raw token, so a value longer than a `Double`
+  survives the round trip.
+- **`EnumWithCaseConventionSerializer`**, for an enum inside a payload. `registerEnum` teaches the driver that
+  `Praetor` is `PRAETOR` in an enum **column**; kotlinx.serialization never sees that and writes the Kotlin
+  name, so the same value reads two ways depending on where it is stored. Subclass it with the conventions the
+  registration used - which are also its defaults - and the payload agrees with the column.
+- **`io.github.octaviusframework.type.BigDecimal`**, a `typealias` for `java.math.BigDecimal` on the JVM and
+  the decimal's text on JS. It exists so a class in `commonMain` can declare a `numeric` property at all;
+  being an alias and not a wrapper, it *is* the class the driver's codec produces, so nothing converts and
+  backend-only code can go on writing either name. On JS the digits are kept as text because a `Number` there
+  is a 64-bit float and would round exactly what `numeric` was chosen to keep.
+
+#### Changed
+
+- **`CaseConverter` moved here from the driver**, to `io.github.octaviusframework.identifier`, next to the
+  `CaseConvention` it takes. `EnumWithCaseConventionSerializer` needs it in `commonMain` and it was in a
+  JVM-only module. Behaviour is unchanged - same acronym and digit boundaries - and it is now covered by tests
+  on both targets.
+- **The `DISTANT_PAST` / `DISTANT_FUTURE` markers moved here too**, to `io.github.octaviusframework.type.datetime`,
+  along with `LocalTime.MIN` / `MAX` and `DateTimePeriod.INFINITY` / `MINUS_INFINITY`. Same reason: the
+  infinity serializers compare against them. They are now written in terms of kotlinx.datetime's own bounds
+  rather than `java.time`'s, which are the same values on every platform it supports - the JS tests assert the
+  identical text the JVM ones do.
+
 ### Driver
 
 #### Added
+
+- `ConverterRegistry.registeredEnums` says what every enum passed to `registerEnum` was registered as - the
+  PostgreSQL type it stands for and the two case conventions - alongside the `registeredComposites` that was
+  already there. The converters held those facts already, privately and one direction each, which left them
+  unreachable by anything that is not a conversion. An enum means one thing in a column of its own and another
+  inside JSON, and only the layer holding the JSON can settle the second; the driver states the mapping and
+  stops there. `PgEnumRegistration` is what it holds.
 
 - `SqlScript.split` cuts a script into the statements it is made of, each carrying the offset it stood at in
   the original text and its own first word, upper-cased and found past whatever comments stand in front of it.
@@ -31,6 +95,14 @@
 
 #### Changed
 
+- **`CaseConverter` and the date/time infinity markers moved to `pg-model`.**
+  `io.github.octaviusframework.driver.identifier.CaseConverter` is now
+  `io.github.octaviusframework.identifier.CaseConverter`, and
+  `io.github.octaviusframework.driver.type.datetime.DISTANT_PAST` / `DISTANT_FUTURE` / `LocalTime.MIN` /
+  `MAX` / `DateTimePeriod.INFINITY` / `MINUS_INFINITY` are now in `io.github.octaviusframework.type.datetime`. Same
+  declarations, same values, and `pg-model` is an `api` dependency of the driver, so nothing new is added to a
+  build file - the imports change and nothing else does. `PgInterval` and everything else under
+  `driver.type.datetime` stayed where it was.
 - `execute()` takes `ignoreRows`, default `false`. Unchanged where it is left alone: a statement returning
   rows is still `InvalidOperationException(UNEXPECTED_RESULT)`, which is what catches a `SELECT` sent where
   `fetchRows` was meant. Set it and the rows are dropped instead - what a script written elsewhere needs,
@@ -41,8 +113,31 @@
 
 ### Client
 
+#### Added
+
+- **A registered enum is written into a `dynamic_dto` payload under the label PostgreSQL holds**, and read
+  back from it. `registerEnum` taught the driver that `Praetor` is `PRAETOR` in an enum *column*;
+  kotlinx.serialization never saw that and wrote the Kotlin name into the payload, so one value read two ways
+  depending on where it was stored and a query filtering on `payload ->> 'office'` matched neither reliably.
+  The client now reads the labels off the driver's registry, so the enum named at `registerEnum` and the one a
+  scan found by `@PgEnumType` are covered alike - the enum needs no `@Serializable` and no serializer of its
+  own, and `@Contextual` on the property is the whole of what turns it on. An enum the driver was never told
+  about keeps the default, which is what keeps this from reaching anything that did not ask for it.
+- `dynamicTypes.enumSerializers` is that module on its own, for a `Json` built elsewhere - an HTTP layer, or a
+  `jsonb` column written through the driver rather than through a `dynamic_dto`. It answers for the enums
+  registered when it is read, so take it after startup registration rather than during it.
+
 #### Changed
 
+- **`dynamicJson` defaults to `octaviusJson` rather than to a stock `Json`.** A `dynamic_dto` payload is
+  JSON, so a registered class with a `BigDecimal` property did not encode at all and one holding an unbounded
+  date encoded to a year PostgreSQL will not read back. The new default carries the contextual serializers for
+  both; it is otherwise the same strict `Json` it was, so a payload carrying a field the class does not declare
+  is still an error. A `Json` passed in explicitly is untouched - put `octaviusSerializersModule` on it where
+  the class has a `@Contextual` property; the enum serializers above are folded onto whichever `Json` is in
+  use, explicit or not. That folding happens per conversion rather than once, because a client is built before
+  anything is registered on it: an enum registered between two queries applies to the second.
+  See [`dynamic_dto`](docs/client/dynamic-dto.md#what-json-does-not-carry).
 - **A `StepHandle` in a `TransactionPlan` reaches one thing, `value()`.** `field(name, rowIndex)` and
   `column(name)` are gone: both threw away the type the step's terminal declared, handing back `Any?` and
   `List<Any?>`, and the only way back to a type from there was a cast the caller wrote. `value()` carries the

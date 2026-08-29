@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.type.datetime
 
 
 import io.github.octaviusframework.driver.type.datetime.PgInterval.*
+import io.github.octaviusframework.type.datetime.INFINITY
+import io.github.octaviusframework.type.datetime.MINUS_INFINITY
 import kotlinx.datetime.DateTimePeriod
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.microseconds

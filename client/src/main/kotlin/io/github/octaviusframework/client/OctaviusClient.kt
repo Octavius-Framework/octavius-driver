@@ -29,6 +29,7 @@ import io.github.octaviusframework.client.transaction.validatePlan
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
 import io.github.octaviusframework.driver.session.TransactionIsolationLevel
+import io.github.octaviusframework.serializer.octaviusJson
 import kotlinx.serialization.json.Json
 import javax.sql.DataSource
 import kotlin.time.Duration
@@ -293,7 +294,9 @@ interface OctaviusClient : AutoCloseable {
          * @param ownsDataSource Whether [close] should close [dataSource] as well. Leave it `false` for a pool
          * the application built and shuts down itself.
          * @param dynamicJson How `dynamic_dto` payloads are read and written. Only consulted where dynamic
-         * types are registered at all.
+         * types are registered at all. The default is
+         * [octaviusJson][io.github.octaviusframework.serializer.octaviusJson]: strict, and carrying the
+         * contextual serializers a `BigDecimal` or an unbounded date needs to survive JSON.
          * @param dynamicWriteStrategy When an unwrapped instance of a registered class is written as a
          * `dynamic_dto`.
          * @return A client ready to use.
@@ -301,7 +304,7 @@ interface OctaviusClient : AutoCloseable {
         fun fromDataSource(
             dataSource: DataSource,
             ownsDataSource: Boolean = false,
-            dynamicJson: Json = Json,
+            dynamicJson: Json = octaviusJson,
             dynamicWriteStrategy: DynamicWriteStrategy = DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
         ): OctaviusClient {
             val provider = DefaultSessionProvider(dataSource)
@@ -326,7 +329,9 @@ interface OctaviusClient : AutoCloseable {
          * @param provider Decides which session each operation runs on.
          * @param ownsProvider Whether [close] should close [provider] as well.
          * @param dynamicJson How `dynamic_dto` payloads are read and written. Only consulted where dynamic
-         * types are registered at all.
+         * types are registered at all. The default is
+         * [octaviusJson][io.github.octaviusframework.serializer.octaviusJson]: strict, and carrying the
+         * contextual serializers a `BigDecimal` or an unbounded date needs to survive JSON.
          * @param dynamicWriteStrategy When an unwrapped instance of a registered class is written as a
          * `dynamic_dto`.
          * @return A client ready to use.
@@ -334,7 +339,7 @@ interface OctaviusClient : AutoCloseable {
         fun fromSessionProvider(
             provider: SessionProvider,
             ownsProvider: Boolean = true,
-            dynamicJson: Json = Json,
+            dynamicJson: Json = octaviusJson,
             dynamicWriteStrategy: DynamicWriteStrategy = DynamicWriteStrategy.AUTOMATIC_WHEN_UNAMBIGUOUS
         ): OctaviusClient = OctaviusClientImpl(
             provider,

@@ -3,6 +3,7 @@ package io.github.octaviusframework.client.scanner
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.client.OctaviusClient
+import io.github.octaviusframework.client.scanner.fixtures.good.ScanAppointment
 import io.github.octaviusframework.client.scanner.fixtures.good.ScanGrant
 import io.github.octaviusframework.client.scanner.fixtures.good.ScanProvince
 import io.github.octaviusframework.client.scanner.fixtures.good.ScanOffice
@@ -97,17 +98,17 @@ class TypeScannerTest {
 
     @Test
     fun `the scan finds one of each kind and names it`() {
-        assertEquals(4, report.total)
+        assertEquals(5, report.total)
         assertEquals(listOf("scan_office", "scan_rank"), report.enums.map { it.name }.sorted())
         assertEquals(listOf("scan_province"), report.composites.map { it.name })
-        assertEquals(listOf("scan_grant"), report.dynamicTypes.map { it.name })
+        assertEquals(listOf("scan_appointment", "scan_grant"), report.dynamicTypes.map { it.name }.sorted())
     }
 
     @Test
     fun `the report names the classes it registered`() {
         assertTrue(report.enums.any { it.kClass == ScanRank::class })
         assertEquals(ScanProvince::class, report.composites.single().kClass)
-        assertEquals(ScanGrant::class, report.dynamicTypes.single().kClass)
+        assertTrue(report.dynamicTypes.any { it.kClass == ScanGrant::class })
     }
 
     // --- That the registration actually took ------------------------------------------------------
@@ -136,6 +137,29 @@ class TypeScannerTest {
         assertEquals(
             ScanGrant(120),
             db.select("benefit").from("scan_senators").fetchFieldStrict<ScanGrant>()
+        )
+    }
+
+    @Test
+    fun `a scanned enum inside a payload carries the label the scan registered it under`() {
+        // `@PgEnumType(pgConvention = SNAKE_CASE_LOWER)` on ScanOffice is the only place those labels are
+        // stated. Nothing wrote a serializer, and the enum is not `@Serializable`: the scan is what makes the
+        // payload say `praetor` rather than `Praetor`.
+        db.insertInto("scan_senators").values(listOf("rank", "home", "benefit"))
+            .update(
+                "rank" to ScanRank.Praetor,
+                "home" to ScanProvince("Hispania", "Tarraco"),
+                "benefit" to ScanAppointment(ScanOffice.Praetor)
+            )
+
+        assertEquals(
+            "praetor",
+            db.select("(benefit).data_payload ->> 'office'").from("scan_senators").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("(benefit).data_payload ->> 'office' = (@o::scan_office)::text")
+                .from("scan_senators").fetchFieldStrict<Boolean>("o" to ScanOffice.Praetor)
         )
     }
 

@@ -23,7 +23,7 @@ It does nothing the hand-written calls cannot: `typeManager.registerEnum`, `regi
 a classpath correctly — jars inside jars, the module path, a Spring Boot fat jar — and that is a dependency
 ([ClassGraph](https://github.com/classgraph/classgraph)) worth keeping off everyone who registers by hand.
 
-The annotations it looks for are **not** here. They live in the multiplatform `annotations` module, so a class
+The annotations it looks for are **not** here. They live in the multiplatform `pg-model` module, so a class
 shared with another platform can carry them in `commonMain` and still be found on the JVM.
 
 | Annotation            | Goes on      | Registers as                          |

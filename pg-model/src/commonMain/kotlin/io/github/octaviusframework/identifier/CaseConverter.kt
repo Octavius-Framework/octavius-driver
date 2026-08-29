@@ -1,6 +1,4 @@
-package io.github.octaviusframework.driver.identifier
-
-import io.github.octaviusframework.identifier.CaseConvention
+package io.github.octaviusframework.identifier
 
 /**
  * Utility for converting strings between different naming conventions.

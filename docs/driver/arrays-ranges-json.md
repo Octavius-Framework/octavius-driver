@@ -362,6 +362,12 @@ session.createNativeQuery("INSERT INTO dossiers (id, data) VALUES ($1, $2)")
 val loaded = Json.decodeFromString<Dossier>(row.get<String>("data"))
 ```
 
+The `Json` is yours either way, and so is one thing it will get wrong unasked: a `BigDecimal` property has no
+serializer at all, and a date holding `infinity` is written as the year 999999999, which `::date` refuses.
+Mark those `@Contextual` and build the `Json` with `octaviusSerializersModule` from `pg-model` —
+[What JSON Does Not Carry](../client/dynamic-dto.md#what-json-does-not-carry) is the same question asked about
+`dynamic_dto` payloads, and the answer is the same here.
+
 **Everywhere** — register a converter pair once at startup and pass the DTO directly, with `getDefaultTypeName()`
 supplying `jsonb` the same way the built-in one does. [Custom converters](type-system.md#custom-converters) has the full
 shape; a JSON-backed DTO is close to the smallest useful example of one.

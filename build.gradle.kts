@@ -23,7 +23,7 @@ allprojects {
 }
 
 dependencies {
-    dokka(projects.annotations)
+    dokka(projects.pgModel)
     dokka(projects.driver)
     dokka(projects.client)
     dokka(projects.clientScanner)
@@ -50,7 +50,7 @@ subprojects {
         }
     }
 
-    // The annotations module is the one multiplatform project here, so its JVM target is set through the
+    // The pg-model module is the one multiplatform project here, so its JVM target is set through the
     // multiplatform extension rather than the JVM one below.
     plugins.withId("org.jetbrains.kotlin.multiplatform") {
         extensions.configure<KotlinMultiplatformExtension> {

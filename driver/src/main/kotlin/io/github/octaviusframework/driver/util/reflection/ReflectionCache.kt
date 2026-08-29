@@ -2,7 +2,7 @@ package io.github.octaviusframework.driver.util.reflection
 
 import io.github.octaviusframework.annotation.PgName
 import io.github.octaviusframework.identifier.CaseConvention
-import io.github.octaviusframework.driver.identifier.CaseConverter
+import io.github.octaviusframework.identifier.CaseConverter
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.*
 import kotlin.reflect.full.findAnnotation

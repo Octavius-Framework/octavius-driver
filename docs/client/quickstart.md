@@ -21,7 +21,7 @@ dependencies {
 
 The driver arrives with it as an `api` dependency — there is no second coordinate to add and no version to keep
 in step. Everything the driver brings with it comes too: `kotlinx-datetime`, `kotlinx-serialization-json`,
-`kotlinx-coroutines-core`, and the `annotations` module.
+`kotlinx-coroutines-core`, and the `pg-model` module.
 
 Scanning the classpath for annotated types is a separate coordinate, because it is the only part that needs a
 classpath-walking dependency. See [Annotation Scanning](scanner.md).

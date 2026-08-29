@@ -1,6 +1,9 @@
-package io.github.octaviusframework.driver.type.datetime
+package io.github.octaviusframework.type.datetime
 
-import kotlinx.datetime.*
+import kotlinx.datetime.DateTimePeriod
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 
 /**
  * Extension properties for kotlinx.datetime types to support PostgreSQL infinity values.
@@ -12,55 +15,53 @@ import kotlinx.datetime.*
  *
  * - [kotlin.time.Instant.DISTANT_PAST] and [kotlin.time.Instant.DISTANT_FUTURE] are provided
  *   by the Kotlin standard library and map to PostgreSQL TIMESTAMPTZ infinity values.
+ * - kotlinx.datetime keeps the same bounds on every platform it supports, and they are `internal` on all of
+ *   them, which is why these are written out rather than delegated to.
  */
+
+/** The first year kotlinx.datetime represents, on every platform. */
+private const val YEAR_MIN = -999_999_999
+
+/** The last year kotlinx.datetime represents, on every platform. */
+private const val YEAR_MAX = 999_999_999
+
+private const val NANOS_PER_SECOND = 1_000_000_000
 
 /**
  * The minimum LocalDate value, maps to PostgreSQL '-infinity' for DATE type.
- *
- * @see java.time.LocalDate.MIN
  */
 val LocalDate.Companion.DISTANT_PAST: LocalDate
-    get() = java.time.LocalDate.MIN.toKotlinLocalDate()
+    get() = LocalDate(YEAR_MIN, 1, 1)
 
 /**
  * The maximum LocalDate value, maps to PostgreSQL 'infinity' for DATE type.
- *
- * @see java.time.LocalDate.MAX
  */
 val LocalDate.Companion.DISTANT_FUTURE: LocalDate
-    get() = java.time.LocalDate.MAX.toKotlinLocalDate()
+    get() = LocalDate(YEAR_MAX, 12, 31)
 
 /**
  * The minimum LocalDateTime value, maps to PostgreSQL '-infinity' for TIMESTAMP type.
- *
- * @see java.time.LocalDateTime.MIN
  */
 val LocalDateTime.Companion.DISTANT_PAST: LocalDateTime
-    get() = java.time.LocalDateTime.MIN.toKotlinLocalDateTime()
+    get() = LocalDateTime(LocalDate.DISTANT_PAST, LocalTime.MIN)
 
 /**
  * The maximum LocalDateTime value, maps to PostgreSQL 'infinity' for TIMESTAMP type.
- *
- * @see java.time.LocalDateTime.MAX
  */
 val LocalDateTime.Companion.DISTANT_FUTURE: LocalDateTime
-    get() = java.time.LocalDateTime.MAX.toKotlinLocalDateTime()
+    get() = LocalDateTime(LocalDate.DISTANT_FUTURE, LocalTime.MAX)
 
 /**
- * The minimum LocalTime value.
- *
- * @see java.time.LocalTime.MIN
+ * The minimum LocalTime value, midnight.
  */
 val LocalTime.Companion.MIN: LocalTime
-    get() = java.time.LocalTime.MIN.toKotlinLocalTime()
+    get() = LocalTime(0, 0, 0, 0)
 
 /**
- * The maximum LocalTime value.
- *
- * @see java.time.LocalTime.MAX
+ * The maximum LocalTime value, one nanosecond before midnight.
  */
 val LocalTime.Companion.MAX: LocalTime
-    get() = java.time.LocalTime.MAX.toKotlinLocalTime()
+    get() = LocalTime(23, 59, 59, NANOS_PER_SECOND - 1)
 
 // Kotlinx.Datetime throw exception if years + months overflows Int
 //    require(it / 12 in Int.MIN_VALUE..Int.MAX_VALUE) {

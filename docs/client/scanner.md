@@ -34,7 +34,7 @@ keeping off everyone who registers by hand, which is the whole reason for the se
 
 ## The Annotations
 
-The annotations are **not** here. They live in the multiplatform `annotations` module, which the driver takes
+The annotations are **not** here. They live in the multiplatform `pg-model` module, which the driver takes
 as an `api` dependency — so a class shared with another platform can carry them in `commonMain` and still be
 found on the JVM. A desktop application and a browser extension reading the same DTOs was the case that forced
 it: an annotation compiled only for the JVM cannot be written on a class in `commonMain` at all.
@@ -45,7 +45,10 @@ it: an annotation compiled only for the JVM cannot be written on a class in `com
 | `@PgCompositeType`     | a data class | a PostgreSQL `COMPOSITE` type |
 | `@DynamicallyMappable` | any class    | a `dynamic_dto` discriminator |
 
-`@PgEnumType` carries the same case conventions `registerEnum` takes.
+`@PgEnumType` carries the same case conventions `registerEnum` takes, and they reach further than the column:
+a scanned enum used inside a `dynamic_dto` payload is written under those same labels, with no serializer to
+write and no `@Serializable` on the enum. Mark the property `@Contextual` and that is the whole of it — see
+[What JSON Does Not Carry](dynamic-dto.md#what-json-does-not-carry).
 
 It and `@PgCompositeType` derive the type name from the class where none is given — `ScanRank` to `scan_rank`
 — using the driver's own converter. **`@DynamicallyMappable` states its name and always will**: that one is a
