@@ -6,189 +6,123 @@
 
 - **The repository is now `octavius-postgresql`.** `octavius-driver` named one of the six artifacts inside it
   rather than the thing itself, and collided with the `driver` module every time either was written down.
-  GitHub redirects the old URL, so a remote pointing at it keeps working; GitHub Pages does not, and the API
-  reference has moved to https://octavius-framework.github.io/octavius-postgresql/. The repository name is not
-  part of any Maven coordinate, so `io.github.octavius-framework:driver` and the rest resolve exactly as
-  before - `annotations` is renamed below, for reasons of its own.
-- **The `annotations` module is now `pg-model`,** and so is its Maven coordinate:
+  GitHub redirects the old URL; GitHub Pages does not, so the API reference has moved to
+  https://octavius-framework.github.io/octavius-postgresql/. No Maven coordinate holds the repository name.
+- **The `annotations` module is now `pg-model`,** coordinate included -
   `io.github.octavius-framework:annotations` becomes `io.github.octavius-framework:pg-model`. It stopped being
-  a module of annotations - it now carries a multiplatform `BigDecimal`, the serializers a JSON payload needs
-  to keep one, and the case converter that decides what a type is called - and a name that listed only the
-  first of those would have to be re-read every time something was added. Nothing in it changed package:
-  `io.github.octaviusframework.annotation.*` and `io.github.octaviusframework.identifier.CaseConvention` are
-  where they were, so only the dependency line moves. Anyone taking `driver` transitively takes it either way.
+  a module of annotations: it now carries a multiplatform `BigDecimal`, the serializers a JSON payload needs
+  to keep one, and the case converter that decides what a type is called. Nothing changed package, so only the
+  dependency line moves, and anyone taking `driver` takes it transitively either way.
 - **Every published artifact carries its own POM name and description.** They were derived in the root build
-  from a `when` over the module name, and two modules fell through it: `client-scanner` was published with the
-  client's description and `driver-spring-integration` with the driver's, so both described themselves on
-  Maven Central as something they are not. Each module's own build file now declares both, and applying the
-  publish plugin is what marks a module as published - the root build no longer keeps a list of names that
-  could drift from the modules it names.
+  from a `when` over the module name and two fell through it, so `client-scanner` was published with the
+  client's description and `driver-spring-integration` with the driver's. Each module declares both itself
+  now, and applying the publish plugin is what marks a module as published.
 
 ### pg-model
 
 #### Added
 
 - **`octaviusSerializersModule` and `octaviusJson`,** for the types whose JSON form does not match their
-  column form. Every one of them the driver already maps correctly in a column of its own and the default
-  serializer changes the moment the same value goes through JSON - which a `jsonb` column and a `dynamic_dto`
-  payload both are. `BigDecimal` has no serializer at all, so the class does not encode; `LocalDate`,
-  `LocalDateTime` and `Instant` holding PostgreSQL's `infinity` are written out as the far-away timestamp the
-  constant nominally is, which is not `infinity`. The two fail differently and both matter: year 999999999 is
-  past what a `date` or a `timestamp` holds at all (5874897 AD and 294276 AD), so reading that payload back as
-  a date raises; `Instant`'s marker is year 100000, which a `timestamptz` does hold, so that one comes back
-  quietly as a real timestamp that simply is not `infinity`. The module answers all four contextually, so
-  `@Contextual` on the property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock
-  `Json` and nothing more, for the frontend or the HTTP layer that reads the same classes.
-- **A date in a payload is spelled the way PostgreSQL spells it**, not the way ISO-8601 does, which is a
-  second thing the date serializers answer and has nothing to do with the markers. The two formats disagree
-  as soon as a year leaves `0001`..`9999` and no single string satisfies both: ISO requires a sign past four
-  digits and PostgreSQL reads that sign as the start of a timezone offset, so `+10000-01-02` is refused - and
-  so is `+5874897-12-31`, a year a `date` holds perfectly well. ISO also counts through a year zero where
-  PostgreSQL counts BC from one, making ISO `-0001-01-02` PostgreSQL's `0002-01-02 BC`. The serializers now
-  write PostgreSQL's spelling and read **either** back, so a payload built in SQL still decodes and so does
-  one written before this existed. It does not widen what a column holds - `date` reaches 4713 BC to
-  5874897 AD - only what can be cast back out of a payload.
+  column form mostly for `dynamic_dto` payload. `BigDecimal` has no serializer at
+  all, so the class does not encode; a `LocalDate`, `LocalDateTime` or `Instant` holding PostgreSQL's
+  `infinity` is written out as the far-away timestamp the constant nominally is, which a `date` or `timestamp`
+  will not read back at all and a `timestamptz` reads back quietly as something that is not `infinity`. All
+  four are answered contextually, so `@Contextual` on the property is what turns it on. `octaviusJson` is that
+  module on a stock `Json`, for the frontend or the HTTP layer that reads the same classes.
+- **A date in a payload is spelled the way PostgreSQL spells it**, not the way ISO-8601 does. No single string
+  satisfies both once a year leaves `0001`..`9999`: ISO signs a longer year and PostgreSQL reads that sign as
+  the start of a timezone offset, so `+5874897-12-31` is refused for a year a `date` holds perfectly well, and
+  ISO counts through a year zero where PostgreSQL counts BC from one. The serializers write PostgreSQL's
+  spelling and read **either** back, so a payload built in SQL decodes and so does one written before this
+  existed.
 - **`BigDecimalAsNumberSerializer`** writes an unquoted JSON number rather than a string, so `jsonb` stores it
   as a `numeric` and `jsonb_typeof` says `number` - arithmetic, casts and an index on the value all work
   without a cast written by hand. Reading goes back through the raw token, so a value longer than a `Double`
   survives the round trip.
-- **`EnumWithCaseConventionSerializer`**, for an enum inside a payload. `registerEnum` teaches the driver that
-  `Praetor` is `PRAETOR` in an enum **column**; kotlinx.serialization never sees that and writes the Kotlin
-  name, so the same value reads two ways depending on where it is stored. Subclass it with the conventions the
-  registration used - which are also its defaults - and the payload agrees with the column.
+- **`EnumWithCaseConventionSerializer`**, for an enum inside a payload. Subclass it with the conventions
+  `registerEnum` was given - which are also its defaults - and the payload agrees with the column. The client
+  does this for you on a `dynamic_dto`; this is the same thing for a `Json` assembled elsewhere.
 - **`io.github.octaviusframework.type.BigDecimal`**, a `typealias` for `java.math.BigDecimal` on the JVM and
-  the decimal's text on JS. It exists so a class in `commonMain` can declare a `numeric` property at all;
-  being an alias and not a wrapper, it *is* the class the driver's codec produces, so nothing converts and
-  backend-only code can go on writing either name. On JS the digits are kept as text because a `Number` there
-  is a 64-bit float and would round exactly what `numeric` was chosen to keep.
+  the decimal's text on JS, so a class in `commonMain` can declare a `numeric` property at all. Being an alias
+  and not a wrapper, it *is* what the driver's codec produces, so nothing converts. The digits are kept as
+  text on JS because a `Number` there is a 64-bit float and would round exactly what `numeric` was chosen to
+  keep.
 
 #### Changed
 
-- **`CaseConverter` moved here from the driver**, to `io.github.octaviusframework.identifier`, next to the
-  `CaseConvention` it takes. `EnumWithCaseConventionSerializer` needs it in `commonMain` and it was in a
-  JVM-only module. Behaviour is unchanged - same acronym and digit boundaries - and it is now covered by tests
-  on both targets.
-- **The `DISTANT_PAST` / `DISTANT_FUTURE` markers moved here too**, to `io.github.octaviusframework.type.datetime`,
-  along with `LocalTime.MIN` / `MAX` and `DateTimePeriod.INFINITY` / `MINUS_INFINITY`. Same reason: the
-  infinity serializers compare against them. They are now written in terms of kotlinx.datetime's own bounds
-  rather than `java.time`'s, which are the same values on every platform it supports - the JS tests assert the
-  identical text the JVM ones do.
+- **`CaseConverter` and the date/time infinity markers moved here from the driver.**
+  `driver.identifier.CaseConverter` is now `io.github.octaviusframework.identifier.CaseConverter`, next to the
+  `CaseConvention` it takes, and `driver.type.datetime.DISTANT_PAST` / `DISTANT_FUTURE` / `LocalTime.MIN` /
+  `MAX` / `DateTimePeriod.INFINITY` / `MINUS_INFINITY` are now `io.github.octaviusframework.type.datetime`.
+  Both are needed in `commonMain` and both were in a JVM-only module. Same declarations and same values, now
+  covered by tests on both targets; `pg-model` is an `api` dependency of the driver, so nothing is added to a
+  build file and only the imports change. `PgInterval` and the rest of `driver.type.datetime` stayed.
 
 ### Driver
 
 #### Added
 
 - `ConverterRegistry.registeredEnums` says what every enum passed to `registerEnum` was registered as - the
-  PostgreSQL type it stands for and the two case conventions - alongside the `registeredComposites` that was
-  already there. The converters held those facts already, privately and one direction each, which left them
-  unreachable by anything that is not a conversion. An enum means one thing in a column of its own and another
-  inside JSON, and only the layer holding the JSON can settle the second; the driver states the mapping and
-  stops there. `PgEnumRegistration` is what it holds.
-
-- `SqlScript.split` cuts a script into the statements it is made of, each carrying the offset it stood at in
-  the original text and its own first word, upper-cased and found past whatever comments stand in front of it.
-  It splits on the `;` that separate statements and on no other: not inside `'...'`,
-  `E'...'`, `"..."`, a `$tag$...$tag$` body, a `--` comment, a `/* */` comment nested to any depth, or
-  parentheses, where `CREATE RULE ... DO (a; b)` puts one legitimately. Whitespace and comments between
-  separators are not a statement, so a trailing `;` adds nothing to the list. This is what it takes to send a
-  statement the server refuses inside a transaction block - `CREATE INDEX CONCURRENTLY`, `VACUUM` - in a
-  message of its own, since a script sent whole runs inside an implicit transaction.
+  PostgreSQL type it stands for and the two case conventions - alongside the `registeredComposites` already
+  there. The converters held those facts privately and one direction each; an enum means one thing in a column
+  of its own and another inside JSON, and only the layer holding the JSON can settle the second.
+  `PgEnumRegistration` is what it holds.
+- `SqlScript.split` cuts a script into the statements it is made of, each carrying the offset it stood at and
+  its own first word, upper-cased and found past whatever comments stand in front of it. It splits on the `;`
+  that separate statements, it ignores literals, comments and the parentheses where `CREATE RULE ... DO (a; b)` puts one
+  legitimately. Whitespace and comments between separators are not a statement, so a trailing `;` adds nothing
+  to the list. It is what it takes to send `CREATE INDEX CONCURRENTLY` or `VACUUM` in a message of its own, a
+  script sent whole running inside an implicit transaction.
 
 #### Changed
 
-- **`CaseConverter` and the date/time infinity markers moved to `pg-model`.**
-  `io.github.octaviusframework.driver.identifier.CaseConverter` is now
-  `io.github.octaviusframework.identifier.CaseConverter`, and
-  `io.github.octaviusframework.driver.type.datetime.DISTANT_PAST` / `DISTANT_FUTURE` / `LocalTime.MIN` /
-  `MAX` / `DateTimePeriod.INFINITY` / `MINUS_INFINITY` are now in `io.github.octaviusframework.type.datetime`. Same
-  declarations, same values, and `pg-model` is an `api` dependency of the driver, so nothing new is added to a
-  build file - the imports change and nothing else does. `PgInterval` and everything else under
-  `driver.type.datetime` stayed where it was.
-- `execute()` takes `ignoreRows`, default `false`. Unchanged where it is left alone: a statement returning
-  rows is still `InvalidOperationException(UNEXPECTED_RESULT)`, which is what catches a `SELECT` sent where
-  `fetchRows` was meant. Set it and the rows are dropped instead - what a script written elsewhere needs,
-  `pg_dump` emitting `SELECT pg_catalog.setval(...)` for every sequence it carries. Rows are drained either
-  way, there being no reaching `ReadyForQuery` otherwise; the flag decides only whether their arrival is
-  reported. `RawQuery.execute()` in the client takes it too. Source-compatible, but a caller compiled against
-  0.9.8 has to be recompiled.
+- `execute()` takes `ignoreRows`, default `false`. Left alone, a statement returning rows is still
+  `InvalidOperationException(UNEXPECTED_RESULT)`, which is what catches a `SELECT` sent where `fetchRows` was
+  meant; set, the rows are dropped instead - what a script written elsewhere needs, `pg_dump` emitting
+  `SELECT pg_catalog.setval(...)` for every sequence it carries. Rows are drained either way; the flag decides
+  only whether their arrival is reported. `RawQuery.execute()` in the client takes it too. Source-compatible,
+  but a caller compiled against 0.9.8 has to be recompiled.
 
 ### Client
 
 #### Added
 
 - **A registered enum is written into a `dynamic_dto` payload under the label PostgreSQL holds**, and read
-  back from it. `registerEnum` taught the driver that `Praetor` is `PRAETOR` in an enum *column*;
-  kotlinx.serialization never saw that and wrote the Kotlin name into the payload, so one value read two ways
-  depending on where it was stored and a query filtering on `payload ->> 'office'` matched neither reliably.
-  The client now reads the labels off the driver's registry, so the enum named at `registerEnum` and the one a
-  scan found by `@PgEnumType` are covered alike - the enum needs no `@Serializable` and no serializer of its
-  own, and `@Contextual` on the property is the whole of what turns it on. An enum the driver was never told
-  about keeps the default, which is what keeps this from reaching anything that did not ask for it.
-- **`TransactionPlan.describe()`,** which renders the plan as text: every step's index, its SQL, and where
-  each of its parameters comes from. A plan is assembled by one layer and run by another, so the code holding
-  it when it fails is usually not the code that decided what went in - and the class advertised being
-  "inspected" while offering `size` and `isEmpty()` to do it with. What a literal *is* is deliberately not
-  shown: the wiring is the part that cannot be read off the code that assembled the plan, and printing a bound
-  value would put a `bytea` parameter or a column of personal data wherever the description was written to.
-  The values a step actually ran with are on the `queryContext` of what it threw, which is bounded for the
-  purpose. A step whose query cannot be rendered says so in place of its SQL rather than throwing, a plan
-  holding one being among the things worth describing.
+  back from it. kotlinx.serialization never saw `registerEnum` and wrote the Kotlin name, so one value read
+  two ways depending on where it was stored and a query filtering on `payload ->> 'office'` matched neither
+  reliably. The labels come off the driver's registry, so the enum named at `registerEnum` and the one a scan
+  found by `@PgEnumType` are covered alike. An enum the driver was never told about keeps the default.
 - `dynamicTypes.enumSerializers` is that module on its own, for a `Json` built elsewhere - an HTTP layer, or a
   `jsonb` column written through the driver rather than through a `dynamic_dto`. It answers for the enums
-  registered when it is read, so take it after startup registration rather than during it.
+  registered when it is read.
+- **`TransactionPlan.describe()`,** which renders the plan as text: every step's index, its SQL, and where
+  each of its parameters comes from. A step whose query cannot be rendered says so in place of its SQL rather than throwing.
 
 #### Changed
 
-- **`dynamicJson` defaults to `octaviusJson` rather than to a stock `Json`.** A `dynamic_dto` payload is
-  JSON, so a registered class with a `BigDecimal` property did not encode at all and one holding an unbounded
-  date encoded to a year PostgreSQL will not read back. The new default carries the contextual serializers for
-  both; it is otherwise the same strict `Json` it was, so a payload carrying a field the class does not declare
-  is still an error. A `Json` passed in explicitly is untouched - put `octaviusSerializersModule` on it where
-  the class has a `@Contextual` property; the enum serializers above are folded onto whichever `Json` is in
-  use, explicit or not. That folding happens per conversion rather than once, because a client is built before
-  anything is registered on it: an enum registered between two queries applies to the second.
-  See [`dynamic_dto`](docs/client/dynamic-dto.md#what-json-does-not-carry).
+- **`dynamicJson` defaults to `octaviusJson` rather than to a stock `Json`.** A `dynamic_dto` payload is JSON,
+  so a registered class with a `BigDecimal` property did not encode at all and one holding an unbounded date
+  encoded to a year PostgreSQL will not read back. It is otherwise the same strict `Json` it was, so a payload
+  carrying a field the class does not declare is still an error. A `Json` passed in explicitly is untouched -
+  put `octaviusSerializersModule` on it yourself; the enum serializers are folded onto whichever `Json` is in
+  use, per conversion rather than once, so an enum registered between two queries applies to the second.
 - **A `StepHandle` in a `TransactionPlan` reaches one thing, `value()`.** `field(name, rowIndex)` and
   `column(name)` are gone: both threw away the type the step's terminal declared, handing back `Any?` and
-  `List<Any?>`, and the only way back to a type from there was a cast the caller wrote. `value()` carries the
-  terminal's own type, so taking a column is `map { it.get<Int>("id") }` and gathering one is
-  `map { rows -> rows.map { it.get<Int>("id") } }` - checked where it is written, and a `List<Int>` the driver
-  sends as an array rather than a `List<Any?>` that has to be filtered into one first. Asking a scalar or an
-  object result for a column it has not got no longer runs and fails; it does not compile.
+  `List<Any?>` for the caller to cast. `value()` carries that type, so taking a column is
+  `map { it.get<Int>("id") }` - checked where it is written, and a `List<Int>` the driver sends as an array.
+  Asking a scalar or an object result for a column it has not got no longer runs and fails; it does not
+  compile.
 - **`row(rowIndex)` is replaced by `spread()`**, which marks a value to fill its parameter slot with entries
-  of its own rather than with one value. It is written last and takes a map, so `map { }` composes *before*
-  it: `map { it - "id" + ("archived_at" to now) }.spread()` copies a row with a column dropped and one added,
-  which the old spread could not express. What `spread()` returns is not a `TransactionValue`, so nothing
-  composes after it - a `map` around a spread used to take the spread silently away, and that is now
-  unwritable rather than documented.
-- A step whose result is to be spread is fetched as a map - `fetchObjectStrict<Map<String, Any?>>()` - which
-  is where the columns' type is chosen. That is why the spread does not take a `Row`: `Map<String, Any?>` asks
-  the result converters what each column is, and anything narrower asks them for that instead, where reading a
-  row for the purpose had that decision made for it.
+  of its own rather than with one value.
 - The shape failures the plan raised of its own - a result with no columns to take, a column the rows have not
-  got, a row index past the end, a row that was not there to spread - are gone from it. Two of them the
-  compiler refuses outright, `spread()` taking `Map<String, Any?>` and not the `Map<String, Any?>?` a
-  `fetchObject` returns. The other two are whatever the caller's own `map` raised: an
-  `IndexOutOfBoundsException` wrapped as a `MappingException` naming the parameter, or the driver's own
-  `COLUMN_NOT_FOUND` passed through as it was thrown.
-
-- **Everything a plan raises while resolving a step's parameters names the step.** A plan built in a loop has
-  the same SQL and the same parameter names in all twenty of its steps, so the parameter alone identified
-  nothing and the query context on the exception could not separate the third iteration from the seventeenth.
-  A failing transformation now reports `Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1)
-  threw NumberFormatException`, and so do the spread of something that is not a map and a handle reached
-  before its step has run.
-- **A `map` in a chain is numbered, and the chain prints.** A lambda has no name to report and every `map` on
-  a parameter shares that parameter's name, so `#1`, `#2` counting from the source is the whole of what tells
-  two of them apart when one throws. `TransactionValue.Transformed` renders as the chain that will produce it,
-  `StepHandle(step 0).map(#1).map(#2)`, where it rendered as an identity hash.
-- **The driver's own failure inside a transformation picks up the same three on its `path`** -
-  `step 1 -> parameter 'name' -> map #1`. It is passed through as it was thrown, so the breadcrumb its own
-  layers write to as they unwind is the only place the step can be recorded without replacing the exception.
-- **A step's number is where it sits in the plan being run**, in a description and in a failure alike. A
-  handle's own `toString` carries the index it was created at, which after `addPlan` is no longer where its
-  step is - so the number now comes from the plan's own index, and a handle's own is left saying which plan it
-  came from, which is what a report about a foreign handle wants it to say.
+  got, a row index past the end, a row that was not there to spread - are gone from it. Two the compiler
+  refuses outright; the other two are whatever the caller's own `map` raised, wrapped as a `MappingException`
+  naming the parameter or passed through as the driver's own `COLUMN_NOT_FOUND`.
+- **Everything a plan raises while resolving a step's parameters names the step, and every `map` in a chain is
+  numbered.** . It now reads `Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1) threw NumberFormatException`;
+  `TransactionValue.Transformed` renders as that chain where it rendered as an identity hash, and the driver's
+  own failure inside a transformation picks the same three up on its `path`. The number is where the step sits
+  in the plan being run, not the index the handle was created at, which after `addPlan` is no longer the same.
 
 See [Transaction Plans](docs/client/plans.md) for the whole of it.
 
@@ -196,31 +130,23 @@ See [Transaction Plans](docs/client/plans.md) for the whole of it.
 
 #### Added
 
-- A new `migrations` module: a migrator built on the driver. `V`/`R` naming as in Flyway, migrations written as
-  `.sql` files or as Kotlin classes, checksums, an advisory lock, and a history table it keeps itself.
+- A new `migrations` module: a migrator built on the driver. `V`/`R` naming as in Flyway, migrations written
+  as `.sql` files or as Kotlin classes, checksums, an advisory lock, and a history table it keeps itself.
   `OctaviusMigrator(dataSource, MigratorConfig(...)).migrate()` is the whole entry point, and `info()` answers
   the same question without applying anything or creating anything.
-- **Two transaction paths, differing in where the history row sits.** By default a migration runs inside a
-  transaction and its row goes into that same transaction, so a failure leaves neither the work nor a record of
-  it - there is nothing to repair, and no `repair` command to do it with. A file whose header carries
-  `-- octavius:no-transaction` runs statement by statement instead, which is what `CREATE INDEX CONCURRENTLY`,
-  `VACUUM` and `ALTER SYSTEM` need; a failure there records which statement stopped it, and the next run
-  refuses to go on until somebody has looked.
+- **Two transaction paths, differing in where the history row sits.** By default a migration and its history
+  row go into one transaction, so a failure leaves neither the work nor a record of it - nothing to repair,
+  and no `repair` command to do it with. A file whose header carries `-- octavius:no-transaction` runs
+  statement by statement instead, which is what `CREATE INDEX CONCURRENTLY`, `VACUUM` and `ALTER SYSTEM` need;
+  a failure there records which statement stopped it, and the next run refuses to go on until somebody has
+  looked.
 - **A migration class is read as a name and never constructed by the scan.** `V2_1__Add_indexes` is version
   2.1 - a class name cannot hold a `.`, so `_` separates the parts there - and the class is built once,
-  immediately before it runs. A migration that ran months ago therefore costs nothing at startup and runs none
-  of your code.
-- Checksums are CRC32 over content normalised for a byte-order mark, line endings and trailing whitespace, so
-  a Windows checkout meeting a Linux one is not reported as an edit. A class records no checksum unless it
-  declares one: hashing bytecode reports a change when a blank line moves or the compiler is upgraded, and
-  hashing the class name detects only a rename, which the version already catches.
+  immediately before it runs.
+- Checksums for `.sql` files are CRC32. A class records no checksum unless it declares one.
 - `outOfOrder`, `baselineVersion` and `target`, for a branch merged late, a database adopted at a version it
   was already at, and a release that ships migrations ahead of the code needing them.
-- **No undo and no placeholders.** A migration that turns out to be wrong is corrected by a migration that
-  comes after it, that being the only correction which leaves every copy of the database in the same state.
-- Documented in [docs/migrations](docs/migrations/README.md): [Quickstart](docs/migrations/quickstart.md),
-  [Writing Migrations](docs/migrations/writing-migrations.md) and
-  [History and Validation](docs/migrations/history-and-validation.md).
+- Documented in [docs/migrations](docs/migrations/README.md).
 
 ## Version 0.9.8 (v0.9.8)
 

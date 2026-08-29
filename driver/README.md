@@ -51,11 +51,11 @@ What the badge means in practice: the API is not frozen. Signatures can still ch
 
 ```kotlin
 dependencies {
-    implementation("io.github.octavius-framework:driver:0.9.8")
+    implementation("io.github.octavius-framework:driver:0.9.9")
     implementation("com.zaxxer:HikariCP:7.1.0")
 
     // Or, for Spring Boot - brings the driver in transitively
-    // implementation("io.github.octavius-framework:driver-spring-integration:0.9.8")
+    // implementation("io.github.octavius-framework:driver-spring-integration:0.9.9")
 }
 ```
 
