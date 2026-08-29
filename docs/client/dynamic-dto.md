@@ -148,14 +148,14 @@ The payload is JSON, and a few kinds of value mean less there than they do in a 
 driver maps every one of them correctly in a `numeric`, a `date`, a `timestamptz` or an enum column; put the
 same value in a `jsonb` payload and the default serializer writes something else.
 
-| Type              | What the default serializer writes    | What that costs                                                     |
-|:------------------|:--------------------------------------|:--------------------------------------------------------------------|
-| `BigDecimal`      | nothing — it has no serializer        | the class does not encode at all                                    |
-| `LocalDate`       | `+999999999-12-31` for `infinity`     | not `infinity` any more, and `(payload->>'until')::date` refuses it |
-| `LocalDateTime`   | `+999999999-12-31T23:59:59.999999999` | the same                                                            |
-| `Instant`         | `+100000-01-01T00:00:00Z`             | the same                                                            |
-| any date at all   | ISO-8601                              | outside years `0001`..`9999`, PostgreSQL will not read it back      |
-| a registered enum | the Kotlin constant's own name        | `Praetor` in the payload where the enum column holds `PRAETOR`      |
+| Type              | What the default serializer writes    | What that costs                                                   |
+|:------------------|:--------------------------------------|:------------------------------------------------------------------|
+| `BigDecimal`      | nothing — it has no serializer        | the class does not encode at all                                  |
+| `LocalDate`       | `+999999999-12-31` for `infinity`     | past what a `date` holds, so reading it back raises               |
+| `LocalDateTime`   | `+999999999-12-31T23:59:59.999999999` | the same, a `timestamp` stopping at 294276 AD                     |
+| `Instant`         | `+100000-01-01T00:00:00Z`             | a year a `timestamptz` does hold — so it comes back quietly wrong |
+| any date at all   | ISO-8601                              | outside years `0001`..`9999`, PostgreSQL will not read it back    |
+| a registered enum | the Kotlin constant's own name        | `Praetor` in the payload where the enum column holds `PRAETOR`    |
 
 The last row is the one that is not about markers. ISO-8601 and PostgreSQL spell a year differently as soon
 as it leaves `0001`..`9999`, and no single string satisfies both:

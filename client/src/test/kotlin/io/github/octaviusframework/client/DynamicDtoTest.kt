@@ -315,10 +315,8 @@ class DynamicDtoTest {
 
     @Test
     fun `the unbounded date is the same value in the payload as it is in a date column`() {
-        // The point of the infinity serializer: +999999999-12-31 stores cleanly as text and then fails this
-        // cast - the year being past what a date holds at all, and the leading sign failing the parse before
-        // that. So the two forms of "no end date" would stop comparing equal, and the payload would not read
-        // back as a date either.
+        // Without the marker branch the payload would hold the year 999999999, and this cast would not come
+        // back false - it would error outright, that year being past the 5874897 a `date` reaches.
         record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), LocalDate.DISTANT_FUTURE))
 
         val payload = "(benefit).data_payload"
@@ -411,7 +409,7 @@ class DynamicDtoTest {
         // Reading its own writes would pass under the default serializer too - Consul out, Consul back. This
         // is the asymmetric direction: SQL puts the database's label in the payload, and only a serializer
         // that knows the conventions turns CONSUL back into Consul.
-        val read = db.rawQuery("SELECT dynamic_dto('appointment', jsonb_build_object('office', @o::text))")
+        val read = db.rawQuery("SELECT dynamic_dto('appointment', jsonb_build_object('office', @o))")
             .fetchFieldStrict<Appointment>("o" to Magistrature.Consul)
 
         assertEquals(Appointment(Magistrature.Consul), read)

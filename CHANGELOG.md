@@ -33,10 +33,11 @@
   serializer changes the moment the same value goes through JSON - which a `jsonb` column and a `dynamic_dto`
   payload both are. `BigDecimal` has no serializer at all, so the class does not encode; `LocalDate`,
   `LocalDateTime` and `Instant` holding PostgreSQL's `infinity` are written out as the far-away timestamp the
-  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity` and is past
-  what the column type holds (`date` reaches 5874897 AD, `timestamp` 294276 AD), so an unbounded date stops
-  comparing equal to itself across the two forms. The module answers all four contextually, so `@Contextual`
-  on the property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock
+  constant nominally is, which is not `infinity`. The two fail differently and both matter: year 999999999 is
+  past what a `date` or a `timestamp` holds at all (5874897 AD and 294276 AD), so reading that payload back as
+  a date raises; `Instant`'s marker is year 100000, which a `timestamptz` does hold, so that one comes back
+  quietly as a real timestamp that simply is not `infinity`. The module answers all four contextually, so
+  `@Contextual` on the property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock
   `Json` and nothing more, for the frontend or the HTTP layer that reads the same classes.
 - **A date in a payload is spelled the way PostgreSQL spells it**, not the way ISO-8601 does, which is a
   second thing the date serializers answer and has nothing to do with the markers. The two formats disagree
