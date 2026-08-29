@@ -3,8 +3,8 @@ package io.github.octaviusframework.driver.type
 import io.github.octaviusframework.driver.exception.CodecException
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.properties.OctaviusProperties
-import io.github.octaviusframework.driver.type.datetime.DISTANT_FUTURE
-import io.github.octaviusframework.driver.type.datetime.DISTANT_PAST
+import io.github.octaviusframework.type.datetime.DISTANT_FUTURE
+import io.github.octaviusframework.type.datetime.DISTANT_PAST
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toKotlinLocalDate

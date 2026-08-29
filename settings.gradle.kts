@@ -12,7 +12,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "octavius-postgresql"
-include("annotations")
+include("pg-model")
 include("driver")
 include("client")
 include("client-scanner")

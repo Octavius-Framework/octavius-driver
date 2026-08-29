@@ -9,7 +9,7 @@ import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.identifier.CaseConvention
-import io.github.octaviusframework.driver.identifier.CaseConverter
+import io.github.octaviusframework.identifier.CaseConverter
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
@@ -64,7 +64,7 @@ data class ScanReport(
 /**
  * Finds the annotated classes in [packages] and registers each with this client.
  *
- * Three annotations are looked for, all of them from the multiplatform `annotations` module so that they can
+ * Three annotations are looked for, all of them from the multiplatform `pg-model` module so that they can
  * sit on classes shared with another platform:
  * [PgEnumType], [PgCompositeType] and [DynamicallyMappable].
  *

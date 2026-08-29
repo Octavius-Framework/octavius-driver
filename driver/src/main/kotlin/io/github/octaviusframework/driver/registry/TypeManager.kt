@@ -5,12 +5,12 @@ import io.github.octaviusframework.driver.converter.EnumParameterConverter
 import io.github.octaviusframework.driver.converter.EnumResultConverter
 import io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter
 import io.github.octaviusframework.driver.converter.result.mapper.ResultConverter
-import io.github.octaviusframework.identifier.CaseConvention
-import io.github.octaviusframework.driver.identifier.CaseConverter
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
 import io.github.octaviusframework.driver.registry.TypeRegistry
+import io.github.octaviusframework.identifier.CaseConvention
+import io.github.octaviusframework.identifier.CaseConverter
 import kotlin.reflect.KClass
 
 /**

@@ -16,14 +16,14 @@ different question again, and takes the driver alone — never the client.
 
 ## What is here
 
-| Artifact                        | What it is                                                                                                                                                                  |
-|:--------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **`driver`**                    | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md)               |
-| **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                                    |
-| **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)                 |
-| **`migrations`**                | A migrator on the driver: `V`/`R` naming, `.sql` files and Kotlin classes, checksums, an advisory lock, and a history table it keeps itself. [README](migrations/README.md) |
-| **`annotations`**               | Multiplatform, and nothing but annotation declarations — what Octavius reads off your own classes, in a form `commonMain` can carry.                                        |
-| **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                                   |
+| Artifact                        | What it is                                                                                                                                                                                  |
+|:--------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`driver`**                    | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md)                               |
+| **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                                                    |
+| **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)                                 |
+| **`migrations`**                | A migrator on the driver: `V`/`R` naming, `.sql` files and Kotlin classes, checksums, an advisory lock, and a history table it keeps itself. [README](migrations/README.md)                 |
+| **`pg-model`**                  | Multiplatform: the annotations Octavius reads off your own classes, the case converter both sides name things with, and the values standing for PostgreSQL's infinite dates. |
+| **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                                                   |
 
 Not published: `hikari-integration-tests` (integration tests against a real pool), `benchmarks` (JMH against
 `pgjdbc`), and `examples/spring-app` (a runnable sample, its own build pulling the driver in through

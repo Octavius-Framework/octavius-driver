@@ -7,14 +7,38 @@
 - **The repository is now `octavius-postgresql`.** `octavius-driver` named one of the six artifacts inside it
   rather than the thing itself, and collided with the `driver` module every time either was written down.
   GitHub redirects the old URL, so a remote pointing at it keeps working; GitHub Pages does not, and the API
-  reference has moved to https://octavius-framework.github.io/octavius-postgresql/. Maven coordinates are
-  untouched - `io.github.octavius-framework:driver` and the rest resolve exactly as before.
+  reference has moved to https://octavius-framework.github.io/octavius-postgresql/. The repository name is not
+  part of any Maven coordinate, so `io.github.octavius-framework:driver` and the rest resolve exactly as
+  before - `annotations` is renamed below, for reasons of its own.
+- **The `annotations` module is now `pg-model`,** and so is its Maven coordinate:
+  `io.github.octavius-framework:annotations` becomes `io.github.octavius-framework:pg-model`. It stopped being
+  a module of annotations - it now carries the case converter that decides what a type is called and the
+  values standing for PostgreSQL's infinite dates - and a name that listed only the first of those would have
+  to be re-read every time something was added. Nothing in it changed package:
+  `io.github.octaviusframework.annotation.*` and `io.github.octaviusframework.identifier.CaseConvention` are
+  where they were, so only the dependency line moves. Anyone taking `driver` transitively takes it either way.
 - **Every published artifact carries its own POM name and description.** They were derived in the root build
   from a `when` over the module name, and two modules fell through it: `client-scanner` was published with the
   client's description and `driver-spring-integration` with the driver's, so both described themselves on
   Maven Central as something they are not. Each module's own build file now declares both, and applying the
   publish plugin is what marks a module as published - the root build no longer keeps a list of names that
   could drift from the modules it names.
+
+### pg-model
+
+#### Changed
+
+- **`CaseConverter` moved here from the driver**, to `io.github.octaviusframework.identifier`, next to the
+  `CaseConvention` it takes. It decides what a type and an enum label are called on either side of the wire,
+  which is a fact about the model rather than about the connection, and a JVM-only module was the wrong place
+  for it: a class in `commonMain` could carry `@PgEnumType` but not read what it meant. Behaviour is
+  unchanged - same acronym and digit boundaries - and it is now covered by tests on both targets.
+- **The date/time infinity markers moved here too**, to `io.github.octaviusframework.type.datetime`:
+  `DISTANT_PAST` / `DISTANT_FUTURE` for `LocalDate` and `LocalDateTime`, `LocalTime.MIN` / `MAX`, and
+  `DateTimePeriod.INFINITY` / `MINUS_INFINITY`. Same reason, and they are now written in terms of
+  kotlinx.datetime's own bounds rather than `java.time`'s, which are the same values on every platform it
+  supports - the JS tests assert the identical text the JVM ones do. `PgInterval` and everything else under
+  `driver.type.datetime` stayed where it was.
 
 ### Driver
 
@@ -31,6 +55,14 @@
 
 #### Changed
 
+- **`CaseConverter` and the date/time infinity markers moved to `pg-model`.**
+  `io.github.octaviusframework.driver.identifier.CaseConverter` is now
+  `io.github.octaviusframework.identifier.CaseConverter`, and
+  `io.github.octaviusframework.driver.type.datetime.DISTANT_PAST` / `DISTANT_FUTURE` / `LocalTime.MIN` /
+  `MAX` / `DateTimePeriod.INFINITY` / `MINUS_INFINITY` are now in `io.github.octaviusframework.type.datetime`. Same
+  declarations, same values, and `pg-model` is an `api` dependency of the driver, so nothing new is added to a
+  build file - the imports change and nothing else does. `PgInterval` and everything else under
+  `driver.type.datetime` stayed where it was.
 - `execute()` takes `ignoreRows`, default `false`. Unchanged where it is left alone: a statement returning
   rows is still `InvalidOperationException(UNEXPECTED_RESULT)`, which is what catches a `SELECT` sent where
   `fetchRows` was meant. Set it and the rows are dropped instead - what a script written elsewhere needs,
