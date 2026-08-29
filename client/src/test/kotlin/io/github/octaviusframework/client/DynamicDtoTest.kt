@@ -2,6 +2,7 @@ package io.github.octaviusframework.client
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import io.github.octaviusframework.annotation.PgEnumType
 import io.github.octaviusframework.client.dynamic.DynamicDto
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.MappingException
@@ -48,6 +49,21 @@ class DynamicDtoTest {
     @Serializable
     data class Stipend(val provinceName: String, val annualAmount: Int)
 
+    /** Labels are `SNAKE_CASE_UPPER` in the database and `PascalCase` here, which is what the defaults assume. */
+    @PgEnumType(name = "magistrature")
+    enum class Magistrature { Quaestor, Aedile, Praetor, Consul }
+
+    /** Registered late, to prove the module is read per conversion and not composed once at startup. */
+    @PgEnumType(name = "legion_status")
+    enum class LegionStatus { Garrisoned, OnMarch, InBattle }
+
+    /** No `@Serializable` on either enum, and no serializer written by hand: `@Contextual` is the whole of it. */
+    @Serializable
+    data class Appointment(@Contextual val office: Magistrature) : Benefit
+
+    @Serializable
+    data class Deployment(@Contextual val status: LegionStatus) : Benefit
+
     /**
      * The two types whose JSON form is not their column form. Neither encodes at all under a stock `Json`:
      * `BigDecimal` has no serializer, and `@Contextual` finds nothing for `LocalDate` either.
@@ -74,6 +90,10 @@ class DynamicDtoTest {
             })
             db = OctaviusClient.fromDataSource(dataSource)
 
+            db.rawQuery("DROP TYPE IF EXISTS public.magistrature").execute()
+            db.rawQuery("CREATE TYPE public.magistrature AS ENUM ('QUAESTOR', 'AEDILE', 'PRAETOR', 'CONSUL')")
+                .execute()
+
             // Installing after the pool was built is the harder case: the driver read its type catalogue when
             // it connected, so this only works if install() reloads it.
             db.dynamicTypes.install()
@@ -84,13 +104,20 @@ class DynamicDtoTest {
             db.dynamicTypes.register<Citation>("citation")
             db.dynamicTypes.register<Stipend>("stipend")
             db.dynamicTypes.register<TributeAssessment>("tribute_assessment")
+            db.dynamicTypes.register<Appointment>("appointment")
+            db.dynamicTypes.register<Deployment>("deployment")
+
+            // After the client was built, which is the only order there is: a client is constructed before
+            // anything is registered on it.
+            db.execute { typeManager.registerEnum<Magistrature>("magistrature") }
 
             db.rawQuery(
                 """
                 CREATE TABLE IF NOT EXISTS dyn_veterans (
                     id      SERIAL PRIMARY KEY,
                     name    TEXT NOT NULL,
-                    benefit public.dynamic_dto
+                    benefit public.dynamic_dto,
+                    office  public.magistrature
                 )
                 """.trimIndent()
             ).execute()
@@ -100,6 +127,7 @@ class DynamicDtoTest {
         @JvmStatic
         fun tearDown() {
             db.rawQuery("DROP TABLE IF EXISTS dyn_veterans").execute()
+            db.rawQuery("DROP TYPE IF EXISTS public.magistrature").execute()
             db.close()
             dataSource.close()
         }
@@ -302,6 +330,76 @@ class DynamicDtoTest {
             db.select("($payload ->> 'until')::date = 'infinity'::date")
                 .from("dyn_veterans").fetchFieldStrict<Boolean>()
         )
+    }
+
+    // --- Enums, under the labels they were registered with ---------------------------------------------
+
+    @Test
+    fun `an enum in a payload carries the same label the enum column holds`() {
+        // The whole claim in one row: one value, written twice, once through each path.
+        db.insertInto("dyn_veterans").values(listOf("name", "benefit", "office"))
+            .update(
+                "name" to "Marcus",
+                "benefit" to Appointment(Magistrature.Praetor),
+                "office" to Magistrature.Praetor
+            )
+
+        assertEquals(
+            true,
+            db.select("(benefit).data_payload ->> 'office' = office::text")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>()
+        )
+        assertEquals(
+            "PRAETOR",
+            db.select("(benefit).data_payload ->> 'office'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+    }
+
+    @Test
+    fun `and a payload built in SQL under those labels reads back as the constant`() {
+        // Reading its own writes would pass under the default serializer too - Consul out, Consul back. This
+        // is the asymmetric direction: SQL puts the database's label in the payload, and only a serializer
+        // that knows the conventions turns CONSUL back into Consul.
+        val read = db.rawQuery("SELECT dynamic_dto('appointment', jsonb_build_object('office', @o::text))")
+            .fetchFieldStrict<Appointment>("o" to Magistrature.Consul)
+
+        assertEquals(Appointment(Magistrature.Consul), read)
+    }
+
+    @Test
+    fun `an enum registered after the first query still takes effect`() {
+        // The reason the module is resolved per conversion rather than composed when the client was built:
+        // this write goes through a Json that did not exist when the one above ran.
+        record("Marcus", Appointment(Magistrature.Aedile))
+        assertEquals(1, db.select("count(*)").from("dyn_veterans").fetchFieldStrict<Long>())
+
+        db.execute { typeManager.registerEnum<LegionStatus>("legion_status") }
+        record("Lucius", Deployment(LegionStatus.OnMarch))
+
+        assertEquals(
+            "ON_MARCH",
+            db.select("(benefit).data_payload ->> 'status'").from("dyn_veterans").where("name = @n")
+                .fetchFieldStrict<String>("n" to "Lucius")
+        )
+    }
+
+    @Test
+    fun `the module is there for a Json of your own`() {
+        val api = Json { serializersModule = db.dynamicTypes.enumSerializers }
+
+        assertEquals("""{"office":"PRAETOR"}""", api.encodeToString(Appointment(Magistrature.Praetor)))
+    }
+
+    @Test
+    fun `a client that registered no dynamic type at all still hands out the module`() {
+        // It reads the driver's registry, which a dynamic type happens to be the usual way of reaching - but
+        // the case this exists for is a jsonb column written through the driver, where there is no
+        // dynamic_dto anywhere.
+        OctaviusClient.fromDataSource(dataSource).use { fresh ->
+            val api = Json { serializersModule = fresh.dynamicTypes.enumSerializers }
+
+            assertEquals("""{"office":"CONSUL"}""", api.encodeToString(Appointment(Magistrature.Consul)))
+        }
     }
 
     // --- What it refuses --------------------------------------------------------------------------

@@ -44,8 +44,8 @@
   survives the round trip.
 - **`EnumWithCaseConventionSerializer`**, for an enum inside a payload. `registerEnum` teaches the driver that
   `Praetor` is `PRAETOR` in an enum **column**; kotlinx.serialization never sees that and writes the Kotlin
-  name, so the same value reads two ways depending on where it is stored. Name one on the class, with the
-  conventions the registration used - which are also its defaults - and both ends agree by construction.
+  name, so the same value reads two ways depending on where it is stored. Subclass it with the conventions the
+  registration used - which are also its defaults - and the payload agrees with the column.
 - **`io.github.octaviusframework.type.BigDecimal`**, a `typealias` for `java.math.BigDecimal` on the JVM and
   the decimal's text on JS. It exists so a class in `commonMain` can declare a `numeric` property at all;
   being an alias and not a wrapper, it *is* the class the driver's codec produces, so nothing converts and
@@ -55,20 +55,25 @@
 #### Changed
 
 - **`CaseConverter` moved here from the driver**, to `io.github.octaviusframework.identifier`, next to the
-  `CaseConvention` it takes. It decides what a type and an enum label are called on either side of the wire,
-  which is a fact about the model rather than about the connection, and a JVM-only module was the wrong place
-  for it: a class in `commonMain` could carry `@PgEnumType` but not read what it meant. Behaviour is
-  unchanged - same acronym and digit boundaries - and it is now covered by tests on both targets.
-- **The date/time infinity markers moved here too**, to `io.github.octaviusframework.type.datetime`:
-  `DISTANT_PAST` / `DISTANT_FUTURE` for `LocalDate` and `LocalDateTime`, `LocalTime.MIN` / `MAX`, and
-  `DateTimePeriod.INFINITY` / `MINUS_INFINITY`. Same reason, and they are now written in terms of
-  kotlinx.datetime's own bounds rather than `java.time`'s, which are the same values on every platform it
-  supports - the JS tests assert the identical text the JVM ones do. `PgInterval` and everything else under
-  `driver.type.datetime` stayed where it was.
+  `CaseConvention` it takes. `EnumWithCaseConventionSerializer` needs it in `commonMain` and it was in a
+  JVM-only module. Behaviour is unchanged - same acronym and digit boundaries - and it is now covered by tests
+  on both targets.
+- **The `DISTANT_PAST` / `DISTANT_FUTURE` markers moved here too**, to `io.github.octaviusframework.type.datetime`,
+  along with `LocalTime.MIN` / `MAX` and `DateTimePeriod.INFINITY` / `MINUS_INFINITY`. Same reason: the
+  infinity serializers compare against them. They are now written in terms of kotlinx.datetime's own bounds
+  rather than `java.time`'s, which are the same values on every platform it supports - the JS tests assert the
+  identical text the JVM ones do.
 
 ### Driver
 
 #### Added
+
+- `ConverterRegistry.registeredEnums` says what every enum passed to `registerEnum` was registered as - the
+  PostgreSQL type it stands for and the two case conventions - alongside the `registeredComposites` that was
+  already there. The converters held those facts already, privately and one direction each, which left them
+  unreachable by anything that is not a conversion. An enum means one thing in a column of its own and another
+  inside JSON, and only the layer holding the JSON can settle the second; the driver states the mapping and
+  stops there. `PgEnumRegistration` is what it holds.
 
 - `SqlScript.split` cuts a script into the statements it is made of, each carrying the offset it stood at in
   the original text and its own first word, upper-cased and found past whatever comments stand in front of it.
@@ -99,6 +104,20 @@
 
 ### Client
 
+#### Added
+
+- **A registered enum is written into a `dynamic_dto` payload under the label PostgreSQL holds**, and read
+  back from it. `registerEnum` taught the driver that `Praetor` is `PRAETOR` in an enum *column*;
+  kotlinx.serialization never saw that and wrote the Kotlin name into the payload, so one value read two ways
+  depending on where it was stored and a query filtering on `payload ->> 'office'` matched neither reliably.
+  The client now reads the labels off the driver's registry, so the enum named at `registerEnum` and the one a
+  scan found by `@PgEnumType` are covered alike - the enum needs no `@Serializable` and no serializer of its
+  own, and `@Contextual` on the property is the whole of what turns it on. An enum the driver was never told
+  about keeps the default, which is what keeps this from reaching anything that did not ask for it.
+- `dynamicTypes.enumSerializers` is that module on its own, for a `Json` built elsewhere - an HTTP layer, or a
+  `jsonb` column written through the driver rather than through a `dynamic_dto`. It answers for the enums
+  registered when it is read, so take it after startup registration rather than during it.
+
 #### Changed
 
 - **`dynamicJson` defaults to `octaviusJson` rather than to a stock `Json`.** A `dynamic_dto` payload is
@@ -106,7 +125,9 @@
   date encoded to a year PostgreSQL will not read back. The new default carries the contextual serializers for
   both; it is otherwise the same strict `Json` it was, so a payload carrying a field the class does not declare
   is still an error. A `Json` passed in explicitly is untouched - put `octaviusSerializersModule` on it where
-  the class has a `@Contextual` property.
+  the class has a `@Contextual` property; the enum serializers above are folded onto whichever `Json` is in
+  use, explicit or not. That folding happens per conversion rather than once, because a client is built before
+  anything is registered on it: an enum registered between two queries applies to the second.
   See [`dynamic_dto`](docs/client/dynamic-dto.md#what-json-does-not-carry).
 - **A `StepHandle` in a `TransactionPlan` reaches one thing, `value()`.** `field(name, rowIndex)` and
   `column(name)` are gone: both threw away the type the step's terminal declared, handing back `Any?` and

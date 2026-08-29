@@ -145,35 +145,51 @@ cleanly and fail on whichever read reached it first, in some other process, much
 ## What JSON Does Not Carry
 
 The payload is JSON, and a few kinds of value mean less there than they do in a column of their own. The
-driver maps every one of them correctly in a `numeric`, a `date` or a `timestamptz` column; put the same value
-in a `jsonb` payload and the default serializer writes something else.
+driver maps every one of them correctly in a `numeric`, a `date`, a `timestamptz` or an enum column; put the
+same value in a `jsonb` payload and the default serializer writes something else.
 
-| Type            | What the default serializer writes    | What that costs                                                |
-|:----------------|:--------------------------------------|:---------------------------------------------------------------|
-| `BigDecimal`    | nothing — it has no serializer        | the class does not encode at all                               |
-| `LocalDate`     | `+999999999-12-31`                    | not `infinity`, and `(payload->>'until')::date` fails outright |
-| `LocalDateTime` | `+999999999-12-31T23:59:59.999999999` | the same                                                       |
-| `Instant`       | `+100000-01-01T00:00:00Z`             | the same                                                       |
+| Type              | What the default serializer writes    | What that costs                                                |
+|:------------------|:--------------------------------------|:---------------------------------------------------------------|
+| `BigDecimal`      | nothing — it has no serializer        | the class does not encode at all                               |
+| `LocalDate`       | `+999999999-12-31`                    | not `infinity`, and `(payload->>'until')::date` fails outright |
+| `LocalDateTime`   | `+999999999-12-31T23:59:59.999999999` | the same                                                       |
+| `Instant`         | `+100000-01-01T00:00:00Z`             | the same                                                       |
+| a registered enum | the Kotlin constant's own name        | `Praetor` in the payload where the enum column holds `PRAETOR` |
 
 All three dates fail for one reason and not three: PostgreSQL reads that leading `+` as a timezone offset and
 stops, so nothing kotlinx.serialization writes in that form casts back at all — the payload stops holding
 anything the database will take as a date, let alone one meaning "unbounded".
 
-`octaviusSerializersModule` answers all four, and the client's `dynamicJson` carries it already — so this is
-about one annotation on the property:
+Every one of them is answered already, and the whole of what a class has to say is one annotation on the
+property:
 
 ```kotlin
+@PgEnumType                               // labels are SNAKE_CASE_UPPER in the database
+enum class Magistrature { Quaestor, Aedile, Praetor, Consul }
+
 @Serializable
 @DynamicallyMappable("land_grant")
 data class LandGrant(
     val province: String,
-    @Contextual val iugera: BigDecimal,   // a bare JSON number, every digit kept
-    @Contextual val until: LocalDate      // "infinity"
+    @Contextual val iugera: BigDecimal,      // a bare JSON number, every digit kept
+    @Contextual val until: LocalDate,        // "infinity"
+    @Contextual val awardedBy: Magistrature  // "PRAETOR", as the enum column holds it
 )
 ```
 
 `@Contextual` is what selects a contextual serializer; without it the property keeps the default and nothing
 above applies. That is deliberate — nothing changes that you have not asked to change.
+
+The first four come from `octaviusSerializersModule`, which the client's `dynamicJson` carries. The enum comes
+from somewhere else, because its labels are not a fixed rule: they are whatever that enum was **registered**
+under. The client reads them straight off the driver's registry, so the enum named at
+`typeManager.registerEnum` and the one a scan found by `@PgEnumType` are covered alike — and the enum itself
+needs no `@Serializable` and no serializer of its own. Registration is what turns it on; an enum the driver
+has never been told about keeps the default.
+
+> Registration happens **after** the client is built — that is the only order there is — so the enum
+> serializers are resolved per conversion rather than composed once. An enum registered between two queries
+> applies to the second.
 
 `BigDecimal` here is `io.github.octaviusframework.type.BigDecimal` from `pg-model`, which on the JVM is a
 `typealias` for `java.math.BigDecimal` — the same class the driver decodes a `numeric` into, so backend code
@@ -181,12 +197,27 @@ can go on writing either name. It exists so that a class in `commonMain` can dec
 JS it holds the decimal's text, because a `Number` there is a 64-bit float and would round what `numeric` was
 chosen to keep.
 
-An enum is the remaining case, and the module cannot answer it, because its labels are not a fixed rule: they
-are whatever the enum was registered under. Say them once, in a serializer named on the class:
+A `Json` you build yourself — for an HTTP layer, or for the frontend reading the same classes — needs both
+modules put on it, since they are the client's default and not a global:
 
 ```kotlin
+val json = Json {
+    serializersModule = octaviusSerializersModule + db.dynamicTypes.enumSerializers + myAppModule
+    ignoreUnknownKeys = true
+}
+```
+
+`octaviusJson` is the first of those on a stock `Json` and nothing else, for the case where nothing else is
+being configured. `enumSerializers` answers for the enums registered at the moment it is read, so build that
+`Json` after startup registration rather than during it.
+
+The frontend has no driver and therefore no registry. There, write the enum's labels out once — the same two
+conventions the registration states — and share the class:
+
+```kotlin
+// commonMain, next to the enum itself
 @Serializable(with = MagistratureSerializer::class)
-@PgEnumType(pgConvention = CaseConvention.SNAKE_CASE_UPPER)
+@PgEnumType
 enum class Magistrature { Quaestor, Aedile, Praetor, Consul }
 
 object MagistratureSerializer : EnumWithCaseConventionSerializer<Magistrature>(
@@ -195,20 +226,9 @@ object MagistratureSerializer : EnumWithCaseConventionSerializer<Magistrature>(
 )
 ```
 
-Its defaults are `registerEnum`'s, so an enum that took them there takes them here.
-
-A `Json` you build yourself — for an HTTP layer, or for the frontend reading the same classes — needs the
-module put on it, since it is the client's default and not a global:
-
-```kotlin
-val json = Json {
-    serializersModule = octaviusSerializersModule + myAppModule
-    ignoreUnknownKeys = true
-}
-```
-
-`octaviusJson` is that module on a stock `Json` and nothing else, for the case where nothing else is being
-configured.
+Its defaults are `registerEnum`'s, so an enum that took them there takes them here. `@Serializable(with = …)`
+binds tighter than a contextual module, so the backend uses this one too and both ends agree by construction —
+which is the point of writing it rather than letting each side derive its own.
 
 ## A Different `Json` for One Query
 

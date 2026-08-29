@@ -24,6 +24,7 @@ import io.github.octaviusframework.driver.converter.result.standard.JsonElementC
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.identifier.QualifiedName
+import io.github.octaviusframework.identifier.CaseConvention
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.reflect.KClass
@@ -141,4 +142,43 @@ class ConverterRegistry internal constructor() {
             compositeClassByName = newNameMap
         }
     }
+
+    //--------------------------------------------Enums----------------------------------------------------------------
+
+    /**
+     * A thread-safe map holding what every registered Kotlin enum was registered as.
+     *
+     * The converters carry the same facts already, but privately and one direction each. Written down here
+     * they can be read by something that is not a conversion - which is the point: an enum means one thing in
+     * a column of its own and another inside JSON, and only the layer holding the JSON can settle the second.
+     * The driver states the mapping; it does not interpret it.
+     */
+    @Volatile
+    var registeredEnums: Map<KClass<*>, PgEnumRegistration> = emptyMap()
+        private set
+
+    /**
+     * Records that [kClass] is the PostgreSQL enum [qualifiedName], under the conventions the converters were
+     * built with.
+     */
+    internal fun registerEnumType(kClass: KClass<*>, qualifiedName: QualifiedName, pgConvention: CaseConvention, kotlinConvention: CaseConvention) {
+        lock.withLock {
+            registeredEnums = registeredEnums +
+                (kClass to PgEnumRegistration(qualifiedName, pgConvention, kotlinConvention))
+        }
+    }
 }
+
+/**
+ * What an enum was registered as: the type it stands for, and the two conventions that map one side's names
+ * onto the other's.
+ *
+ * @property qualifiedName The PostgreSQL enum type this class stands for.
+ * @property pgConvention How the labels are written in PostgreSQL.
+ * @property kotlinConvention How the constants are written in Kotlin.
+ */
+data class PgEnumRegistration(
+    val qualifiedName: QualifiedName,
+    val pgConvention: CaseConvention,
+    val kotlinConvention: CaseConvention
+)

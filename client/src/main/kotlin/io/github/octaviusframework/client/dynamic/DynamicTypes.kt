@@ -11,10 +11,12 @@ import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
+import io.github.octaviusframework.driver.registry.ConverterRegistry
 import io.github.octaviusframework.driver.type.PgType
 import io.github.octaviusframework.serializer.octaviusJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.serializer
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
@@ -137,6 +139,32 @@ class DynamicTypes internal constructor(
     private var registeredClasses: Map<KClass<*>, Registration<*>> = emptyMap()
 
     private val convertersInstalled = AtomicBoolean(false)
+
+    /** [json] with the driver's enum serializers folded in, which is what everything here actually encodes with. */
+    private val enumAwareJson = EnumAwareJson(json)
+
+    /** The same module on its own, for [enumSerializers] to hand out. */
+    private val enumModule = PgEnumSerializersModule()
+
+    /**
+     * The driver's converter registry, remembered the first time anything here needs one.
+     *
+     * It is global to the database rather than to a session - the same object every session's `typeManager`
+     * hands out - so holding it past the session that produced it is holding the registry, not a connection.
+     * It is what [toDynamicDto] and [enumSerializers] read the registered enums from, neither having a query
+     * context to read them from.
+     */
+    @Volatile
+    private var converterRegistry: ConverterRegistry? = null
+
+    /**
+     * The registry, opening a session to reach it the first time and not after.
+     *
+     * Racing threads may each open one and each store what they found; the registry is one object per
+     * database, so both stored the same thing.
+     */
+    private fun converterRegistry(): ConverterRegistry =
+        converterRegistry ?: client.execute { typeManager.converterRegistry }.also { converterRegistry = it }
 
     /**
      * Creates the `dynamic_dto` type if the database does not have it.
@@ -264,7 +292,10 @@ class DynamicTypes internal constructor(
             details = "${value::class.simpleName} is not a registered dynamic type; call " +
                 "dynamicTypes.register<${value::class.simpleName}>(\"…\") at startup."
         )
-        return DynamicDto(registration.name, registration.encode(value, json))
+        val registry = converterRegistry()
+        val effective =
+            if (json === this.json) enumAwareJson.resolve(registry) else EnumAwareJson(json).resolve(registry)
+        return DynamicDto(registration.name, registration.encode(value, effective))
     }
 
     /**
@@ -301,6 +332,44 @@ class DynamicTypes internal constructor(
      */
     fun parameterConverter(json: Json): ParameterConverter<*> = DynamicDtoParameterConverter(this, json)
 
+    /**
+     * The contextual serializers writing each registered enum under the label PostgreSQL holds, rather than
+     * under the Kotlin constant's own name.
+     *
+     * `registerEnum` teaches the driver that `Praetor` is `PRAETOR` in an enum **column**. A `jsonb` payload
+     * never reaches that, so the same value would read two ways depending on where it was stored. [json]
+     * already carries this, and so does any [Json] handed to [resultConverter], [parameterConverter] or
+     * [toDynamicDto] - nothing here needs it added. It is exposed for the [Json] built elsewhere: an HTTP
+     * layer, or a `jsonb` column written through the driver rather than through a `dynamic_dto`.
+     *
+     * ```kotlin
+     * val api = Json {
+     *     serializersModule = octaviusSerializersModule + db.dynamicTypes.enumSerializers
+     * }
+     * ```
+     *
+     * `@Contextual` on the property is what selects one; the enum itself needs no `@Serializable` and no
+     * serializer written by hand, whether it was named at `registerEnum` or found by a scan through
+     * [PgEnumType][io.github.octaviusframework.annotation.PgEnumType].
+     *
+     * It answers for the enums registered at the moment it is read - registration being global to the
+     * database and done at startup - so a `Json` built from it before startup has finished is a `Json` short
+     * of whatever registered after. That is the difference between it and [json], which resolves per
+     * conversion and so never goes stale.
+     *
+     * Reading it opens a session if this client has not reached the driver's registry yet, which is why it is
+     * something to take once and keep rather than to reach for per request.
+     */
+    val enumSerializers: SerializersModule
+        get() = enumModule.resolve(converterRegistry())
+
+    /**
+     * The [Json] a conversion should run on: the query's own where one was given, the client's otherwise, and
+     * either way with the enums registered right now folded in.
+     */
+    internal fun jsonFor(registry: ConverterRegistry, override: EnumAwareJson?): Json =
+        (override ?: enumAwareJson).resolve(registry)
+
     internal fun forName(name: String): Registration<*>? = byName[name]
 
     /** The registration for an exact class, which is how a value being written finds its own. */
@@ -325,8 +394,10 @@ class DynamicTypes internal constructor(
     private fun ensureConvertersInstalled() {
         if (!convertersInstalled.compareAndSet(false, true)) return
         client.execute {
-            typeManager.registerResultConverter(DynamicDtoResultConverter(this@DynamicTypes, json))
-            typeManager.registerParameterConverter(DynamicDtoParameterConverter(this@DynamicTypes, json))
+            // Primed here because a session is open anyway, so nothing later has to open one for it.
+            this@DynamicTypes.converterRegistry = typeManager.converterRegistry
+            typeManager.registerResultConverter(DynamicDtoResultConverter(this@DynamicTypes, null))
+            typeManager.registerParameterConverter(DynamicDtoParameterConverter(this@DynamicTypes, null))
         }
     }
 
@@ -358,8 +429,11 @@ class DynamicTypes internal constructor(
  */
 private class DynamicDtoParameterConverter(
     private val types: DynamicTypes,
-    private val json: Json
+    overrideJson: Json?
 ) : ParameterConverter<Any> {
+
+    /** Set only where this converter was made for one query, which is the whole of what makes it different. */
+    private val enumAwareJson = overrideJson?.let { EnumAwareJson(it) }
 
     override val supportedClass: KClass<Any> = Any::class
 
@@ -397,7 +471,7 @@ private class DynamicDtoParameterConverter(
                 )
             }
             typeName = registration.name
-            payload = registration.encode(source, json)
+            payload = registration.encode(source, types.jsonFor(context.typeManager.converterRegistry, enumAwareJson))
         }
 
         val composite = context.typeManager.containers.createComposite(DYNAMIC_DTO_NAME, DYNAMIC_DTO_SCHEMA)
@@ -417,8 +491,11 @@ private class DynamicDtoParameterConverter(
  */
 private class DynamicDtoResultConverter(
     private val types: DynamicTypes,
-    private val json: Json
+    overrideJson: Json?
 ) : ResultConverter<PgComposite, Any> {
+
+    /** Set only where this converter was made for one query, which is the whole of what makes it different. */
+    private val enumAwareJson = overrideJson?.let { EnumAwareJson(it) }
 
     override val supportedSourceClass: KClass<PgComposite> = PgComposite::class
 
@@ -465,7 +542,7 @@ private class DynamicDtoResultConverter(
         if (expectedClass == DynamicDto::class) return DynamicDto(typeName, payload)
 
         val decoded = try {
-            registration.decode(payload, json)
+            registration.decode(payload, types.jsonFor(context.typeManager.converterRegistry, enumAwareJson))
         } catch (e: Exception) {
             throw MappingException(
                 MappingExceptionReason.CONVERSION_ERROR,

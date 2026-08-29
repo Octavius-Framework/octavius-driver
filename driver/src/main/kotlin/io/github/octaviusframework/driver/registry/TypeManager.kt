@@ -180,6 +180,10 @@ class TypeManager internal constructor(
         val typed = enumClass as KClass<UnnamedEnum>
         registerParameterConverter(EnumParameterConverter(typed, qualifiedName, pgConvention, kotlinConvention))
         registerResultConverter(EnumResultConverter(typed, qualifiedName, pgConvention, kotlinConvention))
+
+        // The same facts a third time, written where something that is not a conversion can read them -
+        // see ConverterRegistry.registeredEnums.
+        converterRegistry.registerEnumType(enumClass, qualifiedName, pgConvention, kotlinConvention)
     }
 }
 
