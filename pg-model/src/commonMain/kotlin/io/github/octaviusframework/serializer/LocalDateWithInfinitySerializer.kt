@@ -11,15 +11,15 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Writes [LocalDate.Companion.DISTANT_FUTURE] and [LocalDate.Companion.DISTANT_PAST] as `infinity` and
- * `-infinity`, the way a `date` column stores them, and everything else as ISO-8601.
+ * Writes a [LocalDate] the way a `date` column holds it, so that `(payload->>'until')::date` reads back
+ * what was put in.
  *
- * The default serializer writes those two as `+999999999-12-31` and `-999999999-01-01`, which are not
- * `infinity` and are not storable either: a `date` reaches 5874897 AD and 4713 BC, so the marker year is past
- * the column's ceiling by three orders of magnitude. `(payload->>'until')::date` refuses the text earlier
- * still - PostgreSQL reads the leading sign as the start of a timezone offset, which is why even
- * `+2024-01-01` is refused. So a grant with no end date, written into a `jsonb` payload, stops being the
- * value it was in a `date` column and stops being readable as a date at all.
+ * Two things stand between the default serializer and that. [LocalDate.Companion.DISTANT_FUTURE] and
+ * [LocalDate.Companion.DISTANT_PAST] mean PostgreSQL's `infinity` and `-infinity` in a column and are written
+ * out as year ±999999999 in JSON - a year no `date` holds, and not `infinity` in any case, so the same Kotlin
+ * value stops meaning the same thing depending on where it is stored. And every year outside `0001`..`9999`
+ * is spelled in a way PostgreSQL will not read at all; see [PgDateText] for that half, which is a plain
+ * `LocalDate(10000, …)` and not a marker.
  *
  * Registered contextually by [octaviusSerializersModule]; `@Contextual` on the property is what selects it.
  */
@@ -34,7 +34,7 @@ object LocalDateWithInfinitySerializer : KSerializer<LocalDate> {
         when (value) {
             LocalDate.DISTANT_FUTURE -> encoder.encodeString("infinity")
             LocalDate.DISTANT_PAST -> encoder.encodeString("-infinity")
-            else -> encoder.encodeString(value.toString())
+            else -> encoder.encodeString(PgDateText.fromIso(value.toString()))
         }
     }
 
@@ -42,7 +42,7 @@ object LocalDateWithInfinitySerializer : KSerializer<LocalDate> {
         return when (val string = decoder.decodeString()) {
             "infinity" -> LocalDate.DISTANT_FUTURE
             "-infinity" -> LocalDate.DISTANT_PAST
-            else -> LocalDate.parse(string)
+            else -> LocalDate.parse(PgDateText.toIso(string))
         }
     }
 }

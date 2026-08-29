@@ -333,6 +333,56 @@ class DynamicDtoTest {
         )
     }
 
+    @Test
+    fun `a year past four digits casts back out of the payload`() {
+        // ISO writes +10000-01-02 and PostgreSQL reads that leading sign as a timezone offset, so the payload
+        // has to carry its spelling and not ISO's. 10000 is an ordinary storable year - this is not about the
+        // markers.
+        val year10000 = LocalDate(10000, 1, 2)
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), year10000))
+
+        assertEquals(
+            "10000-01-02",
+            db.select("(benefit).data_payload ->> 'until'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        // Against the driver's own binary encoding of the same value, which is the column's answer.
+        assertEquals(
+            true,
+            db.select("((benefit).data_payload ->> 'until')::date = @d")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>("d" to year10000)
+        )
+    }
+
+    @Test
+    fun `a date before year one casts back out of the payload`() {
+        // ISO counts through a year zero and PostgreSQL counts BC from one, so -0001-01-02 is 2 BC there.
+        val twoBc = LocalDate(-1, 1, 2)
+        record("Marcus", TributeAssessment("Aegyptus", BigDecimal("1"), twoBc))
+
+        assertEquals(
+            "0002-01-02 BC",
+            db.select("(benefit).data_payload ->> 'until'").from("dyn_veterans").fetchFieldStrict<String>()
+        )
+        assertEquals(
+            true,
+            db.select("((benefit).data_payload ->> 'until')::date = @d")
+                .from("dyn_veterans").fetchFieldStrict<Boolean>("d" to twoBc)
+        )
+    }
+
+    @Test
+    fun `and both come back as the dates they were`() {
+        val far = TributeAssessment("Aegyptus", BigDecimal("1"), LocalDate(5874897, 12, 31))
+        val old = TributeAssessment("Hispania", BigDecimal("2"), LocalDate(-4712, 1, 1))
+        record("Marcus", far)
+        record("Lucius", old)
+
+        assertEquals(
+            listOf(far, old),
+            db.select("benefit").from("dyn_veterans").orderBy("id").fetchFields<TributeAssessment>()
+        )
+    }
+
     // --- Enums, under the labels they were registered with ---------------------------------------------
 
     @Test

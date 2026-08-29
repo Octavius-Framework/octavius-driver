@@ -11,14 +11,13 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Writes [LocalDateTime.Companion.DISTANT_FUTURE] and [LocalDateTime.Companion.DISTANT_PAST] as `infinity`
- * and `-infinity`, the way a `timestamp` column stores them, and everything else as ISO-8601.
+ * Writes a [LocalDateTime] the way a `timestamp` column holds it, so that `(payload->>'taken')::timestamp`
+ * reads back what was put in.
  *
- * The default serializer writes those two out in full - `+999999999-12-31T23:59:59.999999999` and its
- * counterpart - at a year a `timestamp` cannot hold, that type reaching 294276 AD.
- * `(payload->>'taken')::timestamp` refuses the text before that is even tested, PostgreSQL reading the
- * leading sign as the start of a timezone offset. Either way the unbounded value a `timestamp` column
- * round-trips does not survive a `jsonb` payload.
+ * [LocalDateTime.Companion.DISTANT_FUTURE] and [LocalDateTime.Companion.DISTANT_PAST] mean `infinity` and
+ * `-infinity` in a column, and the default serializer writes them out in full at a year a `timestamp` cannot
+ * hold, that type reaching 294276 AD. Outside the markers, every year outside `0001`..`9999` is spelled in a
+ * way PostgreSQL will not read - see [PgDateText].
  *
  * Registered contextually by [octaviusSerializersModule]; `@Contextual` on the property is what selects it.
  */
@@ -33,7 +32,7 @@ object LocalDateTimeWithInfinitySerializer : KSerializer<LocalDateTime> {
         when (value) {
             LocalDateTime.DISTANT_FUTURE -> encoder.encodeString("infinity")
             LocalDateTime.DISTANT_PAST -> encoder.encodeString("-infinity")
-            else -> encoder.encodeString(value.toString())
+            else -> encoder.encodeString(PgDateText.fromIso(value.toString()))
         }
     }
 
@@ -41,7 +40,7 @@ object LocalDateTimeWithInfinitySerializer : KSerializer<LocalDateTime> {
         return when (val string = decoder.decodeString()) {
             "infinity" -> LocalDateTime.DISTANT_FUTURE
             "-infinity" -> LocalDateTime.DISTANT_PAST
-            else -> LocalDateTime.parse(string)
+            else -> LocalDateTime.parse(PgDateText.toIso(string))
         }
     }
 }

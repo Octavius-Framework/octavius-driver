@@ -9,16 +9,15 @@ import kotlinx.serialization.encoding.Encoder
 import kotlin.time.Instant
 
 /**
- * Writes [Instant.DISTANT_FUTURE] and [Instant.DISTANT_PAST] as `infinity` and `-infinity`, the way a
- * `timestamptz` column stores them, and everything else as ISO-8601.
+ * Writes an [Instant] the way a `timestamptz` column holds it, so that `(payload->>'issued')::timestamptz`
+ * reads back what was put in.
  *
- * The driver already maps those two constants onto PostgreSQL's infinities in a `timestamptz` column. A
- * `jsonb` payload is not that column: the value goes through JSON, where the default serializer writes
- * `+100000-01-01T00:00:00Z`, which is a timestamp far away rather than an unbounded one. Year 100000 is
- * inside what a `timestamptz` holds - unlike the `LocalDate` and `LocalDateTime` markers, which are past
- * their columns' ceilings outright - so this one fails on the sign alone: `(payload->>'issued')::timestamptz`
- * refuses the text because PostgreSQL reads that leading `+` as the start of a timezone offset. Either way
- * the two forms of "no end date" stop comparing equal, in SQL, in whichever query first read one.
+ * The driver already maps [Instant.DISTANT_FUTURE] and [Instant.DISTANT_PAST] onto PostgreSQL's infinities in
+ * a `timestamptz` column. A `jsonb` payload is not that column: the default serializer writes
+ * `+100000-01-01T00:00:00Z` there, a timestamp far away rather than an unbounded one, so the two forms of
+ * "no end date" stop comparing equal in SQL. Year 100000 is itself inside what a `timestamptz` holds, unlike
+ * the `LocalDate` and `LocalDateTime` markers - which is a good illustration of the second half, handled by
+ * [PgDateText]: the spelling is refused before the range is ever tested.
  *
  * Registered contextually by [octaviusSerializersModule]; `@Contextual` on the property is what selects it.
  */
@@ -33,7 +32,7 @@ object InstantWithInfinitySerializer : KSerializer<Instant> {
         when (value) {
             Instant.DISTANT_FUTURE -> encoder.encodeString("infinity")
             Instant.DISTANT_PAST -> encoder.encodeString("-infinity")
-            else -> encoder.encodeString(value.toString())
+            else -> encoder.encodeString(PgDateText.fromIso(value.toString()))
         }
     }
 
@@ -41,7 +40,7 @@ object InstantWithInfinitySerializer : KSerializer<Instant> {
         return when (val string = decoder.decodeString()) {
             "infinity" -> Instant.DISTANT_FUTURE
             "-infinity" -> Instant.DISTANT_PAST
-            else -> Instant.parse(string)
+            else -> Instant.parse(PgDateText.toIso(string))
         }
     }
 }

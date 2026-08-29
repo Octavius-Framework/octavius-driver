@@ -33,13 +33,20 @@
   serializer changes the moment the same value goes through JSON - which a `jsonb` column and a `dynamic_dto`
   payload both are. `BigDecimal` has no serializer at all, so the class does not encode; `LocalDate`,
   `LocalDateTime` and `Instant` holding PostgreSQL's `infinity` are written out as the far-away timestamp the
-  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity`, is past
-  what the column type holds (`date` reaches 5874897 AD, `timestamp` 294276 AD), and fails the cast back
-  earlier still on the leading sign PostgreSQL reads as a timezone offset. So an unbounded date stops
-  comparing equal to itself across the two forms and stops being readable as a date at all. The module answers
-  all four contextually, so `@Contextual` on the property is what turns it on and nothing else changes.
-  `octaviusJson` is that module on a stock `Json` and nothing more, for the frontend or the HTTP layer that
-  reads the same classes.
+  constant nominally is - `+999999999-12-31`, `+100000-01-01T00:00:00Z` - which is not `infinity` and is past
+  what the column type holds (`date` reaches 5874897 AD, `timestamp` 294276 AD), so an unbounded date stops
+  comparing equal to itself across the two forms. The module answers all four contextually, so `@Contextual`
+  on the property is what turns it on and nothing else changes. `octaviusJson` is that module on a stock
+  `Json` and nothing more, for the frontend or the HTTP layer that reads the same classes.
+- **A date in a payload is spelled the way PostgreSQL spells it**, not the way ISO-8601 does, which is a
+  second thing the date serializers answer and has nothing to do with the markers. The two formats disagree
+  as soon as a year leaves `0001`..`9999` and no single string satisfies both: ISO requires a sign past four
+  digits and PostgreSQL reads that sign as the start of a timezone offset, so `+10000-01-02` is refused - and
+  so is `+5874897-12-31`, a year a `date` holds perfectly well. ISO also counts through a year zero where
+  PostgreSQL counts BC from one, making ISO `-0001-01-02` PostgreSQL's `0002-01-02 BC`. The serializers now
+  write PostgreSQL's spelling and read **either** back, so a payload built in SQL still decodes and so does
+  one written before this existed. It does not widen what a column holds - `date` reaches 4713 BC to
+  5874897 AD - only what can be cast back out of a payload.
 - **`BigDecimalAsNumberSerializer`** writes an unquoted JSON number rather than a string, so `jsonb` stores it
   as a `numeric` and `jsonb_typeof` says `number` - arithmetic, casts and an index on the value all work
   without a cast written by hand. Reading goes back through the raw token, so a value longer than a `Double`

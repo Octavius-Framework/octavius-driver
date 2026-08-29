@@ -148,21 +148,34 @@ The payload is JSON, and a few kinds of value mean less there than they do in a 
 driver maps every one of them correctly in a `numeric`, a `date`, a `timestamptz` or an enum column; put the
 same value in a `jsonb` payload and the default serializer writes something else.
 
-| Type              | What the default serializer writes    | What that costs                                                |
-|:------------------|:--------------------------------------|:---------------------------------------------------------------|
-| `BigDecimal`      | nothing — it has no serializer        | the class does not encode at all                               |
-| `LocalDate`       | `+999999999-12-31`                    | not `infinity`, and `(payload->>'until')::date` fails outright |
-| `LocalDateTime`   | `+999999999-12-31T23:59:59.999999999` | the same                                                       |
-| `Instant`         | `+100000-01-01T00:00:00Z`             | the same                                                       |
-| a registered enum | the Kotlin constant's own name        | `Praetor` in the payload where the enum column holds `PRAETOR` |
+| Type              | What the default serializer writes    | What that costs                                                     |
+|:------------------|:--------------------------------------|:--------------------------------------------------------------------|
+| `BigDecimal`      | nothing — it has no serializer        | the class does not encode at all                                    |
+| `LocalDate`       | `+999999999-12-31` for `infinity`     | not `infinity` any more, and `(payload->>'until')::date` refuses it |
+| `LocalDateTime`   | `+999999999-12-31T23:59:59.999999999` | the same                                                            |
+| `Instant`         | `+100000-01-01T00:00:00Z`             | the same                                                            |
+| any date at all   | ISO-8601                              | outside years `0001`..`9999`, PostgreSQL will not read it back      |
+| a registered enum | the Kotlin constant's own name        | `Praetor` in the payload where the enum column holds `PRAETOR`      |
 
-Those are marker values, and the marker years are far outside what the columns hold: `date` reaches
-5874897 AD, `timestamp` and `timestamptz` reach 294276 AD, against a marker of 999999999. A second and
-independent fault sits in front of that — kotlinx.serialization writes any year past four digits with a
-leading sign, and PostgreSQL reads that sign as the start of a timezone offset, so even `+2024-01-01` is
-refused before its range is looked at. `Instant`'s marker is the one that would otherwise fit, year 100000
-being inside `timestamptz`, and it fails on the sign alone. Either way the payload stops holding anything the
-database will take as a date, let alone one meaning "unbounded".
+The last row is the one that is not about markers. ISO-8601 and PostgreSQL spell a year differently as soon
+as it leaves `0001`..`9999`, and no single string satisfies both:
+
+| Year  | ISO-8601 / kotlinx | PostgreSQL      |
+|:------|:-------------------|:----------------|
+| 2024  | `2024-01-02`       | the same        |
+| 10000 | `+10000-01-02`     | `10000-01-02`   |
+| 1 BC  | `0000-01-02`       | `0001-01-02 BC` |
+| 2 BC  | `-0001-01-02`      | `0002-01-02 BC` |
+
+ISO requires a sign past four digits and PostgreSQL reads that sign as the start of a timezone offset, so it
+refuses `+10000-01-02` — and `-0001-01-02`, and even `+5874897-12-31`, which is a year a `date` holds
+perfectly well. ISO also counts through a year zero where PostgreSQL counts BC from one, which is where the
+off-by-one comes from. The serializers write PostgreSQL's spelling and read **either** back, so a payload
+built in SQL still decodes.
+
+None of that widens what a column holds: `date` reaches 4713 BC to 5874897 AD and `timestamp`/`timestamptz`
+294276 AD, and a value past that is out of range however it is spelled — which is what the markers are, at
+year 999999999.
 
 Every one of them is answered already, and the whole of what a class has to say is one annotation on the
 property:
