@@ -34,6 +34,11 @@ object GlobalTypeRegistry {
     /**
      * Ensures that database types are loaded into the registry for the given database.
      * This method is internal to the driver.
+     *
+     * The line this writes names the dictionary a **R**elational-**O**bject **M**apping **E**ngine, which is
+     * the accurate description as well as the joke: a catalog read onto Kotlin types is the whole of what
+     * Octavius maps, with no session tracked, nothing lazy-loaded and nothing dirty-checked either side of it.
+     * Which is to say it is not an ORM - the letters only look that way from the other end.
      */
     internal fun ensureLoaded(key: RegistryKey, executor: QueryExecutor) {
         val registry = getRegistry(key)
@@ -47,7 +52,8 @@ object GlobalTypeRegistry {
             TypeRegistryLoader.load(registry, executor)
             registry.isLoaded = true
             logger.info {
-                "Loaded ${registry.dictionary.size} types for $key in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
+                "ROME (Relational-Object Mapping Engine) open for $key - " +
+                    "${registry.dictionary.size} types read in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
             }
         }
     }
@@ -63,7 +69,7 @@ object GlobalTypeRegistry {
             val startedAt = System.nanoTime()
             TypeRegistryLoader.load(registry, executor)
             logger.info {
-                "Reloaded ${registry.dictionary.size} types for $key in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
+                "ROME rebuilt for $key - ${registry.dictionary.size} types re-read in ${(System.nanoTime() - startedAt) / 1_000_000}ms"
             }
         }
     }

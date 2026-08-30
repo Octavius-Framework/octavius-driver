@@ -6,6 +6,8 @@
 ![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
+*Not an ORM. A **ROME** — a Relational-Object Mapping Engine. Because all queries lead to ROME.*
+
 Everything Octavius has to say about talking to PostgreSQL from Kotlin: a driver that speaks the wire protocol
 directly, a data access layer built on it, and a migrator that keeps the schema up to date.
 
@@ -14,16 +16,34 @@ are a working stack, and plenty of applications need nothing else. The client is
 somewhere to put a query that does not want a session threaded through its signature. Migrations answers a
 different question again, and takes the driver alone — never the client.
 
+## Philosophy
+
+*Augustus kept every form of the Republic and quietly took the power out of them. Octavius keeps every form of
+JDBC — a `Connection`, a `DataSource`, a pool that recognises both — and quietly does none of what JDBC does
+underneath.*
+
+| Principle                        | What it means here                                                                                                         |
+|:---------------------------------|:---------------------------------------------------------------------------------------------------------------------------|
+| **Query is Imperator**           | Your SQL dictates the shape of the result. Nothing rewrites it, reorders it, or issues a query you did not write.          |
+| **Object is a Vessel**           | A `data class` is a typed container for what came back — no proxies, no lazy loading, nothing dirty to check.              |
+| **No Legate Speaks for It**      | The driver talks Wire Protocol v3.2 itself. Nothing is wrapped, and no other driver is delegated to underneath.            |
+| **Each Province Governs Itself** | Driver, client and migrations are separate artifacts and separate decisions. The driver alone is a working stack.          |
+| **One Standard, No Fallback**    | v3.2 or nothing: PostgreSQL 17 fails the handshake rather than half-working, so there are no compatibility shims to carry. |
+
 ## What is here
 
-| Artifact                        | What it is                                                                                                                                                                                  |
-|:--------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **`driver`**                    | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md)                               |
-| **`client`**                    | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                                                    |
-| **`client-scanner`**            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)                                 |
-| **`migrations`**                | A migrator on the driver: `V`/`R` naming, `.sql` files and Kotlin classes, checksums, an advisory lock, and a history table it keeps itself. [README](migrations/README.md)                 |
-| **`pg-model`**                  | Multiplatform: the annotations Octavius reads off your own classes, a `BigDecimal` `commonMain` can name, and the serializers that keep it and PostgreSQL's `infinity` intact through JSON. |
-| **`driver-spring-integration`** | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                                                   |
+| Artifact                                       | What it is                                                                                                                                                                                  |
+|:-----------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`driver`** — *the road*                      | The core. Wire Protocol v3.2 spoken directly, a type system read from your catalog, `COPY`, `LISTEN`/`NOTIFY`, Large Objects, TLS. [README](driver/README.md)                               |
+| **`client`** — *the praetor*                   | Session scoping, thread-bound transactions, query builders, transaction plans, `dynamic_dto`. [README](client/README.md)                                                                    |
+| **`client-scanner`** — *the census*            | Finds the annotated classes in your packages and registers them, so thirty types are named once instead of thirty times. [README](client-scanner/README.md)                                 |
+| **`migrations`** — *the surveyor*              | A migrator on the driver: `V`/`R` naming, `.sql` files and Kotlin classes, checksums, an advisory lock, and a history table it keeps itself. [README](migrations/README.md)                 |
+| **`pg-model`** — *the codex*                   | Multiplatform: the annotations Octavius reads off your own classes, a `BigDecimal` `commonMain` can name, and the serializers that keep it and PostgreSQL's `infinity` intact through JSON. |
+| **`driver-spring-integration`** — *the treaty* | `OctaviusTemplate`, exception translation, Spring Boot autoconfiguration.                                                                                                                   |
+
+The road carries the query, the praetor decides which court hears it, the census enrols the citizens so that
+none has to present itself by name, the surveyor keeps the boundary stones and the record of who moved them,
+the codex is the text every province reads, and the treaty sets the terms a foreign power works under.
 
 Not published: `hikari-integration-tests` (integration tests against a real pool), `benchmarks` (JMH against
 `pgjdbc`), and `examples/spring-app` (a runnable sample, its own build pulling the driver in through
