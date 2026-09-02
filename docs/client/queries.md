@@ -234,8 +234,12 @@ Both return the builder's own type, so they can sit anywhere in the chain rather
 `copy()` carries them. Registered converters are consulted ahead of the session's, and a later registration
 wins over an earlier one.
 
-The most common use has its own shorthand: reading `dynamic_dto` payloads under a different `Json` for one
-query. See [A Different `Json` for One Query](dynamic-dto.md#a-different-json-for-one-query).
+Two uses common enough to be written for you rather than by you:
+
+- reading `dynamic_dto` payloads under a different `Json` — see
+  [A Different `Json` for One Query](dynamic-dto.md#a-different-json-for-one-query);
+- reading composites as maps, the whole subtree, whatever they are registered as — `compositesAsMaps()`, see
+  [Reading Them All as Maps](../driver/composites-reflection.md#reading-them-all-as-maps).
 
 ## Next
 

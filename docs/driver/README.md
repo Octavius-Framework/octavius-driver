@@ -98,6 +98,7 @@ Detailed documentation for Octavius Driver — a native, Kotlin-first PostgreSQL
 - [Writing a Whole Object as One Parameter](composites-reflection.md#writing-a-whole-object-as-one-parameter) — Entity in and out via `SELECT (@row).*` and `RETURNING *`, and why a nested `emptyList()` needs no `withPgType`
 - [What Reflection Reads](composites-reflection.md#what-reflection-reads-and-what-it-ignores) — The primary constructor, and everything it ignores
 - [When a Value Is Missing](composites-reflection.md#when-a-value-is-missing) — Absent, `NULL`, nullable, defaulted — the whole matrix
+- [Reading Them All as Maps](composites-reflection.md#reading-them-all-as-maps) — `compositesAsMaps()` for one query, subtree and all, without touching a registration
 - [Writing the Converters by Hand](composites-reflection.md#writing-the-converters-by-hand) — Replacing reflection, and what `getDefaultTypeName` is really for
 - [`PgComposite` and `PgRecord`](composites-reflection.md#the-raw-forms-pgcomposite-and-pgrecord) — The raw forms, and why `ROW(...)` is not a row
 - [`toDataObject` and `toDataMap`](composites-reflection.md#maps-in-and-out-todataobject-and-todatamap) — The same matching, without a database

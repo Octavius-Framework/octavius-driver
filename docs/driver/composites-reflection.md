@@ -20,6 +20,7 @@ Contents:
 * [Writing a whole object as one parameter](#writing-a-whole-object-as-one-parameter)
 * [What reflection reads, and what it ignores](#what-reflection-reads-and-what-it-ignores)
 * [When a value is missing](#when-a-value-is-missing)
+* [Reading them all as maps](#reading-them-all-as-maps)
 * [Writing the converters by hand](#writing-the-converters-by-hand)
 * [The raw forms: `PgComposite` and `PgRecord`](#the-raw-forms-pgcomposite-and-pgrecord)
 * [Maps in and out: `toDataObject` and `toDataMap`](#maps-in-and-out-todataobject-and-todatamap)
@@ -107,6 +108,10 @@ So a composite is never unreadable — worst case you get a `Map` or the raw `Pg
 composite nested inside a `Map<String, Any?>` or a `ROW(...)` comes out as your own type rather than a container. A
 hand-written converter can cover every row of this table too — see
 [Claim `Any` as well as the class](#claim-any-as-well-as-the-class).
+
+The table is what one column answers. To move the whole column — and everything under it — to the `Map` row for one
+query, without touching what the class is registered as anywhere else, see
+[Reading them all as maps](#reading-them-all-as-maps).
 
 ### Registration is per class, not per graph
 
@@ -301,6 +306,69 @@ legitimately carry both.
 
 The exception carries the property in its `path`, so a failure five levels down in a nested composite names the field
 rather than the root — read [`MappingException.path`](exceptions.md) before reading the message.
+
+## Reading them all as maps
+
+Registration is what a composite **is** to every session pointing at that database, so it is not where one report
+saying *"give me the shape, not my classes"* can be answered. `compositesAsMaps()`, from
+`io.github.octaviusframework.driver.converter.result.composite`, is: a converter registered on a query, applying to
+that query and discarded with it.
+
+```kotlin
+session.createNativeQuery("SELECT * FROM censuses")
+    .registerResultConverter(compositesAsMaps())
+    .fetchObjects<Map<String, Any?>>()
+
+// {id=1, assessment={label=census, payload={amount=40, currency=denarius}}}
+```
+
+It collapses the **whole subtree**, and gets that from the value type rather than by walking one: attributes are
+converted as `Any?`, a nested composite asked for as `Any?` reaches the same converter again, and an array of
+composites hands its elements down the same way. A `ROW(...)`
+[already answers to a map](#the-raw-forms-pgcomposite-and-pgrecord) on its own.
+
+A composite registered nowhere collapses along with the rest, which is what stops one turning up as a raw
+`PgComposite` three levels down — the one row of [the table above](#what-you-can-ask-a-composite-column-for) that
+asking for a `Map<String, Any?>` does not reach on its own.
+
+**Naming a class still gets the class.** Only `Any` and `Map` are claimed — *no preference* and *a dictionary* — so an
+explicit ask in the same query is untouched:
+
+```kotlin
+val row = session.createNativeQuery("SELECT assessment FROM censuses")
+    .registerResultConverter(compositesAsMaps())
+    .fetchRowStrict()
+
+row.get<Map<String, Any?>>("assessment")   // {label=census, payload={amount=40, …}}
+row.get<Assessment>("assessment")          // Assessment(label=census, payload=Tribute(…))
+```
+
+What changes is what a composite is *by default*, not what naming a class means. Which is also why a data class is
+unaffected below its own surface: `Assessment` declares `payload: Tribute`, and a declared property type is an
+explicit ask like any other.
+
+The one-type form names the composite, and every other one goes on mapping as it did:
+
+```kotlin
+val row = session.createNativeQuery("SELECT assessment, tribute FROM censuses")
+    .registerResultConverter(compositesAsMaps("tribute"))     // "tribute", "public" to pin the schema
+    .fetchRowStrict()
+
+row.get<Any>("assessment")   // Assessment — not the named type, so reflection still has it
+row.get<Any>("tribute")      // a Map
+```
+
+Left without a schema the name matches wherever the value came from, which is the right reading when the type is
+reached through the search path rather than written out.
+
+For several types, name them all in one converter rather than registering one apiece:
+
+```kotlin
+.registerResultConverter(compositesAsMaps(listOf(QualifiedName("", "tribute"), QualifiedName("", "levy"))))
+```
+
+Every converter on a query is asked about every composite it decodes, and that one is a single converter however
+many names it holds.
 
 ## Writing the converters by hand
 

@@ -58,6 +58,23 @@
   alike, so the expected type is what fixes `T` and its nullability with it, exactly as in the `fetch*`
   family: `val name: String = row["cognomen"]` refuses a `NULL` and `val name: String? = row["cognomen"]`
   accepts one. `get<String>("cognomen")` goes on working unchanged; nothing is renamed.
+- **`compositesAsMaps()` reads one query's composites as maps, whatever they are registered as.** Registration
+  is what a composite *is* to every session pointing at that database, so it was never where a report asking
+  for the shape rather than for the classes could be answered - and the only way to ask was a converter
+  written by hand, which is a great deal of ceremony for "not this time". Register this one on a query
+  instead: it applies to that query and is discarded with it, the query's registry sitting ahead of the
+  session's. It collapses the **whole subtree**, and gets that from the value type rather than by walking
+  one - attributes convert as `Any?`, a nested composite asked for as `Any?` reaches the same converter
+  again, and an array of composites hands its elements down the same way. `compositesAsMaps(name, schema)`
+  names one type and leaves every other composite mapping as it did, and the `Collection<QualifiedName>`
+  overload names several in one converter - which is the form to reach for, every converter on a query being
+  asked about every composite it decodes and this being one of them however many names it holds.
+
+  Only `Any` and `Map` are claimed - *no preference* and *a dictionary* - so `row.get<Tribute>(…)` in the same
+  query still answers with the class, and a data class is untouched below its own surface, a declared property
+  type being an explicit ask like any other. A composite registered nowhere collapses along with the rest,
+  which is the one place asking for a `Map<String, Any?>` did not reach on its own: it used to hand back a raw
+  `PgComposite` from three levels down, the identity fallback having nothing better to do with it.
 
 #### Changed
 
