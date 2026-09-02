@@ -49,4 +49,34 @@ data class MigratorConfig(
     val outOfOrder: Boolean = false,
     val baselineVersion: String? = null,
     val target: String? = null
-)
+) {
+    /**
+     * [baselineVersion] as a version, or `null` where none was given.
+     *
+     * Parsed here rather than on the run, so a `baselineVersion = "1.x"` is refused by whoever built the
+     * config instead of by the first `migrate()` that reaches it - and parsed once, rather than by every
+     * migrator this config is handed to.
+     */
+    internal val parsedBaselineVersion: MigrationVersion? = parseConfigured(baselineVersion, "baselineVersion")
+
+    /** [target] as a version, or `null` where none was given. Read on the same terms as [parsedBaselineVersion]. */
+    internal val parsedTarget: MigrationVersion? = parseConfigured(target, "target")
+}
+
+/**
+ * Reads a version out of a configured property, saying which property it was.
+ *
+ * @throws MigrationException `CONFIGURATION` where [text] is not a version.
+ */
+private fun parseConfigured(text: String?, property: String): MigrationVersion? {
+    if (text == null) return null
+    return try {
+        MigrationVersion.parse(text)
+    } catch (e: MigrationException) {
+        throw MigrationException(
+            MigrationExceptionReason.CONFIGURATION,
+            "$property is \"$text\", which is not a version.",
+            cause = e
+        )
+    }
+}

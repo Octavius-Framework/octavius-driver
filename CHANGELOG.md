@@ -77,6 +77,16 @@
   of the same coin, and is why this is for what genuinely differs per environment: the history records that
   the file ran, not what it expanded to.
 
+#### Changed
+
+- **`baselineVersion` and `target` are read where they are written.** `MigratorConfig` parses both as it is
+  built, so `baselineVersion = "1.x"` is refused by whoever wrote it down rather than by the first
+  `migrate()` that reaches it - and parsed once, rather than by every migrator the config is handed to. The
+  exception is the same `MIGRATION_EXCEPTION:CONFIGURATION` naming the property and the value; only the
+  frame it is raised from moves. Both stay `String`, this being a deployment property more often than
+  something written in code: where you already hold a `MigrationVersion`, `canonical` is the spelling to
+  pass, and the KDoc now says so.
+
 ## Version 0.9.9 (v0.9.9)
 
 ### Project

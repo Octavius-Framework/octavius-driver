@@ -68,8 +68,9 @@ class OctaviusMigrator private constructor(
     private val lock = MigrationLock(config.historySchema, config.historyTable, config.lockTimeout)
     private val runner = MigrationRunner(history)
 
-    private val baselineVersion = config.baselineVersion?.let { configVersion(it, "baselineVersion") }
-    private val target = config.target?.let { configVersion(it, "target") }
+    // Parsed by the config, which refuses a value that is not a version at the point it was written down.
+    private val baselineVersion = config.parsedBaselineVersion
+    private val target = config.parsedTarget
 
     /**
      * Applies every migration this database has not run, in version order.
@@ -156,17 +157,6 @@ class OctaviusMigrator private constructor(
             )
         }
     }
-
-    private fun configVersion(text: String, property: String): MigrationVersion =
-        try {
-            MigrationVersion.parse(text)
-        } catch (e: MigrationException) {
-            throw MigrationException(
-                MigrationExceptionReason.CONFIGURATION,
-                "$property is \"$text\", which is not a version.",
-                cause = e
-            )
-        }
 
     private fun elapsedMs(startedAt: Long): Long = (System.nanoTime() - startedAt) / 1_000_000
 
