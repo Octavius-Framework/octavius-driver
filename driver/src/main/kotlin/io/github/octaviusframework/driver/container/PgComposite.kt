@@ -42,15 +42,15 @@ class PgComposite internal constructor(
         }
 
         if (value == null) {
-            throw MappingException(
-                MappingExceptionReason.CONVERSION_ERROR,
-                details = "Expected non-null value for attribute at index $index, got null"
+            throw conversionErrorAt(
+                type.attributeNames[index],
+                "Expected non-null value for attribute at index $index, got null"
             )
         }
 
-        throw MappingException(
-            MappingExceptionReason.CONVERSION_ERROR,
-            details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
+        throw conversionErrorAt(
+            type.attributeNames[index],
+            "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
         )
     }
 

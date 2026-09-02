@@ -1,7 +1,6 @@
 package io.github.octaviusframework.driver.container
 
 import io.github.octaviusframework.driver.exception.MappingException
-import io.github.octaviusframework.driver.exception.MappingExceptionReason
 
 /**
  * Represents a PostgreSQL range type (e.g., int4range, tsrange).
@@ -57,16 +56,16 @@ class PgRange internal constructor(
     inline fun <reified T> lowerBound(): T {
         if (isEmpty || isLowerInfinite || isLowerNull) {
             if (null is T) return null as T
-            throw MappingException(
-                MappingExceptionReason.CONVERSION_ERROR,
-                details = "Lower bound is null or infinite (missing) but requested type is non-nullable"
+            throw conversionErrorAt(
+                "lower",
+                "Lower bound is null or infinite (missing) but requested type is non-nullable"
             )
         }
         val value = lowerBound
         if (value is T) return value
-        throw MappingException(
-            MappingExceptionReason.CONVERSION_ERROR,
-            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
+        throw conversionErrorAt(
+            "lower",
+            "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }
 
@@ -85,16 +84,16 @@ class PgRange internal constructor(
     inline fun <reified T> upperBound(): T {
         if (isEmpty || isUpperInfinite || isUpperNull) {
             if (null is T) return null as T
-            throw MappingException(
-                MappingExceptionReason.CONVERSION_ERROR,
-                details = "Upper bound is null or infinite (missing) but requested type is non-nullable"
+            throw conversionErrorAt(
+                "upper",
+                "Upper bound is null or infinite (missing) but requested type is non-nullable"
             )
         }
         val value = upperBound
         if (value is T) return value
-        throw MappingException(
-            MappingExceptionReason.CONVERSION_ERROR,
-            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
+        throw conversionErrorAt(
+            "upper",
+            "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }
 

@@ -4,6 +4,7 @@ import io.github.octaviusframework.driver.codec.decodeSafely
 import io.github.octaviusframework.driver.converter.result.mapper.ResultMapper
 import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
+import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.exception.TypeException
 import io.github.octaviusframework.driver.exception.TypeExceptionReason
 import io.github.octaviusframework.driver.registry.TypeRegistry
@@ -56,8 +57,17 @@ class Row internal constructor(
     @Suppress("UNCHECKED_CAST")
     fun <T> get(index: Int, targetType: KType): T {
         val raw = getRaw(index)
-        val type = metadata.getColumn(index).type
-        return resultMapper.deserialize(raw, targetType, sourceType = type) as T
+        val column = metadata.getColumn(index)
+        try {
+            return resultMapper.deserialize(raw, targetType, sourceType = column.type) as T
+        } catch (e: OctaviusException) {
+            // The column's name goes on the path, as it does when a row is mapped by `fetchObjects` or read
+            // as a map - the same failure should read the same way whichever route reached it. Added here
+            // rather than passed to the mapper because `deserialize` is called from inline functions, so its
+            // signature reaches user bytecode and is not ours to widen.
+            e.path.add(column.name)
+            throw e
+        }
     }
 
     /**

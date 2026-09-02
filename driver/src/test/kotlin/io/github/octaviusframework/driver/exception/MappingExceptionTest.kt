@@ -139,4 +139,44 @@ class MappingExceptionTest {
         assertEquals(listOf("employees", "[0]"), ex.path.asReversed(), "Expected path missing, got: ${ex.path}")
         assertTrue(details.contains("Null array element for non-nullable type"), "Expected null element message, got: $details")
     }
+
+    // --- Where a container's own accessor is the leaf ------------------------------------------------
+
+    @Test
+    fun `a composite accessor names the attribute it failed on`() {
+        // Read out of a container by hand - which is what a hand-written converter does - and the path has to
+        // end somewhere. Without this it ends at the attribute above, and says nothing about which attribute
+        // of it was being read.
+        val composite = createComposite(mapOf("street" to "Via Sacra", "city" to "Roma"))
+
+        val ex = assertFailsWith<MappingException> { composite.get<Int>("city") }
+
+        assertEquals(listOf("city"), ex.path)
+        assertEquals(MappingExceptionReason.CONVERSION_ERROR, ex.reason)
+    }
+
+    @Test
+    fun `an array accessor names the element position`() {
+        val array = createArray(listOf("Roma", "Ostia"))
+
+        val ex = assertFailsWith<MappingException> { array.get<Int>(1) }
+
+        assertEquals(listOf("[1]"), ex.path)
+    }
+
+    @Test
+    fun `a lookup that finds nothing gets no path`() {
+        // The rule the two above are one half of: a path says where the value was, so there is none to give
+        // for a position that holds nothing. The index is in the message, and saying it twice would read as
+        // though something had been found there.
+        val composite = createComposite(mapOf("street" to "Via Sacra"))
+
+        val outOfBounds = assertFailsWith<MappingException> { composite.get<String>(9) }
+        assertEquals(emptyList(), outOfBounds.path)
+        assertEquals(MappingExceptionReason.COLUMN_NOT_FOUND, outOfBounds.reason)
+
+        val noSuchName = assertFailsWith<MappingException> { composite.get<String>("forum") }
+        assertEquals(emptyList(), noSuchName.path)
+        assertEquals(MappingExceptionReason.COLUMN_NOT_FOUND, noSuchName.reason)
+    }
 }

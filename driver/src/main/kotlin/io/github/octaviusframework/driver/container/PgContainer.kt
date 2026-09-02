@@ -1,5 +1,27 @@
 package io.github.octaviusframework.driver.container
 
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
+
+/**
+ * A `CONVERSION_ERROR` naming where in the container the value was.
+ *
+ * A container's accessors are the leaves of the read chain, so a failure in one is where a `path` ends: the
+ * layers above append their own segment as it unwinds, and this is what puts the last one on. It matters most
+ * inside a hand-written converter, where the chain is what invoked you and `payload -> amount` is a great deal
+ * more use than `payload`.
+ *
+ * Only a value that **is there** gets a segment. An index out of bounds or a name the container does not have
+ * is not a location, and saying it twice - once in the message, once as a path - would read as though the
+ * driver had found something there.
+ *
+ * @param segment What to call the position: an attribute's name, or `[i]` where it has only a number.
+ * @param details The message.
+ */
+@PublishedApi
+internal fun conversionErrorAt(segment: String, details: String): MappingException =
+    MappingException(MappingExceptionReason.CONVERSION_ERROR, details = details).apply { path.add(segment) }
+
 /**
  * Base interface for all PostgreSQL container types (e.g., arrays, composites, ranges, multiranges, records).
  *

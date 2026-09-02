@@ -52,9 +52,9 @@ class PgArray internal constructor(
         )
         val value = elements[index]
         if (value is T) return value
-        throw MappingException(
-            MappingExceptionReason.CONVERSION_ERROR,
-            details = "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
+        throw conversionErrorAt(
+            "[$index]",
+            "Expected ${T::class.simpleName}, got ${if (value != null) value::class.simpleName else "null"}"
         )
     }
 }

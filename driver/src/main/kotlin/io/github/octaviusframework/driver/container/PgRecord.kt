@@ -42,16 +42,12 @@ class PgRecord internal constructor(
         }
 
         if (value == null) {
-            throw MappingException(
-                MappingExceptionReason.CONVERSION_ERROR,
-                details = "Expected non-null value for attribute at index $index, got null"
-            )
+            // A record's fields have no names to give, so the position is what names them - the same `[i]`
+            // the array converter writes.
+            throw conversionErrorAt("[$index]", "Expected non-null value for attribute at index $index, got null")
         }
 
-        throw MappingException(
-            MappingExceptionReason.CONVERSION_ERROR,
-            details = "Expected ${T::class.simpleName}, got ${value::class.simpleName}"
-        )
+        throw conversionErrorAt("[$index]", "Expected ${T::class.simpleName}, got ${value::class.simpleName}")
     }
 
     /**

@@ -506,6 +506,10 @@ The object-identifying fields come straight from the server's error message, so 
 
 `path` accumulates as the exception unwinds through nested structures — each frame appends its own key name — and is printed reversed, outermost first: `PATH: consul -> province -> founded`. That tells you *which* field five levels down in a nested composite was the problem. It is [the base class's](#the-base-class), so a mapping failure inside a [transaction plan](../client/plans.md) reads `PATH: step 3 -> parameter 'amount' -> map #1 -> founded` — the mapper's own segments, under the ones the plan added.
 
+It runs the whole way down and the whole way up. The column is the outermost segment whichever route reached it — `fetchObjects` mapping the row, `fetchField`, or a `Row.get` of your own — and a container's own accessor is the innermost, so `composite.get<Int>("city")` inside a hand-written converter reads `PATH: residence -> city` rather than stopping at `residence`. A record's fields and an array's elements have only a position to give, so they give that: `[0]`, `[1]`. A range's bounds are `lower` and `upper`.
+
+What gets no segment is a lookup that found nothing. `COLUMN_NOT_FOUND` — an index out of bounds, a name the composite does not carry — is not a location, and a path saying otherwise would read as though the driver had found something there and failed on it. The name you asked for is in the message instead.
+
 ### 16. `DatabaseSystemException`
 
 **Thrown when:** the database engine itself is in trouble rather than your query being wrong — out of memory, disk full, configuration limits, internal errors.

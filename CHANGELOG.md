@@ -76,6 +76,23 @@
   which is the one place asking for a `Map<String, Any?>` did not reach on its own: it used to hand back a raw
   `PgComposite` from three levels down, the identity fallback having nothing better to do with it.
 
+#### Fixed
+
+- **A mapping failure names the column whichever route reached it.** `fetchObjects` maps a row through the
+  reflective row converter, which names each column as it descends; `fetchField`, `fetchFields`, `forEachField`
+  and a `Row.get` of your own all go through `Row.get`, which handed the value to the mapper with no segment at
+  all. So the same broken value read `PATH: city` one way and `PATH: residence -> city` the other, and the
+  first of those does not say which column it was in - on the route you take precisely when a converter needs
+  the database and the row has to outlive the exchange. `Row.get` now appends the column on the way out.
+
+  The other end of the same path: a container's own accessors - `PgComposite.get`, `PgRecord.get`,
+  `PgArray.get`, `PgRange.lowerBound`/`upperBound` - are the leaves of the read chain and appended nothing, so
+  a hand-written converter reading `source.get<Int>("amount")` raised under `payload` with no word of which
+  attribute of it. They name it now: an attribute by name, a record field or array element by position
+  (`[0]`), a bound as `lower` or `upper`. A lookup that finds *nothing* still gets no segment - an index out of
+  bounds or a name the composite does not carry is not a location, and a path saying otherwise would read as
+  though something had been found there.
+
 #### Changed
 
 - **`path` is on `OctaviusException` rather than on `MappingException`.** The breadcrumb that names an
