@@ -8,6 +8,8 @@ import io.github.octaviusframework.client.transaction.spread
 import io.github.octaviusframework.driver.exception.ConstraintViolationException
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -24,6 +26,9 @@ import kotlin.test.assertTrue
 class TransactionPlanTest {
 
     data class Item(val province: String, val amount: Int)
+
+    /** Wider than the projection the mapping test selects, which is what makes that step fail. */
+    data class Edict(val id: Int, val title: String, val tribute: Int)
 
     companion object {
         private lateinit var dataSource: HikariDataSource
@@ -264,6 +269,45 @@ class TransactionPlanTest {
 
         assertEquals(0L, edictCount(), "the edict inserted by step one must have been rolled back")
         assertEquals(0L, itemCount())
+    }
+
+    @Test
+    fun `a step whose statement fails names itself on the path`() {
+        // The query context carries the SQL and the values, and in a plan built in a loop that is the same
+        // statement in every step. Which of them it was is the executor's to say, and the path is where it
+        // says it - the one thing that can be added without replacing the exception a retry matches on.
+        val plan = TransactionPlan()
+        for (tribute in listOf(650, 700, 750)) {
+            plan.add(
+                db.insertInto("plan_edicts").values(listOf("title", "tribute"))
+                    .asStep().update("title" to "De Tributis", "tribute" to tribute)
+            )
+        }
+
+        val thrown = assertFailsWith<ConstraintViolationException> { db.executeTransactionPlan(plan) }
+
+        assertEquals(listOf("step 1"), thrown.path)
+        assertTrue(thrown.toString().contains("PATH: step 1"), thrown.toString())
+    }
+
+    @Test
+    fun `a step whose result cannot be mapped keeps the attribute and gains the step`() {
+        db.insertInto("plan_edicts").values(listOf("title", "tribute"))
+            .update("title" to "De Tributis", "tribute" to 650)
+
+        val plan = TransactionPlan()
+        plan.add(
+            db.insertInto("plan_edicts").values(listOf("title", "tribute"))
+                .asStep().update("title" to "De Bello Gallico", "tribute" to 1)
+        )
+        // The projection has no `tribute` to give the class, which the mapper reports against the attribute.
+        plan.add(db.select("id", "title").from("plan_edicts").asStep().fetchObjects<Edict>())
+
+        val thrown = assertFailsWith<MappingException> { db.executeTransactionPlan(plan) }
+
+        assertEquals(MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING, thrown.reason)
+        assertEquals(listOf("step 1", "tribute"), thrown.path.asReversed(), "the mapper's own path, under the step")
+        assertEquals(1L, edictCount(), "only the seeded edict is left: the insert in step 0 rolled back")
     }
 
     @Test

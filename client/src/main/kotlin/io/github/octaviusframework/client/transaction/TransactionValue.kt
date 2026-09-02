@@ -72,10 +72,9 @@ sealed class TransactionValue<out T> {
  * [MappingException][io.github.octaviusframework.driver.exception.MappingException] naming the step, the
  * parameter and which `map` of the chain it was, with what was thrown as its cause. An
  * [OctaviusException][io.github.octaviusframework.driver.exception.OctaviusException] is passed through as it
- * was thrown - a
- * [MappingException][io.github.octaviusframework.driver.exception.MappingException] among them picking up the
- * same three on its `path` on the way out, which is the breadcrumb the driver's own layers leave and the only
- * thing that can be added to an exception without replacing it.
+ * was thrown - restating one would cost the type the caller catches on - and picks up the same three on its
+ * [path][io.github.octaviusframework.driver.exception.OctaviusException.path] instead, which is the
+ * breadcrumb every layer leaves and the only thing that can be added to an exception without replacing it.
  *
  * @param transformation What to do to the resolved value.
  * @return The transformed value, still unresolved.

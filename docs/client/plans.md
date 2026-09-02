@@ -113,13 +113,14 @@ Details: Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1) thre
 `#2` is the second `map` written on that parameter. A lambda has no name to report and every `map` in a chain
 shares the parameter it is on, so the number is the whole of what tells them apart.
 
-An `OctaviusException` raised in there is passed through as it is, which is what a `row.get` for a column the
-row has not got raises. That one picks up the same three on its `path` — the breadcrumb the driver's own
-layers write to as they unwind, and the only thing that can be added to an exception without replacing it:
+An `OctaviusException` raised in there is **passed through as it was thrown** — which is what a `row.get` for
+a column the row has not got raises, and what a query run inside the lambda would raise. Restating one would
+cost the type you catch on, so what it picks up instead is those same three on its `path`, the only thing a
+layer can add to an exception without replacing it:
 
 ```
 Details: Column not found: tribute
-Path: step 1 -> parameter 'name' -> map #1
+PATH: step 1 -> parameter 'name' -> map #1
 ```
 
 ### The spread
@@ -195,7 +196,9 @@ is nothing.
 
 ## Reading One That Went Wrong
 
-A failure names its step. `describe()` is what turns that number back into a step:
+**Every failure a step raises names that step**, on the `PATH:` line of the exception — resolving its
+parameters, running its statement and mapping its result alike. `describe()` is what turns the number back
+into a step:
 
 ```kotlin
 println(plan.describe())
@@ -221,6 +224,12 @@ by one layer and run by another, so the code holding it when it fails is usually
 what went in — and a plan built in a loop has the same SQL and the same parameter names in all twenty of its
 steps, which is why the query context on the exception cannot separate the third iteration from the
 seventeenth and the step number can.
+
+```
+MESSAGE: CONSTRAINT_VIOLATION_EXCEPTION:UNIQUE_CONSTRAINT_VIOLATION
+Details: Key (title)=(De Tributis) already exists.
+PATH: step 17
+```
 
 **What a literal *is* is deliberately not shown.** The wiring is the part that cannot be read off the code
 that assembled the plan; a bound value can, and printing one would put a `bytea` parameter or a column of

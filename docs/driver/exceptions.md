@@ -33,7 +33,8 @@ abstract class OctaviusException(
     message: String,
     val sqlState: String? = null,
     val serverErrorMessage: ServerErrorMessage? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
+    val path: MutableList<String> = mutableListOf()
 ) : RuntimeException(message, cause)
 ```
 
@@ -43,8 +44,11 @@ abstract class OctaviusException(
 | `sqlState`             | `String?`             | The five-character SQLSTATE. `null` for purely client-side failures that never reached the server.           |
 | `serverErrorMessage`   | `ServerErrorMessage?` | The complete parsed `ErrorResponse` from PostgreSQL. `null` when the error originated in the driver.         |
 | `queryContext`         | `QueryContext?`       | What *your application* executed — SQL, parameters, and their database-level forms. Attached on the way out. |
+| `path`                 | `MutableList<String>` | Where the failure happened, innermost first — an attribute five levels down a composite, a step of a plan. Appended to on the way out. |
 | `cause`                | `Throwable?`          | The underlying exception, where one exists (an `IOException` under a `NetworkException`, for example).       |
 | `getDetailedMessage()` | `String?`             | The human-readable explanation, assembled per subclass. This is what the log block renders.                  |
+
+`path` and `queryContext` are the two things a frame can add to an exception **without replacing it**, which is why both live on the base class rather than on the subclass that happens to need them. Replacing an exception costs the type the caller catches on — a `ConstraintViolationException` restated as a mapping failure stops being the thing a retry loop matches — so a layer that knows *where* it was appends a segment and rethrows the exception it was given. Both are rendered into `toString()`: `path` reversed, outermost first, on a `PATH:` line.
 
 `serverErrorMessage` is a plain data class mirroring the wire message field for field: `severity`, `code`, `message`, `detail`, `hint`, `position`, `internalPosition`, `internalQuery`, `where`, `schema`, `table`, `column`, `datatype`, `constraint`, `file`, `line`, `routine`. Most subclasses re-expose the fields that matter for their category as first-class properties (`constraint` on a constraint violation, `routine` on a permission denial), but the raw object is always there when you need something they don't surface.
 
@@ -490,7 +494,7 @@ The object-identifying fields come straight from the server's error message, so 
 
 **Thrown when:** a conversion or object-mapping step fails, on either side of the wire.
 **Raised by:** `ResultMapper`, `ReflectionMappingUtils`, and the `PgComposite` / `PgRecord` / `PgArray` / `PgRange` accessors.
-**Properties:** `reason`, `details`, `path`.
+**Properties:** `reason`, `details`, and `path` from the base class.
 
 | Reason (`MappingExceptionReason`) | Description                                                                                                                                                       |
 |:----------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -500,7 +504,7 @@ The object-identifying fields come straight from the server's error message, so 
 | `CONVERSION_ERROR`                | Cast or conversion failed, including a converter returning a type other than the one requested.                                                                  |
 | `BLOCK_FAILED`                    | The block handed to `forEachRow` / `forEachObject` / `forEachField` threw something of its own; it is the `cause`.                                        |
 
-`path` accumulates as the exception unwinds through nested structures — each frame appends its own key name — and is printed reversed, outermost first: `Path: consul -> province -> founded`. That tells you *which* field five levels down in a nested composite was the problem.
+`path` accumulates as the exception unwinds through nested structures — each frame appends its own key name — and is printed reversed, outermost first: `PATH: consul -> province -> founded`. That tells you *which* field five levels down in a nested composite was the problem. It is [the base class's](#the-base-class), so a mapping failure inside a [transaction plan](../client/plans.md) reads `PATH: step 3 -> parameter 'amount' -> map #1 -> founded` — the mapper's own segments, under the ones the plan added.
 
 ### 16. `DatabaseSystemException`
 

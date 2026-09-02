@@ -61,17 +61,16 @@ private fun resolveOne(
         // nothing else, so the result style would not see it at all.
         try {
             transform(input)
-        } catch (e: MappingException) {
+        } catch (e: OctaviusException) {
             // Already in the hierarchy and already more specific than anything this could say about it, but
-            // carrying a path the driver's own layers write to as they unwind. Where the transformation was
-            // is added the same way, so `row.get` for a column that is not there reports the step it was
-            // reached from rather than only the column - and the exception is still the one that was thrown.
+            // carrying a path every layer writes to as it unwinds - the one thing that can be added without
+            // replacing the exception. Replacing it would cost the type the caller catches on, so a failure
+            // from a query run inside the lambda would stop being the one a retry matches. `row.get` for a
+            // column that is not there therefore reports the parameter it was reached from as well as the
+            // column, and the exception is still the one that was thrown. The step is added by the executor,
+            // which puts it on everything a step raises rather than on this alone.
             e.path.add("map #${value.position}")
             e.path.add("parameter '$paramName'")
-            e.path.add("step $stepIndex")
-            throw e
-        } catch (e: OctaviusException) {
-            // In the hierarchy too, and with nowhere to record where it happened without replacing it.
             throw e
         } catch (e: Exception) {
             throw MappingException(

@@ -56,6 +56,15 @@
 
 #### Changed
 
+- **`path` is on `OctaviusException` rather than on `MappingException`.** The breadcrumb that names an
+  attribute five levels down a nested composite is one of the two things a layer can add to an exception
+  *without replacing it* - the other being `queryContext`, which has been on the base class all along for
+  exactly that reason. Replacing one costs the type the caller catches on, so every layer that knew where it
+  was but was not holding a mapping failure had nothing it could do with that knowledge. It now sits beside
+  `queryContext`, written to the same way and rendered the same way. `MappingException.path` still reads as it
+  did and its constructor still takes one; what changed is which exceptions have it. The rendering moved with
+  it, from `Path: a -> b` inside `getDetailedMessage()` to `PATH: a -> b` in the exception's own frame, so
+  anything matching the old line - or parsing the path back out of that string - has to be matched again.
 - **`TransactionIsolationLevel.fromJdbcValue` raises what its sibling raises.** It documented
   `IllegalArgumentException` and threw `NoSuchElementException`, neither of which is what
   `setTransactionIsolation` raises for the same value going the other way. Now
@@ -76,6 +85,15 @@
 
 #### Changed
 
+- **Every failure a step of a `TransactionPlan` raises names that step.** Resolving its parameters already
+  did; running its statement and mapping its result did not - so a unique violation on the fourth of twenty
+  identical inserts arrived carrying the SQL, the values and nothing that said which insert it was, which is
+  the one thing `describe()` exists to be looked up with. The executor now records `step N` on the `path` of
+  anything a step raises and leaves the exception otherwise untouched, so a `ConstraintViolationException` is
+  still the exception a retry loop matches on and a `MappingException` still names the attribute, now under
+  the step: `PATH: step 1 -> tribute`. An `OctaviusException` raised by your own transformation picks up the
+  parameter and the map number as a mapping failure always has - that one used to pass through with nowhere
+  to record where it happened, which is what moving `path` onto `OctaviusException` opened up.
 - **`DefaultSessionProvider` opens a transaction in two round trips instead of five.** It used to set the
   isolation level and the read-only flag as session characteristics before the `BEGIN`, then send each
   timeout as its own `SET LOCAL` after it - five round trips before the first statement of the block, and
@@ -254,7 +272,7 @@
   refuses outright; the other two are whatever the caller's own `map` raised, wrapped as a `MappingException`
   naming the parameter or passed through as the driver's own `COLUMN_NOT_FOUND`.
 - **Everything a plan raises while resolving a step's parameters names the step, and every `map` in a chain is
-  numbered.** . It now reads `Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1) threw NumberFormatException`;
+  numbered.** It now reads `Step 1 of the plan, parameter 'amount': map #2 over step 0.map(#1) threw NumberFormatException`;
   `TransactionValue.Transformed` renders as that chain where it rendered as an identity hash, and the driver's
   own failure inside a transformation picks the same three up on its `path`. The number is where the step sits
   in the plan being run, not the index the handle was created at, which after `addPlan` is no longer the same.

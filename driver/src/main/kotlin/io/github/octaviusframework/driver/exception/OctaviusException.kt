@@ -10,14 +10,22 @@ import io.github.octaviusframework.driver.query.QueryContext
  * @property sqlState The SQL state code associated with the error, if applicable.
  * @property serverErrorMessage The raw error message received from the database, if applicable.
  * @param cause The underlying exception that caused this failure, if any.
+ * @property path Where this happened, innermost first, appended to by each layer as the exception unwinds.
+ * It is on the base class for the same reason [queryContext] is: adding to it is the only thing a frame can
+ * do to an exception without replacing it, and replacing one costs the type the caller catches on - a
+ * `ConstraintViolationException` restated as something else stops being the failure a retry looks for. A
+ * mapper walking a nested composite appends the attribute it was on, a transaction plan the step and
+ * parameter it was resolving. Rendered reversed, outermost first, so `PATH: step 1 -> parameter 'name' ->
+ * map #1` reads from the plan down to the lambda.
  */
 abstract class OctaviusException(
     message: String,
     val sqlState: String? = null,
     val serverErrorMessage: ServerErrorMessage? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
+    val path: MutableList<String> = mutableListOf()
 ) : RuntimeException(message, cause) {
-    
+
     /**
      * The context of the query that resulted in this exception, if applicable.
      *
@@ -51,7 +59,11 @@ abstract class OctaviusException(
         if (detailedMsg != null) {
             appendLine("EXCEPTION DETAILS: \n$detailedMsg")
         }
-        
+
+        if (path.isNotEmpty()) {
+            appendLine("PATH: ${path.asReversed().joinToString(" -> ")}")
+        }
+
         if (queryContext != null) {
             appendLine(queryContext.toString())
         }

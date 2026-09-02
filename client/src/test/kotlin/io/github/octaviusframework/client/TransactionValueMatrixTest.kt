@@ -490,6 +490,9 @@ class TransactionValueMatrixTest {
 
         val thrown = assertFailsWith<InvalidOperationException> { db.executeTransactionPlan(plan) }
         assertEquals("raised by the caller's own code", thrown.details)
+        // Passed through as it was thrown, and told where it was thrown from: the path is on the whole
+        // hierarchy, so this says as much about where it happened as a MappingException does.
+        assertEquals(listOf("step 1", "parameter 'amount'", "map #1"), thrown.path.asReversed())
     }
 
     @Test

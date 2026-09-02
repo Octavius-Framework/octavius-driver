@@ -36,7 +36,7 @@ class ResultMapper(
      * @param expectedType The Kotlin type wanted, generic arguments included.
      * @param sourceType The PostgreSQL type of the value.
      * @return The converted value.
-     * @throws io.github.octaviusframework.driver.exception.MappingException
+     * @throws MappingException
      *   `REQUIRED_ATTRIBUTE_MISSING` if [source] is `null` and [expectedType] is not nullable,
      *   `NO_CONVERTER_FOUND` if nothing can produce [expectedType],
      *   `CONVERSION_ERROR` if a converter failed or returned the wrong type.

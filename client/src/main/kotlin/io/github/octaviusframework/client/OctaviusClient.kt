@@ -241,6 +241,15 @@ interface OctaviusClient : AutoCloseable {
      * over, while a plan's steps can only throw. So `dbResult { db.executeTransactionPlan(plan) }` is both
      * sufficient and correct.
      *
+     * **Everything a step raises names that step** on its
+     * [path][io.github.octaviusframework.driver.exception.OctaviusException.path] - resolving its parameters,
+     * running its statement, mapping its result alike - and is otherwise the exception the driver threw, so
+     * what is caught on and retried is unchanged. The number is where the step sits in the plan being run,
+     * which after [TransactionPlan.addPlan][io.github.octaviusframework.client.transaction.TransactionPlan.addPlan]
+     * is not the index its handle was created at;
+     * [describe][io.github.octaviusframework.client.transaction.TransactionPlan.describe] is what turns it
+     * back into a step.
+     *
      * @param plan The steps to run.
      * @param propagation What to do about a transaction already running on this thread.
      * @param isolation The isolation level to run at, or `null` for the server's.
@@ -272,7 +281,12 @@ interface OctaviusClient : AutoCloseable {
         return transaction(propagation, isolation, readOnly, statementTimeout, transactionTimeout) {
             val results = LinkedHashMap<StepHandle<*>, Any?>(steps.size)
             for ((index, step) in steps.withIndex()) {
-                results[step.handle] = step.run(resolveParams(step.params, results, index, stepIndices))
+                try {
+                    results[step.handle] = step.run(resolveParams(step.params, results, index, stepIndices))
+                } catch (e: OctaviusException) {
+                    e.path.add("step $index")
+                    throw e
+                }
             }
             TransactionPlanResult(results, steps.size)
         }

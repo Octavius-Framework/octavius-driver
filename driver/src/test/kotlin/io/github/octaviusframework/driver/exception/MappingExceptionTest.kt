@@ -14,6 +14,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.reflect.typeOf
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class MappingExceptionTest {
@@ -83,7 +84,10 @@ class MappingExceptionTest {
         logger.error(ex) {}
 
         val details = ex.getDetailedMessage()
-        assertTrue(details.contains("Path: employees -> [1] -> address -> city"), "Expected path missing, got: $details")
+        // The path is rendered by OctaviusException, alongside the query context and for the same reason:
+        // every layer writes to it, not only the mapper that raised this.
+        val rendered = ex.toString()
+        assertTrue(rendered.contains("PATH: employees -> [1] -> address -> city"), "Expected path missing, got: $rendered")
         assertTrue(details.contains("Missing non-nullable attribute 'city'"), "Expected missing attribute message, got: $details")
     }
 
@@ -111,7 +115,7 @@ class MappingExceptionTest {
         }
         logger.error(ex) {}
         val details = ex.getDetailedMessage()
-        assertTrue(details.contains("Path: employees -> [0] -> name"), "Expected path missing, got: $details")
+        assertEquals(listOf("employees", "[0]", "name"), ex.path.asReversed(), "Expected path missing, got: ${ex.path}")
         assertTrue(details.contains("Null value for non-nullable attribute 'name'"), "Expected null property message, got: $details")
     }
 
@@ -132,7 +136,7 @@ class MappingExceptionTest {
         }
         logger.error(ex) {}
         val details = ex.getDetailedMessage()
-        assertTrue(details.contains("Path: employees -> [0]"), "Expected path missing, got: $details")
+        assertEquals(listOf("employees", "[0]"), ex.path.asReversed(), "Expected path missing, got: ${ex.path}")
         assertTrue(details.contains("Null array element for non-nullable type"), "Expected null element message, got: $details")
     }
 }

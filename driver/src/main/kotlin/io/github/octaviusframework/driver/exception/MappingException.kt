@@ -33,21 +33,20 @@ enum class MappingExceptionReason {
  *
  * @property reason The reason the mapping failed.
  * @property details Additional details about the mapping failure.
- * @property path The path in the nested object structure where the mapping error occurred.
  * @param cause The underlying exception that caused this failure, if any.
+ * @param path Where in the nested object structure the mapping error occurred, for a frame that knows it
+ * already. Kept on [OctaviusException], which every layer that has something to add to it writes to; this is
+ * only the first segment, for the mapper that raises the exception at the depth it found the fault.
  */
 class MappingException(
     val reason: MappingExceptionReason,
     val details: String,
     cause: Throwable? = null,
-    val path: MutableList<String> = mutableListOf()
-) : OctaviusException("MAPPING_EXCEPTION:${reason.name}", cause = cause) {
+    path: MutableList<String> = mutableListOf()
+) : OctaviusException("MAPPING_EXCEPTION:${reason.name}", cause = cause, path = path) {
     override fun getDetailedMessage(): String = buildString {
         appendLine("Reason: ${generateDeveloperMessage(reason)}")
         appendLine("Details: $details")
-        if (path.isNotEmpty()) {
-            appendLine("Path: ${path.asReversed().joinToString(" -> ")}")
-        }
     }
 }
 
