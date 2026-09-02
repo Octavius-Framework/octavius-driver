@@ -2,6 +2,8 @@ package io.github.octaviusframework.driver.query
 
 import io.github.octaviusframework.driver.exception.InvalidOperationException
 import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
+import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.StatementException
 import io.github.octaviusframework.driver.exception.StatementExceptionReason
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
@@ -115,5 +117,25 @@ class BasicQueryIntegrationTest {
         // The refused call never reached the connection, so the session is still usable afterwards.
         assertEquals(10, session.createNativeQuery("SELECT i FROM generate_series(1, 10) as i").fetchRows().size)
         session.close()
+    }
+
+    @Test
+    fun `an exception from a streaming block comes back as BLOCK_FAILED carrying the original`() {
+        val props = OctaviusProperties()
+        props.user = "postgres"
+        props.password = "1234"
+
+        getOctaviusSession("jdbc:octavius://localhost:5432/octavius_test", props).use { session ->
+            val failure = assertFailsWith<MappingException> {
+                session.createNativeQuery("SELECT i FROM generate_series(1, 10) as i")
+                    .forEachRow(fetchSize = 3) { throw IllegalStateException("the aqueduct is dry") }
+            }
+
+            // Wrapped rather than let through, because the result has to be drained before anything can be
+            // rethrown - so the reason says it was the block, and the original is still reachable.
+            assertEquals(MappingExceptionReason.BLOCK_FAILED, failure.reason)
+            assertEquals("the aqueduct is dry", failure.cause?.message)
+            assertEquals(IllegalStateException::class, failure.cause!!::class)
+        }
     }
 }

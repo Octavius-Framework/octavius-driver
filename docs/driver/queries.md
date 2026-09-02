@@ -239,7 +239,7 @@ Three things about that loop are worth knowing before you rely on it.
 
 **The session is busy for the duration.** Your block runs while the driver is still reading the result, so it must not touch that same session — see [below](#do-not-re-enter-the-session-while-rows-are-being-read).
 
-**Exceptions from your block do not escape unchanged.** Anything that is not an `OctaviusException` is wrapped in `MappingException(CONVERSION_ERROR)` with your exception as its `cause`, because the driver has to finish draining the result before it can rethrow. See [Error Handling](exceptions.md#errors-raised-during-row-mapping) if you need your own exception type to survive.
+**Exceptions from your block do not escape unchanged.** Anything that is not an `OctaviusException` is wrapped in `MappingException(BLOCK_FAILED)` with your exception as its `cause`, because the driver has to finish draining the result before it can rethrow — and by then the frame that knows the query is gone, so the wrapper is what carries the query context. See [Error Handling](exceptions.md#errors-raised-during-row-mapping) if you need your own exception type to survive.
 
 ## Do not re-enter the session while rows are being read
 

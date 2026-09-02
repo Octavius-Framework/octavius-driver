@@ -145,7 +145,7 @@ class NamedParameterQuery internal constructor(
      * @param params Values by parameter name, without the leading `@`.
      * @param fetchSize Rows per batch, or `0` for the whole result in one. Required — there is no default.
      * @param block Invoked once per row, on the calling thread.
-     * @throws MappingException `CONVERSION_ERROR` wrapping anything [block] throws that is not an
+     * @throws MappingException `BLOCK_FAILED` wrapping anything [block] throws that is not an
      *   [OctaviusException], since the result has to be drained before it can be rethrown.
      */
     fun forEachRow(params: Map<String, Any?>, fetchSize: Int, block: (Row) -> Unit) {

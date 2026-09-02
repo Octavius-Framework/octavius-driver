@@ -23,6 +23,12 @@
   `getColumnIndex` answered by raising, for a result whose shape is not fixed - a projection assembled at
   runtime, a `RETURNING` that differs by branch - where asking is what the code means and a `try`/`catch`
   around a lookup is not. `getRaw(name)` is the counterpart of `getRaw(index)`, which stood alone.
+- **`MappingException` gains `BLOCK_FAILED`.** An exception thrown by your own block inside `forEachRow`,
+  `forEachObject` or `forEachField` used to come back as `CONVERSION_ERROR`, which said nothing true about
+  it - the block failed, nothing was converted. It is still wrapped rather than let through, and for the
+  reason it always was: the result has to be drained before anything can be rethrown, and by then the frame
+  that knows the query is gone, so the wrapper is what carries the `QueryContext`. What the block threw is
+  still the `cause`. Anything matching on `CONVERSION_ERROR` to find these has to match on the new one.
 - **`required` and `nested` take the terms the transaction runs under.** `isolation`, `readOnly`,
   `statementTimeout` and `transactionTimeout`, all four optional and all four scoped to that transaction:
   `SET TRANSACTION` for the first two, `SET LOCAL` for the timeouts, joined into **one statement sent in one
@@ -50,6 +56,15 @@
 
 #### Changed
 
+- **`TransactionIsolationLevel.fromJdbcValue` raises what its sibling raises.** It documented
+  `IllegalArgumentException` and threw `NoSuchElementException`, neither of which is what
+  `setTransactionIsolation` raises for the same value going the other way. Now
+  `InvalidOperationException(INVALID_ARGUMENT)`, with the message that one already used.
+- **Two KDocs that were wrong are right.** `TransactionState.fromChar` promised `IllegalArgumentException`
+  and `error()` raises `IllegalStateException`; and `ParameterConverter.getDefaultTypeName` linked
+  `[expectedOid]`, which is a parameter of `convert` rather than of it, so Dokka could not resolve it -
+  reported once for the declaration and once for each of the three overrides that inherit the text. Dokka
+  now generates the whole repository with no unresolved links at all.
 - **The type dictionary names itself when it loads.** `Loaded 47 types for localhost:5432/mydb in 12ms`
   becomes `ROME (Relational-Object Mapping Engine) open for localhost:5432/mydb - 47 types read in 12ms`, and
   the reload beside it says `ROME rebuilt`. The name is accurate before it is a joke: a catalog read onto

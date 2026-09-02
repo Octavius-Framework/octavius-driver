@@ -69,7 +69,7 @@ This is what the server-error path buys you: a `ConstraintViolationException` le
 Decoding and mapping happen *while* the result stream is being consumed, so a mapping failure is handled the same careful way: the exception is parked in a local (`executionError`), the loop keeps draining until `ReadyForQuery`, and only then is it thrown. Two consequences worth knowing:
 
 * If the server *also* reported an error, the server's error wins — `errorResponse` is checked before `executionError`.
-* Exceptions that aren't `OctaviusException` get wrapped in a `MappingException(CONVERSION_ERROR)`. **This includes exceptions thrown by your own code** inside `forEachRow` / `forEachObject` / `forEachField` blocks, which arrive as `MappingException` with details `"Exception in block: ..."` and the original as `cause`. If you need your own exception type to escape a streaming block, catch and re-throw it outside the block, or make it an `OctaviusException`.
+* Exceptions that aren't `OctaviusException` get wrapped in a `MappingException(CONVERSION_ERROR)`. **Exceptions thrown by your own code** inside `forEachRow` / `forEachObject` / `forEachField` blocks are wrapped too, but under their own reason — `MappingException(BLOCK_FAILED)`, with details `"Exception in block: ..."` and the original as `cause`. If you need your own exception type to escape a streaming block, catch and re-throw it outside the block, or make it an `OctaviusException`.
 
 ### Errors that never reach the database
 
@@ -497,7 +497,8 @@ The object-identifying fields come straight from the server's error message, so 
 | `COLUMN_NOT_FOUND`                | The requested column, composite attribute, record field or array element does not exist — by name, or at that position.                                           |
 | `REQUIRED_ATTRIBUTE_MISSING`      | The database returned `NULL` (or nothing) for a non-nullable Kotlin property.                                                                                     |
 | `NO_CONVERTER_FOUND`              | No converter registered for the source/target type pair.                                                                                                          |
-| `CONVERSION_ERROR`                | Cast or conversion failed, including a converter returning a type other than the one requested; also the wrapper for foreign exceptions escaping a mapping block. |
+| `CONVERSION_ERROR`                | Cast or conversion failed, including a converter returning a type other than the one requested.                                                                  |
+| `BLOCK_FAILED`                    | The block handed to `forEachRow` / `forEachObject` / `forEachField` threw something of its own; it is the `cause`.                                        |
 
 `path` accumulates as the exception unwinds through nested structures — each frame appends its own key name — and is printed reversed, outermost first: `Path: consul -> province -> founded`. That tells you *which* field five levels down in a nested composite was the problem.
 
@@ -720,7 +721,7 @@ restates whatever a pool refuses a connection with, and the Spring translator al
   database-level half of the context is empty.
 
 * **Your exceptions don't escape streaming blocks unchanged.** Anything non-Octavius thrown inside a `forEachRow` /
-  `forEachObject` / `forEachField` block comes back as `MappingException(CONVERSION_ERROR)` with your exception as
+  `forEachObject` / `forEachField` block comes back as `MappingException(BLOCK_FAILED)` with your exception as
   `cause`.
 
 * **A caught exception usually leaves the session alive — `NetworkException` does not.** For errors the server reported,

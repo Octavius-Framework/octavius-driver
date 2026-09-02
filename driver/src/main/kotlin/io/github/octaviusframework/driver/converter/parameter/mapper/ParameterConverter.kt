@@ -61,8 +61,8 @@ interface ParameterConverter<T : Any> {
     /**
      * Names the PostgreSQL type to declare for the converted value, where nothing else has named one.
      *
-     * Consulted only when [expectedOid] was unresolved and [convert] returned something that does not
-     * already carry its own type. Returning `null`, the default, means the declared type is worked out
+     * Consulted only where [convert] was given no resolved `expectedOid` and returned something that does
+     * not already carry its own type. Returning `null`, the default, means the declared type is worked out
      * from the **converted value's Kotlin class** instead, through the codec registered for it — which
      * is why an unclaimed `String` always goes out as `text`.
      *

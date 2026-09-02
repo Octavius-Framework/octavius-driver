@@ -454,7 +454,7 @@ class QueryExecutor internal constructor(
                                     break@fetchLoop
                                 } catch (e: Exception) {
                                     executionError = MappingException(
-                                        MappingExceptionReason.CONVERSION_ERROR,
+                                        MappingExceptionReason.BLOCK_FAILED,
                                         "Exception in block: ${e.message}",
                                         e
                                     )

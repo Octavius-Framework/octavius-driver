@@ -70,7 +70,7 @@ internal class DefaultDeserializationContext(
             // something else would sail through here and blow up as a ClassCastException in the
             // caller's own frame - with nothing in the stack naming the converter responsible.
             // Checking here is what turns that into an exception that can say who did it.
-            if (converted != null && kClass != null && !kClass.isInstance(converted)) {
+            if (kClass != null && !kClass.isInstance(converted)) {
                 throw MappingException(
                     MappingExceptionReason.CONVERSION_ERROR,
                     details = "Converter ${converter::class.qualifiedName ?: converter::class} returned " +

@@ -14,7 +14,15 @@ enum class MappingExceptionReason {
     /** The data could not be converted or cast to the target type. */
     CONVERSION_ERROR,
     /** A required, non-nullable property in the target object received a null value. */
-    REQUIRED_ATTRIBUTE_MISSING
+    REQUIRED_ATTRIBUTE_MISSING,
+    /**
+     * The block handed to a streaming terminal threw something of its own.
+     *
+     * It is wrapped rather than let through because the result has to be drained before anything can be
+     * rethrown, and by then the frame that knows the query is gone - so this carries the `QueryContext` that
+     * a bare rethrow would lose. What the block actually threw is the `cause`.
+     */
+    BLOCK_FAILED
 }
 
 /**
@@ -49,5 +57,6 @@ private fun generateDeveloperMessage(reason: MappingExceptionReason): String =
         MappingExceptionReason.COLUMN_NOT_FOUND -> "The requested column, attribute, field or element was not found under that name or position."
         MappingExceptionReason.CONVERSION_ERROR -> "An error occurred during type conversion or casting."
         MappingExceptionReason.REQUIRED_ATTRIBUTE_MISSING -> "A required non-nullable attribute is missing or null."
+        MappingExceptionReason.BLOCK_FAILED -> "The block handed to a streaming terminal threw; see the cause."
     }
 

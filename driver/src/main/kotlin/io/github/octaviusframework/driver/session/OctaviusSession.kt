@@ -12,6 +12,8 @@
 package io.github.octaviusframework.driver.session
 
 import io.github.octaviusframework.driver.copy.CopyManager
+import io.github.octaviusframework.driver.exception.InvalidOperationException
+import io.github.octaviusframework.driver.exception.InvalidOperationExceptionReason
 import io.github.octaviusframework.driver.lo.LargeObjectManager
 import io.github.octaviusframework.driver.notification.NotificationManager
 import io.github.octaviusframework.driver.query.NamedParameterQuery
@@ -224,7 +226,7 @@ enum class TransactionState {
          *
          * @param c The character code representing the transaction state ('I', 'T', or 'E').
          * @return The corresponding [TransactionState].
-         * @throws IllegalArgumentException If an unknown state character is provided.
+         * @throws IllegalStateException If an unknown state character is provided.
          */
         fun fromChar(c: Char): TransactionState = when (c) {
             'I' -> IDLE
@@ -254,10 +256,15 @@ enum class TransactionIsolationLevel(val jdbcValue: Int, val sqlName: String) {
          *
          * @param level The JDBC isolation level constant.
          * @return The matching [TransactionIsolationLevel].
-         * @throws IllegalArgumentException if the provided level does not match any known level.
+         * @throws InvalidOperationException `INVALID_ARGUMENT` where [level] is not one of the four - which
+         * is what `setTransactionIsolation` raises for the same value going the other way.
          */
         fun fromJdbcValue(level: Int): TransactionIsolationLevel {
-            return entries.first { it.jdbcValue == level }
+            return entries.firstOrNull { it.jdbcValue == level }
+                ?: throw InvalidOperationException(
+                    InvalidOperationExceptionReason.INVALID_ARGUMENT,
+                    details = "Unsupported transaction isolation level: $level"
+                )
         }
     }
 }
