@@ -32,6 +32,7 @@ it again.
 
 ### Queries
 - [Every Clause Is SQL](queries.md#every-clause-is-sql) — What the builder does and what it refuses to parse
+- [A Name That Comes From Outside](queries.md#a-name-that-comes-from-outside) — Values are placeholders; names are SQL
 - [Clauses That Disappear](queries.md#clauses-that-disappear) — `where(null)`, and the filter assembled at runtime
 - [`QueryFragment`](queries.md#queryfragment) — A condition and the parameters it names, kept together
 - [A Query Is a Value](queries.md#a-query-is-a-value) — `toSql()`, `copy()`, and embedding one in another

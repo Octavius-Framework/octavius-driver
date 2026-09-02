@@ -26,6 +26,19 @@
   dirty-checked either side of it. Both stay at INFO and neither adds a line, but anything matching the old
   text has to be matched again.
 
+### Client
+
+#### Added
+
+- **[Queries](docs/client/queries.md#a-name-that-comes-from-outside) says what passing SQL through unread
+  costs.** The builders write the placeholder for a value themselves, so a value is never part of the
+  statement - but a name has nowhere else to go, and `orderBy`, `from`, `insertInto(table)`, the columns
+  handed to `select` and the keys of `values(map)` and `setValues(map)` are all SQL text. A sort key taken
+  from a query parameter is how that goes wrong most often, so the section shows the fixed `when` that
+  answers it, and points at the driver's own
+  [`quoteAsPgIdentifier()`](docs/driver/queries.md#quoting-a-name-that-comes-from-outside) for the name that
+  genuinely cannot be mapped onto one you wrote. Documentation only; no signature changed.
+
 ### Migrations
 
 #### Added
