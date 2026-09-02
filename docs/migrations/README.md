@@ -15,7 +15,7 @@ required nor consulted.
 | Document                                            | Description                                                                                 |
 |:----------------------------------------------------|:--------------------------------------------------------------------------------------------|
 | [Quickstart](quickstart.md)                         | One call at startup, where migrations live, and what the first run does                     |
-| [Writing Migrations](writing-migrations.md)         | Naming, `.sql` files and Kotlin classes, and the migration that cannot run in a transaction |
+| [Writing Migrations](writing-migrations.md)         | Naming, `.sql` and Kotlin, placeholders, and the migration that cannot run in a transaction |
 | [History and Validation](history-and-validation.md) | The history table, checksums, what stops a run and why, baseline, `target`, out of order    |
 
 ## What a run does

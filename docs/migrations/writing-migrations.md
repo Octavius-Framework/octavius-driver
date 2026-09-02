@@ -124,12 +124,53 @@ sets the order where one matters: `R__01_base_views` before `R__02_derived_views
 
 The history keeps one row per repeatable migration, updated in place rather than added to.
 
+## Placeholders
+
+`MigratorConfig.placeholders` is a map, and `${name}` in a `.sql` file becomes what `name` maps to:
+
+```kotlin
+MigratorConfig(
+    sqlLocations = listOf("db/migration"),
+    placeholders = mapOf("schema" to "roma", "app_role" to "legio")
+)
+```
+
+```sql
+-- V5__grant.sql
+GRANT USAGE ON SCHEMA ${schema} TO ${app_role};
+```
+
+**It is a paste and nothing more.** The value goes in as the text it is — no quoting, no escaping, no idea of
+where in the statement it landed. That is what lets it name a schema, a role or a tablespace, which a
+parameter never can, and it is why the values belong to the deployment: one fed from anything a user typed is
+an injection with the migrator holding the door.
+
+**With the map empty — the default — nothing is scanned for at all**, so a migration that holds a `${` of its
+own costs nothing and needs no escaping. Once there is one entry, every `${name}` in every file has to have a
+value: one that does not is refused by file and line before anything runs. Left standing it would reach the
+server, and inside a string literal — `INSERT INTO templates VALUES ('${name}')` — it would be stored exactly
+as written, with nothing ever saying so. For the file that means to hold that text, `\${name}` is the text and
+not a placeholder.
+
+Substitution happens **once**, and **before** the header directives are read and the transaction-control check
+runs — so what those see is what the server will see, and a value carrying a `COMMIT` is refused like any
+other. A value that itself contains `${...}` is left standing: one file, one round of substitution, and no
+value reaches back for another.
+
+**`.sql` only.** A migration written in Kotlin already has a language; if it needs a value from outside, it
+reads it the way the rest of your application does.
+
+> [!IMPORTANT]
+> **The checksum is taken over the file as written, before substitution.** Changing a value is therefore not a
+> change to the migration, and a database that ran it under one value does not refuse it under another — which
+> is the point, the value being the thing that differs between environments. The cost is the other side of the
+> same coin: the history records that the file ran, not what it expanded to. Keep `${}` for what genuinely
+> differs per environment, because a migration that reads the same everywhere is one less thing to reconstruct
+> from a deployment later.
+
 ## What is deliberately absent
 
 **Undo.** Correct a migration with one that comes after it.
-
-**Placeholders.** Nothing substitutes into a migration before it runs, so one version means one shape of
-database everywhere.
 
 **Configurable naming.** `V`, `R`, `__` and the `.sql` suffix are all fixed. PostgreSQL does not care what a
 file is called, so every spelling made configurable would be API to keep working for nothing.

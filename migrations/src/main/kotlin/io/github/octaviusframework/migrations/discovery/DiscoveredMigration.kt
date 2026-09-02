@@ -47,10 +47,13 @@ internal sealed interface DiscoveredMigration {
         val transactional: Boolean,
 
         /**
-         * The file's text, read at the scan rather than when it runs.
+         * The text that will be sent, read at the scan rather than when it runs and with any placeholders
+         * already pasted into it.
          *
-         * So that the checksum recorded against this migration is the checksum of the text that ran, and so
-         * that a file that has gone missing is found while the database is still untouched.
+         * Read early so that a file that has gone missing is found while the database is still untouched.
+         * Where placeholders are configured this is no longer the text [checksum] was taken over - that one
+         * is the file as it was written, so that two deployments filling the same file in differently still
+         * agree about which migration it is.
          */
         val content: String
     ) : DiscoveredMigration

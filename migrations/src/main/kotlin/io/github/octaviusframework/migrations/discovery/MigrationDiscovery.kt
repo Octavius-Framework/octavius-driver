@@ -79,17 +79,25 @@ internal object MigrationDiscovery {
         SqlSources.findAll(config.sqlLocations, config.classLoader).map { found ->
             val bareName = found.fileName.dropLast(SqlSources.SUFFIX.length)
             val parsed = MigrationNames.parse(bareName, found.origin)
-            val transactional = SqlMigrationRules.readTransactionality(found.content, found.origin)
-            SqlMigrationRules.refuseTransactionControl(found.content, found.origin)
+
+            // Substituted first, so that every rule below reads the text the server is going to be sent and
+            // not a template of it - a value carrying a COMMIT is refused here rather than found out later.
+            val content = MigrationPlaceholders.resolve(found.content, found.origin, config.placeholders)
+            val transactional = SqlMigrationRules.readTransactionality(content, found.origin)
+            SqlMigrationRules.refuseTransactionControl(content, found.origin)
 
             DiscoveredMigration.Sql(
                 version = parsed.version,
                 description = parsed.description,
                 script = found.fileName,
                 origin = found.origin,
+                // The file as it was written, not as it was filled in. The checksum answers "has this
+                // migration been edited since it ran", and a value that differs between two deployments is
+                // not an edit to anything - hashing after substitution would make every environment's
+                // history disagree with every other one's for no fault of the file.
                 checksum = MigrationChecksum.of(found.content),
                 transactional = transactional,
-                content = found.content
+                content = content
             )
         }
 

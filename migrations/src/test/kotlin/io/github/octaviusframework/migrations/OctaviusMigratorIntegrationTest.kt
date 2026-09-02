@@ -247,6 +247,46 @@ class OctaviusMigratorIntegrationTest {
         assertTrue(tableExists("late"))
     }
 
+    // ---------------------------------------------------------------- placeholders
+
+    @Test
+    fun `a placeholder is pasted into the sql the server runs`(@TempDir dir: Path) {
+        dir.resolve("V1__create.sql").writeText($$"""CREATE TABLE $$schema.${tab} (id int);""")
+
+        val report = migrate(config(dir).copy(placeholders = mapOf("tab" to "castra_roma")))
+
+        assertEquals(1, report.applied.size)
+        assertTrue(tableExists("castra_roma"), "the placeholder should have named the table")
+    }
+
+    @Test
+    fun `changing a placeholder value is not a change to the migration`(@TempDir dir: Path) {
+        // The checksum is the file's and not the filled-in text's, which is the whole reason one migration
+        // can be deployed with a different value per environment: were it the other way round, the first run
+        // anywhere would leave every other environment refusing the file as changed.
+        dir.resolve("V1__create.sql").writeText($$"""CREATE TABLE $$schema.${tab} (id int);""")
+        migrate(config(dir).copy(placeholders = mapOf("tab" to "castra_dev")))
+
+        val second = migrate(config(dir).copy(placeholders = mapOf("tab" to "castra_prod")))
+
+        assertTrue(second.isEmpty(), "the second run should have found the database up to date")
+        assertTrue(tableExists("castra_dev"), "the first value is what ran")
+        assertFalse(tableExists("castra_prod"), "and the second run should not have run it again")
+    }
+
+    @Test
+    fun `a placeholder with no value stops the run before anything is applied`(@TempDir dir: Path) {
+        dir.resolve("V1__first.sql").writeText(creates("first"))
+        dir.resolve("V2__second.sql").writeText($$"""CREATE TABLE $$schema.${tab} (id int);""")
+
+        val e = assertThrows<MigrationException> {
+            migrate(config(dir).copy(placeholders = mapOf("elsewhere" to "roma")))
+        }
+
+        assertEquals(MigrationExceptionReason.INVALID_MIGRATION, e.reason)
+        assertFalse(tableExists("first"), "the refusal is at the scan, so the one in front of it never ran")
+    }
+
     // ---------------------------------------------------------------- repeatable
 
     @Test

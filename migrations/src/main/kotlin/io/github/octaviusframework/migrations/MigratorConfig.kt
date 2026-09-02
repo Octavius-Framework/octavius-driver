@@ -13,6 +13,11 @@ import kotlin.time.Duration.Companion.seconds
  * @property codePackages Packages holding [OctaviusMigration] classes, subpackages included. Empty is
  * allowed for a project whose migrations are all `.sql`; empty *along with* [sqlLocations] is not, there
  * being nothing to do.
+ * @property placeholders Values pasted into `.sql` migrations before they run: `${name}` becomes the value
+ * mapped to `name`. Empty - the default - and nothing is scanned for, so a migration holding a `${` of its
+ * own is untouched. Once there is one, every `${name}` in every file has to have a value or the run is
+ * refused; `\${name}` is that text rather than a placeholder. A paste, not a parameter: put the schema a
+ * role is granted on in here, never anything that came from a user.
  * @property classLoader Where to look for classes and classpath resources, for an application whose classes
  * are not on the loader that loaded this one - an OSGi container, a plugin host. `null` uses the default.
  * @property historySchema Where the history table lives. Created if it is not there, which it has to be:
@@ -36,6 +41,7 @@ import kotlin.time.Duration.Companion.seconds
 data class MigratorConfig(
     val sqlLocations: List<String> = listOf("db/migration"),
     val codePackages: List<String> = emptyList(),
+    val placeholders: Map<String, String> = emptyMap(),
     val classLoader: ClassLoader? = null,
     val historySchema: String = "public",
     val historyTable: String = "octavius_migration_history",

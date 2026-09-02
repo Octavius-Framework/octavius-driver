@@ -44,6 +44,11 @@ A migration written in Kotlin records no checksum unless it
 [declares one](writing-migrations.md#the-checksum-a-class-does-not-have); validation skips what it has no
 checksum for.
 
+**Placeholders do not enter into it.** A `.sql` file is hashed as it was written, before `${name}` is filled
+in — so a value that differs between two deployments is not a change to the migration, and the same file runs
+in both without either database refusing the other's. See
+[Placeholders](writing-migrations.md#placeholders).
+
 ## What each migration's situation is called
 
 `info()` gives one of these per migration, and never throws:

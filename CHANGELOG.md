@@ -1,3 +1,58 @@
+## Version 1.0.0 (v1.0.0)
+
+### Project
+
+#### Added
+
+- **Octavius is not an ORM, it is a ROME.** A Relational-Object Mapping Engine, because all queries lead to
+  ROME and because the letters read that way from the other end. The line was written for
+  `octavius-database` and is far too good to leave behind in a deprecated repository, so it comes over: under
+  the badges in the README, above a new **Philosophy** section stating the five principles that actually hold
+  here rather than the ones the old project stated. It stays in `octavius-database` as well - that is where it
+  was written, and the inheritance is worth keeping on both ends.
+- **Every artifact in the README carries the Roman office it does the work of** - `driver` the road, `client`
+  the praetor, `client-scanner` the census, `migrations` the surveyor, `pg-model` the codex, and
+  `driver-spring-integration` the treaty - with a line under the table cashing each of them out against what
+  the module does.
+
+### Driver
+
+#### Changed
+
+- **The type dictionary names itself when it loads.** `Loaded 47 types for localhost:5432/mydb in 12ms`
+  becomes `ROME (Relational-Object Mapping Engine) open for localhost:5432/mydb - 47 types read in 12ms`, and
+  the reload beside it says `ROME rebuilt`. The name is accurate before it is a joke: a catalog read onto
+  Kotlin types is the whole of what Octavius maps, with no session tracked, nothing lazy-loaded and nothing
+  dirty-checked either side of it. Both stay at INFO and neither adds a line, but anything matching the old
+  text has to be matched again.
+
+### Migrations
+
+#### Added
+
+- **Placeholders in `.sql` migrations.** `MigratorConfig.placeholders` is a map, and `${name}` in a file
+  becomes what `name` maps to - a schema, a role, a tablespace, whatever genuinely differs between
+  environments. It is a paste and nothing more: the value goes in as the text it is, with no quoting and no
+  idea of where in the statement it landed, which is what lets it name the things a parameter never can and
+  why the values belong to the deployment rather than to anything a user typed. `.sql` only; a migration
+  written in Kotlin already has a language. The entry under *what is deliberately absent* goes with it, in
+  both READMEs and in [Writing Migrations](docs/migrations/writing-migrations.md#placeholders). The parameter
+  sits third in `MigratorConfig`, after `codePackages`, so a config built positionally rather than by name
+  has to move.
+- **Off until the map has an entry, and loud once it does.** With `placeholders` empty nothing is scanned for
+  at all, so a migration holding a `${` of its own costs nothing and needs no escaping. With one entry,
+  every `${name}` in every file has to have a value: one that does not is refused by file and line before
+  anything runs, because left standing inside a string literal it would be stored exactly as written and
+  nothing would ever say so. `\${name}` is that text rather than a placeholder, for the file that has to
+  hold one. Substitution happens before the header directives are read and before the transaction-control
+  check, so a value carrying a `COMMIT` is refused like any other; and it happens once, so a value that
+  itself contains `${...}` is left standing rather than reaching back for another.
+- **The checksum is taken over the file as written, before substitution.** Changing a value is therefore not
+  a change to the migration, and a database that ran it under one value does not refuse it under another -
+  which is the point, the value being the thing that differs between environments. The cost is the other side
+  of the same coin, and is why this is for what genuinely differs per environment: the history records that
+  the file ran, not what it expanded to.
+
 ## Version 0.9.9 (v0.9.9)
 
 ### Project

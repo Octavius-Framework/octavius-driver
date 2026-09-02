@@ -22,8 +22,11 @@ class MigrationDiscoveryTest {
 
     private fun discover(
         sqlLocations: List<String> = emptyList(),
-        codePackages: List<String> = emptyList()
-    ) = MigrationDiscovery.discover(MigratorConfig(sqlLocations = sqlLocations, codePackages = codePackages))
+        codePackages: List<String> = emptyList(),
+        placeholders: Map<String, String> = emptyMap()
+    ) = MigrationDiscovery.discover(
+        MigratorConfig(sqlLocations = sqlLocations, codePackages = codePackages, placeholders = placeholders)
+    )
 
     // ------------------------------------------------------------- from the classpath
 
@@ -118,6 +121,38 @@ class MigrationDiscoveryTest {
 
         assertEquals(MigrationExceptionReason.CONFIGURATION, e.reason)
         assertTrue(e.details!!.contains("nowhere"), "the refusal should name the path: ${e.details}")
+    }
+
+    // ------------------------------------------------------------- placeholders
+
+    @Test
+    fun `placeholders are pasted in, and the checksum is still of the file as written`(@TempDir dir: Path) {
+        val file = $$"""GRANT USAGE ON SCHEMA ${schema} TO legio;"""
+        dir.resolve("V10__grant.sql").writeText(file)
+
+        val migration = discover(
+            sqlLocations = listOf("filesystem:$dir"),
+            placeholders = mapOf("schema" to "roma")
+        ).single() as DiscoveredMigration.Sql
+
+        assertEquals("GRANT USAGE ON SCHEMA roma TO legio;", migration.content)
+        // Not MigrationChecksum.of(migration.content): the checksum answers "was this file edited since it
+        // ran", and a schema name that differs between two deployments is not an edit to anything. Hashing
+        // the filled-in text would put every environment's history at odds with every other one's.
+        assertEquals(MigrationChecksum.of(file), migration.checksum)
+    }
+
+    @Test
+    fun `a value carrying transaction control is refused like any other`(@TempDir dir: Path) {
+        // Substitution happens before the rules read the file, so what they check is what the server gets.
+        dir.resolve("V11__sneaky.sql").writeText($$"""CREATE TABLE castra (id int); ${tail}""")
+
+        val e = assertThrows<MigrationException> {
+            discover(sqlLocations = listOf("filesystem:$dir"), placeholders = mapOf("tail" to "COMMIT;"))
+        }
+
+        assertEquals(MigrationExceptionReason.INVALID_MIGRATION, e.reason)
+        assertTrue(e.details!!.contains("COMMIT"), "the refusal should name the statement: ${e.details}")
     }
 
     // ------------------------------------------------------------- from classes

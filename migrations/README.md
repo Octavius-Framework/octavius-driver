@@ -34,14 +34,16 @@ it, and the next run refuses until somebody has looked.
 **Checksums ignore what a checkout changes** — byte-order mark, line endings, trailing whitespace — and notice
 everything else. A migration written in Kotlin has none unless it declares one.
 
+**`${name}` in a `.sql` file is filled in from `placeholders`** — a schema, a role, a tablespace, whatever
+genuinely differs between environments. Off until the map has an entry, and the checksum is of the file as
+written, so changing a value is not a change to the migration.
+
 **Two instances starting together wait rather than race**, on an advisory lock keyed to the history table, so
 two applications sharing a database do not wait for each other.
 
 ## What it deliberately does not do
 
 **Undo.** Correct a migration with one that comes after it.
-
-**Placeholders.** Nothing substitutes into a migration before it runs.
 
 **Configurable naming.** `V`, `R`, `__` and the `.sql` suffix are fixed.
 
@@ -51,7 +53,7 @@ person can say what state the database is in.
 ## Documentation
 
 - [Quickstart](../docs/migrations/quickstart.md) — one call at startup, and where migrations live
-- [Writing Migrations](../docs/migrations/writing-migrations.md) — naming, `.sql` and Kotlin, and the no-transaction directive
+- [Writing Migrations](../docs/migrations/writing-migrations.md) — naming, `.sql` and Kotlin, placeholders, and the no-transaction directive
 - [History and Validation](../docs/migrations/history-and-validation.md) — the table, checksums, what stops a run, baseline
 
 ## License
