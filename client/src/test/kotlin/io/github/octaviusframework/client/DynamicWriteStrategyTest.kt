@@ -4,8 +4,10 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.github.octaviusframework.client.dynamic.DynamicWriteStrategy
 import io.github.octaviusframework.driver.exception.MappingException
+import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.exception.OctaviusException
 import io.github.octaviusframework.driver.registry.GlobalTypeRegistry
+import io.github.octaviusframework.driver.type.withPgType
 import kotlinx.serialization.Serializable
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -34,6 +36,13 @@ class DynamicWriteStrategyTest {
     /** Registered both ways, which is the only case the three modes disagree about. */
     @Serializable
     data class Honour(val title: String, val year: Int)
+
+    /**
+     * A composite whose two attributes declare one destination each: [award] a `public.honour`, [citation] a
+     * `public.dynamic_dto`. Both attribute types are known from the catalogue, so neither is a case any mode
+     * has a say in.
+     */
+    data class Decoration(val award: Honour, val citation: Triumph)
 
     companion object {
         private const val URL = "jdbc:octavius://localhost:5432/octavius_test"
@@ -64,10 +73,22 @@ class DynamicWriteStrategyTest {
                     ).execute()
                     db.rawQuery(
                         """
+                        DO ${'$'}do${'$'} BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+                                           WHERE t.typname = 'decoration' AND n.nspname = 'public') THEN
+                                CREATE TYPE public.decoration AS (award public.honour, citation public.dynamic_dto);
+                            END IF;
+                        END ${'$'}do${'$'}
+                        """.trimIndent()
+                    ).execute()
+                    db.rawQuery(
+                        """
                         CREATE TABLE IF NOT EXISTS dyn_strategy (
-                            id           SERIAL PRIMARY KEY,
-                            as_dynamic   public.dynamic_dto,
-                            as_composite public.honour
+                            id            SERIAL PRIMARY KEY,
+                            as_dynamic    public.dynamic_dto,
+                            as_composite  public.honour,
+                            as_composites public.honour[],
+                            as_nested     public.decoration
                         )
                         """.trimIndent()
                     ).execute()
@@ -83,6 +104,7 @@ class DynamicWriteStrategyTest {
             dataSource().use { ds ->
                 OctaviusClient.fromDataSource(ds).use { db ->
                     db.rawQuery("DROP TABLE IF EXISTS dyn_strategy").execute()
+                    db.rawQuery("DROP TYPE IF EXISTS public.decoration").execute()
                     db.rawQuery("DROP TYPE IF EXISTS public.honour").execute()
                 }
             }
@@ -112,7 +134,10 @@ class DynamicWriteStrategyTest {
                 OctaviusClient.fromDataSource(ds, dynamicWriteStrategy = strategy).use { db ->
                     db.dynamicTypes.register<Triumph>("triumph")
                     db.dynamicTypes.register<Honour>("honour_dyn")
-                    db.execute { typeManager.registerAutoComposite<Honour>("honour", "public") }
+                    db.execute {
+                        typeManager.registerAutoComposite<Honour>("honour", "public")
+                        typeManager.registerAutoComposite<Decoration>("decoration", "public")
+                    }
                     block(db)
                 }
             }
@@ -220,6 +245,76 @@ class DynamicWriteStrategyTest {
             assertFailsWith<OctaviusException> {
                 db.writeDynamic(Honour("Corona Civica", 47))
             }
+        }
+    }
+
+    // --- Where the destination names its own type, which is not a case a mode answers -------------
+
+    @Test
+    fun `an attribute takes the type its composite declares, not the mode`() {
+        withStrategy(DynamicWriteStrategy.PREFER_DYNAMIC_DTO) { db ->
+            // Both attribute types come from the catalogue, so neither is ambiguous and neither is the mode's
+            // to answer: the class registered both ways goes to `award` as a public.honour even under the mode
+            // that would otherwise take it for the dynamic form, and the class registered only as a dynamic
+            // type goes to `citation` as the dynamic_dto it is declared to be. A mode reaching in here would
+            // put a dynamic_dto where honour was declared, and the server would refuse the row.
+            val decoration = Decoration(Honour("Corona Civica", 47), Triumph("Scipio", "Carthage"))
+            db.insertInto("dyn_strategy").values(listOf("as_nested")).update("as_nested" to decoration)
+
+            assertEquals(
+                decoration,
+                db.select("as_nested").from("dyn_strategy").fetchFieldStrict<Decoration>()
+            )
+        }
+    }
+
+    @Test
+    fun `an array element takes the type the array declares`() {
+        withStrategy(DynamicWriteStrategy.PREFER_DYNAMIC_DTO) { db ->
+            val honours = listOf(Honour("Corona Civica", 47), Honour("Corona Muralis", 52))
+            db.insertInto("dyn_strategy").values(listOf("as_composites"))
+                .update("as_composites" to honours.withPgType("honour", "public", isArray = true))
+
+            assertEquals(
+                honours,
+                db.select("as_composites").from("dyn_strategy").fetchFieldStrict<List<Honour>>()
+            )
+        }
+    }
+
+    @Test
+    fun `a class that does not belong in the named type is refused before the wire`() {
+        // Triumph is a registered dynamic type and nothing else, so under PREFER_DYNAMIC_DTO it is exactly the
+        // value the mode would have claimed. The named type declines it instead, and says so here rather than
+        // letting a dynamic_dto reach a column declared public.honour.
+        withStrategy(DynamicWriteStrategy.PREFER_DYNAMIC_DTO) { db ->
+            val thrown = assertFailsWith<MappingException> {
+                db.insertInto("dyn_strategy").values(listOf("as_composite"))
+                    .update("as_composite" to Triumph("Scipio", "Carthage").withPgType("honour", "public"))
+            }
+
+            assertEquals(MappingExceptionReason.NO_CONVERTER_FOUND, thrown.reason)
+            assertTrue(
+                thrown.details.contains("Triumph") && thrown.details.contains("honour"),
+                "the message should name the class and the type it was sent to: ${thrown.details}"
+            )
+        }
+    }
+
+    @Test
+    fun `naming the type is how the composite is reached under prefer`() {
+        // The counterpart of `toDynamicDto`: that wrapper says "the dynamic form" under every mode, and naming
+        // the type says the other one. Without it PREFER_DYNAMIC_DTO would be the one mode with a destination
+        // nothing could reach.
+        withStrategy(DynamicWriteStrategy.PREFER_DYNAMIC_DTO) { db ->
+            val honour = Honour("Corona Civica", 47)
+            db.insertInto("dyn_strategy").values(listOf("as_composite"))
+                .update("as_composite" to honour.withPgType("honour", "public"))
+
+            assertEquals(
+                honour,
+                db.select("as_composite").from("dyn_strategy").fetchFieldStrict<Honour>()
+            )
         }
     }
 }

@@ -119,6 +119,24 @@
   [`quoteAsPgIdentifier()`](docs/driver/queries.md#quoting-a-name-that-comes-from-outside) for the name that
   genuinely cannot be mapped onto one you wrote. Documentation only; no signature changed.
 
+#### Fixed
+
+- **A `dynamic_dto` no longer goes where a composite was declared.** `DynamicWriteStrategy` answers one
+  question - what a parameter whose type nothing declares was meant to be - and the converter enforcing it
+  asked no further. An attribute of a composite, an element of an array and a value wrapped in `withPgType`
+  all carry the type they are going into, and under `PREFER_DYNAMIC_DTO` a class registered both ways was
+  written as a `dynamic_dto` into every one of them: what arrived was a `dynamic_dto` where the catalogue
+  said `public.honour`, which the server refuses as `42804` with nothing in it naming the class responsible.
+  The converter now reads the declared type first and claims the value only where that type is
+  `dynamic_dto` - which is what the read half has always done, claiming nothing whose PostgreSQL type is not
+  one. A mode is consulted where it was the only thing to consult, and nowhere else.
+
+  Two things fall out of it. A class that does not belong in the type it was sent to is refused as
+  `MappingException(NO_CONVERTER_FOUND)` naming both sides, rather than sent and refused a moment later by
+  the server. And naming the type is now the counterpart of `toDynamicDto`: the wrapper asks for the dynamic
+  form under every mode, `value.withPgType("honour")` asks for the composite, and `PREFER_DYNAMIC_DTO` stops
+  being the one mode with a destination nothing could reach.
+
 ### Migrations
 
 #### Added

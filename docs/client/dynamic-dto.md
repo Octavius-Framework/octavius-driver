@@ -137,6 +137,31 @@ checked against the registry there and nowhere else. The column is a plain `(tex
 never had the registry mentioned to it, so a value built with a name nothing is registered under would store
 cleanly and fail on whichever read reached it first, in some other process, much later.
 
+### What the modes do not reach
+
+A mode answers one question — what a parameter whose type nothing declares was meant to be — and that is the
+only question it answers. An attribute of a composite, an element of an array, and a value wrapped in
+`withPgType` all carry the type they are going into, and **that type decides**, under every mode alike:
+
+```kotlin
+data class Decoration(val award: Honour, val citation: Triumph)   // public.decoration
+// award    is declared public.honour       → written as the composite
+// citation is declared public.dynamic_dto  → written as a dynamic_dto
+```
+
+So naming the type is the counterpart of `toDynamicDto`: the wrapper asks for the dynamic form under every
+mode, and naming the type asks for the other one. It is how a class registered both ways reaches its composite
+under `PREFER_DYNAMIC_DTO`, which would otherwise be the one mode with a destination nothing could reach:
+
+```kotlin
+db.insertInto("veterans").values(listOf("name", "honour"))
+    .update("name" to "Marcus", "honour" to honour.withPgType("honour", "public"))
+```
+
+Where the destination is known and the value does not belong in it, this is a `MappingException`
+(`NO_CONVERTER_FOUND`) naming both — rather than a `dynamic_dto` sent where a composite was declared, which the
+server refuses a moment later with `42804` and nothing pointing at the class responsible.
+
 > A mode is given to a client, but what enforces it is a converter on the driver's type registry — which is
 > global to the database. Two clients on one database do not hold a mode each: the one that registered a
 > dynamic type last is the one whose mode applies to both. Where an application builds a second client against

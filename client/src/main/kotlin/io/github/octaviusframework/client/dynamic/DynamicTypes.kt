@@ -13,6 +13,7 @@ import io.github.octaviusframework.driver.exception.MappingException
 import io.github.octaviusframework.driver.exception.MappingExceptionReason
 import io.github.octaviusframework.driver.registry.ConverterRegistry
 import io.github.octaviusframework.driver.type.PgType
+import io.github.octaviusframework.driver.type.isKnownOid
 import io.github.octaviusframework.serializer.octaviusJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -435,6 +436,16 @@ private class DynamicDtoParameterConverter(
     override val supportedClass: KClass<Any> = Any::class
 
     override fun canConvert(sourceClass: KClass<*>, expectedOid: Int, context: SerializationContext): Boolean {
+        // Where the destination's type is known - an attribute of a composite, an element of an array, a value
+        // wrapped in PgTyped - that type is what the value has to fit, and no mode outranks it. A mode answers
+        // the one question the driver cannot: what a top-level parameter, whose type nothing declares, was
+        // meant to be. Reading has nothing to decide because the column has already said it, and this is the
+        // same rule applied wherever the writing side happens to know as much.
+        if (expectedOid.isKnownOid) {
+            val target = context.typeManager.typeDictionary.getPgType(expectedOid)
+            return target.name == DYNAMIC_DTO_NAME && target.schema == DYNAMIC_DTO_SCHEMA
+        }
+
         // Wrapping says which form was meant, so a wrapped value is claimed under every mode.
         if (sourceClass == DynamicDto::class) return true
         if (types.registrationFor(sourceClass) == null) return false

@@ -12,6 +12,11 @@ package io.github.octaviusframework.client.dynamic
  * class is the only thing to go on. Where a class is registered here **and** as a composite, that is not
  * enough to say which of the two was meant, and this is what settles it.
  *
+ * A mode therefore reaches only as far as that ignorance does. An attribute of a composite, an element of an
+ * array and a value wrapped in [PgTyped][io.github.octaviusframework.driver.type.PgTyped] all carry the type
+ * they are going into, and that type decides: a class is written as a `dynamic_dto` there when the
+ * destination is one and as the composite when it is that, under every mode alike.
+ *
  * [DynamicTypes.toDynamicDto] overrides whichever mode is in force: a value already wrapped is written as a
  * `dynamic_dto` under all three.
  *
@@ -41,8 +46,9 @@ enum class DynamicWriteStrategy {
     /**
      * A registered class is written as a `dynamic_dto` even where it is also a registered composite.
      *
-     * For a class stored both ways whose usual destination is the dynamic one; the composite is then the
-     * form you have to ask for, by passing a value the composite path claims instead.
+     * For a class stored both ways whose usual destination is the dynamic one. The composite is then the
+     * form you have to ask for, which is what naming the type does:
+     * `value.withPgType("honour")` sends it there as it would under any other mode.
      */
     PREFER_DYNAMIC_DTO
 }

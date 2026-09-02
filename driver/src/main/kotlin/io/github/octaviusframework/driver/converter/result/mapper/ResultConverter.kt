@@ -14,11 +14,19 @@ import kotlin.reflect.KType
  * or on a single query through
  * [registerResultConverter][io.github.octaviusframework.driver.query.Query.registerResultConverter].
  *
- * Converters are consulted in reverse registration order, so a later one wins over an earlier one, and
- * lookup is keyed on [supportedSourceClass]. Registering under `Any::class` opts into being asked about
- * every value, which is how the built-in reflective converters work; it also means [canConvert] has to
- * be precise, since a converter that claims a value it cannot produce raises `MappingException`
- * (`CONVERSION_ERROR`) naming the converter rather than mapping the value.
+ * Lookup is keyed on [supportedSourceClass] — what the codec produced rather than what the caller asked
+ * for, so a `PgComposite`, a `PgArray`, a `Row`, a scalar. Every built-in names one of those, and a
+ * converter written for a particular column knows as much about it, so naming the class costs nothing
+ * and is what keeps the converter from being asked about every other value in the database. Within one
+ * class the most recent registration is consulted first, so a later converter wins over an earlier one.
+ *
+ * `Any::class` is the slot for a converter that genuinely cannot say — one keying off the PostgreSQL
+ * type rather than the decoded class — and it is a fallback rather than an override: that group is
+ * reached only once every converter registered under the value's own class has declined, so registering
+ * there displaces none of them however late it happens. Displacing one is what a query's own registry is
+ * for, being consulted ahead of the session's entirely. Either way [canConvert] has to be precise, since
+ * a converter that claims a value it cannot produce raises `MappingException` (`CONVERSION_ERROR`)
+ * naming the converter rather than mapping the value.
  *
  * Whether a converter may touch the session it is reading from depends on what invoked it, because that
  * decides whether the exchange with the server is still open. Under `fetchObject*`, `fetchField*` and
