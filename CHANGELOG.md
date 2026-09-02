@@ -17,6 +17,17 @@
 
 ### Driver
 
+#### Added
+
+- **`Row` answers two questions it used to make you work around.** `hasColumn(name)` is what
+  `getColumnIndex` answered by raising, for a result whose shape is not fixed - a projection assembled at
+  runtime, a `RETURNING` that differs by branch - where asking is what the code means and a `try`/`catch`
+  around a lookup is not. `getRaw(name)` is the counterpart of `getRaw(index)`, which stood alone.
+- **A column reads as `row["cognomen"]`.** The reified `get` is now an `operator`, by name and by index
+  alike, so the expected type is what fixes `T` and its nullability with it, exactly as in the `fetch*`
+  family: `val name: String = row["cognomen"]` refuses a `NULL` and `val name: String? = row["cognomen"]`
+  accepts one. `get<String>("cognomen")` goes on working unchanged; nothing is renamed.
+
 #### Changed
 
 - **The type dictionary names itself when it loads.** `Loaded 47 types for localhost:5432/mydb in 12ms`

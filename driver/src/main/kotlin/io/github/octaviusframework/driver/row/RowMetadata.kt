@@ -61,6 +61,18 @@ class RowMetadata internal constructor(
     }
 
     /**
+     * Whether this result has a column called [columnName].
+     *
+     * The question [getColumnIndex] answers by raising, for code whose result shape is not fixed - a
+     * projection assembled at runtime, a `RETURNING` that varies. Asking is cheaper than catching, and reads
+     * as the question it is.
+     *
+     * @param columnName The name to look for.
+     * @return `true` where a column carries that name.
+     */
+    fun hasColumn(columnName: String): Boolean = nameToIndexCache.containsKey(columnName)
+
+    /**
      * Retrieves the metadata of the column at the specified [index].
      *
      * @param index The zero-based index of the column.
