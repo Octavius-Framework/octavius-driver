@@ -91,6 +91,29 @@ that; it only says what it saw.
 `registerAnnotatedTypes` takes an optional `classLoader` for the container that does not hand its classes to
 the context loader.
 
+## What It Does Not Scan
+
+Converters. A `ResultConverter` or `ParameterConverter` is registered by hand, at startup, in one place — and
+that is on purpose rather than for want of doing it.
+
+A type is a **domain class**. It lives wherever the feature that owns it lives, and it is added by whoever adds
+that feature, so the list of them is exactly the thing a person cannot be trusted to keep: the enum goes into a
+new package and the registration call, three modules away, is not updated. Scanning answers that — the
+declaration travels with the class instead of being tracked by something else.
+
+A converter is not shaped like that. There are few of them, they are written deliberately, and they belong to
+the wiring rather than to a feature. But the reason not to scan them is stronger than *they would not benefit*:
+**for converters, registration order is meaning.** They are consulted newest-first and a later one wins, which
+is the whole mechanism by which anything overrides anything — see
+[the read SPI](../driver/type-system.md#how-a-converter-gets-chosen). A classpath scan has no defined order:
+it is whatever the jars and the filesystem hand back, and it can differ between one build and the next. Scanning
+them would make priority non-deterministic in the one place where priority is the only lever there is.
+
+The previous generation scanned its `TypeHandler`s and was right to: those were resolved from a **map keyed by
+OID and class**, one per type, no overlap and no order to get wrong. That is what changed. Until `canConvert`
+stops being able to say yes to anything, the block that registers converters by hand is the only place their
+order is visible, and a scanner would hide it.
+
 ## Next
 
 - [`dynamic_dto`](dynamic-dto.md) — what `@DynamicallyMappable` registers into

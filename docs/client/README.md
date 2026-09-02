@@ -69,6 +69,7 @@ it again.
 - [Why It Is a Module of Its Own](scanner.md#why-it-is-a-module-of-its-own) — One dependency, kept off everyone else
 - [The Annotations](scanner.md#the-annotations) — What each one registers, and where they live
 - [What a Scan Reports](scanner.md#what-a-scan-reports) — `ScanReport`, and why `unresolved` is not a refusal
+- [What It Does Not Scan](scanner.md#what-it-does-not-scan) — Converters, and why their order is not a scanner's to decide
 
 ## API Reference
 
