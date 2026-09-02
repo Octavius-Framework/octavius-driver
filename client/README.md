@@ -1,7 +1,5 @@
 # Octavius Client
 
-![Status](https://img.shields.io/badge/status-early-orange)
-
 What the [driver](../driver/README.md) leaves to the caller, and nothing it already does.
 
 > Part of [Octavius for PostgreSQL](../README.md), released with it and on the same version.
@@ -88,9 +86,9 @@ the calling code made about its own data. A lookup allowed to find nothing says 
 
 ## Status
 
-Early, and first released in 0.9.8. The API is not frozen; the repository's
-[CHANGELOG](../CHANGELOG.md) is where changes are recorded, under a section of its own within each version. It
-includes the places this deliberately parts company with octavius-database.
+First released in 0.9.8. The repository's [CHANGELOG](../CHANGELOG.md) is where changes are recorded, under a
+section of its own within each version. It includes the places this deliberately parts company with
+octavius-database.
 
 ## License
 

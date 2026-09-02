@@ -1,7 +1,5 @@
 # Octavius Client — Scanner
 
-![Status](https://img.shields.io/badge/status-early-orange)
-
 Finds the annotated classes in your packages and registers them, so that thirty types are named once instead
 of thirty times.
 

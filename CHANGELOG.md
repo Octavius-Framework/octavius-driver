@@ -15,6 +15,11 @@
   `driver-spring-integration` the treaty - with a line under the table cashing each of them out against what
   the module does.
 
+- **`pg-model`'s tests now run in CI.** The workflow ran `./gradlew test`, and `pg-model` is the multiplatform
+  module, which has no `test` task at all - so the case converter, the date spelling and the serializers, all
+  three added in 0.9.9, had their jar built on every push and not one of their tests run. The step is
+  `./gradlew test :pg-model:allTests` now, covering both the JVM and the JS target the module publishes. They
+  passed on both when finally asked.
 ### Driver
 
 #### Added

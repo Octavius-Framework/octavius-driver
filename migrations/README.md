@@ -1,7 +1,5 @@
 # Octavius — Migrations
 
-![Status](https://img.shields.io/badge/status-early-orange)
-
 Brings a database up to date with the migrations in your application, and keeps the record of what it did.
 
 > Part of [Octavius for PostgreSQL](../README.md), released with it and on the same version. Needs the

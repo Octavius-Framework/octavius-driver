@@ -3,7 +3,6 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
 [![Build and Test](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml)
 [![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-postgresql/)
-![Status](https://img.shields.io/badge/status-Work%20In%20Progress-orange)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
 
 *Not an ORM. A **ROME** — a Relational-Object Mapping Engine. Because all queries lead to ROME.*
@@ -80,9 +79,9 @@ unchanged next to it.
 
 ## Project status
 
-Pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that
-generates certificates and exercises the TLS modes end to end, and a third that points the driver at
-PostgreSQL 17 to prove the handshake refuses it rather than half-working.
+Written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that generates
+certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to
+prove the handshake refuses it rather than half-working.
 
 The API is not frozen. The driver is the settled part of it; the client and migrations are early. Every module
 carries the same version and is released together, so the number says when something shipped rather than how

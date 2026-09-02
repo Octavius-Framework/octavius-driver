@@ -43,7 +43,7 @@ val senators: List<Senator> = session
 
 ## Project Status
 
-Octavius is pre-1.0 and written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that generates certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to prove the handshake refuses it rather than half-working.
+Octavius is written by one person. Every push runs the suite against a real PostgreSQL 18, alongside a job that generates certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to prove the handshake refuses it rather than half-working.
 
 What the badge means in practice: the API is not frozen. Signatures can still change before 1.0, and the [release notes](https://github.com/Octavius-Framework/octavius-postgresql/releases) say what moved. It has not seen long production use — the numbers below come from benchmarks, not from a year of traffic.
 

@@ -43,12 +43,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      # `pg-model` is the multiplatform module and so has no `test` task at all - `test` alone builds its jar
+      # and runs none of its tests. `allTests` is the aggregate over both targets it publishes.
       - name: Run Tests
         env:
           DB_URL: jdbc:postgresql://localhost:5432/octavius_test
           DB_USERNAME: postgres
           DB_PASSWORD: 1234
-        run: ./gradlew test
+        run: ./gradlew test :pg-model:allTests
 
   test-ssl:
     runs-on: ubuntu-latest
