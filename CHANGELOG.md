@@ -23,6 +23,26 @@
   `getColumnIndex` answered by raising, for a result whose shape is not fixed - a projection assembled at
   runtime, a `RETURNING` that differs by branch - where asking is what the code means and a `try`/`catch`
   around a lookup is not. `getRaw(name)` is the counterpart of `getRaw(index)`, which stood alone.
+- **`required` and `nested` take the terms the transaction runs under.** `isolation`, `readOnly`,
+  `statementTimeout` and `transactionTimeout`, all four optional and all four scoped to that transaction:
+  `SET TRANSACTION` for the first two, `SET LOCAL` for the timeouts, joined into **one statement sent in one
+  round trip** right after the `BEGIN`. Ask for none of them, which is the default, and nothing is sent at
+  all - a plain `required { }` costs exactly what it did before. `TransactionIsolationLevel` gains `sqlName`
+  for the spelling that goes into the statement.
+- **Which means nothing is left on the connection to clean up.** The session properties
+  `transactionIsolationLevel` and `readOnly` issue `SET SESSION CHARACTERISTICS`, so they outlive the
+  transaction and a pool has to restore them afterwards - HikariCP does, at a round trip each. The
+  parameters end with the transaction instead, so there is nothing to restore. The cost is that the two
+  properties no longer describe a transaction opened this way: a `SERIALIZABLE` block runs while
+  `transactionIsolationLevel` still answers `READ_COMMITTED`, which is the true answer to the question it
+  is asked - what the *session* is on. Both KDocs now say so, as does
+  [Terms for one transaction](docs/driver/transactions.md#terms-for-one-transaction).
+- **A joined transaction honours none of them, and says which it dropped.** Isolation and read-only cannot
+  be changed once a transaction has begun; a timeout would be worse than ignored, `SET LOCAL` binding to
+  the transaction rather than to the block and so standing over the rest of somebody else's transaction
+  after this one returned. Same on `nested`'s savepoint path, a savepoint not being a transaction to give
+  terms to. The warning names all four rather than raising, so an inner unit of work stating the level it
+  needs still runs when the outer one already provides it.
 - **A column reads as `row["cognomen"]`.** The reified `get` is now an `operator`, by name and by index
   alike, so the expected type is what fixes `T` and its nullability with it, exactly as in the `fetch*`
   family: `val name: String = row["cognomen"]` refuses a `NULL` and `val name: String? = row["cognomen"]`
@@ -38,6 +58,17 @@
   text has to be matched again.
 
 ### Client
+
+#### Changed
+
+- **`DefaultSessionProvider` opens a transaction in two round trips instead of five.** It used to set the
+  isolation level and the read-only flag as session characteristics before the `BEGIN`, then send each
+  timeout as its own `SET LOCAL` after it - five round trips before the first statement of the block, and
+  two more on the way back as HikariCP restored the two session settings. All of it is now the driver's
+  `required(...)`: `BEGIN`, then one statement carrying whatever was asked for. `applyTimeouts` and
+  `warnIfSettingsCannotBeHonoured` are gone from this class, the second because the rule about what a
+  joined transaction can honour now lives in one place rather than two - and it covers the timeouts, which
+  this class used to drop silently.
 
 #### Added
 

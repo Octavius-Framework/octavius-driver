@@ -16,6 +16,7 @@ import io.github.octaviusframework.driver.session.TransactionIsolationLevel
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.time.Duration.Companion.seconds
 
 class TransactionTest {
 
@@ -230,5 +231,98 @@ class TransactionTest {
         }
         val innerEx = wrapper.wrappedException as InvalidOperationException
         assertEquals(InvalidOperationExceptionReason.INVALID_ARGUMENT, innerEx.reason)
+    }
+
+    // ------------------------------------------- terms scoped to one transaction
+
+    private fun setting(name: String): String =
+        session.createNativeQuery("SELECT current_setting($1)").fetchFieldStrict<String>(name)
+
+    @Test
+    fun `required applies the isolation level to its own transaction only`() {
+        val before = session.transactionIsolationLevel
+
+        val inside = session.transaction.required(isolation = TransactionIsolationLevel.SERIALIZABLE) {
+            setting("transaction_isolation")
+        }
+
+        assertEquals("serializable", inside)
+        // Scoped to the transaction: the session is where it was, with nothing to undo.
+        assertEquals(before, session.transactionIsolationLevel)
+        assertEquals("read committed", setting("transaction_isolation"))
+    }
+
+    @Test
+    fun `required applies read-only to its own transaction only`() {
+        val inside = session.transaction.required(readOnly = true) {
+            setting("transaction_read_only")
+        }
+
+        assertEquals("on", inside)
+        assertFalse(session.readOnly)
+        assertEquals("off", setting("transaction_read_only"))
+    }
+
+    @Test
+    fun `required applies both timeouts and lets them revert with the transaction`() {
+        val inside = session.transaction.required(
+            statementTimeout = 7.seconds,
+            transactionTimeout = 30.seconds
+        ) {
+            setting("statement_timeout") to setting("transaction_timeout")
+        }
+
+        assertEquals("7s" to "30s", inside)
+        assertEquals("0", setting("statement_timeout"))
+        assertEquals("0", setting("transaction_timeout"))
+    }
+
+    @Test
+    fun `all four travel together`() {
+        val inside = session.transaction.required(
+            isolation = TransactionIsolationLevel.REPEATABLE_READ,
+            readOnly = true,
+            statementTimeout = 7.seconds,
+            transactionTimeout = 30.seconds
+        ) {
+            listOf(
+                setting("transaction_isolation"),
+                setting("transaction_read_only"),
+                setting("statement_timeout"),
+                setting("transaction_timeout")
+            )
+        }
+
+        assertEquals(listOf("repeatable read", "on", "7s", "30s"), inside)
+    }
+
+    @Test
+    fun `asking for nothing sends nothing`() {
+        val inside = session.transaction.required { setting("transaction_isolation") }
+
+        assertEquals("read committed", inside)
+    }
+
+    @Test
+    fun `a joined transaction keeps the terms it began at`() {
+        val inside = session.transaction.required(isolation = TransactionIsolationLevel.SERIALIZABLE) {
+            // Joining, so this asks for terms it is in no position to set: the outer ones stand.
+            session.transaction.required(isolation = TransactionIsolationLevel.READ_COMMITTED) {
+                setting("transaction_isolation")
+            }
+        }
+
+        assertEquals("serializable", inside)
+    }
+
+    @Test
+    fun `a savepoint keeps the terms of the transaction around it`() {
+        val inside = session.transaction.required(readOnly = true) {
+            session.transaction.nested(readOnly = false) {
+                setting("transaction_read_only")
+            }
+        }
+
+        assertEquals("on", inside)
     }
 }

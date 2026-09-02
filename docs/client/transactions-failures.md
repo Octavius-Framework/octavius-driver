@@ -64,13 +64,20 @@ db.transaction(
 ) { … }
 ```
 
-**Isolation and `readOnly` apply only where this call actually starts a transaction.** Joining one that is
-already running cannot change the level it began at, so under `REQUIRED` inside an existing transaction they
-are ignored rather than silently reinterpreted.
+**All four apply only where this call actually starts a transaction.** Joining one that is already running
+cannot change the level it began at, and a timeout applied to somebody else's transaction would stand over the
+rest of it after this block returned — so under `REQUIRED` inside an existing transaction, and under `NESTED`
+on its savepoint path, they are ignored and a warning says which ones were dropped. `REQUIRES_NEW` is what to
+reach for where the terms have to hold.
 
-**Both timeouts are sent as `SET LOCAL` inside the transaction**, which is what keeps them from following the
-connection back into the pool. `statementTimeout` bounds any one statement; `transactionTimeout` bounds how
-long the whole thing may stay open. `null` leaves the server's own setting alone.
+**All four are scoped to the transaction and travel as one statement**, sent immediately after the `BEGIN`:
+`SET TRANSACTION` for isolation and `readOnly`, `SET LOCAL` for the timeouts, in a single round trip. Nothing
+is left on the connection when the transaction ends, so nothing follows it back into the pool.
+`statementTimeout` bounds any one statement; `transactionTimeout` bounds how long the whole thing may stay
+open. `null` leaves the server's own setting alone, and asking for none of them sends nothing at all.
+
+The rule and the warning both live in the driver's `TransactionManager`, which this delegates to — see
+[Terms for one transaction](../driver/transactions.md#terms-for-one-transaction).
 
 ## Thrown or Returned
 
@@ -200,14 +207,14 @@ class SpringSessionProvider(
             definition.isolation?.let { isolationLevel = it.jdbcValue }
             isReadOnly = definition.readOnly
         }
+        val timeouts = listOfNotNull(
+            definition.statementTimeout?.let { "SET LOCAL statement_timeout = ${it.inWholeMilliseconds}" },
+            definition.transactionTimeout?.let { "SET LOCAL transaction_timeout = ${it.inWholeMilliseconds}" }
+        )
+
         return TransactionTemplate(transactionManager, spring).execute {
-            template.execute {
-                definition.statementTimeout?.let {
-                    createNativeQuery("SET LOCAL statement_timeout = ${it.inWholeMilliseconds}").execute()
-                }
-                definition.transactionTimeout?.let {
-                    createNativeQuery("SET LOCAL transaction_timeout = ${it.inWholeMilliseconds}").execute()
-                }
+            if (timeouts.isNotEmpty()) {
+                template.execute { createNativeQuery(timeouts.joinToString("; ")).execute() }
             }
             block()
         }
@@ -219,7 +226,8 @@ class SpringSessionProvider(
 for, and isolation maps straight across because `TransactionIsolationLevel.jdbcValue` *is* Spring's
 `ISOLATION_*` constant. What is not delegation is the timeouts: Spring has one, it means the transaction rather
 than the statement, and it enforces it itself — so both `SET LOCAL`s are yours to issue, and they account for
-about a third of the class.
+about a third of the class. They go in one statement for the same reason the driver's own `required` sends them
+that way: a script separated by `;` is one round trip, and there is nothing here to bind.
 
 That is the whole of what a `client-spring-integration` module would contain, which is why there is not one.
 See [Spring Integration](../driver/spring-integration.md) for what the driver's own module wires up.

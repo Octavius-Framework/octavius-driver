@@ -104,11 +104,17 @@ interface OctaviusSessionOperations {
 
     /**
      * The transaction isolation level for this session.
+     *
+     * The session's, and only the session's: a level asked for through [TransactionManager.required] belongs
+     * to that one transaction and is not readable here, so this can answer `READ COMMITTED` while a
+     * `SERIALIZABLE` block is running.
      */
     var transactionIsolationLevel: TransactionIsolationLevel
 
     /**
      * Indicates whether this session is currently in read-only mode.
+     *
+     * The session's, on the same terms as [transactionIsolationLevel].
      */
     var readOnly: Boolean
 
@@ -231,12 +237,16 @@ enum class TransactionState {
 
 /**
  * Defines the available transaction isolation levels.
+ *
+ * @property jdbcValue The `java.sql.Connection.TRANSACTION_*` constant for this level, which is also
+ * Spring's `ISOLATION_*` constant for it.
+ * @property sqlName How the level is spelled in `SET TRANSACTION ISOLATION LEVEL` and in `BEGIN`.
  */
-enum class TransactionIsolationLevel(val jdbcValue: Int) {
-    READ_UNCOMMITTED(1),
-    READ_COMMITTED(2),
-    REPEATABLE_READ(4),
-    SERIALIZABLE(8);
+enum class TransactionIsolationLevel(val jdbcValue: Int, val sqlName: String) {
+    READ_UNCOMMITTED(1, "READ UNCOMMITTED"),
+    READ_COMMITTED(2, "READ COMMITTED"),
+    REPEATABLE_READ(4, "REPEATABLE READ"),
+    SERIALIZABLE(8, "SERIALIZABLE");
 
     companion object {
         /**

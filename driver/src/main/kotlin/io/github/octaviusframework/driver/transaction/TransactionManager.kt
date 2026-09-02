@@ -2,7 +2,9 @@ package io.github.octaviusframework.driver.transaction
 
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
+import io.github.octaviusframework.driver.session.TransactionIsolationLevel
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlin.time.Duration
 
 private val logger = KotlinLogging.logger {}
 
@@ -33,14 +35,37 @@ class TransactionManager internal constructor(@PublishedApi internal val session
      * to [OctaviusSessionOperations]. A `return` out of the block does not compile either - use
      * `return@required`, since an early exit would otherwise commit whatever the block had already
      * done, which is the same decision the restricted receiver is there to keep out of the block.
-     * 
+     *
+     * Whatever of [isolation], [readOnly], [statementTimeout] and [transactionTimeout] is asked for goes out
+     * as one statement after the `BEGIN`, in a single round trip; asking for none of them sends nothing at
+     * all. All four end with the transaction, which is what separates them from
+     * [OctaviusSessionOperations.transactionIsolationLevel] and [OctaviusSessionOperations.readOnly] - those
+     * are session-wide, and are not what this sets.
+     *
+     * A transaction already running keeps the terms it began at: none of the four applies, and a warning
+     * names them.
+     *
+     * @param isolation The isolation level for this transaction, or `null` for the session's.
+     * @param readOnly Whether this transaction refuses writes.
+     * @param statementTimeout Aborts any single statement in this transaction that runs longer than this.
+     * @param transactionTimeout Aborts this transaction once it has been open longer than this.
      * @param block The block of code to execute.
      * @return The result of the block.
      */
-    inline fun <T> required(crossinline block: OctaviusSessionOperations.() -> T): T {
-        if (!session.autoCommit) return session.block()
+    inline fun <T> required(
+        isolation: TransactionIsolationLevel? = null,
+        readOnly: Boolean = false,
+        statementTimeout: Duration? = null,
+        transactionTimeout: Duration? = null,
+        crossinline block: OctaviusSessionOperations.() -> T
+    ): T {
+        if (!session.autoCommit) {
+            warnSettingsIgnored(isolation, readOnly, statementTimeout, transactionTimeout, "a transaction that is already running")
+            return session.block()
+        }
 
         session.autoCommit = false
+        applySettings(isolation, readOnly, statementTimeout, transactionTimeout)
         var failure: Throwable? = null
         try {
             val result = session.block()
@@ -71,12 +96,26 @@ class TransactionManager internal constructor(@PublishedApi internal val session
      * is restricted to [OctaviusSessionOperations]. A `return` out of the block does not compile
      * either - use `return@nested`, since an early exit would otherwise slip past the release and
      * the rollback alike and leave the savepoint standing.
-     * 
+     *
+     * The four terms reach only the case where this starts a transaction of its own; on the savepoint path
+     * they are ignored and a warning names them.
+     *
+     * @param isolation See [required].
+     * @param readOnly See [required].
+     * @param statementTimeout See [required].
+     * @param transactionTimeout See [required].
      * @param block The block of code to execute.
      * @return The result of the block.
      */
-    inline fun <T> nested(crossinline block: OctaviusSessionOperations.() -> T): T {
+    inline fun <T> nested(
+        isolation: TransactionIsolationLevel? = null,
+        readOnly: Boolean = false,
+        statementTimeout: Duration? = null,
+        transactionTimeout: Duration? = null,
+        crossinline block: OctaviusSessionOperations.() -> T
+    ): T {
         if (!session.autoCommit) {
+            warnSettingsIgnored(isolation, readOnly, statementTimeout, transactionTimeout, "a savepoint")
             val sp = session.setSavepoint()
             try {
                 val result = session.block()
@@ -92,7 +131,65 @@ class TransactionManager internal constructor(@PublishedApi internal val session
             }
         }
 
-        return required(block)
+        return required(isolation, readOnly, statementTimeout, transactionTimeout, block)
+    }
+
+    /**
+     * Sends the terms this transaction was opened with, as one statement.
+     *
+     * `SET TRANSACTION` for the isolation level and the read-only flag, `SET LOCAL` for the timeouts: both
+     * end with the transaction, so nothing here has to be undone before the connection goes back to a pool.
+     * The first of them has to precede the first query of the transaction, which is why this runs where it
+     * does, and one `execute` carries all four - a script is one round trip, and there is nothing to bind.
+     */
+    @PublishedApi
+    internal fun applySettings(
+        isolation: TransactionIsolationLevel?,
+        readOnly: Boolean,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?
+    ) {
+        if (isolation == null && !readOnly && statementTimeout == null && transactionTimeout == null) return
+
+        val statements = buildList {
+            if (isolation != null || readOnly) {
+                add(
+                    buildString {
+                        append("SET TRANSACTION")
+                        if (isolation != null) append(" ISOLATION LEVEL ${isolation.sqlName}")
+                        if (readOnly) append(" READ ONLY")
+                    }
+                )
+            }
+            statementTimeout?.let { add("SET LOCAL statement_timeout = ${it.inWholeMilliseconds}") }
+            transactionTimeout?.let { add("SET LOCAL transaction_timeout = ${it.inWholeMilliseconds}") }
+        }
+
+        session.createNativeQuery(statements.joinToString("; ")).execute()
+    }
+
+    /**
+     * Says out loud that a scope asked for terms it is in no position to set.
+     *
+     * Raising would be the stricter reading, and would also break the ordinary case: an inner unit of work
+     * states the level it needs and is called from an outer one that already provides it.
+     *
+     * @param scope What is being entered instead - a transaction already running, or a savepoint.
+     */
+    @PublishedApi
+    internal fun warnSettingsIgnored(
+        isolation: TransactionIsolationLevel?,
+        readOnly: Boolean,
+        statementTimeout: Duration?,
+        transactionTimeout: Duration?,
+        scope: String
+    ) {
+        if (isolation == null && !readOnly && statementTimeout == null && transactionTimeout == null) return
+        logger.warn {
+            "Entering $scope, so isolation=$isolation, readOnly=$readOnly, statementTimeout=$statementTimeout " +
+                "and transactionTimeout=$transactionTimeout are ignored; the terms already in force stand. " +
+                "A block that needs its own terms needs its own transaction."
+        }
     }
 
     /**

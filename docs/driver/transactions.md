@@ -13,6 +13,7 @@ Contents:
 * [Manual control](#manual-control)
 * [Savepoints](#savepoints)
 * [Transaction state](#transaction-state)
+* [Terms for one transaction](#terms-for-one-transaction)
 * [Isolation levels and read-only mode](#isolation-levels-and-read-only-mode)
 
 ## Auto-commit, the default
@@ -38,6 +39,9 @@ session.transaction.required {
     createNativeQuery("INSERT INTO senate_logs (event) VALUES ($1)").update("New senator inducted")
 }
 ```
+
+Both blocks also take the terms the transaction runs under — isolation, read-only, and the two timeouts. See
+[Terms for one transaction](#terms-for-one-transaction).
 
 ### `nested { ... }`
 
@@ -176,6 +180,40 @@ session.transactionState                                  // IN_TRANSACTION agai
 
 Two ways out: `rollback()`, which discards the whole transaction and opens a fresh one, or — if you saw it coming — a `nested { }` block around the risky part, whose savepoint rollback clears the failure while keeping everything before it. That is the practical reason to reach for `nested` rather than `required`.
 
+## Terms for one transaction
+
+`required` and `nested` take the terms the transaction is to run under, and scope them to that transaction:
+
+```kotlin
+import kotlin.time.Duration.Companion.seconds
+
+session.transaction.required(
+    isolation = TransactionIsolationLevel.SERIALIZABLE,
+    readOnly = true,
+    statementTimeout = 5.seconds,
+    transactionTimeout = 30.seconds
+) {
+    createNativeQuery("SELECT count(*) FROM senators").fetchFieldStrict<Long>()
+}
+```
+
+Whatever of the four is asked for travels as **one statement, in one round trip**, sent immediately after the
+`BEGIN`: `SET TRANSACTION` for the isolation level and the read-only flag, `SET LOCAL` for the timeouts. Ask
+for none of them — the default — and nothing is sent at all.
+
+All four end when the transaction ends. That is the difference from the session properties in the next
+section, and it is the reason to prefer this form: nothing is left on the connection, so there is nothing for
+a pool to clean up and nothing for the next borrower to inherit. The other side of it is that
+`session.transactionIsolationLevel` reads the *session*, so it will answer `READ_COMMITTED` while a
+`SERIALIZABLE` block is running — correctly, since that is what the session is on.
+
+**Where a transaction is already running, none of the four applies and a warning says so.** Isolation and
+read-only cannot be changed once a transaction has begun, and a timeout would be worse than ignored: `SET
+LOCAL` binds to the transaction rather than to the block, so it would quietly stand over the rest of the outer
+transaction after the inner block returned. The same holds for `nested` on its savepoint path — a savepoint is
+a point inside a transaction, not a transaction, and there is nothing there to give an isolation level to.
+Where the terms have to hold, the block needs a transaction of its own.
+
 ## Isolation levels and read-only mode
 
 ```kotlin
@@ -186,6 +224,12 @@ session.readOnly = true
 ```
 
 `TransactionIsolationLevel` offers `READ_UNCOMMITTED`, `READ_COMMITTED` (PostgreSQL's default), `REPEATABLE_READ` and `SERIALIZABLE`. PostgreSQL treats `READ_UNCOMMITTED` as `READ_COMMITTED` — it has no dirty reads to offer. Anything outside the four, such as JDBC's `TRANSACTION_NONE`, is rejected with `InvalidOperationException(INVALID_ARGUMENT)`.
+
+> [!NOTE]
+> These two are the **session** door, and are what you reach for when the setting should outlive one
+> transaction. For a single transaction, prefer the parameters on `required` in
+> [Terms for one transaction](#terms-for-one-transaction) — they are one round trip rather than two and leave
+> nothing behind.
 
 > [!NOTE]
 > Both settings change the **session default**, not just the current transaction: each issues a `SET SESSION CHARACTERISTICS AS TRANSACTION ...`, plus a `SET TRANSACTION ...` when a transaction is already open. They therefore apply to every later transaction on that connection — but on a pooled connection the pool cleans up after you. HikariCP tracks `transactionIsolation` and `readOnly` and restores its own defaults when the connection returns, so a change made through these properties does not follow the connection to its next borrower.

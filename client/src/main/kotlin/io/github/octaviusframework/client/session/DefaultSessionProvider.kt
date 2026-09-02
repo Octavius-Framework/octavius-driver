@@ -5,10 +5,7 @@ import io.github.octaviusframework.client.transaction.TransactionPropagation
 import io.github.octaviusframework.driver.jdbc.getOctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSession
 import io.github.octaviusframework.driver.session.OctaviusSessionOperations
-import io.github.oshai.kotlinlogging.KotlinLogging
 import javax.sql.DataSource
-
-private val logger = KotlinLogging.logger {}
 
 /**
  * The [SessionProvider] for an application that runs its own transactions, binding the current one to the
@@ -45,19 +42,27 @@ class DefaultSessionProvider(private val dataSource: DataSource) : SessionProvid
         return when (definition.propagation) {
             TransactionPropagation.REQUIRED ->
                 if (active == null) newTransaction(definition, block)
-                else {
-                    warnIfSettingsCannotBeHonoured(definition)
+                else
                     // Joining, so this does not commit: `required` runs the block as it stands while the
-                    // session is already in a transaction, and the outermost scope is what decides.
-                    active.transaction.required { block() }
-                }
+                    // session is already in a transaction, and the outermost scope is what decides. The
+                    // definition is handed over all the same, so that the driver stays the one place that
+                    // decides which of these terms a joined transaction can honour, and warns about the rest.
+                    active.transaction.required(
+                        definition.isolation,
+                        definition.readOnly,
+                        definition.statementTimeout,
+                        definition.transactionTimeout
+                    ) { block() }
 
             TransactionPropagation.NESTED ->
                 if (active == null) newTransaction(definition, block)
-                else {
-                    warnIfSettingsCannotBeHonoured(definition)
-                    active.transaction.nested { block() }
-                }
+                else
+                    active.transaction.nested(
+                        definition.isolation,
+                        definition.readOnly,
+                        definition.statementTimeout,
+                        definition.transactionTimeout
+                    ) { block() }
 
             // A session of its own, whether or not one was bound. `inNewSession` rebinds for the duration
             // and puts the outer one back afterwards, so the suspension needs nothing else.
@@ -67,15 +72,20 @@ class DefaultSessionProvider(private val dataSource: DataSource) : SessionProvid
 
     /**
      * Opens a session, starts a transaction on it and runs [block] inside.
+     *
+     * Every term of the definition goes to `required`, which sends the whole lot as one statement after the
+     * `BEGIN` - `SET TRANSACTION` for the isolation level and the read-only flag, `SET LOCAL` for the
+     * timeouts. All four end with the transaction, so a pooled connection goes back carrying none of them
+     * and there is nothing here to undo.
      */
     private fun <T> newTransaction(definition: TransactionDefinition, block: () -> T): T =
-        inNewSession(definition) { session ->
-            session.transaction.required {
-                // Inside the transaction on purpose: `SET LOCAL` reverts at its end and does nothing
-                // outside one, so these cannot be applied alongside isolation before it begins.
-                applyTimeouts(definition)
-                block()
-            }
+        inNewSession { session ->
+            session.transaction.required(
+                definition.isolation,
+                definition.readOnly,
+                definition.statementTimeout,
+                definition.transactionTimeout
+            ) { block() }
         }
 
     /**
@@ -84,52 +94,15 @@ class DefaultSessionProvider(private val dataSource: DataSource) : SessionProvid
      * The previous binding is restored rather than cleared, which is what makes `REQUIRES_NEW` inside an
      * existing transaction come back to the outer session instead of to no session at all.
      */
-    private fun <T> inNewSession(definition: TransactionDefinition, body: (OctaviusSession) -> T): T {
+    private fun <T> inNewSession(body: (OctaviusSession) -> T): T {
         val session = dataSource.getOctaviusSession()
         val previous = bound.get()
         try {
-            // Both have to be set before the transaction begins - the driver sends `BEGIN` as soon as
-            // auto-commit goes off, and neither can be changed once it has.
-            definition.isolation?.let { session.transactionIsolationLevel = it }
-            if (definition.readOnly) session.readOnly = true
-
             bound.set(session)
             return body(session)
         } finally {
             if (previous != null) bound.set(previous) else bound.remove()
             session.close()
-        }
-    }
-
-    /**
-     * Says out loud that a transaction being joined began on somebody else's terms.
-     *
-     * Neither setting can be changed once a transaction is running, so the alternative to a log line is
-     * that the block quietly runs at an isolation level it did not ask for. Raising instead would be the
-     * stricter reading, but it would also break the ordinary case where an inner unit of work states the
-     * level it needs and happens to be called from an outer one that already provides it.
-     */
-    private fun warnIfSettingsCannotBeHonoured(definition: TransactionDefinition) {
-        if (definition.isolation == null && !definition.readOnly) return
-        logger.warn {
-            "Joining a transaction that is already running; its isolation level and read-only setting " +
-                "stand, and this block's (isolation=${definition.isolation}, readOnly=${definition.readOnly}) " +
-                "are ignored. Use REQUIRES_NEW where they have to hold."
-        }
-    }
-
-    /**
-     * Applies the definition's timeouts to the transaction that has just begun.
-     *
-     * Sent as `SET LOCAL`, so they revert when the transaction ends and cannot follow the connection back
-     * into the pool.
-     */
-    private fun OctaviusSessionOperations.applyTimeouts(definition: TransactionDefinition) {
-        definition.statementTimeout?.let {
-            createNativeQuery("SET LOCAL statement_timeout = ${it.inWholeMilliseconds}").execute()
-        }
-        definition.transactionTimeout?.let {
-            createNativeQuery("SET LOCAL transaction_timeout = ${it.inWholeMilliseconds}").execute()
         }
     }
 }
