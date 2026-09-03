@@ -21,6 +21,8 @@ class PgRecord internal constructor(
     /**
      * Returns the field at [index], cast to [T].
      *
+     * Also written `record[0]`, where the expected type is what fixes [T] - `val id: Int = record[0]`.
+     *
      * A record is anonymous, so fields are reachable by position only - there are no names to ask by.
      *
      * @param T The expected field type. Declare it nullable to accept a SQL `NULL`.
@@ -29,7 +31,7 @@ class PgRecord internal constructor(
      * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this record's fields,
      *   `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is not a [T].
      */
-    inline fun <reified T> get(index: Int): T {
+    inline operator fun <reified T> get(index: Int): T {
         if (index !in fields.indices) throw MappingException(
             MappingExceptionReason.COLUMN_NOT_FOUND,
             details = "Field index out of bounds: $index (record holds ${fields.size} fields)"

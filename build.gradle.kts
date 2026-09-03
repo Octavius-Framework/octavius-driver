@@ -28,7 +28,6 @@ dependencies {
     dokka(projects.client)
     dokka(projects.clientScanner)
     dokka(projects.migrations)
-    dokka(projects.hikariIntegrationTests)
     dokka(projects.driverSpringIntegration)
 }
 

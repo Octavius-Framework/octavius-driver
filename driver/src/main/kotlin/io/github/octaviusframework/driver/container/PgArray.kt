@@ -39,13 +39,15 @@ class PgArray internal constructor(
     /**
      * Returns the element at [index] in the flat element list, cast to [T].
      *
+     * Also written `array[0]`, where the expected type is what fixes [T] - `val id: Int = array[0]`.
+     *
      * @param T The expected element type. Declare it nullable to accept a SQL `NULL` element.
      * @param index Zero-based index into [elements], regardless of the array's PostgreSQL lower bound.
      * @return The element.
      * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside [elements], `CONVERSION_ERROR`
      *   if the element is not a [T].
      */
-    inline fun <reified T> get(index: Int): T {
+    inline operator fun <reified T> get(index: Int): T {
         if (index !in elements.indices) throw MappingException(
             MappingExceptionReason.COLUMN_NOT_FOUND,
             details = "Element index out of bounds: $index (array holds ${elements.size} elements)"

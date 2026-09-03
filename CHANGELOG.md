@@ -75,6 +75,9 @@
   type being an explicit ask like any other. A composite registered nowhere collapses along with the rest,
   which is the one place asking for a `Map<String, Any?>` did not reach on its own: it used to hand back a raw
   `PgComposite` from three levels down, the identity fallback having nothing better to do with it.
+- **And so do the containers underneath it.** `PgComposite`, `PgArray` and `PgRecord` read as
+  `composite["cognomen"]`, `array[0]` and `record[0]` now — `PgMultirange` already did.
+  Purely additive: every `get<T>(…)` call goes on working unchanged.
 
 #### Fixed
 

@@ -23,13 +23,16 @@ class PgComposite internal constructor(
     /**
      * Returns the attribute at [index], cast to [T].
      *
+     * Also written `composite[0]`, where the expected type is what fixes [T] - `val id: Int = composite[0]`.
+     * The counterpart of `set`.
+     *
      * @param T The expected attribute type. Declare it nullable to accept a SQL `NULL`.
      * @param index Zero-based index in declaration order.
      * @return The attribute value.
      * @throws MappingException `COLUMN_NOT_FOUND` if [index] is outside this composite's attributes,
      *   `CONVERSION_ERROR` if the value is `null` under a non-nullable [T], or is not a [T].
      */
-    inline fun <reified T> get(index: Int): T {
+    inline operator fun <reified T> get(index: Int): T {
         if (index !in fields.indices) throw MappingException(
             MappingExceptionReason.COLUMN_NOT_FOUND,
             details = "Attribute index out of bounds: $index in composite '${type.name}' (${fields.size} attributes)"
@@ -100,13 +103,17 @@ class PgComposite internal constructor(
     /**
      * Returns the attribute named [name], cast to [T].
      *
+     * Also written `composite["cognomen"]`, where the expected type is what fixes [T] - and its
+     * nullability with it, as on [Row][io.github.octaviusframework.driver.row.Row]:
+     * `val name: String = composite["cognomen"]` refuses a `NULL`. The counterpart of `set`.
+     *
      * @param T The expected attribute type. Declare it nullable to accept a SQL `NULL`.
      * @param name The attribute name, as declared in the database.
      * @return The attribute value.
      * @throws MappingException `COLUMN_NOT_FOUND` if there is no such attribute, `CONVERSION_ERROR` if
      *   the value is `null` under a non-nullable [T], or is not a [T].
      */
-    inline fun <reified T> get(name: String): T {
+    inline operator fun <reified T> get(name: String): T {
         val index = type.nameToIndex[name] ?: -1
         if (index == -1) throw MappingException(
             MappingExceptionReason.COLUMN_NOT_FOUND,
