@@ -11,15 +11,19 @@ private val logger = KotlinLogging.logger {}
 
 
 /**
- * Defines the reference point for seek operations on a Large Object.
+ * What a [LargeObject.seek] offset is counted from.
+ *
+ * @property value The constant `lo_lseek64` takes.
  */
-object SeekWhence {
+enum class SeekWhence(val value: Int) {
     /** Seek from the beginning of the Large Object. */
-    const val SET = 0
+    SET(0),
+
     /** Seek from the current position. */
-    const val CUR = 1
+    CUR(1),
+
     /** Seek from the end of the Large Object. */
-    const val END = 2
+    END(2)
 }
 
 /**
@@ -121,13 +125,13 @@ class LargeObject internal constructor(
      * Sets the current position of the Large Object.
      *
      * @param position The offset to seek to.
-     * @param ref The reference point for the [position] (e.g., [SeekWhence.SET], [SeekWhence.CUR], [SeekWhence.END]). Defaults to [SeekWhence.SET].
+     * @param ref What [position] is counted from. Defaults to [SeekWhence.SET].
      * @return The new current position.
      */
-    fun seek(position: Long, ref: Int = SeekWhence.SET): Long {
+    fun seek(position: Long, ref: SeekWhence = SeekWhence.SET): Long {
         checkClosed()
         return session.createNativeQuery("SELECT lo_lseek64($1, $2, $3)")
-            .fetchFieldStrict<Long>(fd, position, ref)
+            .fetchFieldStrict<Long>(fd, position, ref.value)
     }
 
     /**

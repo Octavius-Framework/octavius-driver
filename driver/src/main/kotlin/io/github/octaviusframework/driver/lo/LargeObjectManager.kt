@@ -3,16 +3,23 @@ package io.github.octaviusframework.driver.lo
 import io.github.octaviusframework.driver.session.OctaviusSession
 
 
+private const val INV_WRITE = 0x00020000
+private const val INV_READ = 0x00040000
+
 /**
- * Defines access modes for opening PostgreSQL Large Objects.
+ * How a Large Object is opened.
+ *
+ * @property value The bit mask `lo_open` takes.
  */
-object LargeObjectMode {
-    /** Opens Large Object for writing only. */
-    const val WRITE = 0x00020000
-    /** Opens Large Object for reading only. */
-    const val READ = 0x00040000
-    /** Opens Large Object for both reading and writing. */
-    const val READ_WRITE = READ or WRITE
+enum class LargeObjectMode(val value: Int) {
+    /** Opens the Large Object for writing only. */
+    WRITE(INV_WRITE),
+
+    /** Opens the Large Object for reading only. */
+    READ(INV_READ),
+
+    /** Opens the Large Object for both reading and writing. */
+    READ_WRITE(INV_READ or INV_WRITE)
 }
 
 /**
@@ -41,9 +48,9 @@ class LargeObjectManager internal constructor(private val session: OctaviusSessi
      *   [LargeObjectMode.READ_WRITE], which is the default.
      * @return A [LargeObject] instance for reading/writing.
      */
-    fun open(oid: Int, mode: Int = LargeObjectMode.READ_WRITE): LargeObject {
+    fun open(oid: Int, mode: LargeObjectMode = LargeObjectMode.READ_WRITE): LargeObject {
         val fd = session.createNativeQuery("SELECT lo_open($1, $2)")
-            .fetchFieldStrict<Int>(oid, mode)
+            .fetchFieldStrict<Int>(oid, mode.value)
 
         return LargeObject(session, oid, fd)
     }

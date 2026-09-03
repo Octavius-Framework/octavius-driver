@@ -108,7 +108,10 @@
   `sslkey` and `sslpassword`- on `OctaviusProperties` and on `OctaviusDataSource` alike. They were the only lowercase names. 
   **A pool setting bean properties by name is the one caller that has to move** — `addDataSourceProperty` resolves a name to a setter, so
   HikariCP wants `sslPassword` where it took `sslpassword`.
+- **`LargeObjectMode` and `SeekWhence` are enums.**
 - **`session.getSearchPath()` is `session.searchPath`.**
+- **`DataSource.getOctaviusSession(username, pass)` calls its second parameter `password`.** Every other
+  signature that takes one does. Only a caller passing it by name is affected.
 - **`TransactionIsolationLevel.fromJdbcValue` raises what its sibling raises.** It documented
   `IllegalArgumentException` and threw `NoSuchElementException`, neither of which is what
   `setTransactionIsolation` raises for the same value going the other way. Now
