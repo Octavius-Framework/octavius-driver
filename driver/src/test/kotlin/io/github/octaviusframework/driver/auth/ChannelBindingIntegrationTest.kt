@@ -34,7 +34,7 @@ class ChannelBindingIntegrationTest {
     @Test
     fun `binds the exchange to the channel when required`() {
         val session = getOctaviusSession(url, properties {
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
             channelBinding = ChannelBinding.REQUIRE
         })
 
@@ -50,7 +50,7 @@ class ChannelBindingIntegrationTest {
     @Test
     fun `binds by default over an encrypted connection`() {
         // No channelBinding set at all: PREFER should reach for SCRAM-SHA-256-PLUS on its own.
-        val session = getOctaviusSession(url, properties { sslmode = SslMode.REQUIRE })
+        val session = getOctaviusSession(url, properties { sslMode = SslMode.REQUIRE })
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()")
@@ -65,7 +65,7 @@ class ChannelBindingIntegrationTest {
     fun `still authenticates over TLS with binding disabled`() {
         // The plain SCRAM path, which stays reachable over an encrypted connection.
         val session = getOctaviusSession(url, properties {
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
             channelBinding = ChannelBinding.DISABLE
         })
 
@@ -82,7 +82,7 @@ class ChannelBindingIntegrationTest {
     fun `falls back to plain SCRAM on an unencrypted connection`() {
         // PREFER has to degrade quietly: this is the ordinary no-TLS login, and it must not start
         // failing because the driver learned to bind.
-        val session = getOctaviusSession(url, properties { sslmode = SslMode.DISABLE })
+        val session = getOctaviusSession(url, properties { sslMode = SslMode.DISABLE })
 
         try {
             val isSsl = session.createNativeQuery("SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()")
@@ -97,7 +97,7 @@ class ChannelBindingIntegrationTest {
     fun `refuses to authenticate unencrypted when binding is required`() {
         val exception = assertThrows<InitializationException> {
             getOctaviusSession(url, properties {
-                sslmode = SslMode.DISABLE
+                sslMode = SslMode.DISABLE
                 channelBinding = ChannelBinding.REQUIRE
             })
         }

@@ -122,13 +122,13 @@ fun DataSource.getOctaviusSession(): OctaviusSession = obtainingSession(this) {
  * outright, its connections having been opened with the credentials the pool was configured with.
  *
  * @param username The database user on whose behalf the connection is being made.
- * @param pass The user's password.
+ * @param password The user's password.
  * @return An [OctaviusSession] instance.
  * @throws InitializationException if the data source would not hand over a connection on these
  * terms. Where it was restating a failure of the driver's own, that one is raised instead.
  */
-fun DataSource.getOctaviusSession(username: String, pass: String): OctaviusSession = obtainingSession(this) {
-    OctaviusSessionImpl(this.getConnection(username, pass))
+fun DataSource.getOctaviusSession(username: String, password: String): OctaviusSession = obtainingSession(this) {
+    OctaviusSessionImpl(this.getConnection(username, password))
 }
 
 // Connection

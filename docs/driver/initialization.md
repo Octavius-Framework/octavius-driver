@@ -33,7 +33,7 @@ val properties = OctaviusProperties().apply {
     user = "consul"
     password = "senatus_populusque"
     loginTimeout = 10
-    sslmode = SslMode.REQUIRE
+    sslMode = SslMode.REQUIRE
     applicationName = "LegioXIII-App"
 
     // Anything the driver does not know becomes a server startup parameter
@@ -168,7 +168,7 @@ val session = pool.getOctaviusSession()
 
 Two things do **not** go through it:
 
-* **`sslmode`**, because its accessor is typed as the `SslMode` enum. HikariCP converts a string value only for primitives, `Boolean` and `String`; anything else it passes through untouched, and a `String` arriving at a setter expecting `SslMode` fails the pool with *"argument type mismatch"*. Passing the enum itself — `addDataSourceProperty("sslmode", SslMode.REQUIRE)` — works, but a properties file or Spring's `data-source-properties` has only strings to offer.
+* **`sslMode`**, because its accessor is typed as the `SslMode` enum. HikariCP converts a string value only for primitives, `Boolean` and `String`; anything else it passes through untouched, and a `String` arriving at a setter expecting `SslMode` fails the pool with *"argument type mismatch"*. Passing the enum itself — `addDataSourceProperty("sslMode", SslMode.REQUIRE)` — works, but a properties file or Spring's `data-source-properties` has only strings to offer.
 * **Startup parameters**, which are not driver settings at all and so have no accessor by design. `application_name` is the exception: it has [a property of its own](#startup-parameters), typed as a `String`, so it goes through like any other.
 
 Both fit on the `url` property, which is itself a bean property and takes a whole URL:
@@ -192,7 +192,7 @@ val octavius = OctaviusDataSource().apply {
     user = "consul"
     password = "senatus_populusque"
 
-    sslmode = SslMode.REQUIRE   // an enum, not a string that has to survive a conversion
+    sslMode = SslMode.REQUIRE   // an enum, not a string that has to survive a conversion
     socketTimeout = 30
     applicationName = "curia-api"
 }
@@ -203,7 +203,7 @@ val pool = HikariDataSource(HikariConfig().apply {
 })
 ```
 
-Nothing is set by name and nothing is coerced, so every accessor is usable at its real type and the caveats above do not apply — `sslmode` included. The compiler checks the configuration, which the string forms cannot. In Kotlin this is the route worth reaching for first; `dataSourceClassName` earns its place where the configuration has to come from a properties file or from Spring's `spring.datasource.hikari.data-source-properties`.
+Nothing is set by name and nothing is coerced, so every accessor is usable at its real type and the caveats above do not apply — `sslMode` included. The compiler checks the configuration, which the string forms cannot. In Kotlin this is the route worth reaching for first; `dataSourceClassName` earns its place where the configuration has to come from a properties file or from Spring's `spring.datasource.hikari.data-source-properties`.
 
 Closing a session obtained from a pool returns its connection to the pool rather than shutting it down.
 
@@ -400,15 +400,20 @@ There is no property selecting an authentication method: the server names it and
 
 ### SSL
 
-| Property         | Default                                | Meaning                                                                                      |
-|:-----------------|:---------------------------------------|:---------------------------------------------------------------------------------------------|
-| `sslmode`        | `PREFER`, or `REQUIRE` if `ssl = true` | Negotiation mode; see the table below.                                                       |
-| `ssl`            | unset                                  | Shorthand: `true` raises the default to `REQUIRE`. Ignored when `sslmode` is set explicitly. |
-| `sslrootcert`    | JVM default trust store                | Path to the root CA certificate. Optional — see the mode table below.                        |
-| `sslcert`        | none                                   | Path to the client certificate. Needs `sslkey` too, or neither is used.                      |
-| `sslkey`         | none                                   | Path to the client private key. PKCS#8 in PEM form, encrypted or not; RSA or EC.             |
-| `sslpassword`    | none                                   | Decrypts `sslkey` when that key is encrypted; ignored when it is not.                        |
-| `channelBinding` | `PREFER`                               | How hard to insist on [channel binding](#channel-binding) for authentication.                |
+| Property                         | Default                                | Meaning                                                                                      |
+|:---------------------------------|:---------------------------------------|:---------------------------------------------------------------------------------------------|
+| `sslMode` (or `sslmode`)         | `PREFER`, or `REQUIRE` if `ssl = true` | Negotiation mode; see the table below.                                                       |
+| `ssl`                            | unset                                  | Shorthand: `true` raises the default to `REQUIRE`. Ignored when `sslMode` is set explicitly. |
+| `sslRootCert` (or `sslrootcert`) | JVM default trust store                | Path to the root CA certificate. Optional — see the mode table below.                        |
+| `sslCert` (or `sslcert`)         | none                                   | Path to the client certificate. Needs `sslKey` too, or neither is used.                      |
+| `sslKey` (or `sslkey`)           | none                                   | Path to the client private key. PKCS#8 in PEM form, encrypted or not; RSA or EC.             |
+| `sslPassword` (or `sslpassword`) | none                                   | Decrypts `sslKey` when that key is encrypted; ignored when it is not.                        |
+| `channelBinding`                 | `PREFER`                               | How hard to insist on [channel binding](#channel-binding) for authentication.                |
+
+The accessor is camelCase and `libpq`'s own all-lowercase spelling is accepted beside it, so a URL pasted
+from PostgreSQL's documentation — `?sslmode=verify-full&sslrootcert=/etc/ca.pem` — is read as written. A pool
+setting bean properties by name is the one place the distinction bites: HikariCP's `addDataSourceProperty`
+resolves the name to a setter, so it wants `sslMode`.
 
 | `SslMode`     | Behaviour                                                                                                                  |
 |:--------------|:---------------------------------------------------------------------------------------------------------------------------|

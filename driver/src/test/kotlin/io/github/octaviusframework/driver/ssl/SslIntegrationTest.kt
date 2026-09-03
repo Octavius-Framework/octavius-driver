@@ -28,7 +28,7 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
         }
 
         val session = getOctaviusSession(url, properties)
@@ -47,7 +47,7 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
         }
 
         val session = getOctaviusSession(url, properties)
@@ -72,7 +72,7 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.PREFER
+            sslMode = SslMode.PREFER
         }
 
         val session = getOctaviusSession(url, properties)
@@ -91,7 +91,7 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = false
-            sslmode = SslMode.DISABLE
+            sslMode = SslMode.DISABLE
         }
 
         val session = getOctaviusSession(url, properties)
@@ -111,7 +111,7 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_CA
+            sslMode = SslMode.VERIFY_CA
             // Not providing trust store or CA certs on purpose
         }
 
@@ -129,8 +129,8 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_CA
-            sslrootcert = rootCert
+            sslMode = SslMode.VERIFY_CA
+            sslRootCert = rootCert
         }
 
         val session = getOctaviusSession(url, properties)
@@ -152,8 +152,8 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_FULL
-            sslrootcert = rootCert
+            sslMode = SslMode.VERIFY_FULL
+            sslRootCert = rootCert
         }
 
         // Host must match the certificate's CN (localhost)
@@ -178,10 +178,10 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_CA
-            sslrootcert = rootCert
-            sslcert = clientCert
-            sslkey = clientKey
+            sslMode = SslMode.VERIFY_CA
+            sslRootCert = rootCert
+            sslCert = clientCert
+            sslKey = clientKey
         }
 
         val session = getOctaviusSession(url, properties)
@@ -205,10 +205,10 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_CA
-            sslrootcert = rootCert
-            sslcert = clientCert
-            sslkey = clientKey
+            sslMode = SslMode.VERIFY_CA
+            sslRootCert = rootCert
+            sslCert = clientCert
+            sslKey = clientKey
         }
 
         // Same exchange as testSslClientAuth, on a key that is not RSA. The driver takes the key's
@@ -240,11 +240,11 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_CA
-            sslrootcert = rootCert
-            sslcert = clientCert
-            sslkey = clientKey
-            sslpassword = keyPassword
+            sslMode = SslMode.VERIFY_CA
+            sslRootCert = rootCert
+            sslCert = clientCert
+            sslKey = clientKey
+            sslPassword = keyPassword
         }
 
         // The same certificate as testSslClientAuth, presented with the same key locked behind a
@@ -270,11 +270,11 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.VERIFY_CA
-            sslrootcert = rootCert
-            sslcert = clientCert
-            sslkey = clientKey
-            // sslpassword deliberately left unset
+            sslMode = SslMode.VERIFY_CA
+            sslRootCert = rootCert
+            sslCert = clientCert
+            sslKey = clientKey
+            // sslPassword deliberately left unset
         }
 
         val exception = assertFailsWith<InitializationException> { getOctaviusSession(url, properties) }
@@ -294,7 +294,7 @@ class SslIntegrationTest {
             user = "cleartext_user"
             password = "senatus"
             ssl = true
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
         }
 
         // `password` in pg_hba is what ldap, pam and radius all reduce to on the wire, so this is
@@ -315,7 +315,7 @@ class SslIntegrationTest {
             user = "cleartext_user"
             password = "senatus"
             ssl = false
-            sslmode = SslMode.DISABLE
+            sslMode = SslMode.DISABLE
         }
 
         // The server offers the same exchange over a plaintext connection - there is a `host` rule
@@ -335,7 +335,7 @@ class SslIntegrationTest {
             user = "cleartext_user"
             password = "senatus"
             ssl = true
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
             channelBinding = ChannelBinding.REQUIRE
         }
 
@@ -352,7 +352,7 @@ class SslIntegrationTest {
             user = "postgres"
             password = "1234"
             ssl = true
-            sslmode = SslMode.REQUIRE
+            sslMode = SslMode.REQUIRE
         }
 
         val session = getOctaviusSession(url, properties)

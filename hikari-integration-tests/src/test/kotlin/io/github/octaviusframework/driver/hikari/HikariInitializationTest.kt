@@ -78,7 +78,7 @@ class HikariInitializationTest {
     @Test
     fun `should accept a preconfigured OctaviusDataSource instance`() {
         // Handing Hikari the instance skips its reflective property setting entirely, so the
-        // configuration is typed all the way - including sslmode, which cannot be set as a string
+        // configuration is typed all the way - including sslMode, which cannot be set as a string
         // through addDataSourceProperty.
         val octavius = OctaviusDataSource().apply {
             serverName = "localhost"
@@ -86,7 +86,7 @@ class HikariInitializationTest {
             databaseName = "octavius_test"
             user = "postgres"
             password = "1234"
-            sslmode = SslMode.DISABLE
+            sslMode = SslMode.DISABLE
             socketTimeout = 30
             cancelSignalTimeout = 3
         }

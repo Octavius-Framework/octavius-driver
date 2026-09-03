@@ -104,6 +104,10 @@
   did and its constructor still takes one; what changed is which exceptions have it. The rendering moved with
   it, from `Path: a -> b` inside `getDetailedMessage()` to `PATH: a -> b` in the exception's own frame, so
   anything matching the old line - or parsing the path back out of that string - has to be matched again.
+- **Five SSL properties are camelCase like everything beside them.** `sslmode`, `sslrootcert`, `sslcert`,
+  `sslkey` and `sslpassword`- on `OctaviusProperties` and on `OctaviusDataSource` alike. They were the only lowercase names. 
+  **A pool setting bean properties by name is the one caller that has to move** — `addDataSourceProperty` resolves a name to a setter, so
+  HikariCP wants `sslPassword` where it took `sslpassword`.
 - **`session.getSearchPath()` is `session.searchPath`.**
 - **`TransactionIsolationLevel.fromJdbcValue` raises what its sibling raises.** It documented
   `IllegalArgumentException` and threw `NoSuchElementException`, neither of which is what

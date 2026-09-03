@@ -33,7 +33,7 @@ class OctaviusDataSource : DataSource {
      *
      * Reading it back renders the current configuration **without either secret** - neither the
      * password nor `sslpassword`, see [OctaviusProperties.toUrl]. Both remain available through
-     * [password] and [sslpassword] themselves.
+     * [password] and [sslPassword] themselves.
      */
     var url: String
         get() = octaviusProperties.toUrl()
@@ -86,7 +86,7 @@ class OctaviusDataSource : DataSource {
         set(value) { octaviusProperties.password = value }
 
     /**
-     * Shorthand raising the default SSL mode to `REQUIRE`. Ignored when [sslmode] is set explicitly.
+     * Shorthand raising the default SSL mode to `REQUIRE`. Ignored when [sslMode] is set explicitly.
      */
     var ssl: Boolean?
         get() = octaviusProperties.ssl
@@ -95,42 +95,42 @@ class OctaviusDataSource : DataSource {
     /**
      * The SSL mode to use (e.g., disable, require, verify-ca, verify-full).
      */
-    var sslmode: SslMode?
-        get() = octaviusProperties.sslmode
-        set(value) { octaviusProperties.sslmode = value }
+    var sslMode: SslMode?
+        get() = octaviusProperties.sslMode
+        set(value) { octaviusProperties.sslMode = value }
 
     /**
      * The path to the root certificate file for verifying the server's certificate. Optional: left
      * unset, verification under `verify-ca` and above uses the JVM's default trust store.
      */
-    var sslrootcert: String?
-        get() = octaviusProperties.sslrootcert
-        set(value) { octaviusProperties.sslrootcert = value }
+    var sslRootCert: String?
+        get() = octaviusProperties.sslRootCert
+        set(value) { octaviusProperties.sslRootCert = value }
 
     /**
      * The path to the client certificate file for SSL authentication. Takes effect only together with
-     * [sslkey]; with either missing, no client certificate is presented.
+     * [sslKey]; with either missing, no client certificate is presented.
      */
-    var sslcert: String?
-        get() = octaviusProperties.sslcert
-        set(value) { octaviusProperties.sslcert = value }
+    var sslCert: String?
+        get() = octaviusProperties.sslCert
+        set(value) { octaviusProperties.sslCert = value }
 
     /**
      * The path to the client private key file for SSL authentication. PKCS#8 in PEM form, encrypted
-     * or not - [sslpassword] opens an encrypted one - and RSA or EC alike, the algorithm being read
-     * off [sslcert] rather than assumed.
+     * or not - [sslPassword] opens an encrypted one - and RSA or EC alike, the algorithm being read
+     * off [sslCert] rather than assumed.
      */
-    var sslkey: String?
-        get() = octaviusProperties.sslkey
-        set(value) { octaviusProperties.sslkey = value }
+    var sslKey: String?
+        get() = octaviusProperties.sslKey
+        set(value) { octaviusProperties.sslKey = value }
 
     /**
-     * Decrypts [sslkey] where that key is encrypted - a PEM file opening on `BEGIN ENCRYPTED PRIVATE
+     * Decrypts [sslKey] where that key is encrypted - a PEM file opening on `BEGIN ENCRYPTED PRIVATE
      * KEY`. An unencrypted key ignores it; an encrypted one without it is refused, naming this property.
      */
-    var sslpassword: String?
-        get() = octaviusProperties.sslpassword
-        set(value) { octaviusProperties.sslpassword = value }
+    var sslPassword: String?
+        get() = octaviusProperties.sslPassword
+        set(value) { octaviusProperties.sslPassword = value }
 
     /**
      * How hard to insist that authentication be bound to the TLS channel. Defaults to

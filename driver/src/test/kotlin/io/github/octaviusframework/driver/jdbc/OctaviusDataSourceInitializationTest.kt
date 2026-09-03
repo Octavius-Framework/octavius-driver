@@ -22,7 +22,7 @@ class OctaviusDataSourceInitializationTest {
         assertEquals("testuser", ds.user)
         assertEquals("testpass", ds.password)
         assertEquals(true, ds.ssl)
-        assertEquals(SslMode.REQUIRE, ds.sslmode)
+        assertEquals(SslMode.REQUIRE, ds.sslMode)
     }
 
     @Test

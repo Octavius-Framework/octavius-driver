@@ -55,12 +55,12 @@ class OctaviusPropertiesTest {
     }
 
     @Test
-    fun `toUrl should render neither the password nor the sslpassword`() {
+    fun `toUrl should render neither the password nor the sslPassword`() {
         val original = OctaviusProperties()
         original.serverName = "localhost"
         original.password = "senatus"
-        original.sslkey = "/etc/octavius/client.key"
-        original.sslpassword = "populusque"
+        original.sslKey = "/etc/octavius/client.key"
+        original.sslPassword = "populusque"
 
         val url = original.toUrl()
 
@@ -72,7 +72,7 @@ class OctaviusPropertiesTest {
 
         val parsed = OctaviusProperties.parse(url)
         assertNull(parsed.password)
-        assertNull(parsed.sslpassword)
+        assertNull(parsed.sslPassword)
     }
 
     @Test
@@ -288,7 +288,7 @@ class OctaviusPropertiesTest {
         val props = OctaviusProperties.parse("jdbc:octavius://localhost:5432/res_publica?statement_timeout=5s&sslmode=verify-full")
 
         assertEquals("5s", props.additionalProperties["statement_timeout"])
-        assertEquals(SslMode.VERIFY_FULL, props.sslmode)
+        assertEquals(SslMode.VERIFY_FULL, props.sslMode)
     }
 
     @Test

@@ -36,11 +36,11 @@ internal object SslNegotiator {
      * request travels on a second connection of its own and has to be given the same treatment.
      */
     fun configurationOf(properties: OctaviusProperties): SslConfiguration = SslConfiguration(
-        mode = properties.sslmode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER,
-        rootCertPath = properties.sslrootcert,
-        certPath = properties.sslcert,
-        keyPath = properties.sslkey,
-        keyPassword = properties.sslpassword
+        mode = properties.sslMode ?: if (properties.ssl == true) SslMode.REQUIRE else SslMode.PREFER,
+        rootCertPath = properties.sslRootCert,
+        certPath = properties.sslCert,
+        keyPath = properties.sslKey,
+        keyPassword = properties.sslPassword
     )
 
     /**

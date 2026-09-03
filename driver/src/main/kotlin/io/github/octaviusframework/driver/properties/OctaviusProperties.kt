@@ -93,36 +93,36 @@ class OctaviusProperties {
      */
     var logParameterValues: Boolean? = null
 
-    /** Shorthand raising the default SSL mode to [SslMode.REQUIRE]. Ignored when [sslmode] is set. */
+    /** Shorthand raising the default SSL mode to [SslMode.REQUIRE]. Ignored when [sslMode] is set. */
     var ssl: Boolean? = null
 
     /** How much protection the connection demands. Defaults to [SslMode.PREFER]. */
-    var sslmode: SslMode? = null
+    var sslMode: SslMode? = null
 
     /**
      * Path to the CA certificate the server's chain is verified against, for `verify-ca` and above.
      * Optional: left unset, the JVM's default trust store is used.
      */
-    var sslrootcert: String? = null
+    var sslRootCert: String? = null
 
     /**
      * Path to the client certificate, for certificate authentication. Takes effect only together with
-     * [sslkey]; with either missing, no client certificate is presented.
+     * [sslKey]; with either missing, no client certificate is presented.
      */
-    var sslcert: String? = null
+    var sslCert: String? = null
 
     /**
-     * Path to the client private key that goes with [sslcert]. PKCS#8 in PEM form, encrypted or not -
-     * an encrypted one is opened with [sslpassword]; its algorithm is read off [sslcert], so RSA and
+     * Path to the client private key that goes with [sslCert]. PKCS#8 in PEM form, encrypted or not -
+     * an encrypted one is opened with [sslPassword]; its algorithm is read off [sslCert], so RSA and
      * EC alike work without saying which.
      */
-    var sslkey: String? = null
+    var sslKey: String? = null
 
     /**
-     * Decrypts [sslkey] where that key is encrypted - a PEM file opening on `BEGIN ENCRYPTED PRIVATE
+     * Decrypts [sslKey] where that key is encrypted - a PEM file opening on `BEGIN ENCRYPTED PRIVATE
      * KEY`. An unencrypted key ignores it; an encrypted one without it is refused, naming this property.
      */
-    var sslpassword: String? = null
+    var sslPassword: String? = null
 
     /**
      * How hard to insist that authentication be bound to the TLS channel. Defaults to
@@ -173,11 +173,11 @@ class OctaviusProperties {
             "initialparameterwritercapacity" -> initialParameterWriterCapacity = intValue(key, value)
             "logparametervalues" -> logParameterValues = booleanValue(key, value)
             "ssl" -> ssl = booleanValue(key, value)
-            "sslmode" -> sslmode = SslMode.of(value)
-            "sslrootcert" -> sslrootcert = value
-            "sslcert" -> sslcert = value
-            "sslkey" -> sslkey = value
-            "sslpassword" -> sslpassword = value
+            "sslmode" -> sslMode = SslMode.of(value)
+            "sslrootcert" -> sslRootCert = value
+            "sslcert" -> sslCert = value
+            "sslkey" -> sslKey = value
+            "sslpassword" -> sslPassword = value
             "channelbinding", "channel_binding" -> channelBinding = ChannelBinding.of(value)
             else -> additionalProperties[key] = value
         }
@@ -232,11 +232,11 @@ class OctaviusProperties {
         other.initialParameterWriterCapacity?.let { initialParameterWriterCapacity = it }
         other.logParameterValues?.let { logParameterValues = it }
         other.ssl?.let { ssl = it }
-        other.sslmode?.let { sslmode = it }
-        other.sslrootcert?.let { sslrootcert = it }
-        other.sslcert?.let { sslcert = it }
-        other.sslkey?.let { sslkey = it }
-        other.sslpassword?.let { sslpassword = it }
+        other.sslMode?.let { sslMode = it }
+        other.sslRootCert?.let { sslRootCert = it }
+        other.sslCert?.let { sslCert = it }
+        other.sslKey?.let { sslKey = it }
+        other.sslPassword?.let { sslPassword = it }
         other.channelBinding?.let { channelBinding = it }
         additionalProperties.putAll(other.additionalProperties)
     }
@@ -357,7 +357,7 @@ class OctaviusProperties {
     /**
      * Renders these properties as a JDBC URL.
      *
-     * Neither secret is rendered: not [password], and not [sslpassword], which unlocks the client
+     * Neither secret is rendered: not [password], and not [sslPassword], which unlocks the client
      * private key. The result is a string that tends to end up in logs and diagnostics, and nothing
      * in the driver reconstructs a connection from it - so a URL is not a lossless copy and cannot
      * be used as one. Use [copy] when you need a complete duplicate of the configuration.
@@ -385,10 +385,10 @@ class OctaviusProperties {
         initialParameterWriterCapacity?.let { queryParams["initialParameterWriterCapacity"] = it.toString() }
         logParameterValues?.let { queryParams["logParameterValues"] = it.toString() }
         ssl?.let { queryParams["ssl"] = it.toString() }
-        sslmode?.let { queryParams["sslmode"] = it.value }
-        sslrootcert?.let { queryParams["sslrootcert"] = it }
-        sslcert?.let { queryParams["sslcert"] = it }
-        sslkey?.let { queryParams["sslkey"] = it }
+        sslMode?.let { queryParams["sslmode"] = it.value }
+        sslRootCert?.let { queryParams["sslrootcert"] = it }
+        sslCert?.let { queryParams["sslcert"] = it }
+        sslKey?.let { queryParams["sslkey"] = it }
         channelBinding?.let { queryParams["channelBinding"] = it.value }
 
         queryParams.putAll(additionalProperties)
