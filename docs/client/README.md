@@ -51,7 +51,8 @@ it again.
 ### Transaction Plans
 - [When a Block Is Not Enough](plans.md#when-a-block-is-not-enough) — The sequence as data
 - [Handles and What They Reach](plans.md#handles-and-what-they-reach) — `value`, `field`, `column`, `row`
-- [What Fits What](plans.md#what-fits-what) — The matrix, and why the two axes do not multiply
+- [What Binds and What Does Not](plans.md#what-binds-and-what-does-not) — The matrix, and the way across when
+  a value cannot be sent
 - [`map` and the Spread](plans.md#map-and-the-spread) — Transforming a value, and the one thing that takes away
 - [Merging Plans](plans.md#merging-plans) — `addPlan`, and what it refuses
 - [Checked Before It Runs](plans.md#checked-before-it-runs) — And what is deliberately not checked

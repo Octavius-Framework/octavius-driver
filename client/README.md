@@ -1,5 +1,7 @@
 # Octavius Client
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/client)](https://central.sonatype.com/artifact/io.github.octavius-framework/client)
+
 What the [driver](../driver/README.md) leaves to the caller, and nothing it already does.
 
 > Part of [Octavius for PostgreSQL](../README.md), released with it and on the same version.
@@ -73,6 +75,13 @@ A `fetch*Strict` that found no row is thrown, and so is a non-nullable `T` over 
 the calling code made about its own data. A lookup allowed to find nothing says so in its type instead —
 `fetchRow` returns `Row?`, `fetchField<String?>` returns `null`.
 
+## Project status
+
+First released in 0.9.8, and on 1.0.0 with the rest of the repository since. What that number does and does
+not promise is in the [repository README](../README.md#project-status). The [CHANGELOG](../CHANGELOG.md)
+records the changes under a section of its own within each version, including the places this deliberately
+parts company with octavius-database.
+
 ## Documentation
 
 [The client's guides](../docs/client/README.md) cover what a signature cannot show; they assume the
@@ -80,15 +89,12 @@ the calling code made about its own data. A lookup allowed to find nothing says 
 
 - [Quickstart](../docs/client/quickstart.md) — from a pool to a row, and the line that leaves your signatures
 - [Queries](../docs/client/queries.md) — the builders, `QueryFragment`, `toSql`, per-query converters
-- [Transactions and Failures](../docs/client/transactions-failures.md) — propagation, timeouts, and when a failure is a value
+- [Transactions and Failures](../docs/client/transactions-failures.md) — propagation, timeouts, and when a
+  failure is a value
 - [Transaction Plans](../docs/client/plans.md) — a sequence as data, and what fits what
 - [`dynamic_dto`](../docs/client/dynamic-dto.md) — one column, several unrelated shapes
-
-## Status
-
-First released in 0.9.8. The repository's [CHANGELOG](../CHANGELOG.md) is where changes are recorded, under a
-section of its own within each version. It includes the places this deliberately parts company with
-octavius-database.
+- [Annotation Scanning](../docs/client/scanner.md) — [`client-scanner`](../client-scanner/README.md), which
+  registers your annotated types for you
 
 ## License
 

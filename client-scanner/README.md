@@ -1,5 +1,7 @@
 # Octavius Client — Scanner
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/client-scanner)](https://central.sonatype.com/artifact/io.github.octavius-framework/client-scanner)
+
 Finds the annotated classes in your packages and registers them, so that thirty types are named once instead
 of thirty times.
 

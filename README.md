@@ -1,6 +1,6 @@
 # Octavius for PostgreSQL
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/search?q=io.github.octavius-framework.driver)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/driver)](https://central.sonatype.com/namespace/io.github.octavius-framework)
 [![Build and Test](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml/badge.svg)](https://github.com/Octavius-Framework/octavius-postgresql/actions/workflows/tests.yml)
 [![API Reference](https://img.shields.io/badge/docs-API%20reference-blue)](https://octavius-framework.github.io/octavius-postgresql/)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue)
@@ -50,6 +50,22 @@ the codex is the text every province reads, and the treaty sets the terms a fore
 Not published: `hikari-integration-tests` (integration tests against a real pool), `benchmarks` (JMH against
 `pgjdbc`), and `examples/spring-app` (a runnable sample, its own build pulling the driver in through
 `includeBuild`).
+
+## Coordinates
+
+All six live under `io.github.octavius-framework` and are released together on the same version:
+
+```kotlin
+implementation("io.github.octavius-framework:driver:1.0.0")
+implementation("io.github.octavius-framework:client:1.0.0")
+implementation("io.github.octavius-framework:client-scanner:1.0.0")
+implementation("io.github.octavius-framework:migrations:1.0.0")
+implementation("io.github.octavius-framework:driver-spring-integration:1.0.0")
+```
+
+Take the ones you want and no more — each brings what it sits on. `client` brings the driver,
+`client-scanner` brings the client, `migrations` and `driver-spring-integration` bring the driver, and
+`pg-model` arrives with any of them, so it is rarely named by hand.
 
 ## Which one do I want
 

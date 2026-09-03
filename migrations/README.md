@@ -1,5 +1,7 @@
 # Octavius — Migrations
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.octavius-framework/migrations)](https://central.sonatype.com/artifact/io.github.octavius-framework/migrations)
+
 Brings a database up to date with the migrations in your application, and keeps the record of what it did.
 
 > Part of [Octavius for PostgreSQL](../README.md), released with it and on the same version. Needs the
@@ -51,8 +53,10 @@ person can say what state the database is in.
 ## Documentation
 
 - [Quickstart](../docs/migrations/quickstart.md) — one call at startup, and where migrations live
-- [Writing Migrations](../docs/migrations/writing-migrations.md) — naming, `.sql` and Kotlin, placeholders, and the no-transaction directive
-- [History and Validation](../docs/migrations/history-and-validation.md) — the table, checksums, what stops a run, baseline
+- [Writing Migrations](../docs/migrations/writing-migrations.md) — naming, `.sql` and Kotlin, placeholders,
+  and the no-transaction directive
+- [History and Validation](../docs/migrations/history-and-validation.md) — the table, checksums, what stops a
+  run, baseline
 
 ## License
 
