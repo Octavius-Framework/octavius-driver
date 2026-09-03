@@ -26,8 +26,11 @@ underneath.*
 | **Query is Imperator**           | Your SQL dictates the shape of the result. Nothing rewrites it, reorders it, or issues a query you did not write.          |
 | **Object is a Vessel**           | A `data class` is a typed container for what came back — no proxies, no lazy loading, nothing dirty to check.              |
 | **No Legate Speaks for It**      | The driver talks Wire Protocol v3.2 itself. Nothing is wrapped, and no other driver is delegated to underneath.            |
-| **Each Province Governs Itself** | Driver, client and migrations are separate artifacts and separate decisions. The driver alone is a working stack.          |
+| **Each Province Governs Itself** | Every artifact is its own coordinate and its own decision, and dependencies run one way. The driver alone is a working stack. |
 | **One Standard, No Fallback**    | v3.2 or nothing: PostgreSQL 17 fails the handshake rather than half-working, so there are no compatibility shims to carry. |
+
+[Design Philosophy](DESIGN_PHILOSOPHY.md) is the argument behind them — what was decided, what was rejected,
+and where a reasonable person would have chosen otherwise.
 
 ## What is here
 
