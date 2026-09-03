@@ -43,6 +43,21 @@ internal object SslNegotiator {
         keyPassword = properties.sslpassword
     )
 
+    /**
+     * Asks the server for TLS and upgrades the connection if it agrees, before the startup message and so
+     * before any credential is on the wire.
+     *
+     * What a refusal means is [SslMode][io.github.octaviusframework.driver.properties.SslMode]'s to say:
+     * under `DISABLE` nothing is asked at all, under the permissive modes a refusal continues in plaintext,
+     * and under `REQUIRE` and stronger it is a failure.
+     *
+     * @param stream The connection to upgrade in place.
+     * @param host The host, for hostname verification under the verifying modes.
+     * @param port The port, used when reporting a failure.
+     * @param config What was asked for: mode, certificates and key.
+     * @throws InitializationException `SSL_ERROR` if the server refuses under a mode that requires TLS, or
+     *   answers the request with something that is not a yes or a no.
+     */
     fun negotiate(stream: PgStream, host: String, port: Int, config: SslConfiguration) {
         if (config.mode == SslMode.DISABLE) return
 
@@ -68,6 +83,20 @@ internal object SslNegotiator {
         }
     }
 
+    /**
+     * Wraps an agreed socket in TLS and completes the handshake.
+     *
+     * The half of [negotiate] that runs once the server has said yes, kept separate because the asking and
+     * the upgrading happen at different layers — the stream owns the socket and calls this, having been told
+     * by [negotiate] that the server agreed.
+     *
+     * @param socket The plaintext socket the server has agreed to upgrade.
+     * @param host The host to verify the certificate against.
+     * @param port The port, used when reporting a failure.
+     * @param config Mode, trust material and client certificate.
+     * @return The negotiated socket.
+     * @throws InitializationException `SSL_ERROR` if the handshake or verification fails.
+     */
     fun upgrade(socket: Socket, host: String, port: Int, config: SslConfiguration): SSLSocket {
         val sslContext = SSLContext.getInstance("TLS")
 

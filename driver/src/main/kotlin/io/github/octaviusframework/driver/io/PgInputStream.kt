@@ -19,6 +19,12 @@ internal class PgInputStream(private var inputStream: InputStream) {
     // We use this buffer to reduce allocations when reading C-style strings
     private var stringBuffer = ByteArray(256)
 
+    /**
+     * Swaps the underlying stream, discarding whatever is still buffered from the old one.
+     *
+     * Discarding is the point: this is how the TLS upgrade takes over a connection, and bytes read before
+     * the handshake belong to the plaintext stream that no longer exists.
+     */
     fun changeStream(newStream: InputStream) {
         this.inputStream = newStream
         this.position = 0
@@ -57,6 +63,7 @@ internal class PgInputStream(private var inputStream: InputStream) {
         limit = read
     }
 
+    /** Reads one byte, refilling the buffer if it is spent. */
     fun readByte(): Byte {
         if (position >= limit) {
             fillBuffer()
@@ -64,6 +71,7 @@ internal class PgInputStream(private var inputStream: InputStream) {
         return buffer[position++]
     }
     
+    /** Reads a 32-bit integer, most significant byte first. */
     fun readInt(): Int {
         ensure(4)
         val b1 = buffer[position++].toInt() and 0xFF
@@ -73,6 +81,7 @@ internal class PgInputStream(private var inputStream: InputStream) {
         return (b1 shl 24) or (b2 shl 16) or (b3 shl 8) or b4
     }
     
+    /** Reads a 16-bit integer, most significant byte first. */
     fun readShort(): Short {
         ensure(2)
         val b1 = buffer[position++].toInt() and 0xFF
@@ -80,6 +89,12 @@ internal class PgInputStream(private var inputStream: InputStream) {
         return ((b1 shl 8) or b2).toShort()
     }
 
+    /**
+     * Fills [bytes] with exactly [length] bytes, reading as many times as it takes.
+     *
+     * A protocol message has a declared length, so a short read is never an answer - this loops until it
+     * has them all or the stream ends.
+     */
     fun readFully(bytes: ByteArray, length: Int = bytes.size) {
         var offset = 0
         var remaining = length

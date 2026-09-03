@@ -23,6 +23,21 @@ import io.github.octaviusframework.driver.type.isKnownOid
  */
 private const val MAX_PARAMETER_LENGTH = 1073741819
 
+/**
+ * Turns the values you bound into the bytes of a `Bind` message, and reports the OID each one went out as.
+ *
+ * The last step of the write path: a value has already been through the
+ * [converters][io.github.octaviusframework.driver.converter.parameter.mapper.ParameterConverter] by the time
+ * it arrives here, and what is left is choosing the codec and encoding. Which codec depends on what is known
+ * about the target — a [PgTyped] wrapper or a [PgContainer] carries its own OID, and everything else is
+ * encoded by the codec registered for its Kotlin class, which is what decides the type the parameter is
+ * *declared* as. See [Type System](https://github.com/Octavius-Framework/octavius-postgresql/blob/master/docs/driver/type-system.md).
+ *
+ * It is public because the `fetch*` family is `inline` and this is inlined along with it. That also means its
+ * signatures reach code compiled against this driver, so they are not free to change — the same constraint
+ * [ResultMapper][io.github.octaviusframework.driver.converter.result.mapper.ResultMapper] is under. Construct
+ * one you cannot: a query hands you its own.
+ */
 class ParameterSerializer internal constructor(
     private val typeManager: TypeManager,
     private val parameterMapper: ParameterMapper

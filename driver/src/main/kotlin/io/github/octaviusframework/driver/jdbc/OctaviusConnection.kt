@@ -66,6 +66,17 @@ internal class OctaviusConnection(
      */
     private val pid: String get() = "[PID: ${stream.processId}]"
 
+    /**
+     * Raises unless this connection is still usable, checking both what was asked of it and what happened to
+     * it — a connection closed by the caller and one whose stream broke underneath are different failures and
+     * are reported as different SQLSTATEs.
+     *
+     * Finding a broken stream also latches the closed flag, so the second call answers from the flag rather
+     * than by asking a socket that is already gone.
+     *
+     * @throws NetworkException `CONNECTION_CLOSED` (`08003`) if it was closed, `CONNECTION_ERROR` (`08006`)
+     *   if the stream broke.
+     */
     fun checkClosed() {
         if (isClosedFlag) throw NetworkException(NetworkExceptionReason.CONNECTION_CLOSED, sqlState = "08003")
         if (stream.isBroken) {
@@ -196,6 +207,22 @@ internal class OctaviusConnection(
         return@wrapSqlException stream.networkTimeout
     }
 
+    /**
+     * Asks the server to abandon whatever this connection is currently running.
+     *
+     * A request, not an instruction: PostgreSQL may have finished, or may be somewhere it does not check for
+     * one, and nothing here waits to find out. It travels on a **second connection** because the protocol
+     * requires that — this one is busy being the thing to cancel — which is why it can be called while a
+     * query is in flight and why a firewall that permits the session may still not permit this.
+     *
+     * Failing to open that second connection is not reported: there was nothing to clean up and the query
+     * carries on. A cancelled query surfaces at whoever is running it, as
+     * [ExecutionAbortedException][io.github.octaviusframework.driver.exception.ExecutionAbortedException]
+     * (`QUERY_CANCELED`, SQLSTATE `57014`) — the same one a `statement_timeout` produces, since the server
+     * reports both the same way.
+     *
+     * @throws NetworkException if this connection is already closed or broken.
+     */
     fun cancelQuery() {
         checkClosed()
 

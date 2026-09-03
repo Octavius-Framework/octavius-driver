@@ -5,13 +5,26 @@ import io.github.octaviusframework.driver.message.ServerErrorMessage
 import io.github.octaviusframework.driver.message.backend.ErrorOrNoticeMessage
 
 /**
- * This component categorizes PostgreSQL error messages based on their `SQLSTATE`
- * error codes, providing developers with actionable, high-level information.
- * Most of the specific exceptions (ConnectionException, ConcurrencyException, etc.) 
- * are commented out or mapped to generic OctaviusException as placeholders for future implementation.
+ * Turns a server `ErrorResponse` into the exception the caller catches, choosing by `SQLSTATE`.
+ *
+ * The distinction the whole hierarchy exists for is drawn here: a unique violation and a deadlock are things
+ * an application handles, a syntax error and a missing column are things it fixes, and they arrive as
+ * different types so that `catch` can tell them apart without reading a string. Where a code says nothing
+ * useful, `UncategorizedDatabaseException` carries it through with the server's own message rather than
+ * guessing at a category.
+ *
+ * The mapping is by SQLSTATE class where PostgreSQL's classes are meaningful and by individual code where
+ * they are not — `40001` and `40P01` are both concurrency but want different reasons, and `57014` is a
+ * cancelled statement inside a class that is otherwise about the server being in trouble.
  */
 internal object ExceptionTranslator {
 
+    /**
+     * The exception for [errorMsg].
+     *
+     * @param errorMsg The `ErrorResponse` the server sent.
+     * @return The exception to raise, carrying the server's message, SQLSTATE and detail fields.
+     */
     fun translate(errorMsg: ErrorOrNoticeMessage): OctaviusException {
         val serverErrorMessage = ServerErrorMessage.from(errorMsg)
         val state = errorMsg.code

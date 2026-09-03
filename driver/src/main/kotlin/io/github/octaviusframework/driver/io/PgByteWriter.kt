@@ -36,11 +36,21 @@ class PgByteWriter(
         data = data.copyOf(newCapacity.toInt())
     }
 
+    /**
+     * Appends one byte.
+     *
+     * @param b The byte to append.
+     */
     fun writeByte(b: Byte) {
         ensureCapacity(1)
         data[position++] = b
     }
 
+    /**
+     * Appends a 32-bit integer, most significant byte first.
+     *
+     * @param i The value to append.
+     */
     fun writeInt(i: Int) {
         ensureCapacity(4)
         data[position++] = (i shr 24).toByte()
@@ -49,6 +59,11 @@ class PgByteWriter(
         data[position++] = i.toByte()
     }
 
+    /**
+     * Appends a 16-bit integer, most significant byte first.
+     *
+     * @param s The value to append.
+     */
     fun writeShort(s: Short) {
         ensureCapacity(2)
         val i = s.toInt()
@@ -56,6 +71,11 @@ class PgByteWriter(
         data[position++] = i.toByte()
     }
 
+    /**
+     * Appends a 64-bit integer, most significant byte first.
+     *
+     * @param l The value to append.
+     */
     fun writeLong(l: Long) {
         ensureCapacity(8)
         data[position++] = (l shr 56).toByte()
@@ -68,14 +88,30 @@ class PgByteWriter(
         data[position++] = l.toByte()
     }
 
+    /**
+     * Appends a `float4` as its IEEE 754 bit pattern, which is the form PostgreSQL's binary format wants.
+     *
+     * @param f The value to append.
+     */
     fun writeFloat(f: Float) {
         writeInt(f.toRawBits())
     }
 
+    /**
+     * Appends a `float8` as its IEEE 754 bit pattern.
+     *
+     * @param d The value to append.
+     */
     fun writeDouble(d: Double) {
         writeLong(d.toRawBits())
     }
 
+    /**
+     * Appends [bytes] whole, with no length prefix — pair it with [reserveLengthInt] where the protocol
+     * wants one.
+     *
+     * @param bytes The bytes to append.
+     */
     fun writeBytes(bytes: ByteArray) {
         ensureCapacity(bytes.size)
         bytes.copyInto(data, position)
@@ -104,14 +140,37 @@ class PgByteWriter(
         data[markerIndex + 3] = length.toByte()
     }
 
+    /**
+     * A copy of what has been written so far.
+     *
+     * A copy rather than [data] itself, which is the backing array and is both longer than the content and
+     * reused by the next packet.
+     *
+     * @return The bytes written, up to [position].
+     */
     fun toByteArray(): ByteArray {
         return data.copyOfRange(0, position)
     }
 
+    /**
+     * Moves the write cursor, for the caller that has to go back and rewrite something it already emitted.
+     *
+     * Nothing is cleared, so moving backwards leaves the bytes beyond [newPosition] in the buffer to be
+     * overwritten or abandoned.
+     *
+     * @param newPosition The offset to continue writing at.
+     */
     fun updatePosition(newPosition: Int) {
         position = newPosition
     }
 
+    /**
+     * Empties the buffer for the next packet, releasing the backing array if this one grew past
+     * `maxCapacity`.
+     *
+     * That release is the whole reason a cap exists: one oversized parameter would otherwise leave every
+     * later packet holding on to a buffer sized for it.
+     */
     fun clear() {
         position = 0
         if (data.size > maxCapacity) {

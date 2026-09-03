@@ -29,12 +29,24 @@ internal class CteClause {
     private val entries = LinkedHashMap<String, String>()
     var recursive: Boolean = false
 
+    /**
+     * Adds one common table expression.
+     *
+     * @param name The name the rest of the statement refers to it by.
+     * @param query Its body, without the surrounding parentheses.
+     */
     fun add(name: String, query: String) {
         requireBuildable(name.isNotBlank()) { "A common table expression needs a name." }
         requireBuildable(query.isNotBlank()) { "The common table expression '$name' has no query." }
         entries[name] = query
     }
 
+    /**
+     * Replaces this clause's contents with [other]'s, which is what makes a builder's `copy()` independent
+     * of the builder it came from rather than sharing its list.
+     *
+     * @param other The clause to copy.
+     */
     fun copyFrom(other: CteClause) {
         entries.putAll(other.entries)
         recursive = other.recursive

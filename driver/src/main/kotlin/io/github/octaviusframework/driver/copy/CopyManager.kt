@@ -181,6 +181,14 @@ class CopyManager internal constructor(private val stream: PgStream) {
     }
 }
 
+/**
+ * A `COPY ... FROM STDIN` in progress: write chunks with [writeToCopy], finish with [endCopy].
+ *
+ * The connection is in copy mode for the whole of it and will run nothing else, which is what makes the handle
+ * single-use — [endCopy] or [cancelCopy] ends the transfer and the handle with it, and the next one comes from
+ * the [CopyManager] again. Errors in the data are the server's to find, so a malformed row is reported by
+ * [endCopy] rather than by the write that sent it.
+ */
 class CopyIn internal constructor(private val stream: PgStream) : CopyOperation {
     override var isActive: Boolean = true
         private set
@@ -275,6 +283,14 @@ class CopyIn internal constructor(private val stream: PgStream) : CopyOperation 
     }
 }
 
+/**
+ * A `COPY ... TO STDOUT` in progress: call [readFromCopy] until it hands back `null`.
+ *
+ * The mirror of [CopyIn] and single-use for the same reason — the connection is in copy mode until the
+ * transfer ends, and it ends when the server says so. Chunk boundaries are the server's, so a chunk is a
+ * protocol message rather than a row; draining to `null` is what returns the connection to normal use, and
+ * abandoning the handle before that leaves it in copy mode.
+ */
 class CopyOut internal constructor(private val stream: PgStream) : CopyOperation {
     override var isActive: Boolean = true
         private set
