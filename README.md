@@ -86,9 +86,9 @@ Written by one person. Every push runs the suite against a real PostgreSQL 18, a
 certificates and exercises the TLS modes end to end, and a third that points the driver at PostgreSQL 17 to
 prove the handshake refuses it rather than half-working.
 
-The API is not frozen. The driver is the settled part of it; the client and migrations are early. Every module
-carries the same version and is released together, so the number says when something shipped rather than how
-mature it is. None of it has seen long production use.
+1.0.0 says the shape is right — the pieces are the ones worth having and each sits where it should — and not
+that a signature will never move again. Every module carries the same version and is released together, so the
+number says when something shipped rather than how mature it is. None of it has seen long production use.
 
 Every change is recorded in the [CHANGELOG](CHANGELOG.md), grouped by module under each version — one file,
 because one version covers all of them and a release where only half the repository moved reads oddly split

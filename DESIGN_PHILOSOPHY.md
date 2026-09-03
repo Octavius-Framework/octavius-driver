@@ -238,7 +238,13 @@ the schema having learned anything.
 
 ## Why blocking, and not coroutines-first
 
-The terminal methods block the calling thread. There is no `suspend` in the API.
+The terminal methods block the calling thread. No query anywhere in the API is `suspend`.
+
+The one place coroutines do appear is `LISTEN`/`NOTIFY`, and it is the exception that shows the rule:
+`NotificationManager` exposes its notifications as a `SharedFlow` and its listener loops as `suspend`
+functions, because waiting for something the server will send *whenever it likes* is the one thing here that
+genuinely has nothing to occupy a thread with. A query does — it has a connection out on loan for its whole
+length.
 
 The old argument for this was that JDBC is blocking and no library can change that. It does not apply here —
 this driver *is* the protocol, and a suspending API over non-blocking I/O was genuinely on the table.

@@ -1,112 +1,70 @@
-## Version 1.0.0 (v1.0.0)
+## Version 1.0.0 (v1.0.0) - Renovatio Imperii
 
 ### Project
 
 #### Added
 
 - **Octavius is not an ORM, it is a ROME.** A Relational-Object Mapping Engine, because all queries lead to
-  ROME and because the letters read that way from the other end. The line was written for
-  `octavius-database` and is far too good to leave behind in a deprecated repository, so it comes over: under
-  the badges in the README, above a new **Philosophy** section stating the five principles that actually hold
-  here rather than the ones the old project stated. It stays in `octavius-database` as well - that is where it
-  was written, and the inheritance is worth keeping on both ends.
-- **Every artifact in the README carries the Roman office it does the work of** - `driver` the road, `client`
-  the praetor, `client-scanner` the census, `migrations` the surveyor, `pg-model` the codex, and
-  `driver-spring-integration` the treaty - with a line under the table cashing each of them out against what
-  the module does.
+  ROME. The line comes over from `octavius-database` — under the badges in the README, above a new
+  **Philosophy** section stating the five principles that hold here. It stays in the old repository too.
+- **Every artifact in the README carries the Roman office it does the work of** — `driver` the road, `client`
+  the praetor, `client-scanner` the census, `migrations` the surveyor, `pg-model` the codex and
+  `driver-spring-integration` the treaty.
+- **[Design Philosophy](DESIGN_PHILOSOPHY.md).** What was decided and what was rejected: why the protocol is
+  spoken rather than a driver wrapped, why the type registry is global per database, why registration order
+  is the only override mechanism there is, why nothing is created behind your back, and why every query
+  blocks while `LISTEN`/`NOTIFY` is the one part of the API that suspends.
+- **`pg-model`'s tests now run in CI.** It is the multiplatform module and has no `test` task, so
+  `./gradlew test` built its jar and ran none of them. The step is `./gradlew test :pg-model:allTests` now,
+  covering both targets it publishes.
 
-- **`pg-model`'s tests now run in CI.** The workflow ran `./gradlew test`, and `pg-model` is the multiplatform
-  module, which has no `test` task at all - so the case converter, the date spelling and the serializers, all
-  three added in 0.9.9, had their jar built on every push and not one of their tests run. The step is
-  `./gradlew test :pg-model:allTests` now, covering both the JVM and the JS target the module publishes. They
-  passed on both when finally asked.
+#### Fixed
+
+- **The API reference no longer carries `hikari-integration-tests`.** It is not published and its `main` source
+  set is empty, but it was in the Dokka aggregation all the same, so the generated site listed an empty module
+  beside the six real ones. `benchmarks` was already out; this one was the leftover.
+
 ### Driver
 
 #### Added
 
 - **`Row` answers two questions it used to make you work around.** `hasColumn(name)` is what
-  `getColumnIndex` answered by raising, for a result whose shape is not fixed - a projection assembled at
-  runtime, a `RETURNING` that differs by branch - where asking is what the code means and a `try`/`catch`
-  around a lookup is not. `getRaw(name)` is the counterpart of `getRaw(index)`, which stood alone.
+  `getColumnIndex` answered by raising, for a result whose shape is not fixed. `getRaw(name)` is the
+  counterpart of `getRaw(index)`, which stood alone.
 - **`MappingException` gains `BLOCK_FAILED`.** An exception thrown by your own block inside `forEachRow`,
-  `forEachObject` or `forEachField` used to come back as `CONVERSION_ERROR`, which said nothing true about
-  it - the block failed, nothing was converted. It is still wrapped rather than let through, and for the
-  reason it always was: the result has to be drained before anything can be rethrown, and by then the frame
-  that knows the query is gone, so the wrapper is what carries the `QueryContext`. What the block threw is
-  still the `cause`. Anything matching on `CONVERSION_ERROR` to find these has to match on the new one.
+  `forEachObject` or `forEachField` used to arrive as `CONVERSION_ERROR`. It is still wrapped, and what the
+  block threw is still the `cause`. **Anything matching on `CONVERSION_ERROR` to find these has to match on
+  the new one.**
 - **`required` and `nested` take the terms the transaction runs under.** `isolation`, `readOnly`,
-  `statementTimeout` and `transactionTimeout`, all four optional and all four scoped to that transaction:
-  `SET TRANSACTION` for the first two, `SET LOCAL` for the timeouts, joined into **one statement sent in one
-  round trip** right after the `BEGIN`. Ask for none of them, which is the default, and nothing is sent at
-  all - a plain `required { }` costs exactly what it did before. `TransactionIsolationLevel` gains `sqlName`
-  for the spelling that goes into the statement.
-- **Which means nothing is left on the connection to clean up.** The session properties
-  `transactionIsolationLevel` and `readOnly` issue `SET SESSION CHARACTERISTICS`, so they outlive the
-  transaction and a pool has to restore them afterwards - HikariCP does, at a round trip each. The
-  parameters end with the transaction instead, so there is nothing to restore. The cost is that the two
-  properties no longer describe a transaction opened this way: a `SERIALIZABLE` block runs while
-  `transactionIsolationLevel` still answers `READ_COMMITTED`, which is the true answer to the question it
-  is asked - what the *session* is on. Both KDocs now say so, as does
-  [Terms for one transaction](docs/driver/transactions.md#terms-for-one-transaction).
+  `statementTimeout` and `transactionTimeout`, all optional and all scoped to that transaction, joined into
+  one statement sent right after the `BEGIN`. Ask for none and nothing is sent at all.
+  `TransactionIsolationLevel` gains `sqlName`.
+- **Which leaves nothing on the connection to clean up.** The session properties
+  `transactionIsolationLevel` and `readOnly` outlive a transaction and a pool has to restore them; these
+  parameters end with it. The cost is that those two no longer describe a transaction opened this way — a
+  `SERIALIZABLE` block runs while `transactionIsolationLevel` still answers what the *session* is on.
 - **A joined transaction honours none of them, and says which it dropped.** Isolation and read-only cannot
-  be changed once a transaction has begun; a timeout would be worse than ignored, `SET LOCAL` binding to
-  the transaction rather than to the block and so standing over the rest of somebody else's transaction
-  after this one returned. Same on `nested`'s savepoint path, a savepoint not being a transaction to give
-  terms to. The warning names all four rather than raising, so an inner unit of work stating the level it
-  needs still runs when the outer one already provides it.
+  change once a transaction has begun, and `SET LOCAL` would bind a timeout to somebody else's. Same on
+  `nested`'s savepoint path. It warns rather than raising.
 - **A column reads as `row["cognomen"]`.** The reified `get` is now an `operator`, by name and by index
-  alike, so the expected type is what fixes `T` and its nullability with it, exactly as in the `fetch*`
-  family: `val name: String = row["cognomen"]` refuses a `NULL` and `val name: String? = row["cognomen"]`
-  accepts one. `get<String>("cognomen")` goes on working unchanged; nothing is renamed.
-- **`compositesAsMaps()` reads one query's composites as maps, whatever they are registered as.** Registration
-  is what a composite *is* to every session pointing at that database, so it was never where a report asking
-  for the shape rather than for the classes could be answered - and the only way to ask was a converter
-  written by hand, which is a great deal of ceremony for "not this time". Register this one on a query
-  instead: it applies to that query and is discarded with it, the query's registry sitting ahead of the
-  session's. It collapses the **whole subtree**, and gets that from the value type rather than by walking
-  one - attributes convert as `Any?`, a nested composite asked for as `Any?` reaches the same converter
-  again, and an array of composites hands its elements down the same way. `compositesAsMaps(name, schema)`
-  names one type and leaves every other composite mapping as it did, and the `Collection<QualifiedName>`
-  overload names several in one converter - which is the form to reach for, every converter on a query being
-  asked about every composite it decodes and this being one of them however many names it holds.
-
-  Only `Any` and `Map` are claimed - *no preference* and *a dictionary* - so `row.get<Tribute>(…)` in the same
-  query still answers with the class, and a data class is untouched below its own surface, a declared property
-  type being an explicit ask like any other. A composite registered nowhere collapses along with the rest,
-  which is the one place asking for a `Map<String, Any?>` did not reach on its own: it used to hand back a raw
-  `PgComposite` from three levels down, the identity fallback having nothing better to do with it.
+  alike, so the expected type fixes `T` and its nullability with it: `val name: String = row["cognomen"]`
+  refuses a `NULL`. `get<String>("cognomen")` is unchanged.
 - **And so do the containers underneath it.** `PgComposite`, `PgArray` and `PgRecord` read as
   `composite["cognomen"]`, `array[0]` and `record[0]` now — `PgMultirange` already did.
   Purely additive: every `get<T>(…)` call goes on working unchanged.
+- **`compositesAsMaps()` reads one query's composites as maps, whatever they are registered as.** Registered
+  on a query, discarded with it, and it collapses the whole subtree. `compositesAsMaps(name, schema)` names
+  one type, the `Collection<QualifiedName>` overload several. Naming a class still answers with the class.
 
 #### Fixed
 
-- **A mapping failure names the column whichever route reached it.** `fetchObjects` maps a row through the
-  reflective row converter, which names each column as it descends; `fetchField`, `fetchFields`, `forEachField`
-  and a `Row.get` of your own all go through `Row.get`, which handed the value to the mapper with no segment at
-  all. So the same broken value read `PATH: city` one way and `PATH: residence -> city` the other, and the
-  first of those does not say which column it was in - on the route you take precisely when a converter needs
-  the database and the row has to outlive the exchange. `Row.get` now appends the column on the way out.
-
-  The other end of the same path: a container's own accessors - `PgComposite.get`, `PgRecord.get`,
-  `PgArray.get`, `PgRange.lowerBound`/`upperBound` - are the leaves of the read chain and appended nothing, so
-  a hand-written converter reading `source.get<Int>("amount")` raised under `payload` with no word of which
-  attribute of it. They name it now: an attribute by name, a record field or array element by position
-  (`[0]`), a bound as `lower` or `upper`. A lookup that finds *nothing* still gets no segment - an index out of
-  bounds or a name the composite does not carry is not a location, and a path saying otherwise would read as
-  though something had been found there.
+- **A mapping failure names the column whichever route reached it.** `fetchObjects` named it and `Row.get`
+  did not, so one route read `PATH: city` and the other `PATH: residence -> city`. Container accessors name
+  the attribute, element or bound too, so a hand-written converter no longer stops one level short. A lookup
+  that finds nothing still adds no segment. See [Exceptions](docs/driver/exceptions.md).
 
 #### Changed
 
-- **`path` is on `OctaviusException` rather than on `MappingException`.** The breadcrumb that names an
-  attribute five levels down a nested composite is one of the two things a layer can add to an exception
-  *without replacing it* - the other being `queryContext`, which has been on the base class all along for
-  exactly that reason. Replacing one costs the type the caller catches on, so every layer that knew where it
-  was but was not holding a mapping failure had nothing it could do with that knowledge. It now sits beside
-  `queryContext`, written to the same way and rendered the same way. `MappingException.path` still reads as it
-  did and its constructor still takes one; what changed is which exceptions have it. The rendering moved with
-  it, from `Path: a -> b` inside `getDetailedMessage()` to `PATH: a -> b` in the exception's own frame, so
-  anything matching the old line - or parsing the path back out of that string - has to be matched again.
 - **Five SSL properties are camelCase like everything beside them.** `sslmode`, `sslrootcert`, `sslcert`,
   `sslkey` and `sslpassword`- on `OctaviusProperties` and on `OctaviusDataSource` alike. They were the only lowercase names. 
   **A pool setting bean properties by name is the one caller that has to move** — `addDataSourceProperty` resolves a name to a setter, so
@@ -115,112 +73,78 @@
 - **`session.getSearchPath()` is `session.searchPath`.**
 - **`DataSource.getOctaviusSession(username, pass)` calls its second parameter `password`.** Every other
   signature that takes one does. Only a caller passing it by name is affected.
+- **`path` is on `OctaviusException` rather than on `MappingException`.** It sits beside `queryContext`,
+  both being things a layer can add without replacing the exception. `MappingException.path` reads as it
+  did. **The rendering moved from `Path: a -> b` inside `getDetailedMessage()` to `PATH: a -> b` in the
+  exception's own frame**, so anything matching the old line has to be matched again.
 - **`TransactionIsolationLevel.fromJdbcValue` raises what its sibling raises.** It documented
-  `IllegalArgumentException` and threw `NoSuchElementException`, neither of which is what
-  `setTransactionIsolation` raises for the same value going the other way. Now
-  `InvalidOperationException(INVALID_ARGUMENT)`, with the message that one already used.
+  `IllegalArgumentException` and threw `NoSuchElementException`. Now `InvalidOperationException`
+  (`INVALID_ARGUMENT`), which `setTransactionIsolation` already raised for the same value going the other
+  way.
 - **Two KDocs that were wrong are right.** `TransactionState.fromChar` promised `IllegalArgumentException`
-  and `error()` raises `IllegalStateException`; and `ParameterConverter.getDefaultTypeName` linked
-  `[expectedOid]`, which is a parameter of `convert` rather than of it, so Dokka could not resolve it -
-  reported once for the declaration and once for each of the three overrides that inherit the text. Dokka
-  now generates the whole repository with no unresolved links at all.
+  where `error()` raises `IllegalStateException`; `ParameterConverter.getDefaultTypeName` linked
+  `[expectedOid]`, which is a parameter of `convert`. Dokka now generates the repository with no unresolved
+  links at all.
 - **The type dictionary names itself when it loads.** `Loaded 47 types for localhost:5432/mydb in 12ms`
-  becomes `ROME (Relational-Object Mapping Engine) open for localhost:5432/mydb - 47 types read in 12ms`, and
-  the reload beside it says `ROME rebuilt`. The name is accurate before it is a joke: a catalog read onto
-  Kotlin types is the whole of what Octavius maps, with no session tracked, nothing lazy-loaded and nothing
-  dirty-checked either side of it. Both stay at INFO and neither adds a line, but anything matching the old
-  text has to be matched again.
+  becomes `ROME (Relational-Object Mapping Engine) open for localhost:5432/mydb - 47 types read in 12ms`,
+  and the reload beside it says `ROME rebuilt`. Both stay at INFO, but **anything matching the old text has
+  to be matched again**.
 
 ### Client
-
-#### Changed
-
-- **Every failure a step of a `TransactionPlan` raises names that step.** Resolving its parameters already
-  did; running its statement and mapping its result did not - so a unique violation on the fourth of twenty
-  identical inserts arrived carrying the SQL, the values and nothing that said which insert it was, which is
-  the one thing `describe()` exists to be looked up with. The executor now records `step N` on the `path` of
-  anything a step raises and leaves the exception otherwise untouched, so a `ConstraintViolationException` is
-  still the exception a retry loop matches on and a `MappingException` still names the attribute, now under
-  the step: `PATH: step 1 -> tribute`. An `OctaviusException` raised by your own transformation picks up the
-  parameter and the map number as a mapping failure always has - that one used to pass through with nowhere
-  to record where it happened, which is what moving `path` onto `OctaviusException` opened up.
-- **`DefaultSessionProvider` opens a transaction in two round trips instead of five.** It used to set the
-  isolation level and the read-only flag as session characteristics before the `BEGIN`, then send each
-  timeout as its own `SET LOCAL` after it - five round trips before the first statement of the block, and
-  two more on the way back as HikariCP restored the two session settings. All of it is now the driver's
-  `required(...)`: `BEGIN`, then one statement carrying whatever was asked for. `applyTimeouts` and
-  `warnIfSettingsCannotBeHonoured` are gone from this class, the second because the rule about what a
-  joined transaction can honour now lives in one place rather than two - and it covers the timeouts, which
-  this class used to drop silently.
 
 #### Added
 
 - **[Queries](docs/client/queries.md#a-name-that-comes-from-outside) says what passing SQL through unread
   costs.** The builders write the placeholder for a value themselves, so a value is never part of the
-  statement - but a name has nowhere else to go, and `orderBy`, `from`, `insertInto(table)`, the columns
-  handed to `select` and the keys of `values(map)` and `setValues(map)` are all SQL text. A sort key taken
-  from a query parameter is how that goes wrong most often, so the section shows the fixed `when` that
-  answers it, and points at the driver's own
-  [`quoteAsPgIdentifier()`](docs/driver/queries.md#quoting-a-name-that-comes-from-outside) for the name that
-  genuinely cannot be mapped onto one you wrote. Documentation only; no signature changed.
+  statement — but a name has nowhere else to go, and `orderBy`, `from`, `insertInto(table)` and the keys of
+  `values(map)` are all SQL text. Documentation only; no signature changed.
+
+#### Changed
+
 - **`SelectQuery.offset` takes `null`, as `limit` already did.** A page bound that may or may not be there
   needed a `?.let` on one of the two and not on the other. `null` leaves the clause out, which is what `0`
   did and still does.
+- **Every failure a step of a `TransactionPlan` raises names that step.** Resolving its parameters already
+  did; running its statement and mapping its result did not, so a unique violation on the fourth of twenty
+  identical inserts said nothing about which. The executor records `step N` on the `path`, leaving the
+  exception otherwise untouched: `PATH: step 1 -> tribute`.
+- **`DefaultSessionProvider` opens a transaction in two round trips instead of five.** It set isolation and
+  read-only as session characteristics before the `BEGIN` and each timeout as its own `SET LOCAL` after it,
+  with two more on the way back as HikariCP restored them. It is the driver's `required(...)` now.
+  `applyTimeouts` and `warnIfSettingsCannotBeHonoured` are gone from the class.
 
 #### Fixed
 
-- **A `dynamic_dto` no longer goes where a composite was declared.** `DynamicWriteStrategy` answers one
-  question - what a parameter whose type nothing declares was meant to be - and the converter enforcing it
-  asked no further. An attribute of a composite, an element of an array and a value wrapped in `withPgType`
-  all carry the type they are going into, and under `PREFER_DYNAMIC_DTO` a class registered both ways was
-  written as a `dynamic_dto` into every one of them: what arrived was a `dynamic_dto` where the catalogue
-  said `public.honour`, which the server refuses as `42804` with nothing in it naming the class responsible.
-  The converter now reads the declared type first and claims the value only where that type is
-  `dynamic_dto` - which is what the read half has always done, claiming nothing whose PostgreSQL type is not
-  one. A mode is consulted where it was the only thing to consult, and nowhere else.
-
-  Two things fall out of it. A class that does not belong in the type it was sent to is refused as
-  `MappingException(NO_CONVERTER_FOUND)` naming both sides, rather than sent and refused a moment later by
-  the server. And naming the type is now the counterpart of `toDynamicDto`: the wrapper asks for the dynamic
-  form under every mode, `value.withPgType("honour")` asks for the composite, and `PREFER_DYNAMIC_DTO` stops
-  being the one mode with a destination nothing could reach.
+- **A `dynamic_dto` no longer goes where a composite was declared.** Under `PREFER_DYNAMIC_DTO` a class
+  registered both ways went out as one into composite attributes and array elements too, which the server
+  refuses as `42804`. A known destination type decides now — which also makes `value.withPgType("honour")`
+  the counterpart of `toDynamicDto`. See
+  [Writing](docs/client/dynamic-dto.md#what-the-modes-do-not-reach).
 
 ### Migrations
 
 #### Added
 
 - **Placeholders in `.sql` migrations.** `MigratorConfig.placeholders` is a map, and `${name}` in a file
-  becomes what `name` maps to - a schema, a role, a tablespace, whatever genuinely differs between
-  environments. It is a paste and nothing more: the value goes in as the text it is, with no quoting and no
-  idea of where in the statement it landed, which is what lets it name the things a parameter never can and
-  why the values belong to the deployment rather than to anything a user typed. `.sql` only; a migration
-  written in Kotlin already has a language. The entry under *what is deliberately absent* goes with it, in
-  both READMEs and in [Writing Migrations](docs/migrations/writing-migrations.md#placeholders). The parameter
-  sits third in `MigratorConfig`, after `codePackages`, so a config built positionally rather than by name
-  has to move.
-- **Off until the map has an entry, and loud once it does.** With `placeholders` empty nothing is scanned for
-  at all, so a migration holding a `${` of its own costs nothing and needs no escaping. With one entry,
-  every `${name}` in every file has to have a value: one that does not is refused by file and line before
-  anything runs, because left standing inside a string literal it would be stored exactly as written and
-  nothing would ever say so. `\${name}` is that text rather than a placeholder, for the file that has to
-  hold one. Substitution happens before the header directives are read and before the transaction-control
-  check, so a value carrying a `COMMIT` is refused like any other; and it happens once, so a value that
-  itself contains `${...}` is left standing rather than reaching back for another.
+  becomes what `name` maps to — a schema, a role, a tablespace. A paste and nothing more: no quoting, and no
+  idea of where in the statement it landed. `.sql` only. **The parameter sits third in `MigratorConfig`**, so
+  a config built positionally has to move.
+- **Off until the map has an entry, and loud once it does.** Empty, nothing is scanned for, so a migration
+  holding a `${` of its own costs nothing. With one entry, a `${name}` without a value is refused by file and
+  line before anything runs. `\${name}` is literal text; substitution happens once.
 - **The checksum is taken over the file as written, before substitution.** Changing a value is therefore not
-  a change to the migration, and a database that ran it under one value does not refuse it under another -
-  which is the point, the value being the thing that differs between environments. The cost is the other side
-  of the same coin, and is why this is for what genuinely differs per environment: the history records that
-  the file ran, not what it expanded to.
+  a change to the migration, and a database that ran it under one value does not refuse it under another.
+  The cost is the other side of the same coin: the history records that the file ran, not what it expanded
+  to.
 
 #### Changed
 
+- **`MigrationState` is `MigrationOutcome`.** It sat next to `MigrationStatus` — one letter apart, in the
+  same module. The history table's `state` column is untouched.
 - **`baselineVersion` and `target` are read where they are written.** `MigratorConfig` parses both as it is
   built, so `baselineVersion = "1.x"` is refused by whoever wrote it down rather than by the first
-  `migrate()` that reaches it - and parsed once, rather than by every migrator the config is handed to. The
-  exception is the same `MIGRATION_EXCEPTION:CONFIGURATION` naming the property and the value; only the
-  frame it is raised from moves. Both stay `String`, this being a deployment property more often than
-  something written in code: where you already hold a `MigrationVersion`, `canonical` is the spelling to
-  pass, and the KDoc now says so.
+  `migrate()` that reaches it. Same `MIGRATION_EXCEPTION:CONFIGURATION`; only the frame it is raised from
+  moves. Both stay `String` — where you hold a `MigrationVersion`, pass `canonical`.
 
 ## Version 0.9.9 (v0.9.9)
 
