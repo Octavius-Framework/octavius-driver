@@ -85,9 +85,9 @@ class SelectQuery @PublishedApi internal constructor(
     /** Sets `LIMIT`. `null` leaves it out. */
     fun limit(count: Long?): SelectQuery = apply { limitValue = count }
 
-    /** Sets `OFFSET`. */
-    fun offset(position: Long): SelectQuery = apply {
-        requireBuildable(position >= 0) { "OFFSET cannot be negative, and was $position." }
+    /** Sets `OFFSET`. `null` leaves it out, as does `0`. */
+    fun offset(position: Long?): SelectQuery = apply {
+        requireBuildable(position == null || position >= 0) { "OFFSET cannot be negative, and was $position." }
         offsetValue = position
     }
 

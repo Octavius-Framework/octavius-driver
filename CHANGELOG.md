@@ -152,6 +152,9 @@
   answers it, and points at the driver's own
   [`quoteAsPgIdentifier()`](docs/driver/queries.md#quoting-a-name-that-comes-from-outside) for the name that
   genuinely cannot be mapped onto one you wrote. Documentation only; no signature changed.
+- **`SelectQuery.offset` takes `null`, as `limit` already did.** A page bound that may or may not be there
+  needed a `?.let` on one of the two and not on the other. `null` leaves the clause out, which is what `0`
+  did and still does.
 
 #### Fixed
 
