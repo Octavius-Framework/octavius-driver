@@ -104,6 +104,7 @@
   did and its constructor still takes one; what changed is which exceptions have it. The rendering moved with
   it, from `Path: a -> b` inside `getDetailedMessage()` to `PATH: a -> b` in the exception's own frame, so
   anything matching the old line - or parsing the path back out of that string - has to be matched again.
+- **`session.getSearchPath()` is `session.searchPath`.**
 - **`TransactionIsolationLevel.fromJdbcValue` raises what its sibling raises.** It documented
   `IllegalArgumentException` and threw `NoSuchElementException`, neither of which is what
   `setTransactionIsolation` raises for the same value going the other way. Now

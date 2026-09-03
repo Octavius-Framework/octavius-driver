@@ -216,7 +216,7 @@ The one genuinely session-scoped ingredient is the schema search path. `TypeMana
 
 ```kotlin
 session.setSearchPath("imperium", "public")
-session.getSearchPath() // -> [imperium, public]
+session.searchPath // -> [imperium, public]
 
 session.typeManager.resolveOid("legio_status")             // resolved via search_path
 session.typeManager.resolveOid("legio_status", "imperium") // explicit schema, search_path ignored

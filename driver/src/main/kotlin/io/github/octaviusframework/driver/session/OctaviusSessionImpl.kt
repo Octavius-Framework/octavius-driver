@@ -119,10 +119,11 @@ internal class OctaviusSessionImpl(
         octaviusConnection.cancelQuery()
     }
 
-    override fun getSearchPath(): List<String> {
-        checkOpen()
-        return octaviusConnection.getSearchPath()
-    }
+    override val searchPath: List<String>
+        get() {
+            checkOpen()
+            return octaviusConnection.getSearchPath()
+        }
 
     // ------------------------------------------Pool Connection--------------------------------------------------------
 

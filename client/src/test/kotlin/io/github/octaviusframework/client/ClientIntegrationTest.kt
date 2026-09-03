@@ -120,11 +120,11 @@ class ClientIntegrationTest {
     fun `execute is still there for the work that is not a query`() {
         // The session-level path: several statements that have to share one session, and the driver's own API
         // reachable unchanged.
-        val searchPath = db.execute {
+        val path = db.execute {
             createNativeQuery("SET LOCAL TIME ZONE 'UTC'").execute()
-            getSearchPath()
+            searchPath
         }
-        assertTrue(searchPath.isNotEmpty())
+        assertTrue(path.isNotEmpty())
     }
 
     // --- The seam ---------------------------------------------------------------------------------

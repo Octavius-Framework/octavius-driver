@@ -69,7 +69,7 @@ This is the omission with the longest shadow: Hibernate, Spring Data JDBC and JP
 `setSchema()` / `getSchema()` and `setCatalog()` / `getCatalog()` throw. Neither is connection state in PostgreSQL: a
 catalog is the database itself, which nothing on an open connection can change, and what JDBC calls the connection's
 schema is the head of `search_path` — a server-reported setting rather than a property of the connection.
-`session.getSearchPath()` reads that one; `SELECT current_database()` answers the other.
+`session.searchPath` reads that one; `SELECT current_database()` answers the other.
 
 **A pool configured with a default schema or catalog fails when it opens the connection** — HikariCP's `schema` and
 `catalog` properties, `spring.datasource.hikari.schema` among them. Supply `search_path` as
@@ -116,7 +116,7 @@ Coming from `pgjdbc`, this is where each habit lands:
 | `conn.unwrap(PGConnection).getCopyAPI()`        | `session.copy` — [COPY](copy.md)                                                                                              |
 | `createArrayOf(…)` / `createStruct(…)`          | Pass the Kotlin `List` or data class; [the registry](type-system.md) encodes it                                               |
 | `conn.getMetaData()`                            | Query `pg_catalog` through the session                                                                                        |
-| `conn.setSchema(…)` / `conn.getSchema()`        | `search_path` as a [startup parameter](initialization.md#startup-parameters); `session.getSearchPath()` reads it back         |
+| `conn.setSchema(…)` / `conn.getSchema()`        | `search_path` as a [startup parameter](initialization.md#startup-parameters); `session.searchPath` reads it back              |
 | `conn.setCatalog(…)` / `conn.getCatalog()`      | `SELECT current_database()` — the database a connection is on cannot change                                                   |
 
 Note which way those last rows point. `pgjdbc` hands you a vendor interface by *unwrapping* the connection; Octavius hands you a session by *wrapping* it. `connection.getOctaviusSession()` on a pooled `Connection` — or `dataSource.getOctaviusSession()` on the pool itself — builds the session around the connection you already hold, which is why `close()` still returns that connection to the pool. Getting down to the protocol underneath is the session's own business, done once, internally.

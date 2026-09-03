@@ -84,11 +84,13 @@ interface OctaviusSessionOperations {
     fun cancelQuery()
 
     /**
-     * Retrieves the current `search_path` configured for this session.
+     * The schemas making up this session's current `search_path`.
      *
-     * @return A list of schemas comprising the current search path.
+     * Read from what the server reported rather than queried for: PostgreSQL 18 announces
+     * `search_path` in `ParameterStatus` and announces it again whenever it moves, so a
+     * hand-written `SET search_path` mid-session shows up here without a round trip.
      */
-    fun getSearchPath(): List<String>
+    val searchPath: List<String>
 
     /**
      * Manually aborts the connection, forcing the underlying connection pool (like HikariCP)
